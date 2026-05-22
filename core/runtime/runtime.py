@@ -34,11 +34,11 @@ class Runtime:
 
     def _register(self):
         self.event_bus.subscribe(
-            "repo.scan",
+            "ecosystem.scan",
             self.repo_agent.handle_event,
         )
         self.event_bus.subscribe(
-            "repo.scan",
+            "ecosystem.scan",
             self.overseer.observe,
         )
 
@@ -57,7 +57,7 @@ class Runtime:
         event = Event(
             source="runtime",
             target="repo-agent",
-            event_type="repo.scan",
+            event_type="ecosystem.scan",
             payload={
                 "repo": "DGM-MAT"
             },
