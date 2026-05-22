@@ -1,0 +1,13 @@
+{
+  "event": {
+    "id": "uuid",
+    "timestamp": "iso8601",
+    "source": "agent_id",
+    "target": "agent_id|broadcast",
+    "type": "task|response|error|update|approval|request",
+    "payload": {},
+    "priority": "low|medium|high|critical",
+    "ecosystem": "string",
+    "trace_id": "uuid"
+  }
+}

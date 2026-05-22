@@ -1,0 +1,14 @@
+{
+  "agent": {
+    "id": "string",
+    "type": "governance|domain|worker",
+    "specialization": "string",
+    "responsibilities": [],
+    "forbidden_actions": [],
+    "input_events": [],
+    "output_events": [],
+    "memory_access_level": "none|read|write|full",
+    "max_concurrent_tasks": 1,
+    "is_autonomous": true
+  }
+}
