@@ -49,3 +49,12 @@ class EventLogger:
             priority="critical"
         )
         self.bus.publish(error_event)
+
+def log_event_metrics(event_bus, metrics_payload):
+    from core.event_bus.bus import Event
+    event_bus.publish(Event(
+        source="observability",
+        type="metrics_update",
+        payload=metrics_payload,
+        priority="low"
+    ))

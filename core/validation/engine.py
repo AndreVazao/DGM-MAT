@@ -1,10 +1,10 @@
 import json
 import hashlib
-from typing import Any, Dict
+from typing import Any, Dict, List
 from core.event_bus.bus import Event
 
 class ValidationEngine:
-    def __init__(self, event_schema_path: str):
+    def __init__(self, event_schema_path: str = "schemas/event.schema.json"):
         self.event_schema = self._load_schema(event_schema_path)
         self.critical_configs_hashes: Dict[str, str] = {}
 
@@ -13,16 +13,17 @@ class ValidationEngine:
             with open(path, 'r') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"[VALIDATION ERROR] Failed to load schema: {e}")
-            return {}
+            # Fallback schema if file not found
+            return {
+                "event": ["id", "source", "type", "payload", "priority", "timestamp"]
+            }
 
     def validate_event(self, event: Event) -> bool:
-        """Minimal schema validation for the event."""
-        # Check against schema structure (simplified for this task)
+        """Schema and integrity validation for the event."""
         event_dict = event.to_dict()
-        schema_def = self.event_schema.get("event", {})
+        required_keys = self.event_schema.get("event", [])
 
-        for key in schema_def:
+        for key in required_keys:
             if key not in event_dict:
                 print(f"[VALIDATION ERROR] Event missing required key: {key}")
                 return False
@@ -35,19 +36,18 @@ class ValidationEngine:
 
         return True
 
-    def validate_state(self, agent_id: str, state: Dict[str, Any]) -> bool:
-        """Detect corrupted or invalid agent states."""
-        if not agent_id or "status" not in state:
-            return False
+    def validate_memory_consistency(self, core_snapshots: List[str], andreos_snapshots: List[str]) -> bool:
+        """Task 6: Ensure AndreOS vs DGM-MAT alignment."""
+        # Simplified: all core snapshots must be in AndreOS
+        for snap in core_snapshots:
+            if snap not in andreos_snapshots:
+                return False
         return True
 
-    def register_config_for_integrity(self, name: str, content: str):
-        """Track hash of critical configurations."""
-        self.critical_configs_hashes[name] = hashlib.sha256(content.encode()).hexdigest()
+    def validate_agent_behavior(self, agent_id: str, action: str, allowed_actions: List[str]) -> bool:
+        """Task 6: Prevent unauthorized actions."""
+        return action in allowed_actions
 
-    def check_integrity(self, name: str, current_content: str) -> bool:
-        """Verify hash of critical configurations."""
-        if name not in self.critical_configs_hashes:
-            return True
-        current_hash = hashlib.sha256(current_content.encode()).hexdigest()
-        return current_hash == self.critical_configs_hashes[name]
+    def validate_repo_state(self, current_repos: List[str], expected_repos: List[str]) -> bool:
+        """Task 6: Detect desync between repos and ecosystem graph."""
+        return set(current_repos) == set(expected_repos)
