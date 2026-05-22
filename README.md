@@ -1,57 +1,23 @@
-# DGM-MAT
-
-Devops God Mode - Multi Agent Tool
+# DGM-MAT Core
 
 ## STATUS
-ARCHITECTURE FREEZE PHASE
+ARCHITECTURE FREEZE PHASE - REPOSITORY ECOSYSTEM INITIALIZED
 
-No production code is allowed before:
-- agent contracts
-- event system
-- ecosystem topology
-- memory schema
-- governance rules
-
-## CORE IDEA
-
-DGM-MAT is a local-first autonomous multi-agent engineering operating system that manages:
-
-- repositories
-- conversations
-- assets
-- AI providers
-- deployments
-- ecosystems
-- infrastructure
-
-It is NOT a chatbot.
-
-It is an engineering orchestration system.
+## ROLE: CORE ORCHESTRATOR
+DGM-MAT Core is the central nervous system of the Devops God Mode ecosystem. It is the **only** repository permitted to contain orchestration logic, state management, and global event bus control.
 
 ## PRINCIPLES
+- **Orchestration Monopoly**: Only Core can schedule tasks and manage agent lifecycles.
+- **Event-Driven**: All interactions occur via the Core Event Bus.
+- **Local-First**: High-performance, private engineering orchestration.
+- **Strict Isolation**: Satellites are peripheral and state-less relative to the Core.
 
-- Local-first execution
-- Event-driven architecture
-- Agent isolation
-- Semantic memory graph
-- Ecosystem-level intelligence
-- Human-supervised evolution
-- Full observability
+## CORE MODULES
+- Overseer Core (Master Governance)
+- Event Bus (Communication Backbone)
+- Agent Runtime (Execution)
+- Semantic Memory Engine (Context)
 
-## CORE MODULES (NOT IMPLEMENTED YET)
-
-- Overseer Core
-- Agent Runtime
-- Memory Engine
-- Event Bus
-- Repo Intelligence Engine
-- Conversation Intelligence Engine
-- Asset Intelligence Engine
-- Ecosystem Intelligence Engine
-- Deployment Engine
-- Security Sovereign
-- Cockpit UI (Desktop + Mobile)
-
-## NEXT STEP
-
-Bootstrap architecture definition only.
+## ECOSYSTEM TOPOLOGY
+- **Core**: DGM-MAT (Orchestration)
+- **Satellites**: Mobile, Plugins, Labs, Connectors, Providers, Assets, Deploy (Execution & Extensions)
