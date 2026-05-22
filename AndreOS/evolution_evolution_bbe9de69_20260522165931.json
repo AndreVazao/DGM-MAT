@@ -1,0 +1,18 @@
+{
+  "snapshot_id": "evolution_bbe9de69",
+  "timestamp": "2026-05-22T16:59:31.027255",
+  "data": {
+    "timestamp": "2026-05-22T16:59:31.027183",
+    "type": "deployment_update",
+    "description": "System mutation: deployment_update",
+    "changes": {
+      "deployment_id": "dep-20260522165931",
+      "target": "DGM-MAT-Installer",
+      "stage": "staging",
+      "status": "success",
+      "build_id": "build-165931",
+      "timestamp": "2026-05-22T16:59:31.027168"
+    },
+    "trace_id": "172ff4f7-fe10-47ed-9aca-c8f5ae3517b8"
+  }
+}
