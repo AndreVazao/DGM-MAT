@@ -11,6 +11,9 @@ from core.overseer.overseer import (
 from core.agents.repo_agent import (
     RepoAgent,
 )
+from core.agents.provider_agent import (
+    ProviderAgent,
+)
 from core.lifecycle.bootstrap import (
     bootstrap_environment,
 )
@@ -30,6 +33,9 @@ class Runtime:
         self.repo_agent = RepoAgent(
             "repo-agent"
         )
+        self.provider_agent = ProviderAgent(
+            "provider-agent"
+        )
         self._register()
 
     def _register(self):
@@ -40,6 +46,10 @@ class Runtime:
         self.event_bus.subscribe(
             "ecosystem.scan",
             self.overseer.observe,
+        )
+        self.event_bus.subscribe(
+            "providers.scan",
+            self.provider_agent.handle_event,
         )
 
     def start_api(self):
@@ -54,7 +64,7 @@ class Runtime:
         self.event_bus.start()
         self.state.runtime_status = "running"
 
-        event = Event(
+        repo_event = Event(
             source="runtime",
             target="repo-agent",
             event_type="ecosystem.scan",
@@ -62,4 +72,12 @@ class Runtime:
                 "repo": "DGM-MAT"
             },
         )
-        self.event_bus.publish(event)
+        self.event_bus.publish(repo_event)
+
+        provider_event = Event(
+            source="runtime",
+            target="provider-agent",
+            event_type="providers.scan",
+            payload={},
+        )
+        self.event_bus.publish(provider_event)
