@@ -10,6 +10,7 @@ class EcosystemStateManager:
         self.tasks: Dict[str, Dict[str, Any]] = {}
         self.provider_sessions: Dict[str, Dict[str, Any]] = {}
         self.memory_updates: List[Dict[str, Any]] = []
+        self.evolution_chain: List[Dict[str, Any]] = []
 
         # Subscribe to ecosystem relevant events
         self.bus.subscribe("repo_update", self._handle_repo_update)
@@ -17,6 +18,8 @@ class EcosystemStateManager:
         self.bus.subscribe("task_update", self._handle_task_update)
         self.bus.subscribe("provider_session", self._handle_provider_session)
         self.bus.subscribe("memory_sync", self._handle_memory_sync)
+        self.bus.subscribe("system_repair", self._handle_evolution_event)
+        self.bus.subscribe("deployment_update", self._handle_evolution_event)
         self.bus.subscribe("*", self._handle_all_events)
 
     def _handle_repo_update(self, event: Event):
@@ -65,6 +68,20 @@ class EcosystemStateManager:
             "snapshot_id": event.payload.get("snapshot_id")
         })
 
+    def _handle_evolution_event(self, event: Event):
+        """Track mutations as evolution events."""
+        evolution_record = {
+            "timestamp": event.timestamp,
+            "type": event.type,
+            "source": event.source,
+            "description": f"Evolution event triggered by {event.type}",
+            "details": event.payload,
+            "trace_id": event.trace_id,
+            "is_evolution": True
+        }
+        self.evolution_chain.append(evolution_record)
+        self._record_evolution(event)
+
     def _handle_all_events(self, event: Event):
         # Tracking evolution events for architecture/ecosystem changes
         if event.payload.get("is_evolution"):
@@ -75,10 +92,11 @@ class EcosystemStateManager:
         evolution_record = {
             "timestamp": event.timestamp,
             "type": event.type,
-            "description": event.payload.get("description"),
-            "changes": event.payload.get("changes"),
+            "description": event.payload.get("description") or f"System mutation: {event.type}",
+            "changes": event.payload,
             "trace_id": event.trace_id
         }
+        # Publish notification of recorded evolution
         self.bus.publish(Event(
             source="ecosystem_state",
             type="evolution_recorded",
@@ -93,5 +111,6 @@ class EcosystemStateManager:
             "tasks": self.tasks,
             "provider_sessions": self.provider_sessions,
             "memory_updates": self.memory_updates[-10:], # Last 10 updates
+            "evolution_chain_length": len(self.evolution_chain),
             "timestamp": datetime.datetime.utcnow().isoformat()
         }
