@@ -1,0 +1,6 @@
+# DGM-MAT Satellite Gitignore
+node_modules/
+dist/
+build/
+.env
+*.log
