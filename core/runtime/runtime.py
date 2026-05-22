@@ -14,6 +14,9 @@ from core.agents.repo_agent import (
 from core.agents.provider_agent import (
     ProviderAgent,
 )
+from core.agents.autonomy_agent import (
+    AutonomyAgent,
+)
 from core.lifecycle.bootstrap import (
     bootstrap_environment,
 )
@@ -36,6 +39,9 @@ class Runtime:
         self.provider_agent = ProviderAgent(
             "provider-agent"
         )
+        self.autonomy_agent = AutonomyAgent(
+            "autonomy-agent"
+        )
         self._register()
 
     def _register(self):
@@ -50,6 +56,10 @@ class Runtime:
         self.event_bus.subscribe(
             "providers.scan",
             self.provider_agent.handle_event,
+        )
+        self.event_bus.subscribe(
+            "autonomy.analyze",
+            self.autonomy_agent.handle_event,
         )
 
     def start_api(self):
@@ -81,3 +91,11 @@ class Runtime:
             payload={},
         )
         self.event_bus.publish(provider_event)
+
+        autonomy_event = Event(
+            source="runtime",
+            target="autonomy-agent",
+            event_type="autonomy.analyze",
+            payload={},
+        )
+        self.event_bus.publish(autonomy_event)
