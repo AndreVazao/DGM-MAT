@@ -16,6 +16,10 @@ from core.repository_intelligence.duplicate_detector import (
     DuplicateDetector,
 )
 
+from core.memory.memory_engine import (
+    MemoryEngine,
+)
+
 
 class RepoAgent(BaseAgent):
 
@@ -65,3 +69,5 @@ class RepoAgent(BaseAgent):
             for item in duplicates:
 
                 print(item)
+
+        MemoryEngine().run()
