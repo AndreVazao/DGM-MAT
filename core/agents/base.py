@@ -1,4 +1,6 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
+import datetime
+import uuid
 from core.event_bus.bus import Event, EventBus
 
 class BaseAgent:
@@ -8,8 +10,7 @@ class BaseAgent:
         self.bus = event_bus
         self.status = "idle"
         self.input_queue: List[Event] = []
-        self.output_queue: List[Event] = []
-        self.state: Dict[str, Any] = {"status": "initialized"}
+        self.state: Dict[str, Any] = {"status": "initialized", "last_update": datetime.datetime.utcnow().isoformat()}
 
         # Subscribe to tasks targeted at this agent or broadcast
         self.bus.subscribe("task", self._on_task)
@@ -17,49 +18,80 @@ class BaseAgent:
     def _on_task(self, event: Event):
         if event.target == self.id or event.target == "broadcast":
             self.input_queue.append(event)
-            self._log(f"Received task {event.id}")
+            self._log(f"Received task {event.id} of type {event.payload.get('task_type')}")
 
     def update(self):
-        """Simulate agent lifecycle iteration."""
+        """Active agent lifecycle iteration."""
         if self.input_queue:
             task = self.input_queue.pop(0)
             self._process_task(task)
 
-        # Emit health status periodically or on state change
+        self._report_state()
+
+    def _report_state(self):
+        """Report agent state to the ecosystem state engine via events."""
         self.bus.publish(Event(
             source=self.id,
-            type="update",
-            payload={"agent_id": self.id, "status": self.status, "state": self.state},
+            type="agent_update",
+            payload={
+                "agent_id": self.id,
+                "type": self.type,
+                "status": self.status,
+                "state": self.state
+            },
             priority="low"
         ))
 
     def _process_task(self, task: Event):
         self.status = "busy"
-        self._log(f"Processing task {task.id}")
+        task_type = task.payload.get("task_type")
+        self._log(f"Processing task {task.id} ({task_type})")
 
-        # Simulation: In real system, this is where work happens
-        response_payload = {
-            "task_id": task.id,
-            "result": f"Simulated execution of {task.type} complete",
-            "agent_id": self.id
-        }
+        # Concrete agents will override this or register handlers
+        result = self.execute_logic(task)
 
         response = Event(
             source=self.id,
             target=task.source,
             type="response",
-            payload=response_payload,
+            payload={
+                "task_id": task.id,
+                "result": result,
+                "agent_id": self.id,
+                "status": "success" if result else "failure"
+            },
             priority="medium",
             trace_id=task.trace_id
         )
 
         self.bus.publish(response)
+
+        # Snapshot state after task
+        self.persist_memory_snapshot()
+
         self.status = "idle"
 
-    def _log(self, message: str):
+    def execute_logic(self, task: Event) -> Any:
+        """Override in subclasses to implement real logic."""
+        return f"Base logic executed for {task.id}"
+
+    def persist_memory_snapshot(self):
+        """Emit an event to trigger a memory snapshot by the Memory Sync Agent."""
+        self.bus.publish(Event(
+            source=self.id,
+            type="memory_snapshot_request",
+            payload={
+                "agent_id": self.id,
+                "category": f"agent_state_{self.type}",
+                "data": self.state
+            },
+            priority="medium"
+        ))
+
+    def _log(self, message: str, level: str = "info"):
         self.bus.publish(Event(
             source=self.id,
             type="log",
-            payload={"message": message, "agent_id": self.id},
+            payload={"message": message, "agent_id": self.id, "level": level},
             priority="low"
         ))
