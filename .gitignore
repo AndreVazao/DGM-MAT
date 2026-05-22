@@ -1,0 +1,126 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+.env/
+.venv/
+
+# Environment files
+.env
+.env.*
+*.env
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime
+runtime/cache/
+runtime/temp/
+runtime/sessions/
+
+# Models
+models/
+*.gguf
+*.bin
+*.safetensors
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Node
+node_modules/
+
+# Docker
+docker-data/
+
+# Secrets
+secrets/
+vault/
+
+# Generated
+generated/
+exports/
+snapshots/
+
+# Monitoring
+grafana-data/
+prometheus-data/
+loki-data/
+
+# Mobile
+*.apk
+*.aab
+
+# Windows
+*.exe
+
+# Archives
+*.zip
+*.rar
+*.7z
+
+# Coverage
+.coverage
+htmlcov/
+
+# Pytest
+.pytest_cache/
+
+# Mypy
+.mypy_cache/
+
+# Ruff
+.ruff_cache/
+
+# Temporary
+tmp/
+temp/
+
+# AI Providers
+provider_sessions/
+browser_profiles/
+
+# Playwright
+playwright/.cache/
+playwright/browser_data/
+
+# Qdrant
+qdrant_storage/
+
+# Neo4j
+neo4j/data/
+neo4j/logs/
+
+# Redis
+redis-data/
+
+# PostgreSQL
+postgres-data/
+
+# Local user data
+user_uploads/
+conversation_exports/
+
+# Build outputs
+release/
+artifacts/
