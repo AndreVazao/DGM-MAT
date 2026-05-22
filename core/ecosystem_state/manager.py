@@ -20,6 +20,7 @@ class EcosystemStateManager:
         self.bus.subscribe("memory_sync", self._handle_memory_sync)
         self.bus.subscribe("system_repair", self._handle_evolution_event)
         self.bus.subscribe("deployment_update", self._handle_evolution_event)
+        self.bus.subscribe("agent_upgraded", self._handle_evolution_event)
         self.bus.subscribe("*", self._handle_all_events)
 
     def _handle_repo_update(self, event: Event):
@@ -74,7 +75,7 @@ class EcosystemStateManager:
             "timestamp": event.timestamp,
             "type": event.type,
             "source": event.source,
-            "description": f"Evolution event triggered by {event.type}",
+            "description": event.payload.get("description") or f"Evolution event triggered by {event.type}",
             "details": event.payload,
             "trace_id": event.trace_id,
             "is_evolution": True
