@@ -3,18 +3,19 @@ import os
 from datetime import datetime
 from typing import List, Dict, Any
 from core.cognition.cognition_snapshot import CognitionSnapshot
+from core.storage.storage_manager import RuntimeStorageManager
 
 class ArchitectureMemory:
-    def __init__(self, storage_path: str = "AndreOS/architecture_memory.json"):
-        self.storage_path = storage_path
+    def __init__(self, storage_manager: RuntimeStorageManager = None):
+        self.storage_manager = storage_manager or RuntimeStorageManager()
         self.history: List[Dict[str, Any]] = []
         self._load()
 
     def _load(self):
-        if os.path.exists(self.storage_path):
+        content = self.storage_manager.read_data("cognition", "architecture_memory.json")
+        if content:
             try:
-                with open(self.storage_path, 'r') as f:
-                    self.history = json.load(f)
+                self.history = json.loads(content)
             except Exception:
                 self.history = []
 
@@ -27,11 +28,11 @@ class ArchitectureMemory:
         }
         self.history.append(record)
 
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(self.storage_path), exist_ok=True)
-
-        with open(self.storage_path, 'w') as f:
-            json.dump(self.history, f, indent=2, default=str)
+        self.storage_manager.save_data(
+            "cognition",
+            "architecture_memory.json",
+            json.dumps(self.history, indent=2, default=str)
+        )
 
     def rollback(self, version: int) -> Dict[str, Any]:
         """Returns a previous snapshot for manual rollback (read-only)."""
