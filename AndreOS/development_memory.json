@@ -1,0 +1,30 @@
+[
+  {
+    "timestamp": "2026-05-23 11:02:47.498676",
+    "feature_id": "feat_725455667425609209",
+    "status": "in_progress"
+  },
+  {
+    "timestamp": "2026-05-23 11:51:59.629492",
+    "feature_id": "feat_-2420067748671935046",
+    "status": "in_progress"
+  },
+  {
+    "timestamp": "2026-05-23T11:54:57.727188",
+    "feature_id": "feat_-4888397456462918611",
+    "status": "in_progress",
+    "snapshot_id": 3
+  },
+  {
+    "timestamp": "2026-05-23T12:00:54.884998",
+    "feature_id": "feat_-5837387222942186042",
+    "status": "in_progress",
+    "snapshot_id": 4
+  },
+  {
+    "timestamp": "2026-05-23T12:06:42.768938",
+    "feature_id": "feat_-52410349367310937",
+    "status": "in_progress",
+    "snapshot_id": 5
+  }
+]

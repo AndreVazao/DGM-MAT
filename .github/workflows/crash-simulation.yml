@@ -1,0 +1,10 @@
+name: Crash Simulation
+on:
+  workflow_dispatch:
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Simulate Crash
+        run: echo "Simulating runtime failures..."

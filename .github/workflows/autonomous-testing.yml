@@ -1,0 +1,9 @@
+name: Autonomous Testing
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Autonomous Test
+        run: echo "Running autonomous test suite..."

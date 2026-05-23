@@ -1,0 +1,84 @@
+[
+  {
+    "timestamp": "2026-05-23 11:02:47.495115",
+    "crash_type": "websocket_disconnect",
+    "status": "success"
+  },
+  {
+    "timestamp": "2026-05-23 11:49:36.155633",
+    "crash_type": "websocket_disconnect",
+    "status": "success"
+  },
+  {
+    "timestamp": "2026-05-23T11:54:57.723638",
+    "crash_type": "websocket_disconnect",
+    "status": "success",
+    "id": 3
+  },
+  {
+    "timestamp": "2026-05-23T12:00:54.881727",
+    "crash_type": "websocket_disconnect",
+    "status": "success",
+    "id": 4
+  },
+  {
+    "timestamp": "2026-05-23T12:02:51.051189",
+    "crash_type": "websocket_disconnect",
+    "status": "success",
+    "id": 5
+  },
+  {
+    "timestamp": "2026-05-23T12:02:51.058109",
+    "crash_type": "runtime_crash",
+    "status": "success",
+    "id": 6
+  },
+  {
+    "timestamp": "2026-05-23T12:02:51.059589",
+    "crash_type": "runtime_crash",
+    "status": "success",
+    "id": 7
+  },
+  {
+    "timestamp": "2026-05-23T12:02:51.060726",
+    "crash_type": "runtime_crash",
+    "status": "success",
+    "id": 8
+  },
+  {
+    "timestamp": "2026-05-23T12:02:51.066389",
+    "crash_type": "runtime_crash",
+    "status": "success",
+    "id": 9
+  },
+  {
+    "timestamp": "2026-05-23T12:03:47.810988",
+    "crash_type": "websocket_disconnect",
+    "status": "success",
+    "id": 10
+  },
+  {
+    "timestamp": "2026-05-23T12:03:47.827236",
+    "crash_type": "runtime_crash",
+    "status": "failed",
+    "id": 11
+  },
+  {
+    "timestamp": "2026-05-23T12:03:47.828569",
+    "crash_type": "runtime_crash",
+    "status": "failed",
+    "id": 12
+  },
+  {
+    "timestamp": "2026-05-23T12:03:47.830633",
+    "crash_type": "runtime_crash",
+    "status": "failed",
+    "id": 13
+  },
+  {
+    "timestamp": "2026-05-23T12:06:42.766761",
+    "crash_type": "websocket_disconnect",
+    "status": "success",
+    "id": 14
+  }
+]
