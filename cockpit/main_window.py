@@ -37,6 +37,12 @@ from cockpit.widgets.knowledge_graph_widget import (
 from cockpit.widgets.operational_search_widget import (
     OperationalSearchWidget,
 )
+
+# Phase 23, 24, 25 widgets
+from cockpit.widgets.strategy_widget import StrategyWidget
+from cockpit.widgets.research_widget import ResearchWidget
+from cockpit.widgets.federation_widget import FederationWidget
+
 from cockpit.realtime_client import (
     RealtimeClient,
 )
@@ -98,7 +104,23 @@ class MainWindow(QMainWindow):
         know_layout.addWidget(self.knowledge_graph)
         self.tabs.addTab(knowledge_tab, "Knowledge")
 
-        # --- TAB 4: INTELLIGENCE ---
+        # --- TAB 4: STRATEGIC & RESEARCH ---
+        strategy_tab = QWidget()
+        strat_layout = QVBoxLayout(strategy_tab)
+        self.strategy_viewer = StrategyWidget()
+        self.research_lab = ResearchWidget()
+        strat_layout.addWidget(self.strategy_viewer)
+        strat_layout.addWidget(self.research_lab)
+        self.tabs.addTab(strategy_tab, "Strategy & Research")
+
+        # --- TAB 5: FEDERATION ---
+        federation_tab = QWidget()
+        fed_layout = QVBoxLayout(federation_tab)
+        self.federation_map = FederationWidget()
+        fed_layout.addWidget(self.federation_map)
+        self.tabs.addTab(federation_tab, "Federation")
+
+        # --- TAB 6: INTELLIGENCE ---
         intelligence_tab = QWidget()
         intel_layout = QVBoxLayout(intelligence_tab)
         self.learning_dashboard = LearningDashboardWidget()
