@@ -1,0 +1,16 @@
+{
+  "nodes": [
+    {
+      "id": "primary-pc",
+      "type": "PRIMARY_NODE",
+      "ip": "100.69.225.48",
+      "trusted": true
+    },
+    {
+      "id": "mobile-node",
+      "type": "MOBILE_NODE",
+      "ip": "100.109.173.115",
+      "trusted": true
+    }
+  ]
+}

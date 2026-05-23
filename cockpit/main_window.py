@@ -17,6 +17,15 @@ from cockpit.widgets.event_stream_widget import (
 from cockpit.widgets.agent_widget import (
     AgentWidget,
 )
+from cockpit.widgets.execution_queue_widget import (
+    ExecutionQueueWidget,
+)
+from cockpit.widgets.mesh_monitor_widget import (
+    MeshMonitorWidget,
+)
+from cockpit.widgets.learning_dashboard_widget import (
+    LearningDashboardWidget,
+)
 from cockpit.realtime_client import (
     RealtimeClient,
 )
@@ -33,22 +42,38 @@ class MainWindow(QMainWindow):
         root_layout = QHBoxLayout()
         left_layout = QVBoxLayout()
         right_layout = QVBoxLayout()
+
         self.dashboard = DashboardWidget()
         self.logs = LogsWidget()
         self.events = EventStreamWidget()
         self.agents = AgentWidget()
+        self.execution_queue = ExecutionQueueWidget()
+        self.mesh_monitor = MeshMonitorWidget()
+        self.learning_dashboard = LearningDashboardWidget()
+
         left_layout.addWidget(
             self.dashboard
         )
         left_layout.addWidget(
             self.agents
         )
+        left_layout.addWidget(
+            self.mesh_monitor
+        )
+
         right_layout.addWidget(
             self.events
         )
         right_layout.addWidget(
+            self.execution_queue
+        )
+        right_layout.addWidget(
+            self.learning_dashboard
+        )
+        right_layout.addWidget(
             self.logs
         )
+
         root_layout.addLayout(
             left_layout,
             1,

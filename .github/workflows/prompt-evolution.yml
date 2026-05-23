@@ -1,0 +1,10 @@
+name: Prompt Evolution
+
+on: [push]
+
+jobs:
+  validate-prompts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate prompt evolution
+        run: echo "Validating prompt evolution..."

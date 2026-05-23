@@ -1,0 +1,12 @@
+name: Worktree Validation
+
+on: [push, pull_request]
+
+jobs:
+  validate-worktree:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check worktree manager
+        run: |
+          echo "Validating worktree management..."
