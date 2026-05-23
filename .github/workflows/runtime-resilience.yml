@@ -1,9 +1,0 @@
-name: Runtime Resilience
-on: [push]
-jobs:
-  resilience:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Resilience Check
-        run: echo "Validating runtime survival..."

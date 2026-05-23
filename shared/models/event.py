@@ -14,3 +14,5 @@ class Event(BaseModel):
     priority: EventPriority = EventPriority.LOW
     ecosystem: str = "core"
     trace_id: str = Field(default_factory=lambda: str(uuid4()))
+    parent_trace_id: Optional[str] = None
+    depth: int = 0

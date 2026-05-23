@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
+    QTabWidget,
 )
 from cockpit.widgets.dashboard_widget import (
     DashboardWidget,
@@ -26,6 +27,16 @@ from cockpit.widgets.mesh_monitor_widget import (
 from cockpit.widgets.learning_dashboard_widget import (
     LearningDashboardWidget,
 )
+# Phase 21 & 22 widgets
+from cockpit.widgets.governance_widget import (
+    GovernanceWidget,
+)
+from cockpit.widgets.knowledge_graph_widget import (
+    KnowledgeGraphWidget,
+)
+from cockpit.widgets.operational_search_widget import (
+    OperationalSearchWidget,
+)
 from cockpit.realtime_client import (
     RealtimeClient,
 )
@@ -36,10 +47,18 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(
             "DGM-MAT Cockpit"
         )
-        self.resize(1400, 900)
+        self.resize(1600, 1000)
         central = QWidget()
         self.setCentralWidget(central)
         root_layout = QHBoxLayout()
+
+        # Tabs for better organization
+        self.tabs = QTabWidget()
+
+        # --- TAB 1: CORE RUNTIME ---
+        runtime_tab = QWidget()
+        runtime_layout = QHBoxLayout(runtime_tab)
+
         left_layout = QVBoxLayout()
         right_layout = QVBoxLayout()
 
@@ -49,40 +68,46 @@ class MainWindow(QMainWindow):
         self.agents = AgentWidget()
         self.execution_queue = ExecutionQueueWidget()
         self.mesh_monitor = MeshMonitorWidget()
+
+        left_layout.addWidget(self.dashboard)
+        left_layout.addWidget(self.agents)
+        left_layout.addWidget(self.mesh_monitor)
+
+        right_layout.addWidget(self.events)
+        right_layout.addWidget(self.execution_queue)
+        right_layout.addWidget(self.logs)
+
+        runtime_layout.addLayout(left_layout, 1)
+        runtime_layout.addLayout(right_layout, 2)
+
+        self.tabs.addTab(runtime_tab, "Runtime")
+
+        # --- TAB 2: GOVERNANCE & SAFETY ---
+        governance_tab = QWidget()
+        gov_layout = QVBoxLayout(governance_tab)
+        self.governance_monitor = GovernanceWidget()
+        gov_layout.addWidget(self.governance_monitor)
+        self.tabs.addTab(governance_tab, "Governance")
+
+        # --- TAB 3: KNOWLEDGE FABRIC ---
+        knowledge_tab = QWidget()
+        know_layout = QVBoxLayout(knowledge_tab)
+        self.knowledge_graph = KnowledgeGraphWidget()
+        self.operational_search = OperationalSearchWidget()
+        know_layout.addWidget(self.operational_search)
+        know_layout.addWidget(self.knowledge_graph)
+        self.tabs.addTab(knowledge_tab, "Knowledge")
+
+        # --- TAB 4: INTELLIGENCE ---
+        intelligence_tab = QWidget()
+        intel_layout = QVBoxLayout(intelligence_tab)
         self.learning_dashboard = LearningDashboardWidget()
+        intel_layout.addWidget(self.learning_dashboard)
+        self.tabs.addTab(intelligence_tab, "Intelligence")
 
-        left_layout.addWidget(
-            self.dashboard
-        )
-        left_layout.addWidget(
-            self.agents
-        )
-        left_layout.addWidget(
-            self.mesh_monitor
-        )
-
-        right_layout.addWidget(
-            self.events
-        )
-        right_layout.addWidget(
-            self.execution_queue
-        )
-        right_layout.addWidget(
-            self.learning_dashboard
-        )
-        right_layout.addWidget(
-            self.logs
-        )
-
-        root_layout.addLayout(
-            left_layout,
-            1,
-        )
-        root_layout.addLayout(
-            right_layout,
-            2,
-        )
+        root_layout.addWidget(self.tabs)
         central.setLayout(root_layout)
+
         self.client = RealtimeClient(
             self.handle_message
         )
