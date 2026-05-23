@@ -1,4 +1,4 @@
-name: Recovery Validation
+name: Governance Validation
 on: [push, pull_request]
 jobs:
   validate:
@@ -11,5 +11,5 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Run Recovery Tests
-        run: PYTHONPATH=. pytest tests/test_recovery.py
+      - name: Run Governance Simulations
+        run: PYTHONPATH=. pytest tests/test_governance_sim.py

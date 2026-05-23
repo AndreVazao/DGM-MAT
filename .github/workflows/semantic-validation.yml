@@ -1,4 +1,4 @@
-name: Cognition Validation
+name: Semantic Validation
 on: [push, pull_request]
 jobs:
   validate:
@@ -11,7 +11,5 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Playwright install
-        run: pip install playwright && playwright install --with-deps
-      - name: Run Cognition Tests
-        run: PYTHONPATH=. pytest tests/test_cognition.py
+      - name: Run Knowledge Fabric Tests
+        run: PYTHONPATH=. pytest tests/test_knowledge_fabric.py

@@ -1,0 +1,13 @@
+{
+    "max_event_depth": 20,
+    "max_parallel_repairs": 5,
+    "max_browser_contexts": 3,
+    "max_worktrees": 5,
+    "max_provider_requests_per_min": 60,
+    "max_memory_growth_percent": 20.0,
+    "cpu_degradation_threshold": 80.0,
+    "memory_degradation_threshold": 85.0,
+    "storm_event_count_threshold": 100,
+    "storm_time_window_seconds": 10,
+    "max_recursion_depth": 10
+}
