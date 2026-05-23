@@ -1,0 +1,12 @@
+name: Provider Benchmark
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Benchmark providers
+        run: echo "Benchmarking providers..."

@@ -1,0 +1,12 @@
+name: Distributed Validation
+
+on: [push, pull_request]
+
+jobs:
+  validate-mesh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check node mesh
+        run: |
+          echo "Validating node mesh..."

@@ -1,0 +1,10 @@
+name: Mesh Runtime
+
+on: [push]
+
+jobs:
+  validate-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate mesh runtime
+        run: echo "Validating mesh runtime..."
