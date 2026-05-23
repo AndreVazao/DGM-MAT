@@ -33,16 +33,24 @@ from core.governance.governance_engine import GovernanceEngine
 # Phase 22 knowledge
 from core.knowledge.knowledge_engine import KnowledgeEngine
 
-# Phase 18, 19, 20 imports
+# Advanced Engine Imports
 try:
     from core.cognition.ecosystem_engine import EcosystemEngine
     from core.recovery.recovery_engine import RecoveryEngine
     from core.development.development_engine import DevelopmentEngine
+
+    # Phase 23, 24, 25
+    from core.strategy.strategy_engine import StrategyEngine
+    from core.research.research_engine import ResearchEngine
+    from core.federation.federation_engine import FederationEngine
 except ImportError as exc:
-    dgm_logger.error(f"Runtime: Failed to import Phase 18/19/20 modules: {exc}")
+    dgm_logger.error(f"Runtime: Failed to import advanced modules: {exc}")
     EcosystemEngine = None
     RecoveryEngine = None
     DevelopmentEngine = None
+    StrategyEngine = None
+    ResearchEngine = None
+    FederationEngine = None
 
 class Runtime:
     def __init__(self):
@@ -70,6 +78,9 @@ class Runtime:
         self.ecosystem_engine = self._init_subsystem(EcosystemEngine, "Cognition")
         self.recovery_engine = self._init_subsystem(RecoveryEngine, "Recovery")
         self.development_engine = self._init_subsystem(DevelopmentEngine, "Development")
+        self.strategy_engine = self._init_subsystem(StrategyEngine, "Strategy")
+        self.research_engine = self._init_subsystem(ResearchEngine, "Research")
+        self.federation_engine = self._init_subsystem(FederationEngine, "Federation")
 
         self._register()
 
@@ -115,6 +126,24 @@ class Runtime:
             self.event_bus.subscribe(
                 "development.request",
                 lambda e: self.development_engine.process_request(e.payload.get("request", "")),
+            )
+
+        if self.strategy_engine:
+            self.event_bus.subscribe(
+                "strategy.orchestrate",
+                lambda e: self.strategy_engine.generate_strategy(e.payload)
+            )
+
+        if self.research_engine:
+            self.event_bus.subscribe(
+                "research.experiment",
+                lambda e: self.research_engine.run_experiment(e.payload.get("experiment"))
+            )
+
+        if self.federation_engine:
+            self.event_bus.subscribe(
+                "federation.message",
+                lambda e: self.federation_engine.handle_federated_request(e.payload.get("message"))
             )
 
     def start_api(self):
