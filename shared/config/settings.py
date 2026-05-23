@@ -1,13 +1,15 @@
-from pathlib import Path
 import os
+from pathlib import Path
+from core.storage.storage_manager import storage_manager
 
-# Default to Windows path as requested, but allow override for local dev/tests
-BASE_PATH = Path(os.getenv("DGM_BASE_PATH", "C:/DevopsGodMode"))
+# Dynamic base path resolution from the central storage manager
+BASE_PATH = storage_manager.base_path
 
-DATA_PATH = BASE_PATH / "data"
-DB_PATH = DATA_PATH / "dgm_mat.db"
-LOG_PATH = DATA_PATH / "logs"
-RUNTIME_PATH = DATA_PATH / "runtime"
+# Data paths now use storage_manager domains
+DATA_PATH = BASE_PATH
+DB_PATH = storage_manager.get_path("temp", "dgm_mat.db")
+LOG_PATH = storage_manager.get_path("logs")
+RUNTIME_PATH = storage_manager.get_path("temp")
 
-API_HOST = "127.0.0.1"
-API_PORT = 8181
+API_HOST = os.getenv("DGM_API_HOST", "127.0.0.1")
+API_PORT = int(os.getenv("DGM_API_PORT", 8181))

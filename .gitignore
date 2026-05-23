@@ -31,10 +31,22 @@ logs/
 .DS_Store
 Thumbs.db
 
-# Runtime
-runtime/cache/
-runtime/temp/
-runtime/sessions/
+# Runtime (Standard locations)
+runtime/
+storage/runtime/
+storage/memory/
+storage/cognition/
+storage/governance/
+storage/federation/
+storage/sandbox/
+storage/providers/
+storage/logs/
+storage/snapshots/
+storage/temp/
+data/
+
+# Repositories (for local development)
+repositories/
 
 # Models
 models/
@@ -125,19 +137,7 @@ conversation_exports/
 release/
 artifacts/
 
-# DGM-MAT Runtime Storage (Strict Separation)
-data/
-storage/runtime/
-storage/memory/
-storage/cognition/
-storage/governance/
-storage/federation/
-storage/sandbox/
-storage/providers/
-storage/logs/
-storage/snapshots/
-storage/temp/
-
-# Accidentally tracked absolute paths
-C:/
-D:/
+# CRITICAL: Prevent absolute path tracking (Windows/Unix)
+# Note: These are mostly to prevent accidental tracking of folders named like roots
+[a-zA-Z]:/*
+/*:/*
