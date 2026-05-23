@@ -1,0 +1,23 @@
+name: Reject Invalid Storage
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for absolute Windows paths in git
+        run: |
+          INVALID_PATHS=$(git ls-files | grep -E "^(C|D):/" || true)
+          if [ ! -z "$INVALID_PATHS" ]; then
+            echo "::error::Detected absolute Windows paths tracked in git. Remove them and use relative storage paths."
+            false
+          fi
+      - name: Check for runtime data tracked in git
+        run: |
+          RUNTIME_DATA=$(git ls-files | grep -E "^(data|storage|provider_sessions|browser_profiles)/" || true)
+          if [ ! -z "$RUNTIME_DATA" ]; then
+            echo "::error::Detected runtime data tracked in git. Add these paths to .gitignore."
+            false
+          fi
+      - name: Success
+        run: echo "No invalid storage paths detected."

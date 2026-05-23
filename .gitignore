@@ -124,3 +124,20 @@ conversation_exports/
 # Build outputs
 release/
 artifacts/
+
+# DGM-MAT Runtime Storage (Strict Separation)
+data/
+storage/runtime/
+storage/memory/
+storage/cognition/
+storage/governance/
+storage/federation/
+storage/sandbox/
+storage/providers/
+storage/logs/
+storage/snapshots/
+storage/temp/
+
+# Accidentally tracked absolute paths
+C:/
+D:/
