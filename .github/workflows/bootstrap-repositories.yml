@@ -14,12 +14,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Authenticate GitHub CLI
-        shell: bash
-        run: |
-          echo "$GH_TOKEN" > token.txt
-          gh auth login --with-token < token.txt
-
       - name: Bootstrap repositories
         shell: bash
         run: |
