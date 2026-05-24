@@ -25,6 +25,7 @@ class EcosystemRole(str, Enum):
     PROVIDERS = "providers"
     CONNECTORS = "connectors"
     LABS = "labs"
+    MEMORY = "memory"
     EXTERNAL_LABS = "external-labs"
 
 class EcosystemNode(BaseModel):
