@@ -6,7 +6,7 @@ from core.observability.logger import dgm_logger
 
 class EcosystemValidator:
     REQUIRED_FOLDERS = ["core", "runtime", "config", "docs", "tests", "workflows"]
-    REQUIRED_FILES = ["health.json", "ecosystem.json"]
+    REQUIRED_FILES = ["health.json", "ecosystem.json", "README.md", "architecture.md", ".gitignore"]
 
     def __init__(self, registry: EcosystemRegistry, root_path: Path = Path(".")):
         self.registry = registry
@@ -14,12 +14,9 @@ class EcosystemValidator:
 
     def validate_node(self, node_name: str) -> Dict[str, Any]:
         """Validates a single ecosystem node against the physical structure."""
-        # Special case: DGM-MAT-OS might be the root or a subfolder
-        # Based on current structure, it seems DGM-MAT-OS is the root,
-        # but the ecosystem model expects it to follow the same rules.
-
         node_path = self.root_path / node_name
-        # If node is DGM-MAT-OS and it doesn't exist as a subfolder, check root
+
+        # Special case: DGM-MAT-OS might be the root or a subfolder
         if node_name == "DGM-MAT-OS" and not node_path.exists():
              node_path = self.root_path
 

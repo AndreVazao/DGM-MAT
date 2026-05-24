@@ -13,7 +13,6 @@ class EcosystemMaterializer:
 
     def materialize_node(self, node_name: str, dry_run: bool = False) -> Dict[str, Any]:
         """Materializes the physical structure for a single ecosystem node."""
-        report = self.validator.validate_node(node_name)
         node = self.registry.get_node(node_name)
 
         if not node:
@@ -42,7 +41,10 @@ class EcosystemMaterializer:
             if not target_file.is_file():
                 content = self._get_default_content(file, node)
                 if not dry_run:
-                    target_file.write_text(json.dumps(content, indent=2), encoding="utf-8")
+                    if isinstance(content, str):
+                        target_file.write_text(content, encoding="utf-8")
+                    else:
+                        target_file.write_text(json.dumps(content, indent=2), encoding="utf-8")
                 actions.append(f"Created file: {target_file}")
 
         if not dry_run and actions:
@@ -54,7 +56,7 @@ class EcosystemMaterializer:
             "status": "synchronized" if not actions else ("materialized" if not dry_run else "drift_detected")
         }
 
-    def _get_default_content(self, filename: str, node: Any) -> Dict[str, Any]:
+    def _get_default_content(self, filename: str, node: Any) -> Any:
         if filename == "health.json":
             return {
                 "node": node.name,
@@ -71,7 +73,13 @@ class EcosystemMaterializer:
                 "dependencies": node.dependencies,
                 "metadata": node.metadata
             }
-        return {}
+        elif filename == "README.md":
+            return f"# {node.name}\n\n{node.description or 'DGM-MAT ecosystem module'}\n\n## Role: {node.role}\n"
+        elif filename == "architecture.md":
+            return f"# {node.name} Architecture\n\nTechnical specifications for {node.name}.\n"
+        elif filename == ".gitignore":
+            return "node_modules/\n__pycache__/\n*.pyc\n.runtime/\n.env\n"
+        return ""
 
     def materialize_all(self, dry_run: bool = False) -> List[Dict[str, Any]]:
         """Materializes all nodes in the registry."""
@@ -89,4 +97,6 @@ if __name__ == "__main__":
     materializer = EcosystemMaterializer(registry)
     dry_run = "--fix" not in sys.argv
     results = materializer.materialize_all(dry_run=dry_run)
+    if dry_run:
+        print("DRY RUN: No changes made. Use --fix to materialize.")
     print(json.dumps(results, indent=2))

@@ -1,10 +1,11 @@
-name: Validation
+name: Validate
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   validate:
@@ -26,12 +27,6 @@ jobs:
       - name: Runtime Boot Validation
         run: |
           PYTHONPATH=. python -c "from core.runtime.runtime import Runtime; r = Runtime(); r.bootstrap(); r.shutdown()"
-      - name: Run Core Tests
+      - name: Run All Tests
         run: |
-          PYTHONPATH=. pytest tests/test_runtime.py
-      - name: Run Governance Simulations
-        run: |
-          PYTHONPATH=. pytest tests/test_governance_sim.py
-      - name: Run Knowledge Fabric Tests
-        run: |
-          PYTHONPATH=. pytest tests/test_knowledge_fabric.py
+          PYTHONPATH=. pytest tests/
