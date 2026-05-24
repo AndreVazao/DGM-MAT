@@ -11,6 +11,7 @@ from core.repository_intelligence.intelligence_engine import IntelligenceEngine
 from core.strategy.goal_engine import GoalEngine
 from core.kernel.live_kernel import LiveKernel
 from core.observability.logger import dgm_logger
+from core.repository_intelligence.external_repos import EXTERNAL_REPOSITORIES
 
 def main():
     parser = argparse.ArgumentParser(description="DGM-MAT Import & Intelligence Engine (v1-v7)")
@@ -18,6 +19,7 @@ def main():
     parser.add_argument("--discover", action="store_true", help="Run ecosystem discovery (v2-v4)")
     parser.add_argument("--goal", type=str, help="Execute a goal-driven plan (v6)")
     parser.add_argument("--kernel", action="store_true", help="Start the Live Execution Kernel (v7)")
+    parser.add_argument("--bulk", type=str, help="Bulk import from centralized list by priority (high, medium, optional, all)")
     parser.add_argument("--mode", type=str, default="SAFE", choices=["SAFE", "SEMI", "AUTO"], help="Execution mode")
     parser.add_argument("--interval", type=int, default=60, help="Kernel cycle interval in seconds")
 
@@ -29,6 +31,35 @@ def main():
     if args.kernel:
         kernel = LiveKernel(mode=args.mode, interval=args.interval)
         kernel.start()
+        return
+
+    # Bulk Import Mode
+    if args.bulk:
+        priority_filter = args.bulk.lower()
+        to_import = []
+        for repo in EXTERNAL_REPOSITORIES:
+            if priority_filter == "all" or repo["priority"] == priority_filter:
+                to_import.append(repo)
+
+        dgm_logger.info(f"Starting bulk import for priority: {priority_filter} ({len(to_import)} repos)")
+        results = []
+        for repo in to_import:
+            try:
+                res = importer.import_repo(repo["url"], category_override=repo["classification"])
+                results.append(res)
+                print(f"✅ Imported {repo['name']} as {res['classification']}")
+            except Exception as e:
+                dgm_logger.error(f"Failed to import {repo['name']}: {e}")
+                results.append({"repo_name": repo["name"], "status": "error", "message": str(e)})
+
+        print("\n" + "="*30)
+        print("BULK IMPORT SUMMARY")
+        print("="*30)
+        for r in results:
+            if r.get("status") == "imported":
+                print(f"- {r['repo_name']}: {r['classification']} ({r['path']})")
+            else:
+                print(f"- ERROR: {r.get('repo_name')} - {r.get('message')}")
         return
 
     # [v6] Goal Mode

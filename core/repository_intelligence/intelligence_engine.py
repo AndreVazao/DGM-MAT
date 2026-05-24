@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional
 from core.ecosystem.ecosystem_registry import EcosystemRegistry
 from core.ecosystem.ecosystem_models import EcosystemRole, EcosystemNode
 from core.observability.logger import dgm_logger
+from core.repository_intelligence.external_repos import EXTERNAL_REPOSITORIES
 
 class IntelligenceEngine:
     """
@@ -51,6 +52,8 @@ class IntelligenceEngine:
         if role == "core": score += 30
         if role == "finance": score += 25
         if role == "labs": score += 20
+        if role == "agents": score += 25
+        if role == "memory": score += 20
 
         # Keyword bonuses
         if any(k in text for k in ["autonomous", "agent", "orchestrator"]): score += 15
@@ -60,23 +63,17 @@ class IntelligenceEngine:
 
     def discover_opportunities(self) -> List[Dict[str, Any]]:
         """
-        [v4] Global Discovery Layer (Mocked).
-        Suggests repositories to fill detected gaps.
+        [v4] Global Discovery Layer.
+        Suggests repositories to fill detected gaps using the centralized intake list.
         """
         gaps = self.detect_gaps()
         opportunities = []
 
-        mock_github_world = [
-            {"name": "n8n", "description": "Workflow automation", "role": "connectors", "url": "https://github.com/n8n-io/n8n"},
-            {"name": "qdrant", "description": "Vector Database", "role": "infra", "url": "https://github.com/qdrant/qdrant"},
-            {"name": "temporal", "description": "Orchestration engine", "role": "core", "url": "https://github.com/temporalio/temporal"},
-            {"name": "prometheus", "description": "Monitoring", "role": "infra", "url": "https://github.com/prometheus/prometheus"},
-        ]
-
+        # Use the centralized intake list instead of mock data
         for gap in gaps:
-            for repo in mock_github_world:
-                if repo["role"] == gap.value:
-                    score = self.score_repository(repo["name"], repo["description"], repo["role"])
+            for repo in EXTERNAL_REPOSITORIES:
+                if repo["classification"] == gap.value:
+                    score = self.score_repository(repo["name"], repo["description"], repo["classification"])
                     opportunities.append({
                         **repo,
                         "score": score,
