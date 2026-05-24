@@ -1,81 +1,73 @@
-name: Bootstrap DGM Repositories
+- name: Bootstrap repositories
+  shell: bash
+  env:
+    GH_TOKEN: ${{ secrets.GH_PAT }}
+    GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+  run: |
+
+    repos=(
+      DGM-MAT-Cluster
+      DGM-MAT-Media
+      DGM-MAT-Studio
+      DGM-MAT-Marketplace
+      DGM-MAT-Memory
+      DGM-MAT-Runtime
+      DGM-MAT-Orchestrator
+      DGM-MAT-Agents
+      DGM-MAT-OS
+    )
+
+    mkdir temp-bootstrap
+    cd temp-bootstrap
+
+    for repo in "${repos[@]}"
+    do
+
+      echo "CREATING $repo"
+
+      mkdir -p "$repo"
+      cd "$repo"
+
+      git init
+
+      echo "# $repo" > README.md
+      echo "DGM-MAT module" >> README.md
+
+      echo "MIT License" > LICENSE
+      echo "Copyright (c) 2026 AndreVazao" >> LICENSE
+
+      echo "node_modules/" > .gitignore
+      echo ".env" >> .gitignore
+
+      mkdir -p .github/workflows
+
+      cat > .github/workflows/health.yml << 'EOF'
+name: Health Check
 
 on:
   workflow_dispatch:
 
 jobs:
-  bootstrap:
+  test:
     runs-on: ubuntu-latest
-
-    env:
-      GH_TOKEN: ${{ secrets.GH_PAT }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - run: echo OK
+EOF
 
-      - name: Bootstrap repositories
-        shell: bash
-        run: |
+      git config user.name "github-actions"
+      git config user.email "actions@github.com"
 
-          repos=(
-            DGM-MAT-Cluster
-            DGM-MAT-Media
-            DGM-MAT-Studio
-            DGM-MAT-Marketplace
-            DGM-MAT-Memory
-            DGM-MAT-Runtime
-            DGM-MAT-Orchestrator
-            DGM-MAT-Agents
-            DGM-MAT-OS
-          )
+      git add .
+      git commit -m "bootstrap"
 
-          mkdir temp-bootstrap
-          cd temp-bootstrap
+      # FORÇAR USO DO TOKEN CORRETO
+      gh repo create "AndreVazao/$repo" \
+        --public \
+        --source . \
+        --remote origin \
+        --push \
+        --confirm
 
-          for repo in "${repos[@]}"
-          do
+      cd ..
 
-            echo "CREATING $repo"
-
-            mkdir -p "$repo"
-            cd "$repo"
-
-            git init
-
-            echo "# $repo" > README.md
-            echo "DGM-MAT ecosystem module." >> README.md
-
-            echo "MIT License" > LICENSE
-            echo "Copyright (c) 2026 AndreVazao" >> LICENSE
-
-            echo "node_modules/" > .gitignore
-            echo ".env" >> .gitignore
-
-            mkdir -p .github/workflows
-
-            echo "name: Health Check" > .github/workflows/health.yml
-            echo "on: [workflow_dispatch]" >> .github/workflows/health.yml
-            echo "jobs:" >> .github/workflows/health.yml
-            echo "  test:" >> .github/workflows/health.yml
-            echo "    runs-on: ubuntu-latest" >> .github/workflows/health.yml
-            echo "    steps:" >> .github/workflows/health.yml
-            echo "      - run: echo OK" >> .github/workflows/health.yml
-
-            git config user.name "github-actions"
-            git config user.email "actions@github.com"
-
-            git add .
-            git commit -m "bootstrap"
-
-            # IMPORTANT: GH CLI usa GH_TOKEN automaticamente
-            gh repo create "AndreVazao/$repo" \
-              --public \
-              --source . \
-              --remote origin \
-              --push \
-              --confirm
-
-            cd ..
-
-          done
+    done
