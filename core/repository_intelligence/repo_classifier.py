@@ -1,33 +1,38 @@
 from pathlib import Path
 
-
 def classify_repo(
     repo_path: Path,
     tech_stack: list[str],
 ) -> str:
-
+    """
+    Classifies a repository based on its name and tech stack.
+    Follows DGM-MAT Strategic Architecture v1 rules.
+    """
     name = repo_path.name.lower()
-    tech_stack_lower = [t.lower() for t in tech_stack]
 
-    if "mobile" in name:
-        return "mobile"
+    # 1. Financial / Trading
+    if any(k in name for k in ["trade", "finance", "quant", "backtest", "market"]):
+        return "finance"
 
-    if "plugin" in name:
-        return "plugins"
+    # 2. UI / Dashboard
+    if any(k in name for k in ["ui", "dashboard", "admin", "template", "frontend", "bootstrap"]):
+        return "ui"
 
-    if "provider" in name:
+    # 3. LLM Providers
+    if any(k in name for k in ["provider", "openai", "anthropic", "gemini"]):
         return "providers"
 
-    if "lab" in name:
+    # 4. AI Experimentation / LLM tools (Higher priority than Connectors for these keywords)
+    if any(k in name for k in ["gpt", "claude", "llm", "ai", "experiment", "research", "lab"]):
         return "labs"
 
-    if "deploy" in name:
-        return "deployment"
-
-    if "connector" in name:
+    # 5. API Integration / Connectors
+    if any(k in name for k in ["connector", "api", "bridge", "integration", "public-apis"]):
         return "connectors"
 
-    if "python" in tech_stack_lower:
-        return "backend"
+    # 6. System Orchestration / Core
+    if any(k in name for k in ["core", "orchestrator", "engine", "dgm-mat"]):
+        return "core"
 
-    return "general"
+    # 7. Otherwise
+    return "external-labs"
