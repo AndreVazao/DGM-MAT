@@ -26,9 +26,9 @@ class EcosystemRegistry:
             ("DGM-MAT-Agents", EcosystemRole.AGENTS, EcosystemStatus.RESERVED),
             ("DGM-MAT-Mobile", EcosystemRole.PRODUCT, EcosystemStatus.ACTIVE),
             ("DGM-MAT-Plugins", EcosystemRole.INFRA, EcosystemStatus.ACTIVE),
-            ("DGM-MAT-Labs", EcosystemRole.EXPERIMENTAL, EcosystemStatus.ACTIVE),
-            ("DGM-MAT-Connectors", EcosystemRole.INFRA, EcosystemStatus.ACTIVE),
-            ("DGM-MAT-Providers", EcosystemRole.INFRA, EcosystemStatus.ACTIVE),
+            ("DGM-MAT-Labs", EcosystemRole.LABS, EcosystemStatus.ACTIVE),
+            ("DGM-MAT-Connectors", EcosystemRole.CONNECTORS, EcosystemStatus.ACTIVE),
+            ("DGM-MAT-Providers", EcosystemRole.PROVIDERS, EcosystemStatus.ACTIVE),
             ("DGM-MAT-Assets", EcosystemRole.DATA, EcosystemStatus.ACTIVE),
             ("DGM-MAT-Deploy", EcosystemRole.INFRA, EcosystemStatus.ACTIVE),
         ]

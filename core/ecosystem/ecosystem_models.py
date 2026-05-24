@@ -19,6 +19,13 @@ class EcosystemRole(str, Enum):
     DATA = "data"
     AGENTS = "agents"
     EXPERIMENTAL = "experimental"
+    # New roles from Strategic Architecture v1
+    FINANCE = "finance"
+    UI = "ui"
+    PROVIDERS = "providers"
+    CONNECTORS = "connectors"
+    LABS = "labs"
+    EXTERNAL_LABS = "external-labs"
 
 class EcosystemNode(BaseModel):
     name: str
