@@ -72,3 +72,9 @@ class EcosystemRegistry:
             except Exception as e:
                 print(f"Error loading registry: {e}")
                 self.state = EcosystemState()
+
+    def sync_filesystem(self, dry_run: bool = False):
+        """Synchronizes the physical filesystem with the registry state."""
+        from core.ecosystem.ecosystem_materializer import EcosystemMaterializer
+        materializer = EcosystemMaterializer(self)
+        return materializer.materialize_all(dry_run=dry_run)

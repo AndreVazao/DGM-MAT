@@ -1,0 +1,7 @@
+{
+  "name": "DGM-MAT-Deploy",
+  "role": "infra",
+  "version": "0.1.0",
+  "dependencies": [],
+  "metadata": {}
+}
