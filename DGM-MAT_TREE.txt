@@ -592,6 +592,7 @@ DGM-MAT/
 ├─ .gitignore
 ├─ architecture.md
 ├─ core_review_request.txt
+├─ DGM-MAT_TREE.txt
 ├─ ecosystem.json
 ├─ health.json
 ├─ LICENSE
