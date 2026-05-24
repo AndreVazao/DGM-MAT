@@ -1,0 +1,220 @@
+{
+  "timestamp": "2026-05-24T06:50:03.308922",
+  "ecosystems": [
+    {
+      "id": "DGM-MAT-Cluster",
+      "name": "Cluster",
+      "specialization": [
+        "distributed execution",
+        "workload balancing",
+        "node federation",
+        "cognition mesh",
+        "distributed orchestration"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "low",
+      "status": "reserved",
+      "last_seen": "2026-05-24T06:50:03.308385"
+    },
+    {
+      "id": "DGM-MAT-Media",
+      "name": "Media",
+      "specialization": [
+        "media ingestion",
+        "image/video/audio processing",
+        "transcription",
+        "embeddings",
+        "asset intelligence"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "low",
+      "status": "reserved",
+      "last_seen": "2026-05-24T06:50:03.308419"
+    },
+    {
+      "id": "DGM-MAT-Studio",
+      "name": "Studio",
+      "specialization": [
+        "cockpit studio",
+        "UI/UX systems",
+        "workspace orchestration",
+        "visual orchestration",
+        "operator tooling"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "low",
+      "status": "reserved",
+      "last_seen": "2026-05-24T06:50:03.308426"
+    },
+    {
+      "id": "DGM-MAT-Marketplace",
+      "name": "Marketplace",
+      "specialization": [
+        "plugins",
+        "packages",
+        "extensions",
+        "templates",
+        "shared ecosystem distribution"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "low",
+      "status": "reserved",
+      "last_seen": "2026-05-24T06:50:03.308431"
+    },
+    {
+      "id": "DGM-MAT-Memory",
+      "name": "Memory",
+      "specialization": [
+        "persistent cognition",
+        "semantic memory",
+        "graph storage",
+        "temporal memory",
+        "archival systems"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "low",
+      "status": "reserved",
+      "last_seen": "2026-05-24T06:50:03.308436"
+    },
+    {
+      "id": "DGM-MAT-Runtime",
+      "name": "Runtime",
+      "specialization": [
+        "runtime kernel",
+        "execution engine",
+        "process orchestration",
+        "runtime services",
+        "adaptive execution"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "low",
+      "status": "reserved",
+      "last_seen": "2026-05-24T06:50:03.308440"
+    },
+    {
+      "id": "DGM-MAT-Orchestrator",
+      "name": "Orchestrator",
+      "specialization": [
+        "orchestration intelligence",
+        "routing",
+        "scheduling",
+        "governance coordination",
+        "federation execution"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "low",
+      "status": "reserved",
+      "last_seen": "2026-05-24T06:50:03.308445"
+    },
+    {
+      "id": "DGM-MAT-Agents",
+      "name": "Agents",
+      "specialization": [
+        "specialized agents",
+        "agent lifecycle",
+        "worker coordination",
+        "multi-agent cognition",
+        "agent specialization registry"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "low",
+      "status": "reserved",
+      "last_seen": "2026-05-24T06:50:03.308449"
+    },
+    {
+      "id": "DGM-MAT-OS",
+      "name": "OS",
+      "specialization": [
+        "operating layer",
+        "local system integration",
+        "installer",
+        "updater",
+        "system services",
+        "deployment/runtime integration"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "low",
+      "status": "reserved",
+      "last_seen": "2026-05-24T06:50:03.308459"
+    },
+    {
+      "id": "DGM-MAT-Mobile",
+      "name": "Mobile",
+      "specialization": [
+        "mobile interface"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "verified",
+      "status": "active",
+      "last_seen": "2026-05-24T06:50:03.308464"
+    },
+    {
+      "id": "DGM-MAT-Plugins",
+      "name": "Plugins",
+      "specialization": [
+        "plugin system"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "verified",
+      "status": "active",
+      "last_seen": "2026-05-24T06:50:03.308468"
+    },
+    {
+      "id": "DGM-MAT-Labs",
+      "name": "Labs",
+      "specialization": [
+        "experimental research"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "verified",
+      "status": "active",
+      "last_seen": "2026-05-24T06:50:03.308479"
+    },
+    {
+      "id": "DGM-MAT-Connectors",
+      "name": "Connectors",
+      "specialization": [
+        "external integration"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "verified",
+      "status": "active",
+      "last_seen": "2026-05-24T06:50:03.308483"
+    },
+    {
+      "id": "DGM-MAT-Providers",
+      "name": "Providers",
+      "specialization": [
+        "llm providers"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "verified",
+      "status": "active",
+      "last_seen": "2026-05-24T06:50:03.308487"
+    },
+    {
+      "id": "DGM-MAT-Assets",
+      "name": "Assets",
+      "specialization": [
+        "shared assets"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "verified",
+      "status": "active",
+      "last_seen": "2026-05-24T06:50:03.308491"
+    },
+    {
+      "id": "DGM-MAT-Deploy",
+      "name": "Deploy",
+      "specialization": [
+        "deployment pipelines"
+      ],
+      "trust_score": 0.0,
+      "trust_level": "verified",
+      "status": "active",
+      "last_seen": "2026-05-24T06:50:03.308495"
+    }
+  ],
+  "topology_type": "hub-and-spoke",
+  "maturity_level": "Phase 21/22"
+}

@@ -4,6 +4,7 @@ from core.kernel.kernel_models import KernelState, KernelStatus, ExecutionContex
 from core.kernel.execution_context import ContextManager
 from core.observability.logger import dgm_logger
 from shared.models.event import Event
+from core.federation.ecosystem_registry import EcosystemRegistry
 
 class CognitiveKernel:
     """
@@ -24,13 +25,23 @@ class CognitiveKernel:
 
         self.state = KernelState(status=KernelStatus.INITIALIZING)
         self.context_manager = ContextManager()
+        self.registry = EcosystemRegistry()
         self._initialized = True
         dgm_logger.info("Cognitive Kernel: Initialized.")
 
     def boot(self):
         """Starts the kernel operations."""
         self.state.status = KernelStatus.RUNNING
-        dgm_logger.info("Cognitive Kernel: Booted and operational.")
+
+        # Load planned ecosystems into kernel state
+        self.state.planned_ecosystems = self.registry.get_ecosystems()
+        self.state.future_topology = {
+            "orchestration_topology": "hub-and-spoke",
+            "federation_enabled": True,
+            "specialization_routing": "aware"
+        }
+
+        dgm_logger.info("Cognitive Kernel: Booted and operational with ecosystem awareness.")
 
     def process_event(self, event: Event) -> Optional[ExecutionContext]:
         """
@@ -53,7 +64,8 @@ class CognitiveKernel:
             "status": self.state.status.value,
             "cognition_load": self.state.cognition_load,
             "orchestration_pressure": self.state.orchestration_pressure,
-            "active_contexts": len(self.context_manager.active_contexts)
+            "active_contexts": len(self.context_manager.active_contexts),
+            "registered_ecosystems": len(self.state.planned_ecosystems)
         }
 
     def shutdown(self):

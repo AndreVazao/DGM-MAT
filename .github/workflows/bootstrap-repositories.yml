@@ -1,0 +1,111 @@
+name: Bootstrap DGM Repositories
+
+on:
+  workflow_dispatch:
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate GitHub CLI
+        run: |
+          echo "${{ secrets.GH_PAT }}" > token.txt
+          gh auth login --with-token < token.txt
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Create repositories
+        run: |
+
+          repos=(
+            "DGM-MAT-Cluster"
+            "DGM-MAT-Media"
+            "DGM-MAT-Studio"
+            "DGM-MAT-Marketplace"
+            "DGM-MAT-Memory"
+            "DGM-MAT-Runtime"
+            "DGM-MAT-Orchestrator"
+            "DGM-MAT-Agents"
+            "DGM-MAT-OS"
+          )
+
+          for repo in "${repos[@]}"
+          do
+
+            echo "================================="
+            echo "CREATING $repo"
+            echo "================================="
+
+            mkdir $repo
+            cd $repo
+
+            git init
+
+            cat > README.md <<EOF
+# $repo
+
+Part of the DGM-MAT ecosystem.
+
+## Purpose
+
+Autonomous AI infrastructure component.
+
+## Status
+
+Under active development.
+EOF
+
+            cat > LICENSE <<EOF
+MIT License
+
+Copyright (c) 2026 AndreVazao
+EOF
+
+            cat > .gitignore <<EOF
+node_modules/
+dist/
+build/
+coverage/
+.env
+*.log
+EOF
+
+            mkdir -p .github/workflows
+
+            cat > .github/workflows/health-check.yml <<EOF
+name: Health Check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: echo "Repository healthy."
+EOF
+
+            git add .
+            git config user.name "github-actions"
+            git config user.email "actions@github.com"
+
+            git commit -m "Initial bootstrap"
+
+            gh repo create AndreVazao/$repo \
+              --public \
+              --source . \
+              --remote origin \
+              --push
+
+            cd ..
+
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}

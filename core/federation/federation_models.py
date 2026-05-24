@@ -9,12 +9,21 @@ class TrustLevel(str, Enum):
     HIGH = "high"
     VERIFIED = "verified"
 
+class EcosystemStatus(str, Enum):
+    PLANNED = "planned"
+    RESERVED = "reserved"
+    EXPERIMENTAL = "experimental"
+    ACTIVE = "active"
+    DEGRADED = "degraded"
+    ARCHIVED = "archived"
+
 class EcosystemProfile(BaseModel):
     id: str
     name: str
     specialization: List[str]
     trust_score: float = 0.0
     trust_level: TrustLevel = TrustLevel.LOW
+    status: EcosystemStatus = EcosystemStatus.RESERVED
     last_seen: datetime = Field(default_factory=datetime.now)
 
 class FederationMessage(BaseModel):
