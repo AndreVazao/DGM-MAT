@@ -1,73 +1,56 @@
-- name: Bootstrap repositories
-  shell: bash
-  env:
-    GH_TOKEN: ${{ secrets.GH_PAT }}
-    GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-  run: |
-
-    repos=(
-      DGM-MAT-Cluster
-      DGM-MAT-Media
-      DGM-MAT-Studio
-      DGM-MAT-Marketplace
-      DGM-MAT-Memory
-      DGM-MAT-Runtime
-      DGM-MAT-Orchestrator
-      DGM-MAT-Agents
-      DGM-MAT-OS
-    )
-
-    mkdir temp-bootstrap
-    cd temp-bootstrap
-
-    for repo in "${repos[@]}"
-    do
-
-      echo "CREATING $repo"
-
-      mkdir -p "$repo"
-      cd "$repo"
-
-      git init
-
-      echo "# $repo" > README.md
-      echo "DGM-MAT module" >> README.md
-
-      echo "MIT License" > LICENSE
-      echo "Copyright (c) 2026 AndreVazao" >> LICENSE
-
-      echo "node_modules/" > .gitignore
-      echo ".env" >> .gitignore
-
-      mkdir -p .github/workflows
-
-      cat > .github/workflows/health.yml << 'EOF'
-name: Health Check
+name: Bootstrap DGM Repositories
 
 on:
   workflow_dispatch:
 
 jobs:
-  test:
+  bootstrap:
     runs-on: ubuntu-latest
+
+    env:
+      GH_TOKEN: ${{ secrets.GH_PAT }}
+
     steps:
-      - run: echo OK
-EOF
+      - name: Bootstrap repositories via GitHub API
+        shell: bash
+        run: |
 
-      git config user.name "github-actions"
-      git config user.email "actions@github.com"
+          repos=(
+            DGM-MAT-Cluster
+            DGM-MAT-Media
+            DGM-MAT-Studio
+            DGM-MAT-Marketplace
+            DGM-MAT-Memory
+            DGM-MAT-Runtime
+            DGM-MAT-Orchestrator
+            DGM-MAT-Agents
+            DGM-MAT-OS
+          )
 
-      git add .
-      git commit -m "bootstrap"
+          for repo in "${repos[@]}"
+          do
+            echo "Creating $repo"
 
-      # FORÇAR USO DO TOKEN CORRETO
-      gh repo create "AndreVazao/$repo" \
-        --public \
-        --source . \
-        --remote origin \
-        --push \
-        --confirm
+            # CHECK IF EXISTS
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "Authorization: token $GH_TOKEN" \
+              https://api.github.com/repos/AndreVazao/$repo)
 
-      cd ..
+            if [ "$HTTP_STATUS" -eq 200 ]; then
+              echo "$repo already exists"
+              continue
+            fi
 
-    done
+            # CREATE REPO
+            curl -s -X POST https://api.github.com/user/repos \
+              -H "Authorization: token $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -d "{
+                \"name\": \"$repo\",
+                \"private\": false,
+                \"auto_init\": true,
+                \"description\": \"DGM-MAT ecosystem module\"
+              }"
+
+            echo "$repo created"
+          done
