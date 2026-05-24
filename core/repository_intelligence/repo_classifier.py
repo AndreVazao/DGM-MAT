@@ -11,7 +11,7 @@ def classify_repo(
     name = repo_path.name.lower()
 
     # 1. Financial / Trading
-    if any(k in name for k in ["trade", "finance", "quant", "backtest", "market"]):
+    if any(k in name for k in ["trad", "finance", "quant", "backtest", "market"]):
         return "finance"
 
     # 2. UI / Dashboard
@@ -34,5 +34,9 @@ def classify_repo(
     if any(k in name for k in ["core", "orchestrator", "engine", "dgm-mat"]):
         return "core"
 
-    # 7. Otherwise
+    # 7. Mobile (Legacy/Experimental)
+    if "mobile" in name:
+        return "product" # Map to product role or keep as product if it was 'mobile' before
+
+    # 8. Otherwise
     return "external-labs"
