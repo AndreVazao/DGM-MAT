@@ -51,6 +51,11 @@ from cockpit.widgets.project_families_widget import ProjectFamiliesWidget
 from cockpit.widgets.runtime_health_widget import RuntimeHealthWidget
 from cockpit.widgets.activity_stream_widget import ActivityStreamWidget
 
+# Phase 32: Cognitive Workspace Widgets
+from cockpit.widgets.workspace_graph_widget import WorkspaceGraphWidget
+from cockpit.widgets.technical_debt_widget import TechnicalDebtWidget
+from cockpit.widgets.local_execution_widget import LocalExecutionWidget
+
 from cockpit.realtime_client import (
     RealtimeClient,
 )
@@ -59,7 +64,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(
-            "DGM-MAT Cockpit"
+            "DGM-MAT Local AI Operations Center"
         )
         self.resize(1600, 1000)
         central = QWidget()
@@ -69,7 +74,7 @@ class MainWindow(QMainWindow):
         # Tabs for better organization
         self.tabs = QTabWidget()
 
-        # --- TAB 1: CORE RUNTIME ---
+        # --- TAB 1: RUNTIME & EXECUTION ---
         runtime_tab = QWidget()
         runtime_layout = QHBoxLayout(runtime_tab)
 
@@ -81,11 +86,11 @@ class MainWindow(QMainWindow):
         self.events = EventStreamWidget()
         self.agents = AgentWidget()
         self.execution_queue = ExecutionQueueWidget()
-        self.mesh_monitor = MeshMonitorWidget()
+        self.local_execution = LocalExecutionWidget() # Phase 32
 
         left_layout.addWidget(self.dashboard)
         left_layout.addWidget(self.agents)
-        left_layout.addWidget(self.mesh_monitor)
+        left_layout.addWidget(self.local_execution)
 
         right_layout.addWidget(self.events)
         right_layout.addWidget(self.execution_queue)
@@ -96,7 +101,27 @@ class MainWindow(QMainWindow):
 
         self.tabs.addTab(runtime_tab, "Runtime")
 
-        # --- TAB 2: OPERATIONS (Phase 31) ---
+        # --- TAB 2: COGNITIVE WORKSPACE (Phase 32) ---
+        workspace_tab = QWidget()
+        workspace_layout = QHBoxLayout(workspace_tab)
+
+        ws_left = QVBoxLayout()
+        ws_right = QVBoxLayout()
+
+        self.workspace_graph = WorkspaceGraphWidget()
+        self.project_families = ProjectFamiliesWidget()
+        self.technical_debt = TechnicalDebtWidget()
+
+        ws_left.addWidget(self.workspace_graph)
+        ws_right.addWidget(self.project_families)
+        ws_right.addWidget(self.technical_debt)
+
+        workspace_layout.addLayout(ws_left, 2)
+        workspace_layout.addLayout(ws_right, 1)
+
+        self.tabs.addTab(workspace_tab, "Workspace")
+
+        # --- TAB 3: OPERATIONS & AUTONOMY ---
         operations_tab = QWidget()
         ops_layout = QHBoxLayout(operations_tab)
 
@@ -105,11 +130,9 @@ class MainWindow(QMainWindow):
         ops_right = QVBoxLayout()
 
         self.imported_repos = ImportedReposWidget()
-        self.project_families = ProjectFamiliesWidget()
         self.runtime_health = RuntimeHealthWidget()
 
         ops_left.addWidget(self.imported_repos)
-        ops_left.addWidget(self.project_families)
         ops_left.addWidget(self.runtime_health)
 
         self.ecosystem_graph = EcosystemGraphWidget()
@@ -134,14 +157,14 @@ class MainWindow(QMainWindow):
 
         self.tabs.addTab(operations_tab, "Operations")
 
-        # --- TAB 3: GOVERNANCE & SAFETY ---
+        # --- TAB 4: GOVERNANCE & SAFETY ---
         governance_tab = QWidget()
         gov_layout = QVBoxLayout(governance_tab)
         self.governance_monitor = GovernanceWidget()
         gov_layout.addWidget(self.governance_monitor)
         self.tabs.addTab(governance_tab, "Governance")
 
-        # --- TAB 4: KNOWLEDGE FABRIC ---
+        # --- TAB 5: KNOWLEDGE FABRIC ---
         knowledge_tab = QWidget()
         know_layout = QVBoxLayout(knowledge_tab)
         self.knowledge_graph = KnowledgeGraphWidget()
@@ -150,7 +173,7 @@ class MainWindow(QMainWindow):
         know_layout.addWidget(self.knowledge_graph)
         self.tabs.addTab(knowledge_tab, "Knowledge")
 
-        # --- TAB 5: STRATEGIC & RESEARCH ---
+        # --- TAB 6: STRATEGIC & RESEARCH ---
         strategy_tab = QWidget()
         strat_layout = QVBoxLayout(strategy_tab)
         self.strategy_viewer = StrategyWidget()
@@ -159,14 +182,14 @@ class MainWindow(QMainWindow):
         strat_layout.addWidget(self.research_lab)
         self.tabs.addTab(strategy_tab, "Strategy & Research")
 
-        # --- TAB 6: FEDERATION ---
+        # --- TAB 7: FEDERATION ---
         federation_tab = QWidget()
         fed_layout = QVBoxLayout(federation_tab)
         self.federation_map = FederationWidget()
         fed_layout.addWidget(self.federation_map)
         self.tabs.addTab(federation_tab, "Federation")
 
-        # --- TAB 7: INTELLIGENCE ---
+        # --- TAB 8: INTELLIGENCE ---
         intelligence_tab = QWidget()
         intel_layout = QVBoxLayout(intelligence_tab)
         self.learning_dashboard = LearningDashboardWidget()
