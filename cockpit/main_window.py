@@ -27,7 +27,6 @@ from cockpit.widgets.mesh_monitor_widget import (
 from cockpit.widgets.learning_dashboard_widget import (
     LearningDashboardWidget,
 )
-# Phase 21 & 22 widgets
 from cockpit.widgets.governance_widget import (
     GovernanceWidget,
 )
@@ -37,11 +36,20 @@ from cockpit.widgets.knowledge_graph_widget import (
 from cockpit.widgets.operational_search_widget import (
     OperationalSearchWidget,
 )
-
-# Phase 23, 24, 25 widgets
 from cockpit.widgets.strategy_widget import StrategyWidget
 from cockpit.widgets.research_widget import ResearchWidget
 from cockpit.widgets.federation_widget import FederationWidget
+
+# Phase 31: Operations Widgets
+from cockpit.widgets.imported_repos_widget import ImportedReposWidget
+from cockpit.widgets.autonomous_tasks_widget import AutonomousTasksWidget
+from cockpit.widgets.self_improvement_widget import SelfImprovementWidget
+from cockpit.widgets.provider_conversations_widget import ProviderConversationsWidget
+from cockpit.widgets.duplicate_detection_widget import DuplicateDetectionWidget
+from cockpit.widgets.ecosystem_graph_widget import EcosystemGraphWidget
+from cockpit.widgets.project_families_widget import ProjectFamiliesWidget
+from cockpit.widgets.runtime_health_widget import RuntimeHealthWidget
+from cockpit.widgets.activity_stream_widget import ActivityStreamWidget
 
 from cockpit.realtime_client import (
     RealtimeClient,
@@ -88,14 +96,52 @@ class MainWindow(QMainWindow):
 
         self.tabs.addTab(runtime_tab, "Runtime")
 
-        # --- TAB 2: GOVERNANCE & SAFETY ---
+        # --- TAB 2: OPERATIONS (Phase 31) ---
+        operations_tab = QWidget()
+        ops_layout = QHBoxLayout(operations_tab)
+
+        ops_left = QVBoxLayout()
+        ops_center = QVBoxLayout()
+        ops_right = QVBoxLayout()
+
+        self.imported_repos = ImportedReposWidget()
+        self.project_families = ProjectFamiliesWidget()
+        self.runtime_health = RuntimeHealthWidget()
+
+        ops_left.addWidget(self.imported_repos)
+        ops_left.addWidget(self.project_families)
+        ops_left.addWidget(self.runtime_health)
+
+        self.ecosystem_graph = EcosystemGraphWidget()
+        self.duplicate_detection = DuplicateDetectionWidget()
+        self.self_improvement = SelfImprovementWidget()
+
+        ops_center.addWidget(self.ecosystem_graph)
+        ops_center.addWidget(self.duplicate_detection)
+        ops_center.addWidget(self.self_improvement)
+
+        self.provider_convs = ProviderConversationsWidget()
+        self.autonomous_tasks = AutonomousTasksWidget()
+        self.activity_stream = ActivityStreamWidget()
+
+        ops_right.addWidget(self.provider_convs)
+        ops_right.addWidget(self.autonomous_tasks)
+        ops_right.addWidget(self.activity_stream)
+
+        ops_layout.addLayout(ops_left, 1)
+        ops_layout.addLayout(ops_center, 2)
+        ops_layout.addLayout(ops_right, 1)
+
+        self.tabs.addTab(operations_tab, "Operations")
+
+        # --- TAB 3: GOVERNANCE & SAFETY ---
         governance_tab = QWidget()
         gov_layout = QVBoxLayout(governance_tab)
         self.governance_monitor = GovernanceWidget()
         gov_layout.addWidget(self.governance_monitor)
         self.tabs.addTab(governance_tab, "Governance")
 
-        # --- TAB 3: KNOWLEDGE FABRIC ---
+        # --- TAB 4: KNOWLEDGE FABRIC ---
         knowledge_tab = QWidget()
         know_layout = QVBoxLayout(knowledge_tab)
         self.knowledge_graph = KnowledgeGraphWidget()
@@ -104,7 +150,7 @@ class MainWindow(QMainWindow):
         know_layout.addWidget(self.knowledge_graph)
         self.tabs.addTab(knowledge_tab, "Knowledge")
 
-        # --- TAB 4: STRATEGIC & RESEARCH ---
+        # --- TAB 5: STRATEGIC & RESEARCH ---
         strategy_tab = QWidget()
         strat_layout = QVBoxLayout(strategy_tab)
         self.strategy_viewer = StrategyWidget()
@@ -113,14 +159,14 @@ class MainWindow(QMainWindow):
         strat_layout.addWidget(self.research_lab)
         self.tabs.addTab(strategy_tab, "Strategy & Research")
 
-        # --- TAB 5: FEDERATION ---
+        # --- TAB 6: FEDERATION ---
         federation_tab = QWidget()
         fed_layout = QVBoxLayout(federation_tab)
         self.federation_map = FederationWidget()
         fed_layout.addWidget(self.federation_map)
         self.tabs.addTab(federation_tab, "Federation")
 
-        # --- TAB 6: INTELLIGENCE ---
+        # --- TAB 7: INTELLIGENCE ---
         intelligence_tab = QWidget()
         intel_layout = QVBoxLayout(intelligence_tab)
         self.learning_dashboard = LearningDashboardWidget()
@@ -156,3 +202,5 @@ class MainWindow(QMainWindow):
         self.logs.append_log(
             f"[EVENT] {event_type}"
         )
+        # Phase 31: Log to activity stream
+        self.activity_stream.stream_list.addItem(f"[{event_type}] {source}")

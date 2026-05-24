@@ -6,7 +6,7 @@
       "status": "active",
       "dependencies": [],
       "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778309",
+      "last_sync": "2026-05-24T16:50:30.138659",
       "owner": "system",
       "description": null,
       "metadata": {}
@@ -14,10 +14,10 @@
     "DGM-MAT-Runtime": {
       "name": "DGM-MAT-Runtime",
       "role": "core",
-      "status": "reserved",
+      "status": "active",
       "dependencies": [],
       "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778322",
+      "last_sync": "2026-05-24T16:50:30.138653",
       "owner": "system",
       "description": null,
       "metadata": {}
@@ -25,10 +25,10 @@
     "DGM-MAT-Orchestrator": {
       "name": "DGM-MAT-Orchestrator",
       "role": "core",
-      "status": "reserved",
+      "status": "active",
       "dependencies": [],
       "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778328",
+      "last_sync": "2026-05-24T16:50:30.138655",
       "owner": "system",
       "description": null,
       "metadata": {}
@@ -36,10 +36,10 @@
     "DGM-MAT-Cluster": {
       "name": "DGM-MAT-Cluster",
       "role": "infra",
-      "status": "reserved",
+      "status": "active",
       "dependencies": [],
       "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778333",
+      "last_sync": "2026-05-24T16:50:30.138632",
       "owner": "system",
       "description": null,
       "metadata": {}
@@ -47,10 +47,10 @@
     "DGM-MAT-Memory": {
       "name": "DGM-MAT-Memory",
       "role": "infra",
-      "status": "reserved",
+      "status": "active",
       "dependencies": [],
       "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778338",
+      "last_sync": "2026-05-24T16:50:30.138651",
       "owner": "system",
       "description": null,
       "metadata": {}
@@ -58,10 +58,10 @@
     "DGM-MAT-Studio": {
       "name": "DGM-MAT-Studio",
       "role": "product",
-      "status": "reserved",
+      "status": "active",
       "dependencies": [],
       "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778343",
+      "last_sync": "2026-05-24T16:50:30.138647",
       "owner": "system",
       "description": null,
       "metadata": {}
@@ -69,10 +69,10 @@
     "DGM-MAT-Marketplace": {
       "name": "DGM-MAT-Marketplace",
       "role": "product",
-      "status": "reserved",
+      "status": "active",
       "dependencies": [],
       "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778348",
+      "last_sync": "2026-05-24T16:50:30.138649",
       "owner": "system",
       "description": null,
       "metadata": {}
@@ -80,10 +80,10 @@
     "DGM-MAT-Media": {
       "name": "DGM-MAT-Media",
       "role": "data",
-      "status": "reserved",
+      "status": "active",
       "dependencies": [],
       "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778353",
+      "last_sync": "2026-05-24T16:50:30.138644",
       "owner": "system",
       "description": null,
       "metadata": {}
@@ -91,10 +91,10 @@
     "DGM-MAT-Agents": {
       "name": "DGM-MAT-Agents",
       "role": "agents",
-      "status": "reserved",
+      "status": "active",
       "dependencies": [],
       "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778358",
+      "last_sync": "2026-05-24T16:50:30.138657",
       "owner": "system",
       "description": null,
       "metadata": {}
@@ -188,5 +188,5 @@
       "metadata": {}
     }
   },
-  "last_updated": "2026-05-24T08:38:15.778913"
+  "last_updated": "2026-05-24T16:50:30.138661"
 }
