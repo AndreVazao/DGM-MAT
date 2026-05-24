@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from enum import Enum
+from core.federation.federation_models import EcosystemProfile
 
 class KernelStatus(Enum):
     INITIALIZING = "initializing"
@@ -30,6 +31,8 @@ class KernelState(BaseModel):
     last_snapshot_at: Optional[datetime] = None
     cognition_load: float = 0.0
     orchestration_pressure: float = 0.0
+    planned_ecosystems: List[EcosystemProfile] = []
+    future_topology: Dict[str, Any] = {}
 
 class CognitionRoute(BaseModel):
     source_event: str
