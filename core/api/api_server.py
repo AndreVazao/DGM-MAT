@@ -7,12 +7,14 @@ from core.realtime.websocket_manager import (
     manager,
 )
 from core.api.runtime_api import router as runtime_router
+from core.api.mobile_bridge import router as mobile_router
 
 app = FastAPI(
     title="DGM-MAT API",
 )
 
 app.include_router(runtime_router)
+app.include_router(mobile_router) # Phase 32: Mobile Bridge
 
 @app.get("/health")
 def health():
