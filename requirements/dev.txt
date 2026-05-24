@@ -1,0 +1,6 @@
+-r build.txt
+-r research.txt
+pytest>=8.0.0
+pytest-asyncio
+pytest-timeout
+pytest-cov
