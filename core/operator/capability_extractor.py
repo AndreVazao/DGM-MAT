@@ -1,35 +1,15 @@
-from typing import Dict, Any, List
-from pathlib import Path
 from core.observability.logger import dgm_logger
+from pathlib import Path
 
 class CapabilityExtractor:
     """
-    Analyzes imported repositories and extracts useful capabilities.
+    Detects and extracts capabilities from existing codebases.
     """
-    def __init__(self, workspace_graph):
-        self.workspace_graph = workspace_graph
-
-    def analyze_repo(self, repo_path: Path) -> Dict[str, Any]:
-        dgm_logger.info(f"CapabilityExtractor: Analyzing repository at {repo_path}")
-        capabilities = {
-            "name": repo_path.name,
-            "patterns": self._detect_patterns(repo_path),
-            "modules": self._identify_reusable_modules(repo_path)
-        }
-
-        # Link capabilities to the workspace graph
-        self.workspace_graph.add_relationship(repo_path.name, "CapabilityGraph", "exports_capabilities")
+    def extract_capabilities(self, repo_path: Path):
+        dgm_logger.info(f"CapabilityExtractor: Analyzing {repo_path} for reusable capabilities")
+        capabilities = []
+        # Logic to scan files for specific patterns (e.g., API clients, UI widgets)
         return capabilities
 
-    def _detect_patterns(self, path: Path) -> List[str]:
-        patterns = []
-        name = path.name.lower()
-        if "langgraph" in name: patterns.append("orchestration")
-        if "crewai" in name: patterns.append("multi_agent")
-        if "qdrant" in name: patterns.append("vector_memory")
-        if "temporal" in name: patterns.append("durable_execution")
-        return patterns
-
-    def _identify_reusable_modules(self, path: Path) -> List[str]:
-        # Logic to find public APIs or core logic files
-        return [str(f.name) for f in path.glob("*.py") if not f.name.startswith("_")]
+    def register_external_capability(self, capability_name: str, module_path: Path):
+        dgm_logger.info(f"CapabilityExtractor: Registering external capability {capability_name}")
