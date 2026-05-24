@@ -3,5 +3,10 @@
   "role": "core",
   "version": "0.1.0",
   "dependencies": [],
-  "metadata": {}
+  "metadata": {},
+  "imports": [
+    "gpt4free",
+    "AIClient2API",
+    "n8n"
+  ]
 }
