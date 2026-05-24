@@ -13,20 +13,20 @@ def test_tech_detector(tmp_path):
     assert "Python" in stack
 
 def test_repo_classifier(tmp_path):
-    mobile_path = tmp_path / "my-mobile-app"
-    mobile_path.mkdir()
-    category = classify_repo(mobile_path, [])
-    assert category == "mobile"
+    finance_path = tmp_path / "my-trading-bot"
+    finance_path.mkdir()
+    category = classify_repo(finance_path, [])
+    assert category == "finance"
 
-    python_path = tmp_path / "backend-service"
-    python_path.mkdir()
-    category = classify_repo(python_path, ["Python"])
-    assert category == "backend"
+    lab_path = tmp_path / "ai-research"
+    lab_path.mkdir()
+    category = classify_repo(lab_path, ["Python"])
+    assert category == "labs"
 
 def test_duplicate_detector():
     repos = [
-        RepositoryInfo(name="repo1", path=Path("/tmp/repo1"), tech_stack=["Python"], total_files=10, has_git=True, category="backend"),
-        RepositoryInfo(name="repo2", path=Path("/tmp/repo2"), tech_stack=["Python"], total_files=12, has_git=True, category="backend"),
+        RepositoryInfo(name="repo1", path=Path("/tmp/repo1"), tech_stack=["Python"], total_files=10, has_git=True, category="finance"),
+        RepositoryInfo(name="repo2", path=Path("/tmp/repo2"), tech_stack=["Python"], total_files=12, has_git=True, category="finance"),
         RepositoryInfo(name="repo3", path=Path("/tmp/repo3"), tech_stack=["Node.js"], total_files=5, has_git=False, category="general"),
     ]
     detector = DuplicateDetector()
