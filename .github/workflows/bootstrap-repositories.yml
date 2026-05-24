@@ -12,13 +12,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Authenticate GitHub CLI
-        run: |
-          echo "${{ secrets.GH_PAT }}" > token.txt
-          gh auth login --with-token < token.txt
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          echo "${GH_TOKEN}" > token.txt
+          gh auth login --with-token < token.txt
 
       - name: Create repositories
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        shell: bash
         run: |
 
           repos=(
@@ -33,6 +36,9 @@ jobs:
             "DGM-MAT-OS"
           )
 
+          mkdir bootstrap-work
+          cd bootstrap-work
+
           for repo in "${repos[@]}"
           do
 
@@ -40,43 +46,32 @@ jobs:
             echo "CREATING $repo"
             echo "================================="
 
-            mkdir $repo
-            cd $repo
+            mkdir "$repo"
+            cd "$repo"
 
             git init
 
-            cat > README.md <<EOF
-# $repo
+            echo "# $repo" > README.md
+            echo "" >> README.md
+            echo "Part of the DGM-MAT ecosystem." >> README.md
+            echo "" >> README.md
+            echo "## Status" >> README.md
+            echo "" >> README.md
+            echo "Under active development." >> README.md
 
-Part of the DGM-MAT ecosystem.
+            echo "MIT License" > LICENSE
+            echo "" >> LICENSE
+            echo "Copyright (c) 2026 AndreVazao" >> LICENSE
 
-## Purpose
-
-Autonomous AI infrastructure component.
-
-## Status
-
-Under active development.
-EOF
-
-            cat > LICENSE <<EOF
-MIT License
-
-Copyright (c) 2026 AndreVazao
-EOF
-
-            cat > .gitignore <<EOF
-node_modules/
-dist/
-build/
-coverage/
-.env
-*.log
-EOF
+            echo "node_modules/" > .gitignore
+            echo "dist/" >> .gitignore
+            echo "build/" >> .gitignore
+            echo ".env" >> .gitignore
+            echo "*.log" >> .gitignore
 
             mkdir -p .github/workflows
 
-            cat > .github/workflows/health-check.yml <<EOF
+            cat > .github/workflows/health-check.yml << 'WORKFLOWEOF'
 name: Health Check
 
 on:
@@ -90,15 +85,15 @@ jobs:
       - uses: actions/checkout@v4
 
       - run: echo "Repository healthy."
-EOF
+WORKFLOWEOF
 
-            git add .
             git config user.name "github-actions"
             git config user.email "actions@github.com"
 
+            git add .
             git commit -m "Initial bootstrap"
 
-            gh repo create AndreVazao/$repo \
+            gh repo create "AndreVazao/$repo" \
               --public \
               --source . \
               --remote origin \
@@ -107,5 +102,3 @@ EOF
             cd ..
 
           done
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
