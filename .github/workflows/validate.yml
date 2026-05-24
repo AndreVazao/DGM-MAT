@@ -19,14 +19,19 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: |
-          pip install -r requirements/dev.txt
+          pip install -r requirements.txt
       - name: Validate Storage Architecture
         run: python scripts/validate_storage.py
+      - name: Validate Dependency Governance
+        run: python scripts/validate_dependencies.py
       - name: Lint (Compile Check)
         run: python -m compileall .
       - name: Runtime Boot Validation
         run: |
           PYTHONPATH=. python -c "from core.runtime.runtime import Runtime; r = Runtime(); r.bootstrap(); r.shutdown()"
+      - name: Run Dependency Integrity Tests
+        run: |
+          PYTHONPATH=. pytest tests/test_dependency_integrity.py
       - name: Run All Tests
         run: |
           PYTHONPATH=. pytest tests/
