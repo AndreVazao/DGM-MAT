@@ -1,0 +1,228 @@
+{
+  "repositories": {
+    "langgraph": {
+      "name": "langgraph",
+      "url": "https://github.com/langchain-ai/langgraph",
+      "path": "labs/external/langgraph",
+      "role": "external-labs",
+      "health": {
+        "score": 0.6,
+        "has_readme": true,
+        "has_tests": false,
+        "has_license": true
+      },
+      "dependencies": [],
+      "status": "integrated"
+    },
+    "crewAI": {
+      "name": "crewAI",
+      "url": "https://github.com/crewAIInc/crewAI",
+      "path": "labs/external/crewAI",
+      "role": "agents",
+      "health": {
+        "score": 0.6,
+        "has_readme": true,
+        "has_tests": false,
+        "has_license": true
+      },
+      "dependencies": [
+        "Python"
+      ],
+      "status": "integrated"
+    },
+    "openclaw": {
+      "name": "openclaw",
+      "url": "https://github.com/openclaw/openclaw",
+      "path": "labs/external/openclaw",
+      "role": "external-labs",
+      "health": {
+        "score": 1.0,
+        "has_readme": true,
+        "has_tests": true,
+        "has_license": true
+      },
+      "dependencies": [
+        "Node.js",
+        "Docker"
+      ],
+      "status": "integrated"
+    },
+    "AutoGPT": {
+      "name": "AutoGPT",
+      "url": "https://github.com/Significant-Gravitas/AutoGPT",
+      "path": "labs/external/AutoGPT",
+      "role": "labs",
+      "health": {
+        "score": 0.6,
+        "has_readme": true,
+        "has_tests": false,
+        "has_license": true
+      },
+      "dependencies": [],
+      "status": "integrated"
+    },
+    "qdrant": {
+      "name": "qdrant",
+      "url": "https://github.com/qdrant/qdrant",
+      "path": "labs/external/qdrant",
+      "role": "memory",
+      "health": {
+        "score": 1.0,
+        "has_readme": true,
+        "has_tests": true,
+        "has_license": true
+      },
+      "dependencies": [
+        "Rust"
+      ],
+      "status": "integrated"
+    },
+    "chroma": {
+      "name": "chroma",
+      "url": "https://github.com/chroma-core/chroma",
+      "path": "labs/external/chroma",
+      "role": "memory",
+      "health": {
+        "score": 0.6,
+        "has_readme": true,
+        "has_tests": false,
+        "has_license": true
+      },
+      "dependencies": [
+        "Python",
+        "Python",
+        "Rust",
+        "Docker"
+      ],
+      "status": "integrated"
+    },
+    "context7": {
+      "name": "context7",
+      "url": "https://github.com/upstash/context7",
+      "path": "labs/external/context7",
+      "role": "external-labs",
+      "health": {
+        "score": 0.6,
+        "has_readme": true,
+        "has_tests": false,
+        "has_license": true
+      },
+      "dependencies": [
+        "Node.js"
+      ],
+      "status": "integrated"
+    },
+    "ollama": {
+      "name": "ollama",
+      "url": "https://github.com/ollama/ollama",
+      "path": "labs/external/ollama",
+      "role": "external-labs",
+      "health": {
+        "score": 0.6,
+        "has_readme": true,
+        "has_tests": false,
+        "has_license": true
+      },
+      "dependencies": [
+        "Go"
+      ],
+      "status": "integrated"
+    },
+    "open-webui": {
+      "name": "open-webui",
+      "url": "https://github.com/open-webui/open-webui",
+      "path": "labs/external/open-webui",
+      "role": "ui",
+      "health": {
+        "score": 1.0,
+        "has_readme": true,
+        "has_tests": true,
+        "has_license": true
+      },
+      "dependencies": [
+        "Node.js",
+        "Python"
+      ],
+      "status": "integrated"
+    },
+    "vllm": {
+      "name": "vllm",
+      "url": "https://github.com/vllm-project/vllm",
+      "path": "labs/external/vllm",
+      "role": "labs",
+      "health": {
+        "score": 1.0,
+        "has_readme": true,
+        "has_tests": true,
+        "has_license": true
+      },
+      "dependencies": [
+        "Python"
+      ],
+      "status": "integrated"
+    },
+    "n8n": {
+      "name": "n8n",
+      "url": "https://github.com/n8n-io/n8n",
+      "path": "labs/external/n8n",
+      "role": "core",
+      "health": {
+        "score": 0.0,
+        "has_readme": false,
+        "has_tests": false,
+        "has_license": false
+      },
+      "dependencies": [],
+      "status": "integrated"
+    },
+    "temporal": {
+      "name": "temporal",
+      "url": "https://github.com/temporalio/temporal",
+      "path": "labs/external/temporal",
+      "role": "core",
+      "health": {
+        "score": 1.0,
+        "has_readme": true,
+        "has_tests": true,
+        "has_license": true
+      },
+      "dependencies": [
+        "Go"
+      ],
+      "status": "integrated"
+    },
+    "fastmcp": {
+      "name": "fastmcp",
+      "url": "https://github.com/jlowin/fastmcp",
+      "path": "labs/external/fastmcp",
+      "role": "external-labs",
+      "health": {
+        "score": 1.0,
+        "has_readme": true,
+        "has_tests": true,
+        "has_license": true
+      },
+      "dependencies": [
+        "Python"
+      ],
+      "status": "integrated"
+    },
+    "tavily-mcp": {
+      "name": "tavily-mcp",
+      "url": "https://github.com/tavily-ai/tavily-mcp",
+      "path": "labs/external/tavily-mcp",
+      "role": "external-labs",
+      "health": {
+        "score": 0.4,
+        "has_readme": true,
+        "has_tests": false,
+        "has_license": false
+      },
+      "dependencies": [
+        "Node.js"
+      ],
+      "status": "integrated"
+    }
+  },
+  "last_updated": "2026-05-24T16:55:33.640119"
+}
