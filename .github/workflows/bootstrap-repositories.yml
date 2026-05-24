@@ -11,7 +11,13 @@ jobs:
       GH_TOKEN: ${{ secrets.GH_PAT }}
 
     steps:
-      - name: Bootstrap repositories via GitHub API
+      - name: Validate token (critical debug)
+        shell: bash
+        run: |
+          echo "Testing authentication..."
+          curl -s -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/user
+
+      - name: Bootstrap repositories
         shell: bash
         run: |
 
@@ -30,7 +36,7 @@ jobs:
           )
 
           echo "=================================="
-          echo "DGM-MAT BOOTSTRAP STARTING"
+          echo "DGM-MAT BOOTSTRAP START"
           echo "=================================="
 
           for repo in "${repos[@]}"
@@ -41,17 +47,16 @@ jobs:
             echo "----------------------------------"
 
             # CHECK IF EXISTS
-            CHECK=$(curl -s -o /dev/null -w "%{http_code}" \
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
               -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
               https://api.github.com/repos/AndreVazao/$repo)
 
-            if [ "$CHECK" -eq 200 ]; then
+            if [ "$STATUS" -eq 200 ]; then
               echo "✔ EXISTS: $repo"
               continue
             fi
 
-            # CREATE REPO (with full debug)
+            # CREATE REPO
             RESPONSE=$(curl -s -w "\n%{http_code}" -X POST https://api.github.com/user/repos \
               -H "Authorization: Bearer $GH_TOKEN" \
               -H "Accept: application/vnd.github+json" \
@@ -66,19 +71,20 @@ jobs:
             CODE=$(echo "$RESPONSE" | tail -n 1)
 
             echo "HTTP CODE: $CODE"
-            echo "RESPONSE BODY:"
+            echo "RESPONSE:"
             echo "$BODY"
 
             if [ "$CODE" -ge 200 ] && [ "$CODE" -lt 300 ]; then
               echo "✔ CREATED: $repo"
             else
               echo "❌ FAILED: $repo"
-              echo "STOPPING DEBUG MODE OUTPUT ABOVE"
+              echo "STOPPED FOR DEBUG"
+              exit 1
             fi
 
           done
 
           echo ""
           echo "=================================="
-          echo "BOOTSTRAP FINISHED"
+          echo "BOOTSTRAP COMPLETE"
           echo "=================================="
