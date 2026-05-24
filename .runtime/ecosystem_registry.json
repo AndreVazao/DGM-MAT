@@ -1,192 +1,20 @@
 {
-  "nodes": {
-    "DGM-MAT-OS": {
-      "name": "DGM-MAT-OS",
-      "role": "core",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T16:50:30.138659",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
+  "version": "1.1.0",
+  "last_updated": "2024-05-23T12:00:00Z",
+  "repositories": [
+    {
+      "name": "DGM-MAT",
+      "role": "CORE",
+      "status": "healthy"
     },
-    "DGM-MAT-Runtime": {
-      "name": "DGM-MAT-Runtime",
-      "role": "core",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T16:50:30.138653",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "DGM-MAT-Orchestrator": {
-      "name": "DGM-MAT-Orchestrator",
-      "role": "core",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T16:50:30.138655",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "DGM-MAT-Cluster": {
-      "name": "DGM-MAT-Cluster",
-      "role": "infra",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T16:50:30.138632",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "DGM-MAT-Memory": {
-      "name": "DGM-MAT-Memory",
-      "role": "infra",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T16:50:30.138651",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "DGM-MAT-Studio": {
-      "name": "DGM-MAT-Studio",
-      "role": "product",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T16:50:30.138647",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "DGM-MAT-Marketplace": {
-      "name": "DGM-MAT-Marketplace",
-      "role": "product",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T16:50:30.138649",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "DGM-MAT-Media": {
-      "name": "DGM-MAT-Media",
-      "role": "data",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T16:50:30.138644",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "DGM-MAT-Agents": {
+    {
       "name": "DGM-MAT-Agents",
-      "role": "agents",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T16:50:30.138657",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "DGM-MAT-Mobile": {
-      "name": "DGM-MAT-Mobile",
-      "role": "product",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778363",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "DGM-MAT-Plugins": {
-      "name": "DGM-MAT-Plugins",
-      "role": "infra",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778367",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "DGM-MAT-Labs": {
-      "name": "DGM-MAT-Labs",
-      "role": "experimental",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778373",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "DGM-MAT-Connectors": {
-      "name": "DGM-MAT-Connectors",
-      "role": "infra",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778377",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "DGM-MAT-Providers": {
-      "name": "DGM-MAT-Providers",
-      "role": "infra",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778382",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "DGM-MAT-Assets": {
-      "name": "DGM-MAT-Assets",
-      "role": "data",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778387",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "DGM-MAT-Deploy": {
-      "name": "DGM-MAT-Deploy",
-      "role": "infra",
-      "status": "active",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778392",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
-    },
-    "Persist-Node": {
-      "name": "Persist-Node",
-      "role": "data",
-      "status": "planned",
-      "dependencies": [],
-      "health_score": 1.0,
-      "last_sync": "2026-05-24T08:38:15.778905",
-      "owner": "system",
-      "description": null,
-      "metadata": {}
+      "role": "AGENTS",
+      "status": "healthy"
     }
-  },
-  "last_updated": "2026-05-24T16:50:30.138661"
+  ],
+  "topology": {
+    "active_branches": ["main", "dev"],
+    "health_score": 88.5
+  }
 }
