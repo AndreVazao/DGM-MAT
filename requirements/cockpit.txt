@@ -1,0 +1,2 @@
+-r base.txt
+pyside6>=6.7.0

@@ -1,6 +1,7 @@
 from datetime import datetime
 from threading import Thread
 import sys
+import os
 
 from shared.models.event import Event
 from core.event_bus.event_bus import (
@@ -33,6 +34,15 @@ from core.governance.governance_engine import GovernanceEngine
 # Phase 22 knowledge
 from core.knowledge.knowledge_engine import KnowledgeEngine
 
+# Phase 26 Kernel
+from core.kernel.cognitive_kernel import CognitiveKernel
+
+# Phase 27 Evolution
+from core.evolution.evolution_engine import EvolutionEngine
+
+# Phase 28 Update
+from core.update.update_engine import UpdateEngine
+
 # Advanced Engine Imports
 try:
     from core.cognition.ecosystem_engine import EcosystemEngine
@@ -59,12 +69,21 @@ class Runtime:
             started_at=datetime.now(),
         )
 
+        # Initialize Cognitive Kernel (Phase 26)
+        self.kernel = CognitiveKernel()
+
         # Initialize Governance
         self.governance_engine = GovernanceEngine()
         self.governance_engine.start_monitoring()
 
         # Initialize Knowledge
         self.knowledge_engine = KnowledgeEngine()
+
+        # Initialize Evolution Engine (Phase 27)
+        self.evolution_engine = EvolutionEngine()
+
+        # Initialize Update Engine (Phase 28)
+        self.update_engine = UpdateEngine()
 
         # Pass governance to event bus
         self.event_bus = EventBus(governance_engine=self.governance_engine)
@@ -99,6 +118,9 @@ class Runtime:
     def _register(self):
         # Universal knowledge subscription
         self.event_bus.subscribe("*", self.knowledge_engine.process_event)
+
+        # Kernel Event Processing (Phase 26)
+        self.event_bus.subscribe("*", self.kernel.process_event)
 
         self.event_bus.subscribe("ecosystem.scan", self.repo_agent.handle_event)
         self.event_bus.subscribe("ecosystem.scan", self.overseer.observe)
@@ -147,7 +169,7 @@ class Runtime:
             )
 
     def start_api(self):
-        """Isolated API startup (Requirement 8)."""
+        """Isolated API startup."""
         try:
             thread = Thread(target=run_api, daemon=True)
             thread.start()
@@ -158,6 +180,7 @@ class Runtime:
     def bootstrap(self):
         self.start_api()
         self.event_bus.start()
+        self.kernel.boot()
         self.state.runtime_status = "running"
 
         # Log degradation if critical engines are missing
@@ -174,7 +197,8 @@ class Runtime:
         self.event_bus.publish(Event(source="runtime", target="autonomy-agent", event_type="autonomy.analyze", payload={}))
 
     def shutdown(self):
-        """Clean shutdown (Requirement 1)."""
+        """Clean shutdown."""
         dgm_logger.info("Runtime: Initiating shutdown...")
+        self.kernel.shutdown()
         self.governance_engine.shutdown()
         self.knowledge_engine.shutdown()
