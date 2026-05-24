@@ -1,0 +1,601 @@
+DGM-MAT/
+├─ .github/
+│  └─ workflows/
+│     ├─ bootstrap-repositories.yml
+│     ├─ build-exe.yml
+│     ├─ ecosystem.yml
+│     ├─ release.yml
+│     ├─ repo-bootstrap.yml
+│     ├─ security.yml
+│     └─ validate.yml
+├─ .runtime/
+│  └─ ecosystem_registry.json
+├─ AndreOS/
+│  ├─ agent_state_memory_sync_1_3c727839.json
+│  ├─ agent_state_memory_sync_1_4e71d343.json
+│  ├─ agent_state_memory_sync_1_7d9f82fd.json
+│  ├─ agent_state_repo_intel_1_000f9f8c.json
+│  ├─ agent_state_repo_intel_1_3d6fd110.json
+│  ├─ agent_state_repo_intel_1_72ef32c4.json
+│  ├─ architecture_checkpoint_20260524_065003.json
+│  ├─ architecture_checkpoint_20260524_065204.json
+│  ├─ architecture_memory.json
+│  ├─ development_memory.json
+│  ├─ evolution_evolution_bbe9de69_20260522165931.json
+│  ├─ evolution_evolution_fb6baff2_20260522165931.json
+│  ├─ evolution_phase12_13_1779478628.json
+│  └─ recovery_memory.json
+├─ cockpit/
+│  ├─ styles/
+│  │  └─ theme.qss
+│  ├─ widgets/
+│  │  ├─ agent_widget.py
+│  │  ├─ dashboard_widget.py
+│  │  ├─ event_stream_widget.py
+│  │  ├─ execution_queue_widget.py
+│  │  ├─ federation_widget.py
+│  │  ├─ governance_widget.py
+│  │  ├─ knowledge_graph_widget.py
+│  │  ├─ learning_dashboard_widget.py
+│  │  ├─ logs_widget.py
+│  │  ├─ mesh_monitor_widget.py
+│  │  ├─ operational_search_widget.py
+│  │  ├─ research_widget.py
+│  │  └─ strategy_widget.py
+│  ├─ app.py
+│  ├─ main_window.py
+│  └─ realtime_client.py
+├─ config/
+│  ├─ nodes.json
+│  └─ runtime_limits.json
+├─ core/
+│  ├─ agents/
+│  │  ├─ autonomy_agent.py
+│  │  ├─ base_agent.py
+│  │  ├─ provider_agent.py
+│  │  └─ repo_agent.py
+│  ├─ api/
+│  │  └─ api_server.py
+│  ├─ autonomy/
+│  │  ├─ models.py
+│  │  ├─ priority_engine.py
+│  │  ├─ repair_suggester.py
+│  │  ├─ task_engine.py
+│  │  ├─ task_planner.py
+│  │  ├─ task_queue.py
+│  │  └─ worker_allocator.py
+│  ├─ cognition/
+│  │  ├─ architecture_memory.py
+│  │  ├─ cognition_graph.py
+│  │  ├─ cognition_models.py
+│  │  ├─ cognition_snapshot.py
+│  │  ├─ convergence_engine.py
+│  │  ├─ dependency_mapper.py
+│  │  ├─ ecosystem_engine.py
+│  │  ├─ ecosystem_health.py
+│  │  ├─ fragmentation_detector.py
+│  │  ├─ impact_analyzer.py
+│  │  ├─ risk_predictor.py
+│  │  └─ topology_engine.py
+│  ├─ development/
+│  │  ├─ architecture_validator.py
+│  │  ├─ branch_execution.py
+│  │  ├─ code_generation.py
+│  │  ├─ development_engine.py
+│  │  ├─ development_memory.py
+│  │  ├─ development_models.py
+│  │  ├─ development_snapshot.py
+│  │  ├─ execution_fabric.py
+│  │  ├─ feature_planner.py
+│  │  ├─ implementation_engine.py
+│  │  ├─ integration_engine.py
+│  │  ├─ merge_preparation.py
+│  │  ├─ refactor_engine.py
+│  │  ├─ repair_execution.py
+│  │  ├─ test_orchestrator.py
+│  │  └─ validation_engine.py
+│  ├─ distributed/
+│  │  ├─ __init__.py
+│  │  ├─ distributed_memory.py
+│  │  ├─ mesh_models.py
+│  │  ├─ node_capabilities.py
+│  │  ├─ node_failover.py
+│  │  ├─ node_heartbeat.py
+│  │  ├─ node_identity.py
+│  │  ├─ node_manager.py
+│  │  ├─ node_registry.py
+│  │  ├─ node_state.py
+│  │  └─ node_sync.py
+│  ├─ ecosystem/
+│  │  ├─ ecosystem_lifecycle.py
+│  │  ├─ ecosystem_materializer.py
+│  │  ├─ ecosystem_models.py
+│  │  ├─ ecosystem_registry.py
+│  │  └─ ecosystem_validator.py
+│  ├─ event_bus/
+│  │  └─ event_bus.py
+│  ├─ evolution/
+│  │  ├─ abstraction_optimizer.py
+│  │  ├─ adaptive_patterns.py
+│  │  ├─ architecture_mutation.py
+│  │  ├─ convergence_optimizer.py
+│  │  ├─ degradation_analyzer.py
+│  │  ├─ evolution_engine.py
+│  │  ├─ evolution_memory.py
+│  │  ├─ evolution_snapshot.py
+│  │  ├─ mutation_simulator.py
+│  │  ├─ orchestration_optimizer.py
+│  │  ├─ regeneration_engine.py
+│  │  ├─ regeneration_models.py
+│  │  ├─ runtime_regenerator.py
+│  │  ├─ semantic_refactor.py
+│  │  └─ structural_forecaster.py
+│  ├─ execution/
+│  │  ├─ __init__.py
+│  │  ├─ approval_manager.py
+│  │  ├─ branch_manager.py
+│  │  ├─ execution_context.py
+│  │  ├─ execution_engine.py
+│  │  ├─ execution_models.py
+│  │  ├─ merge_guard.py
+│  │  ├─ repair_loop.py
+│  │  ├─ rollback_engine.py
+│  │  └─ worktree_manager.py
+│  ├─ fabric/
+│  │  ├─ cluster_scheduler.py
+│  │  ├─ cognition_cluster.py
+│  │  ├─ distributed_storage.py
+│  │  ├─ execution_mesh.py
+│  │  ├─ fabric_governance.py
+│  │  ├─ fabric_snapshot.py
+│  │  ├─ federation_resources.py
+│  │  ├─ node_allocator.py
+│  │  ├─ resource_fabric.py
+│  │  ├─ resource_models.py
+│  │  ├─ runtime_sharding.py
+│  │  ├─ storage_replication.py
+│  │  └─ workload_router.py
+│  ├─ federation/
+│  │  ├─ collaboration_engine.py
+│  │  ├─ ecosystem_bridge.py
+│  │  ├─ ecosystem_identity.py
+│  │  ├─ ecosystem_policy.py
+│  │  ├─ ecosystem_registry.py
+│  │  ├─ federation_engine.py
+│  │  ├─ federation_governance.py
+│  │  ├─ federation_memory.py
+│  │  ├─ federation_models.py
+│  │  ├─ federation_routing.py
+│  │  ├─ federation_scheduler.py
+│  │  ├─ federation_security.py
+│  │  ├─ federation_snapshot.py
+│  │  ├─ shared_knowledge.py
+│  │  └─ trust_engine.py
+│  ├─ governance/
+│  │  ├─ deadlock_detector.py
+│  │  ├─ degradation_controller.py
+│  │  ├─ event_governor.py
+│  │  ├─ execution_throttler.py
+│  │  ├─ governance_engine.py
+│  │  ├─ governance_models.py
+│  │  ├─ loop_detector.py
+│  │  ├─ memory_controller.py
+│  │  ├─ provider_rate_control.py
+│  │  ├─ queue_balancer.py
+│  │  ├─ recursion_guard.py
+│  │  ├─ resource_monitor.py
+│  │  ├─ runtime_limits.py
+│  │  ├─ storm_protection.py
+│  │  └─ workload_scheduler.py
+│  ├─ kernel/
+│  │  ├─ adaptive_scheduler.py
+│  │  ├─ cognition_pipeline.py
+│  │  ├─ cognition_router.py
+│  │  ├─ cognitive_kernel.py
+│  │  ├─ context_engine.py
+│  │  ├─ execution_context.py
+│  │  ├─ kernel_governance.py
+│  │  ├─ kernel_memory.py
+│  │  ├─ kernel_models.py
+│  │  ├─ kernel_orchestrator.py
+│  │  ├─ kernel_snapshot.py
+│  │  ├─ kernel_state_manager.py
+│  │  ├─ live_kernel.py
+│  │  ├─ orchestration_context.py
+│  │  ├─ runtime_awareness.py
+│  │  └─ semantic_executor.py
+│  ├─ knowledge/
+│  │  ├─ concept_extractor.py
+│  │  ├─ context_linker.py
+│  │  ├─ knowledge_engine.py
+│  │  ├─ knowledge_models.py
+│  │  ├─ knowledge_query.py
+│  │  ├─ memory_indexer.py
+│  │  ├─ operational_context.py
+│  │  ├─ relationship_inference.py
+│  │  ├─ semantic_graph.py
+│  │  ├─ semantic_memory.py
+│  │  ├─ semantic_search.py
+│  │  └─ temporal_memory.py
+│  ├─ labs/
+│  │  ├─ __init__.py
+│  │  ├─ architecture_analyzer.py
+│  │  ├─ lab_memory.py
+│  │  ├─ lab_scanner.py
+│  │  ├─ orchestration_detector.py
+│  │  └─ pattern_extractor.py
+│  ├─ learning/
+│  │  ├─ __init__.py
+│  │  ├─ adaptive_routing.py
+│  │  ├─ capability_evolution.py
+│  │  ├─ execution_learning.py
+│  │  ├─ failure_learning.py
+│  │  ├─ learning_engine.py
+│  │  ├─ learning_models.py
+│  │  ├─ learning_snapshot.py
+│  │  ├─ orchestration_learning.py
+│  │  ├─ pattern_memory.py
+│  │  ├─ prompt_learning.py
+│  │  ├─ provider_learning.py
+│  │  └─ specialization_engine.py
+│  ├─ lifecycle/
+│  │  └─ bootstrap.py
+│  ├─ memory/
+│  │  ├─ __init__.py
+│  │  ├─ context_snapshot.py
+│  │  ├─ memory_engine.py
+│  │  ├─ memory_store.py
+│  │  ├─ models.py
+│  │  ├─ project_families.py
+│  │  ├─ relationship_engine.py
+│  │  └─ repo_similarity.py
+│  ├─ observability/
+│  │  ├─ event_stream.py
+│  │  └─ logger.py
+│  ├─ overseer/
+│  │  └─ overseer.py
+│  ├─ providers/
+│  │  ├─ base/
+│  │  │  └─ provider_base.py
+│  │  ├─ browser/
+│  │  │  └─ browser_manager.py
+│  │  ├─ chatgpt/
+│  │  │  └─ chatgpt_provider.py
+│  │  ├─ models/
+│  │  │  ├─ __init__.py
+│  │  │  └─ conversation.py
+│  │  ├─ session/
+│  │  │  └─ session_manager.py
+│  │  ├─ conversation_classifier.py
+│  │  ├─ conversation_memory.py
+│  │  └─ provider_runtime.py
+│  ├─ realtime/
+│  │  ├─ realtime_broadcast.py
+│  │  └─ websocket_manager.py
+│  ├─ recovery/
+│  │  ├─ crash_classifier.py
+│  │  ├─ degradation_manager.py
+│  │  ├─ health_monitor.py
+│  │  ├─ isolation_engine.py
+│  │  ├─ memory_recovery.py
+│  │  ├─ node_recovery.py
+│  │  ├─ orchestration_recovery.py
+│  │  ├─ provider_recovery.py
+│  │  ├─ recovery_engine.py
+│  │  ├─ recovery_memory.py
+│  │  ├─ recovery_models.py
+│  │  ├─ recovery_snapshot.py
+│  │  ├─ repair_chain.py
+│  │  ├─ rollback_recovery.py
+│  │  ├─ runtime_recovery.py
+│  │  ├─ service_restarter.py
+│  │  └─ state_rebuilder.py
+│  ├─ repository_intelligence/
+│  │  ├─ __init__.py
+│  │  ├─ duplicate_detector.py
+│  │  ├─ external_repos.py
+│  │  ├─ github_client.py
+│  │  ├─ intelligence_engine.py
+│  │  ├─ models.py
+│  │  ├─ repo_classifier.py
+│  │  ├─ repo_graph.py
+│  │  ├─ repo_importer.py
+│  │  ├─ scanner.py
+│  │  ├─ tech_detector.py
+│  │  └─ tree_generator.py
+│  ├─ research/
+│  │  ├─ architecture_lab.py
+│  │  ├─ benchmark_models.py
+│  │  ├─ comparative_analysis.py
+│  │  ├─ experiment_memory.py
+│  │  ├─ experiment_scheduler.py
+│  │  ├─ experiment_snapshot.py
+│  │  ├─ experimentation_engine.py
+│  │  ├─ isolation_controller.py
+│  │  ├─ prototype_engine.py
+│  │  ├─ provider_benchmarking.py
+│  │  ├─ research_context.py
+│  │  ├─ research_engine.py
+│  │  ├─ research_models.py
+│  │  ├─ sandbox_runtime.py
+│  │  └─ technology_evaluator.py
+│  ├─ runtime/
+│  │  └─ runtime.py
+│  ├─ runtime_state/
+│  │  └─ runtime_state.py
+│  ├─ storage/
+│  │  ├─ database.py
+│  │  ├─ event_store.py
+│  │  ├─ init_db.py
+│  │  ├─ models.py
+│  │  └─ storage_manager.py
+│  ├─ strategy/
+│  │  ├─ architecture_forecaster.py
+│  │  ├─ convergence_planning.py
+│  │  ├─ debt_predictor.py
+│  │  ├─ ecosystem_planner.py
+│  │  ├─ execution_strategy.py
+│  │  ├─ goal_engine.py
+│  │  ├─ milestone_engine.py
+│  │  ├─ objective_tracker.py
+│  │  ├─ planning_context.py
+│  │  ├─ priority_engine.py
+│  │  ├─ roadmap_engine.py
+│  │  ├─ roadmap_models.py
+│  │  ├─ strategic_memory.py
+│  │  ├─ strategic_simulation.py
+│  │  ├─ strategy_engine.py
+│  │  ├─ strategy_snapshot.py
+│  │  └─ sustainability_engine.py
+│  ├─ update/
+│  │  ├─ artifact_downloader.py
+│  │  ├─ release_checker.py
+│  │  ├─ rollback_manager.py
+│  │  ├─ safe_updater.py
+│  │  ├─ update_engine.py
+│  │  └─ version_registry.py
+│  └─ validation/
+│     └─ event_validator.py
+├─ DGM-MAT-Agents/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ DGM-MAT-Assets/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ DGM-MAT-Cluster/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ DGM-MAT-Connectors/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ DGM-MAT-Deploy/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ DGM-MAT-Labs/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ DGM-MAT-Marketplace/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ DGM-MAT-Media/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ DGM-MAT-Memory/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ DGM-MAT-Mobile/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ DGM-MAT-Orchestrator/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ DGM-MAT-Plugins/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ DGM-MAT-Providers/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ DGM-MAT-Runtime/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ DGM-MAT-Studio/
+│  ├─ .gitignore
+│  ├─ architecture.md
+│  ├─ ecosystem.json
+│  ├─ health.json
+│  └─ README.md
+├─ docs/
+│  ├─ architecture/
+│  │  └─ core.md
+│  ├─ ecosystem/
+│  │  ├─ agents.md
+│  │  ├─ events.md
+│  │  ├─ protocol.md
+│  │  └─ topology.md
+│  ├─ ecosystems/
+│  │  └─ model.md
+│  ├─ governance/
+│  │  ├─ evolution.md
+│  │  ├─ overseer.md
+│  │  └─ rules.md
+│  ├─ memory/
+│  │  └─ model.md
+│  ├─ BUILD_EXE_RECOVERY_PLAN.md
+│  ├─ COCKPIT_CONVERGENCE_PLAN.md
+│  ├─ DEPENDENCY_CONVERGENCE_REPORT.md
+│  ├─ OPERATIONAL_CONVERGENCE_ROADMAP.md
+│  ├─ PHASE_HISTORY.md
+│  └─ SYSTEM_STATUS_REPORT.md
+├─ legacy/
+│  ├─ contracts/
+│  │  ├─ agent_contract.json
+│  │  └─ README.md
+│  ├─ core/
+│  │  ├─ agents/
+│  │  │  ├─ __init__.py
+│  │  │  ├─ base.py
+│  │  │  ├─ memory_sync_agent.py
+│  │  │  ├─ overseer_agent.py
+│  │  │  ├─ prompt_intelligence_agent.py
+│  │  │  ├─ provider_connector_agent.py
+│  │  │  ├─ repo_intelligence_agent.py
+│  │  │  └─ validation_agent.py
+│  │  ├─ cockpit/
+│  │  │  └─ interface.py
+│  │  ├─ deployment/
+│  │  │  └─ manager.py
+│  │  ├─ ecosystem_state/
+│  │  │  ├─ __init__.py
+│  │  │  └─ manager.py
+│  │  ├─ event_bus/
+│  │  │  ├─ __init__.py
+│  │  │  └─ bus.py
+│  │  ├─ gap_detection/
+│  │  │  ├─ __init__.py
+│  │  │  └─ detector.py
+│  │  ├─ git_engine/
+│  │  │  └─ git_manager.py
+│  │  ├─ health/
+│  │  │  └─ calculator.py
+│  │  ├─ knowledge_integration/
+│  │  │  ├─ __init__.py
+│  │  │  └─ processor.py
+│  │  ├─ memory/
+│  │  │  ├─ __init__.py
+│  │  │  ├─ engine.py
+│  │  │  └─ sync.py
+│  │  ├─ meta_reasoning/
+│  │  │  ├─ __init__.py
+│  │  │  └─ orchestrator.py
+│  │  ├─ observability/
+│  │  │  ├─ __init__.py
+│  │  │  ├─ logger.py
+│  │  │  └─ metrics.py
+│  │  ├─ overseer/
+│  │  │  ├─ __init__.py
+│  │  │  └─ overseer.py
+│  │  ├─ prompt_intelligence/
+│  │  │  ├─ __init__.py
+│  │  │  └─ generator.py
+│  │  ├─ prompt_library/
+│  │  │  ├─ __init__.py
+│  │  │  └─ genome.py
+│  │  ├─ providers/
+│  │  │  ├─ __init__.py
+│  │  │  └─ isolated_session.py
+│  │  ├─ repository_intelligence/
+│  │  │  ├─ __init__.py
+│  │  │  ├─ analyzer.py
+│  │  │  └─ auto_repair.py
+│  │  ├─ self_healing/
+│  │  │  └─ engine.py
+│  │  ├─ validation/
+│  │  │  ├─ __init__.py
+│  │  │  ├─ drift.py
+│  │  │  └─ engine.py
+│  │  └─ __init__.py
+│  ├─ schemas/
+│  │  └─ event.schema.json
+│  ├─ tests/
+│  │  ├─ test_drift.py
+│  │  ├─ test_phase6.py
+│  │  ├─ test_phase7.py
+│  │  └─ test_system.py
+│  └─ architecture.md
+├─ Persist-Node/
+│  ├─ ecosystem.json
+│  └─ health.json
+├─ requirements/
+│  ├─ base.txt
+│  ├─ build.txt
+│  ├─ cockpit.txt
+│  ├─ dev.txt
+│  ├─ research.txt
+│  └─ runtime.txt
+├─ scripts/
+│  ├─ phase_finalizer.py
+│  ├─ repo_bootstrap_interactive.py
+│  ├─ validate_dependencies.py
+│  └─ validate_storage.py
+├─ shared/
+│  ├─ config/
+│  │  └─ settings.py
+│  ├─ enums/
+│  │  └─ event_priority.py
+│  └─ models/
+│     ├─ __init__.py
+│     └─ event.py
+├─ tests/
+│  ├─ test_dependency_integrity.py
+│  ├─ test_ecosystem_materializer.py
+│  ├─ test_ecosystem.py
+│  ├─ test_execution_logic.py
+│  ├─ test_federation_layer.py
+│  ├─ test_governance_sim.py
+│  ├─ test_import_intelligence_v7.py
+│  ├─ test_knowledge_fabric.py
+│  ├─ test_phase15_16_17_import.py
+│  ├─ test_repo_importer.py
+│  ├─ test_repository_intelligence.py
+│  ├─ test_research_layer.py
+│  ├─ test_runtime.py
+│  ├─ test_storage_architecture.py
+│  └─ test_strategic_orchestration.py
+├─ tools/
+│  ├─ repo_control_panel/
+│  │  ├─ app.py
+│  │  ├─ github_client.py
+│  │  └─ repo_manager.py
+│  └─ import_engine.py
+├─ .gitignore
+├─ architecture.md
+├─ core_review_request.txt
+├─ ecosystem.json
+├─ health.json
+├─ LICENSE
+├─ main.py
+├─ pyproject.toml
+├─ README.md
+└─ requirements.txt
