@@ -7,37 +7,37 @@ jobs:
   bootstrap:
     runs-on: ubuntu-latest
 
+    env:
+      GH_TOKEN: ${{ secrets.GH_PAT }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Authenticate GitHub CLI
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+        shell: bash
         run: |
-          echo "${GH_TOKEN}" > token.txt
+          echo "$GH_TOKEN" > token.txt
           gh auth login --with-token < token.txt
 
-      - name: Create repositories
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+      - name: Bootstrap repositories
         shell: bash
         run: |
 
           repos=(
-            "DGM-MAT-Cluster"
-            "DGM-MAT-Media"
-            "DGM-MAT-Studio"
-            "DGM-MAT-Marketplace"
-            "DGM-MAT-Memory"
-            "DGM-MAT-Runtime"
-            "DGM-MAT-Orchestrator"
-            "DGM-MAT-Agents"
-            "DGM-MAT-OS"
+            DGM-MAT-Cluster
+            DGM-MAT-Media
+            DGM-MAT-Studio
+            DGM-MAT-Marketplace
+            DGM-MAT-Memory
+            DGM-MAT-Runtime
+            DGM-MAT-Orchestrator
+            DGM-MAT-Agents
+            DGM-MAT-OS
           )
 
-          mkdir bootstrap-work
-          cd bootstrap-work
+          mkdir temp-bootstrap
+          cd temp-bootstrap
 
           for repo in "${repos[@]}"
           do
@@ -54,38 +54,26 @@ jobs:
             echo "# $repo" > README.md
             echo "" >> README.md
             echo "Part of the DGM-MAT ecosystem." >> README.md
-            echo "" >> README.md
-            echo "## Status" >> README.md
-            echo "" >> README.md
-            echo "Under active development." >> README.md
 
             echo "MIT License" > LICENSE
-            echo "" >> LICENSE
             echo "Copyright (c) 2026 AndreVazao" >> LICENSE
 
             echo "node_modules/" > .gitignore
             echo "dist/" >> .gitignore
-            echo "build/" >> .gitignore
             echo ".env" >> .gitignore
-            echo "*.log" >> .gitignore
 
             mkdir -p .github/workflows
 
-            cat > .github/workflows/health-check.yml << 'WORKFLOWEOF'
-name: Health Check
-
-on:
-  workflow_dispatch:
-
-jobs:
-  health:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - run: echo "Repository healthy."
-WORKFLOWEOF
+            echo "name: Health Check" > .github/workflows/health-check.yml
+            echo "" >> .github/workflows/health-check.yml
+            echo "on:" >> .github/workflows/health-check.yml
+            echo "  workflow_dispatch:" >> .github/workflows/health-check.yml
+            echo "" >> .github/workflows/health-check.yml
+            echo "jobs:" >> .github/workflows/health-check.yml
+            echo "  health:" >> .github/workflows/health-check.yml
+            echo "    runs-on: ubuntu-latest" >> .github/workflows/health-check.yml
+            echo "    steps:" >> .github/workflows/health-check.yml
+            echo "      - run: echo Repository healthy" >> .github/workflows/health-check.yml
 
             git config user.name "github-actions"
             git config user.email "actions@github.com"
@@ -93,11 +81,7 @@ WORKFLOWEOF
             git add .
             git commit -m "Initial bootstrap"
 
-            gh repo create "AndreVazao/$repo" \
-              --public \
-              --source . \
-              --remote origin \
-              --push
+            gh repo create AndreVazao/$repo --public --source . --remote origin --push
 
             cd ..
 
