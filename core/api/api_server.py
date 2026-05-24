@@ -6,10 +6,13 @@ from shared.config.settings import (
 from core.realtime.websocket_manager import (
     manager,
 )
+from core.api.runtime_api import router as runtime_router
 
 app = FastAPI(
     title="DGM-MAT API",
 )
+
+app.include_router(runtime_router)
 
 @app.get("/health")
 def health():

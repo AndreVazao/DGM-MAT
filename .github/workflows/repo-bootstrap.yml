@@ -1,56 +1,30 @@
-name: DGM-MAT Repo Bootstrap (Interactive)
+name: Repository Initial Bootstrap
 
 on:
   workflow_dispatch:
     inputs:
-      action:
-        description: "Action to perform"
+      repo_name:
+        description: 'Name of the repository to bootstrap'
         required: true
-        type: choice
-        options:
-          - create
-          - update
-          - deprecate
-          - list
-      repos:
-        description: "Repo names (comma separated)"
-        required: false
-        type: string
-      description:
-        description: "Optional description for repos"
-        required: false
-        type: string
-      visibility:
-        description: "Repo visibility"
-        required: false
-        default: public
-        type: choice
-        options:
-          - public
-          - private
+      category:
+        description: 'Ecosystem category'
+        required: true
+        default: 'Labs'
 
 jobs:
-  repo-manager:
+  bootstrap:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
+          python-version: "3.12"
       - name: Install dependencies
-        run: pip install requests
-
-      - name: Run Repo Manager
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_OWNER: AndreVazao
-          ACTION: ${{ inputs.action }}
-          REPOS: ${{ inputs.repos }}
-          DESCRIPTION: ${{ inputs.description }}
-          VISIBILITY: ${{ inputs.visibility }}
-        run: python scripts/repo_bootstrap_interactive.py
+        run: |
+          pip install -r requirements/base.txt
+      - name: Run Bootstrap Logic
+        run: |
+          set PYTHONPATH=.
+          python scripts/repo_bootstrap_interactive.py --repo ${{ github.event.inputs.repo_name }} --category ${{ github.event.inputs.category }}

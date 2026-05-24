@@ -23,20 +23,18 @@ jobs:
         run: |
           pip install playwright
           playwright install
-      - name: Runtime Boot Validation
+      - name: Runtime Smoke Test
         run: |
           set PYTHONPATH=.
-          python -c "from core.runtime.runtime import Runtime; r = Runtime(); r.bootstrap(); r.shutdown()"
+          python scripts/runtime_smoke_test.py
       - name: Build EXE
         run: |
-          pyinstaller ^
-            --noconfirm ^
-            --windowed ^
-            --onefile ^
-            --hidden-import=pydantic.deprecated.decorator ^
-            main.py
+          pyinstaller build/dgm_mat.spec --noconfirm
+      - name: Validate EXE
+        run: |
+          python scripts/validate_executable.py dist/DGM-MAT/DGM-MAT.exe
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: DGM-MAT-Windows
-          path: dist/*
+          path: dist/DGM-MAT/*
