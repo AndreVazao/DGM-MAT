@@ -34,7 +34,8 @@ class MemoryIndexer:
                             if node.id not in self.index[c]:
                                 self.index[c].append(node.id)
                 self.queue.task_done()
-            except Exception:
+            except Exception as e:
+                dgm_logger.error(f"MemoryIndexer: Error processing nodes: {e}")
                 continue
 
     def search_concept(self, concept: str) -> List[str]:

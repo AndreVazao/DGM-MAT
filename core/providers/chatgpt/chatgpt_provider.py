@@ -10,6 +10,7 @@ from core.providers.models.conversation import (
     Conversation,
 )
 
+from core.observability.logger import dgm_logger
 
 class ChatGPTProvider(
     ProviderBase
@@ -85,7 +86,8 @@ class ChatGPTProvider(
                         )
                     )
 
-            except Exception:
+            except Exception as e:
+                dgm_logger.debug(f"ChatGPTProvider: Skipping invalid link: {e}")
                 pass
 
         return conversations

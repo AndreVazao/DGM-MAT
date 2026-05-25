@@ -11,11 +11,11 @@ def validate():
     supervisor = ProcessSupervisor()
 
     # Test executor
-    res = executor.execute("echo 'Hello from LocalExecutor'")
-    if "Hello" in res:
+    result = executor.execute("echo 'Hello from LocalExecutor'")
+    if result.success and "Hello" in result.stdout:
         dgm_logger.info("LocalExecutor: SUCCESS")
     else:
-        dgm_logger.error("LocalExecutor: FAILED")
+        dgm_logger.error(f"LocalExecutor: FAILED - {result.stderr}")
         return False
 
     # Test supervisor
@@ -25,6 +25,8 @@ def validate():
     return True
 
 if __name__ == "__main__":
+    # Ensure project root is in path
+    sys.path.append(os.getcwd())
     if validate():
         print("AUTONOMOUS RUNTIME VALIDATION: PASSED")
     else:
