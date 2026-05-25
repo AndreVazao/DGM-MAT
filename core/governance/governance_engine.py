@@ -17,6 +17,7 @@ from core.governance.storm_protection import StormProtection
 from core.governance.provider_rate_control import ProviderRateControl
 from core.governance.workload_scheduler import WorkloadScheduler
 from core.governance.degradation_controller import DegradationController
+from core.governance.self_modification_guard import SelfModificationGuard
 
 class GovernanceEngine:
     def __init__(self, config_path: str = "config/runtime_limits.json"):
@@ -39,6 +40,7 @@ class GovernanceEngine:
         self.provider_rate_control = ProviderRateControl(self.limits.max_provider_requests_per_min)
         self.workload_scheduler = WorkloadScheduler()
         self.degradation_controller = DegradationController()
+        self.modification_guard = SelfModificationGuard()
 
         self.is_running = True
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix="governance")
@@ -52,6 +54,10 @@ class GovernanceEngine:
             except Exception as exc:
                 dgm_logger.error(f"GovernanceEngine: Failed to load limits from {path}: {exc}")
         return RuntimeLimits()
+
+    def govern_modification(self, file_path: str) -> bool:
+        """Checks if a file modification is allowed by the self-modification guard."""
+        return self.modification_guard.is_modification_allowed(file_path)
 
     def govern_event(self, event: Event) -> bool:
         """Central entry point for event governance. Hardened with timeout and safety."""
