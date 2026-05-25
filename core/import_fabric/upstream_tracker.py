@@ -12,7 +12,7 @@ class UpstreamTracker:
                  # Try master if main fails
                  res = subprocess.run(["git", "rev-list", "HEAD..upstream/master", "--count"], cwd=repo_path, capture_output=True, text=True)  # nosec
 
-            count = int(res.stdout.strip()) if res.returncode == 0 else 0
+            count = int(res.stdout.strip()) if res and res.returncode == 0 else 0
             return {
                 "behind": count,
                 "status": "outdated" if count > 0 else "up-to-date"

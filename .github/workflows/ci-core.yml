@@ -1,7 +1,7 @@
 ---
 name: CI Core
 
-on:
+"on":
   push:
     branches:
       - main
@@ -12,7 +12,7 @@ on:
 
 jobs:
   validate:
-    name: "Core Validation (${{ matrix.os }}, Python ${{ matrix.python-version }})"
+    name: "Core (${{ matrix.os }}, Py${{ matrix.python-version }})"
     runs-on: "${{ matrix.os }}"
     strategy:
       fail-fast: false

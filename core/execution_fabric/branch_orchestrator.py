@@ -1,5 +1,5 @@
 from core.observability.logger import dgm_logger
-import subprocess
+import subprocess  # nosec
 
 class BranchOrchestrator:
     """

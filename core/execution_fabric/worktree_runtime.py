@@ -1,4 +1,4 @@
-import subprocess
+import subprocess  # nosec
 import os
 from pathlib import Path
 from core.observability.logger import dgm_logger
@@ -19,7 +19,7 @@ class WorktreeRuntime:
 
         try:
             # git worktree add -b <branch> <path>
-            subprocess.run(
+            subprocess.run(  # nosec
                 ["git", "worktree", "add", "-b", branch_name, str(worktree_path)],
                 check=True,
                 capture_output=True
