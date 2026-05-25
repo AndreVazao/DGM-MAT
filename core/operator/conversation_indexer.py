@@ -1,8 +1,7 @@
-from typing import List, Dict, Any
-
 class ConversationIndexer:
     """
-    Indexes synchronized conversations for search and memory.
+    Deprecated: Preserving for backward compatibility.
     """
-    def index_conversation(self, conversation_id: str, content: str):
-        pass
+    def index_conversation(self, cid, content):
+        from core.provider_sync.conversation_indexer import ProviderConversationIndexer
+        return ProviderConversationIndexer().index(cid, content)

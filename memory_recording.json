@@ -1,0 +1,16 @@
+{
+  "task": "DGM-MAT Phase 36: Persistent Autonomous Runtime",
+  "architectural_patterns": [
+    "Persistent Daemon with Heartbeat/Watchdog/Supervisor",
+    "SQLite-backed Autonomous Scheduler with Task Persistence",
+    "Atomic Persistence with Temp-File-and-Replace Pattern",
+    "Consolidated Cognitive Engine for Repo Mapping",
+    "Bounded Semantic Linker to prevent memory explosion",
+    "Safety Guards for Autonomous Execution (whitelist, shell=False)"
+  ],
+  "lessons_learned": [
+    "Circular imports are a risk when refactoring large modules; use local imports in legacy bridges.",
+    "Atomic writes are essential for persistent daemons to prevent corruption during crashes.",
+    "Hard safety limits (whitelist) are required for autonomous systems to prevent arbitrary execution."
+  ]
+}

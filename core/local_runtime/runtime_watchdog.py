@@ -1,6 +1,2 @@
-class RuntimeWatchdog:
-    """
-    Monitors the health of the DGM-MAT local runtime.
-    """
-    def check_health(self):
-        return True
+from core.runtime_daemon.watchdog import RuntimeWatchdog
+class LocalRuntimeWatchdog(RuntimeWatchdog): pass
