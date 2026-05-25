@@ -7,6 +7,7 @@ class GitHubClient:
         self.token = token or os.getenv("GITHUB_TOKEN")
         self.owner = owner or os.getenv("GITHUB_OWNER")
         self.api_url = "https://api.github.com"
+        self.timeout = 30
 
     def create_repo(self, name: str, description: str = "", private: bool = False) -> Tuple[int, Dict[str, Any]]:
         url = f"{self.api_url}/user/repos"
@@ -20,7 +21,7 @@ class GitHubClient:
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.github+json"
         }
-        r = requests.post(url, json=payload, headers=headers)
+        r = requests.post(url, json=payload, headers=headers, timeout=self.timeout)
         return r.status_code, r.json()
 
     def get_repo(self, name: str) -> Tuple[int, Dict[str, Any]]:
@@ -29,5 +30,5 @@ class GitHubClient:
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.github+json"
         }
-        r = requests.get(url, headers=headers)
+        r = requests.get(url, headers=headers, timeout=self.timeout)
         return r.status_code, r.json()

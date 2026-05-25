@@ -1,5 +1,6 @@
 import os
 import shutil
+import tempfile
 from pathlib import Path
 from typing import Optional
 from core.observability.logger import dgm_logger
@@ -25,6 +26,7 @@ class RuntimeStorageManager:
                     base_path = str(project_root / "storage" / "runtime")
 
         self.base_path = Path(base_path).resolve()
+        self._fallback_path: Optional[Path] = None
         self._ensure_structure()
 
     def _ensure_structure(self):
@@ -79,9 +81,12 @@ class RuntimeStorageManager:
             if not target_dir.exists():
                 target_dir.mkdir(parents=True, exist_ok=True)
         except Exception as e:
-            # Fallback to a temporary directory in case of permission issues
-            dgm_logger.error(f"StorageManager: Cannot access domain {domain} at {target_dir}: {e}. Falling back to /tmp/dgm_fallback")
-            target_dir = Path("/tmp/dgm_fallback") / domain_path
+            # Fallback to a secure temporary directory in case of permission issues
+            if not self._fallback_path:
+                self._fallback_path = Path(tempfile.mkdtemp(prefix="dgm_fallback_"))
+                dgm_logger.warning(f"StorageManager: Falling back to secure temp directory: {self._fallback_path}")
+
+            target_dir = self._fallback_path / domain_path
             target_dir.mkdir(parents=True, exist_ok=True)
 
         if filename:
