@@ -1,15 +1,63 @@
 {
-  "last_heartbeat": "2026-05-25T12:50:58.335465",
+  "last_heartbeat": "2026-05-25T15:37:24.096820",
   "status": "SLEEPING",
+  "current_mode": "SAFE",
   "config": {
     "enabled": true,
     "execution_mode": "SAFE",
+    "modes": {
+      "SAFE": {
+        "execution_permissions": [
+          "read",
+          "test"
+        ],
+        "auto_merge": false,
+        "self_modification": false
+      },
+      "ANALYZE_ONLY": {
+        "execution_permissions": [
+          "read"
+        ],
+        "auto_merge": false,
+        "self_modification": false
+      },
+      "APPROVAL_REQUIRED": {
+        "execution_permissions": [
+          "read",
+          "write",
+          "test"
+        ],
+        "auto_merge": false,
+        "self_modification": true
+      },
+      "AUTONOMOUS_PATCHING": {
+        "execution_permissions": [
+          "read",
+          "write",
+          "test"
+        ],
+        "auto_merge": true,
+        "self_modification": true
+      },
+      "STRATEGIC_EVOLUTION": {
+        "execution_permissions": [
+          "read",
+          "write",
+          "test",
+          "delete"
+        ],
+        "auto_merge": true,
+        "self_modification": true
+      }
+    },
     "max_parallel_tasks": 2,
     "provider_sync_enabled": true,
     "auto_merge_enabled": false,
     "approval_required": true,
     "execution_budget": 10,
     "repo_scan_interval": 3600,
+    "night_cycle_start": "02:00",
+    "night_cycle_duration_hours": 4,
     "memory_consolidation_interval": 86400,
     "loop_interval": 60
   }

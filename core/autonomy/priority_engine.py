@@ -5,64 +5,73 @@ from core.observability.logger import dgm_logger
 class PriorityEngine:
     """
     Advanced scoring engine for autonomous tasks with strategic and cognitive awareness.
+    Hardened for critical runtime stabilization and strategic evolution.
     """
     def __init__(self):
+        # Base component weights
         self.weights = {
-            "severity": 0.3,
-            "strategic_value": 0.3,
-            "cognitive_impact": 0.2,
-            "architectural_impact": 0.1,
-            "confidence": 0.1
+            "severity": 0.4,
+            "strategic": 0.3,
+            "cognitive": 0.3
         }
 
     def calculate_score(self, task: AutonomousTask) -> int:
         """
         Calculates a dynamic priority score between 0 and 100.
+        Prioritizes failed executions and high-risk core system tasks.
         """
-        score = 0.0
-
-        # 1. Base Priority by Origin
+        # 1. Map Origin to Severity Score
         origin_scores = {
-            "failed_execution": 90,
+            "failed_execution": 95,
             "strategic_planner": 85,
+            "security_scan": 95,
             "repo_analysis": 60,
             "todo_scanner": 30,
-            "security_scan": 95
+            "manual": 50
         }
-        base_score = origin_scores.get(task.origin, 20)
+        severity_score = origin_scores.get(task.origin, 40)
 
-        # 2. Task Category Weighting
-        category_multipliers = {
-            "strategic": 1.4,
-            "research": 1.2,
-            "tactical": 1.0,
-            "maintenance": 1.1,
-            "self-improvement": 1.5
-        }
+        # 2. Extract Strategic and Cognitive Metrics
+        strategic_value = task.metadata.get("strategic_impact", 0.5) * 100
+        cognitive_impact = task.metadata.get("cognitive_gain", 0.5) * 100
+
+        # 3. Category Elevators (Core Systems get baseline strategic value)
         category = task.metadata.get("category", "tactical")
-        cat_multiplier = category_multipliers.get(category, 1.0)
+        core_categories = ["runtime", "infrastructure", "autonomy", "self-improvement"]
+        if category in core_categories or any(c in str(task.repo).lower() for c in core_categories):
+            strategic_value = max(strategic_value, 80)
 
-        # 3. Strategic and Cognitive Scoring (from metadata)
-        strategic_value = task.metadata.get("strategic_impact", 0.5)
-        cognitive_impact = task.metadata.get("cognitive_gain", 0.5)
+        # 4. Weighted Base Score
+        base_score = (
+            (severity_score * self.weights["severity"]) +
+            (strategic_value * self.weights["strategic"]) +
+            (cognitive_impact * self.weights["cognitive"])
+        )
 
-        # 4. Final Weighted Calculation
-        final_score = (
-            (base_score * self.weights["severity"]) +
-            (strategic_value * 100 * self.weights["strategic_value"]) +
-            (cognitive_impact * 100 * self.weights["cognitive_impact"])
-        ) * cat_multiplier
+        # Factor in initial priority (0-100 range)
+        input_priority = max(0, min(100, task.priority))
+        combined_base = (base_score * 0.85) + (input_priority * 0.15)
 
-        # 5. Risk Adjustment
-        risk_multipliers = {
-            "CRITICAL": 1.3,
-            "HIGH": 1.1,
-            "MEDIUM": 1.0,
-            "LOW": 0.9
-        }
-        risk_multiplier = risk_multipliers.get(task.risk, 1.0)
+        # 5. Critical Boost Multipliers (Additive logic for compound importance)
+        multiplier = 1.0
 
-        final_score = int(min(100, final_score * risk_multiplier * task.confidence))
+        if task.origin == "failed_execution":
+            multiplier += 0.5  # Critical stabilization boost
+
+        if task.risk == "HIGH":
+            multiplier += 0.3
+        elif task.risk == "CRITICAL":
+            multiplier += 0.6
+
+        if category == "strategic":
+            multiplier += 0.2
+        elif category == "self-improvement":
+            multiplier += 0.3
+        elif category == "research":
+            multiplier += 0.1
+
+        # 6. Final Calculation with Confidence and Cap
+        final_score = int(min(100, combined_base * multiplier * task.confidence))
 
         dgm_logger.debug(f"PriorityEngine: Task {task.task_id} ({category}) scored {final_score}")
         return final_score
