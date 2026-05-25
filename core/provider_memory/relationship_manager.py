@@ -1,5 +1,6 @@
 from typing import List, Dict, Any
 from core.provider_memory.models import MemoryNode, MemoryRelationship, MemoryGraph
+from core.provider_memory.project_manager import ProjectManager
 from core.observability.logger import dgm_logger
 
 class RelationshipManager:
