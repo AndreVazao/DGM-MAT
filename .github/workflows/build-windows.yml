@@ -8,6 +8,9 @@ name: Windows Executable Build
     branches: [main]
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: windows-latest
@@ -16,10 +19,10 @@ jobs:
         python-version: ["3.11", "3.12"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -58,7 +61,7 @@ jobs:
             -DestinationPath DGM-MAT-Windows-${{ matrix.python-version }}.zip
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: DGM-MAT-Windows-${{ matrix.python-version }}
           path: DGM-MAT-Windows-${{ matrix.python-version }}.zip
