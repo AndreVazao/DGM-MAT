@@ -1,0 +1,17 @@
+name: Repository Analysis
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Daily at midnight
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run repo analysis
+        run: PYTHONPATH=. python3 -m core.autonomy.repo_analysis_pipeline

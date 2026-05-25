@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "execution_mode": "SAFE",
+  "max_parallel_tasks": 2,
+  "provider_sync_enabled": true,
+  "auto_merge_enabled": false,
+  "approval_required": true,
+  "execution_budget": 10,
+  "repo_scan_interval": 3600,
+  "memory_consolidation_interval": 86400,
+  "loop_interval": 60
+}

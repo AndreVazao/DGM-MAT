@@ -1,0 +1,20 @@
+{
+  "task_id": "91ae4946",
+  "title": "Task from chatgpt: Build a CLI tool...",
+  "description": "You should implement: a progress bar for long tasks.",
+  "priority": 40,
+  "assigned_agent": "AutonomyAgent",
+  "status": "PENDING",
+  "origin": "provider_sync",
+  "repo": null,
+  "confidence": 1.0,
+  "risk": "LOW",
+  "execution_type": "SAFE",
+  "dependencies": [],
+  "estimated_impact": "LOW",
+  "metadata": {
+    "provider": "chatgpt",
+    "original_convo": "Build a CLI tool"
+  },
+  "created_at": "2026-05-25T12:44:50.371206"
+}
