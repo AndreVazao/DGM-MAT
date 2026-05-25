@@ -14,7 +14,7 @@ def test_storage_manager_default_path():
     """Test that default path is relative to project root and not absolute C:/."""
     manager = RuntimeStorageManager()
     assert "C:" not in str(manager.base_path)
-    assert "storage/runtime" in str(manager.base_path)
+    assert "storage" in manager.base_path.parts and "runtime" in manager.base_path.parts
 
 def test_storage_manager_env_override(temp_storage_dir):
     """Test that DGM_STORAGE_PATH override works."""

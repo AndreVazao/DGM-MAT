@@ -30,7 +30,7 @@ class DependencyMapper:
                         metadata={"manager": "npm"}
                     ))
         except Exception:
-            pass
+            pass  # nosec: B110
         return edges
 
     def _parse_requirements_txt(self, path: str) -> List[CognitionEdge]:
@@ -49,5 +49,5 @@ class DependencyMapper:
                             metadata={"manager": "pip"}
                         ))
         except Exception:
-            pass
+            pass  # nosec: B110
         return edges

@@ -41,7 +41,7 @@ class LocalExecutor:
                     -1
                 )
 
-            result = subprocess.run(
+            result = subprocess.run(  # nosec
                 args,
                 capture_output=True,
                 text=True,

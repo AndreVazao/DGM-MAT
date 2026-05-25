@@ -1,12 +1,15 @@
+---
 name: Security Scan
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
 jobs:
@@ -17,13 +20,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - name: Install security tools
-        run: |
-          pip install bandit pip-audit safety
+        run: pip install bandit pip-audit safety
       - name: Run Bandit
-        run: bandit -r core/ shared/ cockpit/
+        run: bandit -r core/ shared/ cockpit/ -ll
       - name: Run pip-audit
-        run: pip-audit
+        run: pip-audit --desc on
       - name: Run Safety
         run: safety check

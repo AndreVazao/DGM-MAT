@@ -1,21 +1,28 @@
+---
 name: CI Core
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   validate:
-    name: "Core Validation (${{ matrix.os }}, Python ${{ matrix.python-version }})"
+    name: Core Validation (${{ matrix.os }}, Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ["3.11", "3.12"]
+        os:
+          - ubuntu-latest
+          - windows-latest
+        python-version:
+          - "3.11"
+          - "3.12"
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -31,5 +38,4 @@ jobs:
       - name: Run Unit Tests
         env:
           PYTHONPATH: .
-        run: |
-          pytest tests/unit/
+        run: pytest tests/unit/

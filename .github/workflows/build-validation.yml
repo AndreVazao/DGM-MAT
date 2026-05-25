@@ -1,10 +1,13 @@
+---
 name: Build Validation
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -15,7 +18,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -23,9 +26,9 @@ jobs:
           pip install pyinstaller
       - name: Build with PyInstaller
         run: |
-          pyinstaller build/dgm_mat.spec
+          pyi-makespec --onefile --name dgm_mat core/runtime/runtime.py
+          pyinstaller dgm_mat.spec
       - name: Run Startup Smoke Test
         env:
           PYTHONPATH: .
-        run: |
-          python scripts/executable_runtime_test.py
+        run: python scripts/executable_runtime_test.py
