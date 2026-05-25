@@ -12,6 +12,7 @@ name: Workflow Validation
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   yaml-lint:
     runs-on: ubuntu-latest
@@ -23,3 +24,27 @@ jobs:
         run: pip install yamllint
       - name: Run yamllint
         run: yamllint .github/workflows/
+
+  version-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify no actions/checkout@v4
+        run: |
+          ! grep -r "actions/checkout@v4" .github/workflows/
+      - name: Verify no actions/setup-python@v5
+        run: |
+          ! grep -r "actions/setup-python@v5" .github/workflows/
+      - name: Verify no Node 20 references
+        run: |
+          ! grep -ri "Node 20" .github/workflows/
+      - name: Verify no deprecated runners
+        run: |
+          ! grep -rE "ubuntu-20.04|macos-11|macos-12|windows-2019" \
+            .github/workflows/
+      - name: Verify Node 24 enforcement
+        run: |
+          for f in .github/workflows/*.yml; do
+            grep -q "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24" "$f" || \
+              (echo "Error: $f is missing Node 24 enforcement" && false)
+          done
