@@ -1,0 +1,23 @@
+[
+  {"name": "LangGraph", "classification": "LABS", "risk": "LOW", "integration_type": "CORE", "enabled": true, "local_adapter_required": true, "url": "https://github.com/langchain-ai/langgraph"},
+  {"name": "CrewAI", "classification": "LABS", "risk": "LOW", "integration_type": "CORE", "enabled": true, "local_adapter_required": true, "url": "https://github.com/joaomdmoura/crewAI"},
+  {"name": "OpenClaw", "classification": "LABS", "risk": "MEDIUM", "integration_type": "CORE", "enabled": true, "local_adapter_required": true, "url": "https://github.com/OpenClaw/OpenClaw"},
+  {"name": "DSPy", "classification": "RESEARCH", "risk": "LOW", "integration_type": "CORE", "enabled": true, "local_adapter_required": true, "url": "https://github.com/stanfordnlp/dspy"},
+  {"name": "Tavily MCP", "classification": "PROVIDERS", "risk": "LOW", "integration_type": "CONNECTOR", "enabled": true, "local_adapter_required": false, "url": "https://github.com/tavily/tavily-mcp"},
+  {"name": "Context7", "classification": "LABS", "risk": "MEDIUM", "integration_type": "CORE", "enabled": true, "local_adapter_required": true, "url": "https://github.com/context7/context7"},
+  {"name": "fastmcp", "classification": "PROVIDERS", "risk": "LOW", "integration_type": "CONNECTOR", "enabled": true, "local_adapter_required": false, "url": "https://github.com/jlowin/fastmcp"},
+  {"name": "GPT Researcher", "classification": "RESEARCH", "risk": "LOW", "integration_type": "CORE", "enabled": true, "local_adapter_required": true, "url": "https://github.com/assafelovic/gpt-researcher"},
+  {"name": "Chroma", "classification": "CORE", "risk": "LOW", "integration_type": "DATABASE", "enabled": true, "local_adapter_required": false, "url": "https://github.com/chroma-core/chroma"},
+  {"name": "Ollama", "classification": "PROVIDERS", "risk": "LOW", "integration_type": "CORE", "enabled": true, "local_adapter_required": false, "url": "https://github.com/ollama/ollama"},
+  {"name": "Open WebUI", "classification": "UI", "risk": "LOW", "integration_type": "CORE", "enabled": true, "local_adapter_required": false, "url": "https://github.com/open-webui/open-webui"},
+  {"name": "n8n", "classification": "CONNECTORS", "risk": "MEDIUM", "integration_type": "CORE", "enabled": true, "local_adapter_required": true, "url": "https://github.com/n8n-io/n8n"},
+  {"name": "Temporal", "classification": "CORE", "risk": "MEDIUM", "integration_type": "INFRA", "enabled": true, "local_adapter_required": true, "url": "https://github.com/temporalio/temporal"},
+  {"name": "Dify", "classification": "LABS", "risk": "MEDIUM", "integration_type": "CORE", "enabled": true, "local_adapter_required": true, "url": "https://github.com/langgenius/dify"},
+  {"name": "CopilotKit", "classification": "UI", "risk": "LOW", "integration_type": "CORE", "enabled": true, "local_adapter_required": true, "url": "https://github.com/CopilotKit/CopilotKit"},
+  {"name": "pydantic-ai", "classification": "LABS", "risk": "LOW", "integration_type": "CORE", "enabled": true, "local_adapter_required": true, "url": "https://github.com/pydantic/pydantic-ai"},
+  {"name": "Task Master AI", "classification": "LABS", "risk": "MEDIUM", "integration_type": "CORE", "enabled": true, "local_adapter_required": true, "url": "https://github.com/taskmaster-ai/taskmaster"},
+  {"name": "Firecrawl", "classification": "PROVIDERS", "risk": "LOW", "integration_type": "CONNECTOR", "enabled": true, "local_adapter_required": false, "url": "https://github.com/mendableai/firecrawl"},
+  {"name": "Vanna", "classification": "RESEARCH", "risk": "LOW", "integration_type": "CORE", "enabled": true, "local_adapter_required": true, "url": "https://github.com/vanna-ai/vanna"},
+  {"name": "Instructor", "classification": "LABS", "risk": "LOW", "integration_type": "CORE", "enabled": true, "local_adapter_required": true, "url": "https://github.com/jxnl/instructor"},
+  {"name": "dlt", "classification": "CORE", "risk": "LOW", "integration_type": "CORE", "enabled": true, "local_adapter_required": true, "url": "https://github.com/dlt-hub/dlt"}
+]

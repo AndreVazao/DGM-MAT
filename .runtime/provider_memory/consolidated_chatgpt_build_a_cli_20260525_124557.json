@@ -1,0 +1,20 @@
+{
+  "group_key": "chatgpt_build_a_cli",
+  "consolidated_at": "2026-05-25T12:45:57.302014",
+  "source_files": [
+    "mem2.json",
+    "mem1.json"
+  ],
+  "merged_content": [
+    {
+      "title": "Build a CLI tool part 2",
+      "provider": "chatgpt",
+      "content": "Part 2"
+    },
+    {
+      "title": "Build a CLI tool",
+      "provider": "chatgpt",
+      "content": "Part 1"
+    }
+  ]
+}
