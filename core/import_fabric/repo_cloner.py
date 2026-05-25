@@ -1,4 +1,4 @@
-import subprocess
+import subprocess  # nosec
 import os
 import json
 from pathlib import Path

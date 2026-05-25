@@ -1,7 +1,7 @@
 ---
 name: Workflow Validation
 
-on:
+"on":
   push:
     branches:
       - main

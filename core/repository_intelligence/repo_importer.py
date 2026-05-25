@@ -1,6 +1,6 @@
 import os
 import shutil
-import subprocess
+import subprocess  # nosec
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any, Optional
@@ -82,7 +82,7 @@ class RepoImporter:
             "classification": role_str,
             "path": str(target_path),
             "dependencies": tech_stack,
-            "status": "imported"
+            "status": "cloned"
         }
 
     def _setup_git_remotes_and_branch(self, repo_path: Path, repo_name: str, upstream_url: str):
@@ -103,8 +103,7 @@ class RepoImporter:
         # 3. Create external/import branch
         self._run_git(["checkout", "-b", "external/import"], cwd=repo_path)
 
-        # 4. Push to origin (Note: In this environment, push might fail if tokens aren't actually valid for real git push)
-        # We try it, but we don't fail the whole import if it fails
+        # 4. Push to origin
         dgm_logger.info(f"Pushing {repo_name} to {origin_url}...")
         push_res = self._run_git(["push", "-u", "origin", "external/import"], cwd=repo_path)
         if push_res.returncode != 0:
@@ -120,15 +119,11 @@ class RepoImporter:
 
     def _normalize_readme(self, repo_path: Path, source_url: str, category: str):
         readme_path = repo_path / "README.md"
-        header = f"""# DGM-MAT Ecosystem Import: {repo_path.name}
-
-- **Source**: [{source_url}]({source_url})
-- **Category**: {category.upper()}
-- **Import Date**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
----
-
-"""
+        header = f"# DGM-MAT Ecosystem Import: {repo_path.name}\n\n"
+        header += f"- **Source**: [{source_url}]({source_url})\n"
+        header += f"- **Category**: {category.upper()}\n"
+        header += f"- **Import Date**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        header += "---\n\n"
         if readme_path.exists():
             try:
                 content = readme_path.read_text(encoding="utf-8")

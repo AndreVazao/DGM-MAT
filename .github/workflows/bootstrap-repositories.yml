@@ -1,7 +1,7 @@
 ---
-name: Bootstrap Ecosystem Repositories
+name: Bootstrap Ecosystem
 
-on:
+"on":
   workflow_dispatch:
   push:
     branches:
@@ -25,6 +25,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PYTHONPATH=. python -c "from core.bootstrap.bootstrap_engine import BootstrapEngine; \
-          engine = BootstrapEngine(profile='HEADLESS'); engine.prepare()"
-          echo "Ecosystem prepared for materialization."
+          python -c "
+          from core.bootstrap.bootstrap_engine import BootstrapEngine
+          BootstrapEngine(profile='HEADLESS').prepare()
+          "

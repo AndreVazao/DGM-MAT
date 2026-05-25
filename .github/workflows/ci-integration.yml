@@ -1,7 +1,7 @@
 ---
 name: CI Integration
 
-on:
+"on":
   push:
     branches:
       - main
@@ -12,7 +12,7 @@ on:
 
 jobs:
   integration:
-    name: "Integration (${{ matrix.os }}, Python ${{ matrix.python-version }})"
+    name: "Integration (${{ matrix.os }}, Py${{ matrix.python-version }})"
     runs-on: "${{ matrix.os }}"
     strategy:
       fail-fast: false
