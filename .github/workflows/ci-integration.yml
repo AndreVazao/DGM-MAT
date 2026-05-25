@@ -1,21 +1,28 @@
+---
 name: CI Integration
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   integration:
-    name: "Integration (${{ matrix.os }}, Python ${{ matrix.python-version }})"
+    name: Integration (${{ matrix.os }}, Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ["3.11", "3.12"]
+        os:
+          - ubuntu-latest
+          - windows-latest
+        python-version:
+          - "3.11"
+          - "3.12"
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -31,18 +38,6 @@ jobs:
           PYTHONPATH: .
         run: |
           pytest tests/integration/
-      - name: Run Bootstrap Tests
-        env:
-          PYTHONPATH: .
-        run: |
           pytest tests/bootstrap/
-      - name: Run Import Fabric Tests
-        env:
-          PYTHONPATH: .
-        run: |
           pytest tests/import_fabric/
-      - name: Run Execution Fabric Tests
-        env:
-          PYTHONPATH: .
-        run: |
           pytest tests/execution_fabric/

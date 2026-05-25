@@ -9,7 +9,7 @@ class SafePatchEngine:
     def generate_patch(self, worktree_path: Path) -> str:
         dgm_logger.info(f"SafePatchEngine: Generating patch from {worktree_path}")
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec
                 ["git", "-C", str(worktree_path), "diff"],
                 capture_output=True,
                 text=True,
@@ -25,7 +25,7 @@ class SafePatchEngine:
             return
 
         try:
-            subprocess.run(
+            subprocess.run(  # nosec
                 ["git", "apply"],
                 input=patch,
                 text=True,

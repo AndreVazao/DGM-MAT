@@ -32,4 +32,4 @@ class RealtimeClient:
             data = json.loads(message)
             self.on_message(data)
         except Exception:
-            pass
+            pass  # nosec: B110

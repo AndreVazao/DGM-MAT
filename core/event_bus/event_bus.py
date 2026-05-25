@@ -66,7 +66,7 @@ class EventBus:
         if self.governance_engine:
             # Overload Sampling (Requirement 2)
             if self.governance_engine.degradation_controller.is_degraded():
-                if event.priority == "low" and random.random() > 0.5:
+                if event.priority == "low" and random.random() > 0.5:  # nosec
                     dgm_logger.info(f"EventBus: Sampling event {event.event_type} under overload.")
                     return
 

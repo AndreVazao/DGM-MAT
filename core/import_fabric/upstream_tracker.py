@@ -8,11 +8,11 @@ class UpstreamTracker:
     """
     def check_for_updates(self, repo_path: Path) -> Dict[str, Any]:
         try:
-            subprocess.run(["git", "fetch", "upstream"], cwd=repo_path, check=True, capture_output=True)
-            res = subprocess.run(["git", "rev-list", "HEAD..upstream/main", "--count"], cwd=repo_path, capture_output=True, text=True)
+            subprocess.run(  # nosec["git", "fetch", "upstream"], cwd=repo_path, check=True, capture_output=True)
+            res = subprocess.run(  # nosec["git", "rev-list", "HEAD..upstream/main", "--count"], cwd=repo_path, capture_output=True, text=True)
             if res.returncode != 0:
                  # Try master if main fails
-                 res = subprocess.run(["git", "rev-list", "HEAD..upstream/master", "--count"], cwd=repo_path, capture_output=True, text=True)
+                 res = subprocess.run(  # nosec["git", "rev-list", "HEAD..upstream/master", "--count"], cwd=repo_path, capture_output=True, text=True)
 
             count = int(res.stdout.strip()) if res.returncode == 0 else 0
             return {

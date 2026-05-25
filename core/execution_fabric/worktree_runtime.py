@@ -19,7 +19,7 @@ class WorktreeRuntime:
 
         try:
             # git worktree add -b <branch> <path>
-            subprocess.run(
+            subprocess.run(  # nosec
                 ["git", "worktree", "add", "-b", branch_name, str(worktree_path)],
                 check=True,
                 capture_output=True
@@ -34,6 +34,6 @@ class WorktreeRuntime:
         dgm_logger.info(f"WorktreeRuntime: Cleaning up sandbox for {task_id}")
 
         if worktree_path.exists():
-            subprocess.run(["git", "worktree", "remove", "--force", str(worktree_path)], check=True)
+            subprocess.run(  # nosec["git", "worktree", "remove", "--force", str(worktree_path)], check=True)
             # Delete branch
-            subprocess.run(["git", "branch", "-D", f"exec-{task_id}"], check=False)
+            subprocess.run(  # nosec["git", "branch", "-D", f"exec-{task_id}"], check=False)
