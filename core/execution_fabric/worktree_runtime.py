@@ -2,6 +2,7 @@ import subprocess  # nosec
 import os
 from pathlib import Path
 from core.observability.logger import dgm_logger
+from core.execution.git_utils import run_git_command, branch_exists
 
 class WorktreeRuntime:
     """
@@ -19,14 +20,16 @@ class WorktreeRuntime:
 
         try:
             # git worktree add -b <branch> <path>
-            subprocess.run(  # nosec
-                ["git", "worktree", "add", "-b", branch_name, str(worktree_path)],
-                check=True,
-                capture_output=True
-            )
+            args = ["worktree", "add", "-b", branch_name, str(worktree_path)]
+            # If branch already exists, we might need a different approach or just use it
+            if branch_exists(branch_name):
+                 dgm_logger.warning(f"Branch {branch_name} already exists, attempting to use it for worktree.")
+                 args = ["worktree", "add", str(worktree_path), branch_name]
+
+            run_git_command(args, timeout=120)
             return worktree_path
-        except subprocess.CalledProcessError as e:
-            dgm_logger.error(f"Failed to create worktree: {e.stderr.decode()}")
+        except Exception as e:
+            dgm_logger.error(f"Failed to create worktree for {task_id}: {e}")
             raise
 
     def cleanup_sandbox(self, task_id: str):
@@ -34,6 +37,6 @@ class WorktreeRuntime:
         dgm_logger.info(f"WorktreeRuntime: Cleaning up sandbox for {task_id}")
 
         if worktree_path.exists():
-            subprocess.run(["git", "worktree", "remove", "--force", str(worktree_path)], check=True)  # nosec
+            run_git_command(["worktree", "remove", "--force", str(worktree_path)])
             # Delete branch
-            subprocess.run(["git", "branch", "-D", f"exec-{task_id}"], check=False)  # nosec
+            run_git_command(["branch", "-D", f"exec-{task_id}"])

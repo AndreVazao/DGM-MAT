@@ -1,6 +1,8 @@
 import subprocess  # nosec
 import os
 from pathlib import Path
+from core.execution.git_utils import run_git_command, branch_exists
+from core.observability.logger import dgm_logger
 
 class WorktreeManager:
     """
@@ -12,11 +14,16 @@ class WorktreeManager:
 
     def create_worktree(self, branch: str, task_id: str) -> Path:
         worktree_path = self.base_path / task_id
-        cmd = ["git", "worktree", "add", "-b", branch, str(worktree_path)]
-        subprocess.run(cmd, check=True)  # nosec
+
+        args = ["worktree", "add", "-b", branch, str(worktree_path)]
+        if branch_exists(branch):
+            dgm_logger.warning(f"Branch {branch} already exists, attempting to use it for worktree.")
+            args = ["worktree", "add", str(worktree_path), branch]
+
+        run_git_command(args)
         return worktree_path
 
     def cleanup_worktree(self, task_id: str):
         worktree_path = self.base_path / task_id
         if worktree_path.exists():
-            subprocess.run(["git", "worktree", "remove", str(worktree_path)], check=True)  # nosec
+            run_git_command(["worktree", "remove", str(worktree_path)])

@@ -11,6 +11,7 @@ from core.ecosystem.ecosystem_models import EcosystemNode, EcosystemRole, Ecosys
 from core.repository_intelligence.repo_classifier import classify_repo
 from core.repository_intelligence.tech_detector import detect_tech_stack
 from core.repository_intelligence.github_client import GitHubClient
+from core.execution.git_utils import run_git_command, branch_exists, ensure_branch
 
 class RepoImporter:
     def __init__(self, workspace_path: Path = Path("labs/external"), registry: Optional[EcosystemRegistry] = None):
@@ -20,7 +21,7 @@ class RepoImporter:
         self.github = GitHubClient()
 
     def _run_git(self, args: List[str], cwd: Path) -> subprocess.CompletedProcess:
-        return subprocess.run(["git"] + args, cwd=cwd, capture_output=True, text=True)  # nosec
+        return run_git_command(args, cwd=cwd)
 
     def import_repo(self, repo_url: str, category_override: Optional[str] = None) -> Dict[str, Any]:
         repo_name = repo_url.split("/")[-1].replace(".git", "")
@@ -32,7 +33,7 @@ class RepoImporter:
             dgm_logger.warning(f"Repository {repo_name} already exists at {target_path}. Skipping clone.")
         else:
             dgm_logger.info(f"Cloning {repo_url} (depth 1)...")
-            clone_res = subprocess.run(["git", "clone", "--depth", "1", repo_url, str(target_path)], capture_output=True, text=True)  # nosec
+            clone_res = run_git_command(["clone", "--depth", "1", repo_url, str(target_path)])
             if clone_res.returncode != 0:
                 return {"status": "error", "message": f"Clone failed: {clone_res.stderr}"}
 
@@ -101,7 +102,7 @@ class RepoImporter:
         self._run_git(["remote", "add", "origin", origin_url], cwd=repo_path)
 
         # 3. Create external/import branch
-        self._run_git(["checkout", "-b", "external/import"], cwd=repo_path)
+        ensure_branch("external/import", cwd=repo_path)
 
         # 4. Push to origin
         dgm_logger.info(f"Pushing {repo_name} to {origin_url}...")
