@@ -1,8 +1,9 @@
+---
 name: Repository Analysis
 
-on:
+"on":
   schedule:
-    - cron: '0 0 * * *' # Daily at midnight
+    - cron: '0 0 * * *'  # Daily at midnight
 
 jobs:
   analyze:
