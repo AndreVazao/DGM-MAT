@@ -7,7 +7,7 @@ def test_runtime_smoke_success():
     env = os.environ.copy()
     env["PYTHONPATH"] = "."
     result = subprocess.run(
-        [sys.executable, "scripts/runtime_smoke_test.py"],
+        ["python3", "scripts/runtime_smoke_test.py"],
         env=env,
         capture_output=True,
         text=True

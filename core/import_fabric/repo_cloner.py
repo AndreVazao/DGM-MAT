@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
 from core.observability.logger import dgm_logger
+from core.execution.git_utils import run_git_command, ensure_branch
 
 class RepoCloner:
     """
@@ -27,10 +28,10 @@ class RepoCloner:
 
         dgm_logger.info(f"Cloning {repo_url} into {target_path}...")
         try:
-            subprocess.run(["git", "clone", "--depth", "1", repo_url, str(target_path)], check=True, capture_output=True)  # nosec
+            run_git_command(["clone", "--depth", "1", repo_url, str(target_path)])
 
             # Create isolated branch
-            subprocess.run(["git", "checkout", "-b", f"external/import/{name}"], cwd=target_path, check=True, capture_output=True)  # nosec
+            ensure_branch(f"external/import/{name}", cwd=target_path)
 
             # Generate dgm-meta.json
             meta = {
@@ -44,6 +45,6 @@ class RepoCloner:
                 json.dump(meta, f, indent=2)
 
             return target_path
-        except subprocess.CalledProcessError as e:
-            dgm_logger.error(f"Failed to clone {repo_url}: {e.stderr.decode()}")
+        except Exception as e:
+            dgm_logger.error(f"Failed to clone {repo_url}: {e}")
             return None
