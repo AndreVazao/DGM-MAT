@@ -1,14 +1,16 @@
-name: Security
+name: Security Scan
 
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
   schedule:
-    - cron: '0 0 * * *' # Daily at midnight
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
-  security-scan:
+  security:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,8 +18,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install dependencies
+      - name: Install security tools
         run: |
-          pip install bandit
+          pip install bandit pip-audit safety
       - name: Run Bandit
         run: bandit -r core/ shared/ cockpit/
+      - name: Run pip-audit
+        run: pip-audit
+      - name: Run Safety
+        run: safety check

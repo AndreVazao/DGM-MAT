@@ -1,3 +1,5 @@
+[![CI Core](https://github.com/owner/repo/actions/workflows/ci-core.yml/badge.svg)](https://github.com/owner/repo/actions/workflows/ci-core.yml) [![CI Integration](https://github.com/owner/repo/actions/workflows/ci-integration.yml/badge.svg)](https://github.com/owner/repo/actions/workflows/ci-integration.yml) [![Security Scan](https://github.com/owner/repo/actions/workflows/security-scan.yml/badge.svg)](https://github.com/owner/repo/actions/workflows/security-scan.yml) [![Build Validation](https://github.com/owner/repo/actions/workflows/build-validation.yml/badge.svg)](https://github.com/owner/repo/actions/workflows/build-validation.yml) [![Runtime Validation](https://github.com/owner/repo/actions/workflows/runtime-validation.yml/badge.svg)](https://github.com/owner/repo/actions/workflows/runtime-validation.yml)
+
 # DGM-MAT Core
 
 ## STATUS
