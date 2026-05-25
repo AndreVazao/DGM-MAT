@@ -20,7 +20,7 @@ class RepoImporter:
         self.github = GitHubClient()
 
     def _run_git(self, args: List[str], cwd: Path) -> subprocess.CompletedProcess:
-        return subprocess.run(  # nosec["git"] + args, cwd=cwd, capture_output=True, text=True)
+        return subprocess.run(["git"] + args, cwd=cwd, capture_output=True, text=True)  # nosec
 
     def import_repo(self, repo_url: str, category_override: Optional[str] = None) -> Dict[str, Any]:
         repo_name = repo_url.split("/")[-1].replace(".git", "")
@@ -32,7 +32,7 @@ class RepoImporter:
             dgm_logger.warning(f"Repository {repo_name} already exists at {target_path}. Skipping clone.")
         else:
             dgm_logger.info(f"Cloning {repo_url} (depth 1)...")
-            clone_res = subprocess.run(  # nosec["git", "clone", "--depth", "1", repo_url, str(target_path)], capture_output=True, text=True)
+            clone_res = subprocess.run(["git", "clone", "--depth", "1", repo_url, str(target_path)], capture_output=True, text=True)  # nosec
             if clone_res.returncode != 0:
                 return {"status": "error", "message": f"Clone failed: {clone_res.stderr}"}
 
