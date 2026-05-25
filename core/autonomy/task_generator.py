@@ -12,14 +12,10 @@ from core.observability.logger import dgm_logger
 class TaskGenerator:
     """
     Generates autonomous tasks from various sources like repo analysis,
-    failed executions, and TODO scanning.
+    failed executions, and strategic planning.
     """
     def __init__(self):
-        # We'll use 'cognition' as the domain for tasks in StorageManager
-        # but the instructions specifically asked for .runtime/tasks/
-        # Let's ensure the directory exists.
-        self.tasks_dir = Path(".runtime/tasks")
-        self.tasks_dir.mkdir(parents=True, exist_ok=True)
+        self.tasks_dir = storage_manager.get_path("tasks")
 
     def generate_id(self) -> str:
         return str(uuid.uuid4())[:8]
@@ -32,6 +28,7 @@ class TaskGenerator:
                     repo: Optional[str] = None,
                     risk: str = "LOW",
                     execution_type: str = "SAFE",
+                    task_category: str = "tactical",
                     metadata: Dict[str, Any] = None) -> AutonomousTask:
 
         task = AutonomousTask(
@@ -47,6 +44,9 @@ class TaskGenerator:
             execution_type=execution_type,
             metadata=metadata or {}
         )
+        # Extend metadata with task category for reasoning
+        task.metadata["category"] = task_category
+
         self.persist_task(task)
         return task
 
@@ -73,13 +73,26 @@ class TaskGenerator:
             json.dump(task_data, f, indent=2)
         dgm_logger.info(f"TaskGenerator: Persisted task {task.task_id} to {file_path}")
 
+    def create_strategic_task(self, title: str, description: str, repo: str) -> AutonomousTask:
+        """Creates a high-level strategic improvement task."""
+        return self.create_task(
+            title=f"STRATEGIC: {title}",
+            description=description,
+            priority=85,
+            origin="strategic_planner",
+            repo=repo,
+            risk="MEDIUM",
+            execution_type="EXPERIMENTAL",
+            task_category="strategic",
+            metadata={"strategic_impact": 0.9}
+        )
+
     def scan_todos(self, repo_path: str) -> List[AutonomousTask]:
         """Scans a repository for TODO and FIXME comments."""
         tasks = []
         repo_name = os.path.basename(repo_path)
         dgm_logger.info(f"TaskGenerator: Scanning {repo_name} for TODOs...")
 
-        # Simple grep-like scan
         for root, _, files in os.walk(repo_path):
             if ".git" in root or "__pycache__" in root:
                 continue
@@ -97,6 +110,7 @@ class TaskGenerator:
                                         priority=30,
                                         origin="todo_scanner",
                                         repo=repo_name,
+                                        task_category="tactical",
                                         metadata={"file": path, "line": i}
                                     ))
                     except Exception as e:
@@ -113,5 +127,6 @@ class TaskGenerator:
             repo=failure_report.get("repo"),
             risk="MEDIUM",
             execution_type="SYSTEM",
+            task_category="maintenance",
             metadata=failure_report
         )
