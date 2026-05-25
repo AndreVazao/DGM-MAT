@@ -13,55 +13,57 @@ def validate_executable(exe_path):
         return False
 
     # Start the executable in headless mode
+    # Use DEVNULL for stdout/stderr to prevent blocking if buffers fill up
     try:
         process = subprocess.Popen(
             [exe_path, "--headless"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
             text=True
         )
 
-        # Give it some time to boot
-        dgm_logger.info("Waiting for executable to initialize...")
-        time.sleep(15)
+        # Give it some time to boot with retries
+        max_retries = 15
+        retry_interval = 5
+        dgm_logger.info(f"Waiting for executable to initialize (max {max_retries * retry_interval}s)...")
 
-        # Check if process is still running
-        if process.poll() is not None:
-            stdout, stderr = process.communicate()
-            dgm_logger.error(f"Executable exited prematurely with code {process.returncode}")
-            dgm_logger.error(f"STDOUT: {stdout}")
-            dgm_logger.error(f"STDERR: {stderr}")
-            return False
+        for i in range(max_retries):
+            time.sleep(retry_interval)
 
-        # Try to hit the health endpoint
-        try:
-            # Note: API_PORT defaults to 8000 in settings, but might be different.
-            # We assume default for validation.
-            response = requests.get("http://127.0.0.1:8181/health", timeout=5)
-            if response.status_code == 200 and response.json().get("status") == "healthy":
-                dgm_logger.info("Executable health check PASSED")
-            else:
-                dgm_logger.error(f"Executable health check FAILED: {response.status_code} {response.text}")
-                process.terminate()
+            # Check if process is still running
+            if process.poll() is not None:
+                dgm_logger.error(f"Executable exited prematurely with code {process.poll()}")
                 return False
-        except Exception as e:
-            dgm_logger.error(f"Failed to connect to executable API: {e}")
-            process.terminate()
-            return False
 
-        # Verify runtime directories were created
-        # (Assuming they are created in the current working directory or .runtime)
-        if os.path.exists(".runtime"):
-            dgm_logger.info("Runtime directory initialization verified.")
-        else:
-            dgm_logger.warning("Runtime directory (.runtime) not found, check storage configuration.")
+            # Try to hit the health endpoint
+            try:
+                # Increased timeout to 10s for slow CI
+                response = requests.get("http://127.0.0.1:8181/health", timeout=10)
+                if response.status_code == 200 and response.json().get("status") == "healthy":
+                    dgm_logger.info(f"Executable health check PASSED on attempt {i+1}")
 
-        dgm_logger.info("Executable validation successful. Terminating...")
+                    # Verify runtime directories were created
+                    if os.path.exists(".runtime"):
+                        dgm_logger.info("Runtime directory initialization verified.")
+                    else:
+                        dgm_logger.warning("Runtime directory (.runtime) not found.")
+
+                    dgm_logger.info("Executable validation successful. Terminating...")
+                    process.terminate()
+                    return True
+                else:
+                    dgm_logger.warning(f"Attempt {i+1}: Health check returned {response.status_code}")
+            except requests.exceptions.RequestException as e:
+                dgm_logger.warning(f"Attempt {i+1}: Failed to connect to executable API: {e}")
+
+        dgm_logger.error("Max retries reached. Executable failed to become healthy.")
         process.terminate()
-        return True
+        return False
 
     except Exception as e:
         dgm_logger.error(f"Validation failed with error: {e}")
+        if 'process' in locals() and process.poll() is None:
+            process.terminate()
         return False
 
 if __name__ == "__main__":
