@@ -1,10 +1,11 @@
+---
 name: Windows Executable Build
 
-on:
+"on":
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -15,48 +16,49 @@ jobs:
         python-version: ["3.11", "3.12"]
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pyinstaller
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
 
-    - name: Build Executable
-      run: |
-        pyinstaller build/dgm_mat.spec
+      - name: Build Executable
+        run: |
+          pyinstaller build/dgm_mat.spec
 
-    - name: Validate Executable
-      env:
-        PYTHONPATH: .
-      run: |
-        python scripts/validate_executable.py dist/DGM-MAT.exe
+      - name: Validate Executable
+        env:
+          PYTHONPATH: .
+        run: |
+          python scripts/validate_executable.py dist/DGM-MAT.exe
 
-    - name: Prepare Artifacts
-      run: |
-        mkdir publish
-        mkdir publish\scripts
-        mkdir publish\scripts\autostart
-        mkdir publish\config
-        copy dist\DGM-MAT.exe publish\
-        copy health.json publish\
-        copy ecosystem.json publish\
-        copy README.md publish\
-        copy architecture.md publish\
-        copy config\*.json publish\config\
-        copy scripts\autostart\*.py publish\scripts\autostart\
-        copy scripts\runtime_smoke_test.py publish\scripts\
-        powershell Compress-Archive -Path publish\* -DestinationPath DGM-MAT-Windows-${{ matrix.python-version }}.zip
+      - name: Prepare Artifacts
+        run: |
+          mkdir publish
+          mkdir publish\scripts
+          mkdir publish\scripts\autostart
+          mkdir publish\config
+          copy dist\DGM-MAT.exe publish\
+          copy health.json publish\
+          copy ecosystem.json publish\
+          copy README.md publish\
+          copy architecture.md publish\
+          copy config\*.json publish\config\
+          copy scripts\autostart\*.py publish\scripts\autostart\
+          copy scripts\runtime_smoke_test.py publish\scripts\
+          powershell Compress-Archive -Path publish\* `
+            -DestinationPath DGM-MAT-Windows-${{ matrix.python-version }}.zip
 
-    - name: Upload Build Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: DGM-MAT-Windows-${{ matrix.python-version }}
-        path: DGM-MAT-Windows-${{ matrix.python-version }}.zip
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: DGM-MAT-Windows-${{ matrix.python-version }}
+          path: DGM-MAT-Windows-${{ matrix.python-version }}.zip
