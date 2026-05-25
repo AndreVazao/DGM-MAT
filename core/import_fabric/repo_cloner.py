@@ -27,10 +27,10 @@ class RepoCloner:
 
         dgm_logger.info(f"Cloning {repo_url} into {target_path}...")
         try:
-            subprocess.run(  # nosec["git", "clone", "--depth", "1", repo_url, str(target_path)], check=True, capture_output=True)
+            subprocess.run(["git", "clone", "--depth", "1", repo_url, str(target_path)], check=True, capture_output=True)  # nosec
 
             # Create isolated branch
-            subprocess.run(  # nosec["git", "checkout", "-b", f"external/import/{name}"], cwd=target_path, check=True, capture_output=True)
+            subprocess.run(["git", "checkout", "-b", f"external/import/{name}"], cwd=target_path, check=True, capture_output=True)  # nosec
 
             # Generate dgm-meta.json
             meta = {

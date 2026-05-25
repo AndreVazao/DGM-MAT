@@ -1,10 +1,13 @@
+---
 name: Bootstrap Ecosystem Repositories
 
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     paths:
-      - 'ecosystem.json'
+      - "ecosystem.json"
 
 jobs:
   materialize:
@@ -17,13 +20,11 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
       - name: Materialize Ecosystem
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set PYTHONPATH=.
-          python -c "from core.bootstrap.bootstrap_engine import BootstrapEngine; engine = BootstrapEngine(profile='HEADLESS'); engine.prepare()"
-          # In a real scenario, this would trigger the actual materialization engine
+          PYTHONPATH=. python -c "from core.bootstrap.bootstrap_engine import BootstrapEngine; \
+          engine = BootstrapEngine(profile='HEADLESS'); engine.prepare()"
           echo "Ecosystem prepared for materialization."
