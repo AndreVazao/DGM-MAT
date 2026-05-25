@@ -1,10 +1,11 @@
+---
 name: Autonomy Smoke Test
 
-on:
+"on":
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   smoke-test:
