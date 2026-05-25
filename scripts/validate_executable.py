@@ -37,7 +37,7 @@ def validate_executable(exe_path):
         try:
             # Note: API_PORT defaults to 8000 in settings, but might be different.
             # We assume default for validation.
-            response = requests.get("http://127.0.0.1:8000/health", timeout=5)
+            response = requests.get("http://127.0.0.1:8181/health", timeout=5)
             if response.status_code == 200 and response.json().get("status") == "healthy":
                 dgm_logger.info("Executable health check PASSED")
             else:
