@@ -1,65 +1,45 @@
-import os
-import json
-from typing import Dict, Any, Optional
-from datetime import datetime
-from pathlib import Path
-
+import subprocess
+from typing import List, Optional
 from core.observability.logger import dgm_logger
-from core.execution_fabric.worktree_runtime import WorktreeRuntime
-from core.execution_fabric.branch_orchestrator import BranchOrchestrator
-from core.autonomy.models import AutonomousTask
 
 class SafeAutonomousExecutor:
     """
-    Executes tasks in isolated worktrees using safe patches.
+    Hardened executor with safety guards.
+    Prevents arbitrary shell command execution and enforces validation.
     """
     def __init__(self, mode: str = "SAFE"):
         self.mode = mode
-        self.worktree_runtime = WorktreeRuntime()
-        self.branch_orchestrator = BranchOrchestrator()
-        self.journal_dir = Path(".runtime/execution_journals")
-        self.journal_dir.mkdir(parents=True, exist_ok=True)
+        self.allowed_commands = ["git", "pytest", "python", "pip"]
 
-    def execute(self, task: AutonomousTask) -> Dict[str, Any]:
-        """
-        Executes a task following safety rules.
-        """
-        dgm_logger.info(f"SafeAutonomousExecutor: Executing task {task.task_id} in {self.mode} mode.")
+    def execute_command(self, cmd: List[str], cwd: Optional[str] = None, timeout: int = 300):
+        if not cmd: return
 
-        journal_entry = {
-            "task_id": task.task_id,
-            "start_time": datetime.now().isoformat(),
-            "mode": self.mode,
-            "status": "STARTED"
-        }
+        # Guard 1: Prohibit string commands (forces list for subprocess)
+        if isinstance(cmd, str):
+            raise SecurityError("Arbitrary shell strings are prohibited")
 
-        if self.mode == "DRY_RUN":
-            dgm_logger.info(f"SafeAutonomousExecutor: DRY_RUN - Would execute: {task.title}")
-            journal_entry["status"] = "DRY_RUN_COMPLETE"
-            self._save_journal(journal_entry)
-            return journal_entry
+        # Guard 2: Command Whitelist
+        base_cmd = cmd[0]
+        if base_cmd not in self.allowed_commands:
+            raise SecurityError(f"Command '{base_cmd}' is not in the allowed safety whitelist")
 
+        # Guard 3: Mode enforcement
+        if self.mode == "SAFE" and "rm" in cmd:
+             raise SecurityError("Deletions are prohibited in SAFE mode")
+
+        dgm_logger.info(f"SafeExecutor: Executing {cmd}")
         try:
-            # 1. Create isolated branch/worktree
-            branch_name = f"autonomy/{task.task_id}"
-            # self.branch_orchestrator.create_branch(branch_name) # Assuming it exists
+            return subprocess.run(
+                cmd,
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                shell=False # HARD REQUIREMENT: No shell=True
+            )
+        except subprocess.TimeoutExpired:
+            dgm_logger.error(f"SafeExecutor: Timeout exceeded for {cmd}")
+            raise
 
-            # 2. Perform work (Placeholder for actual tool application)
-            # result = self.worktree_runtime.execute_task(task)
-
-            # Simulated Success
-            journal_entry["status"] = "SUCCESS"
-            journal_entry["end_time"] = datetime.now().isoformat()
-
-        except Exception as e:
-            dgm_logger.error(f"SafeAutonomousExecutor: Execution failed: {e}")
-            journal_entry["status"] = "FAILED"
-            journal_entry["error"] = str(e)
-
-        self._save_journal(journal_entry)
-        return journal_entry
-
-    def _save_journal(self, entry: Dict[str, Any]):
-        filename = f"journal_{entry['task_id']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(self.journal_dir / filename, "w") as f:
-            json.dump(entry, f, indent=2)
+class SecurityError(Exception):
+    pass
