@@ -1,65 +1,22 @@
-from core.repository_intelligence.scanner import (
-    RepositoryScanner,
-)
-
-from core.memory.project_families import (
-    ProjectFamilies,
-)
-
-from core.memory.relationship_engine import (
-    RelationshipEngine,
-)
-
-from core.memory.context_snapshot import (
-    ContextSnapshot,
-)
-
+import time
+from typing import List, Dict, Any, Optional
+from core.observability.logger import dgm_logger
+from core.storage.storage_manager import storage_manager
 
 class MemoryEngine:
+    def __init__(self):
+        self.domains = ["episodic", "semantic", "execution", "architecture"]
 
-    def run(self):
+    def store_memory(self, domain: str, content: Dict[str, Any], importance: float = 0.5):
+        """Stores a memory entry in a specific domain with an importance score."""
+        dgm_logger.debug(f"MemoryEngine: Storing {domain} memory (importance: {importance})")
+        timestamp = int(time.time() * 1000) # Use ms to avoid collisions in stress tests
+        filename = f"{domain}_{timestamp}.json"
+        storage_manager.save_data("memory", filename, str(content))
 
-        scanner = RepositoryScanner()
+    def search_memory(self, query: str, domain: Optional[str] = None) -> List[Dict[str, Any]]:
+        dgm_logger.info(f"MemoryEngine: Searching memory for: {query}")
+        return []
 
-        repos = scanner.scan()
-
-        families = (
-            ProjectFamilies()
-            .build(repos)
-        )
-
-        relationships = (
-            RelationshipEngine()
-            .build_relationships(repos)
-        )
-
-        snapshot_content = []
-
-        snapshot_content.append(
-            "PROJECT FAMILIES"
-        )
-
-        for root, items in families.items():
-
-            snapshot_content.append(
-                f"{root}: {items}"
-            )
-
-        snapshot_content.append(
-            "\nRELATIONSHIPS"
-        )
-
-        for edge in relationships.edges():
-
-            snapshot_content.append(
-                f"{edge[0]} <-> {edge[1]}"
-            )
-
-        ContextSnapshot().create(
-            "\n".join(snapshot_content),
-            tags=[
-                "ecosystem",
-                "relationships",
-                "repos",
-            ],
-        )
+    def consolidate(self):
+        dgm_logger.info("MemoryEngine: Running memory consolidation.")

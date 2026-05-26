@@ -1,9 +1,11 @@
-import subprocess
-import sys
+import asyncio
+from core.autonomy.active_runtime.cognition_loop import CognitionLoop
+from core.observability.logger import dgm_logger
 
-def start():
-    print("Starting DGM-MAT Runtime Daemon...")
-    subprocess.Popen([sys.executable, "core/runtime_daemon/daemon.py"])
+async def start():
+    dgm_logger.info("Phase 37: Starting Autonomous Daemon...")
+    loop = CognitionLoop()
+    await loop.start()
 
 if __name__ == "__main__":
-    start()
+    asyncio.run(start())

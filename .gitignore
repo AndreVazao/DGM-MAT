@@ -142,3 +142,9 @@ artifacts/
 # Note: These are mostly to prevent accidental tracking of folders named like roots
 [a-zA-Z]:/*
 /*:/*
+.runtime/
+__pycache__/
+worktrees/
+*.log
+.pytest_cache/
+storage/runtime/
