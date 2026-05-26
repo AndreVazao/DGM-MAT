@@ -1,14 +1,14 @@
 import pytest
-from core.runtime.master_runtime import MasterRuntime
+from core.runtime.runtime import Runtime
 
 def test_master_runtime_initialization():
-    runtime = MasterRuntime()
-    assert runtime.registry is not None
-    assert runtime.health_monitor is not None
+    runtime = Runtime()
+    assert runtime.state is not None
+    assert runtime.kernel is not None
 
 def test_master_runtime_boot():
-    runtime = MasterRuntime()
+    runtime = Runtime()
     # Mocking start for safety
-    # runtime.start()
-    # assert runtime._running is True
-    # runtime.stop()
+    # runtime.bootstrap()
+    # assert runtime.state.runtime_status == "running"
+    # runtime.shutdown()
