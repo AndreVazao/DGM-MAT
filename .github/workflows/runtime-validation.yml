@@ -12,6 +12,7 @@ name: Runtime Validation
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   runtime:
     runs-on: ubuntu-latest
@@ -24,12 +25,26 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
       - name: Startup Bootstrap Validation
         env:
           PYTHONPATH: .
         run: python scripts/runtime_smoke_test.py
-      - name: Autonomous Runtime Validation
+      - name: Master Runtime Validation
         env:
           PYTHONPATH: .
-        run: pytest tests/runtime/
+        run: pytest tests/runtime/ -v
+      - name: Runtime Daemon Validation
+        env:
+          PYTHONPATH: .
+        run: pytest tests/runtime_daemon/ -v
+      - name: Operational Validation
+        env:
+          PYTHONPATH: .
+        run: pytest tests/operational/ -v
+      - name: Platform Health Assertions
+        run: |
+          ls -d .runtime || \
+            (echo "Error: .runtime directory not found" && false)

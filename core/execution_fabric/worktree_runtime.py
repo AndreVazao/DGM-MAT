@@ -1,6 +1,7 @@
 import subprocess
+import shlex
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Union
 from core.observability.logger import dgm_logger
 
 class WorktreeRuntime:
@@ -28,7 +29,7 @@ class WorktreeRuntime:
         except Exception as e:
             dgm_logger.error(f"WorktreeRuntime: Failed to remove worktree: {e}")
 
-    def execute_in_worktree(self, branch_name: str, command: str):
+    def execute_in_worktree(self, branch_name: str, command: Union[str, List[str]]):
         """Executes a command within an isolated worktree."""
         target_path = self.base_path / branch_name
         if not target_path.exists():
@@ -36,7 +37,20 @@ class WorktreeRuntime:
 
         try:
             dgm_logger.info(f"WorktreeRuntime: Executing '{command}' in {branch_name}")
-            result = subprocess.run(command, shell=True, cwd=target_path, capture_output=True, text=True)
+
+            # HARD REQUIREMENT PHASE 39: No shell=True
+            if isinstance(command, str):
+                cmd_list = shlex.split(command)
+            else:
+                cmd_list = command
+
+            result = subprocess.run(
+                cmd_list,
+                shell=False,
+                cwd=target_path,
+                capture_output=True,
+                text=True
+            )
             return result
         except Exception as e:
             dgm_logger.error(f"WorktreeRuntime: Execution failed: {e}")

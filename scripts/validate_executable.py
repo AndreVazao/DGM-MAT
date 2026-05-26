@@ -13,17 +13,16 @@ def validate_executable(exe_path):
         return False
 
     # Start the executable in headless mode
-    # Use DEVNULL for stdout/stderr to prevent blocking if buffers fill up
     try:
         process = subprocess.Popen(
             [exe_path, "--headless"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True
         )
 
         # Give it some time to boot with retries
-        max_retries = 15
+        max_retries = 20
         retry_interval = 5
         dgm_logger.info(f"Waiting for executable to initialize (max {max_retries * retry_interval}s)...")
 
@@ -32,25 +31,41 @@ def validate_executable(exe_path):
 
             # Check if process is still running
             if process.poll() is not None:
+                stdout, stderr = process.communicate()
                 dgm_logger.error(f"Executable exited prematurely with code {process.poll()}")
+                dgm_logger.error(f"STDOUT: {stdout}")
+                dgm_logger.error(f"STDERR: {stderr}")
                 return False
 
             # Try to hit the health endpoint
             try:
-                # Increased timeout to 10s for slow CI
                 response = requests.get("http://127.0.0.1:8181/health", timeout=10)
-                if response.status_code == 200 and response.json().get("status") == "healthy":
-                    dgm_logger.info(f"Executable health check PASSED on attempt {i+1}")
+                if response.status_code == 200:
+                    health_data = response.json()
+                    if health_data.get("status") == "healthy":
+                        dgm_logger.info(f"Executable health check PASSED on attempt {i+1}")
 
-                    # Verify runtime directories were created
-                    if os.path.exists(".runtime"):
-                        dgm_logger.info("Runtime directory initialization verified.")
+                        # Validate deeper state
+                        # Check for critical services in health report
+                        services = health_data.get("services", {})
+                        critical_services = ["daemon", "event_bus", "storage"]
+                        for service in critical_services:
+                            if services.get(service, {}).get("status") != "active":
+                                dgm_logger.error(f"Critical service '{service}' not active: {services.get(service)}")
+                                return False
+
+                        # Verify runtime directories were created
+                        if os.path.exists(".runtime"):
+                            dgm_logger.info("Runtime directory initialization verified.")
+                        else:
+                            dgm_logger.error("Runtime directory (.runtime) NOT found.")
+                            return False
+
+                        dgm_logger.info("Executable deep validation successful. Terminating...")
+                        process.terminate()
+                        return True
                     else:
-                        dgm_logger.warning("Runtime directory (.runtime) not found.")
-
-                    dgm_logger.info("Executable validation successful. Terminating...")
-                    process.terminate()
-                    return True
+                        dgm_logger.warning(f"Attempt {i+1}: Health status: {health_data.get('status')}")
                 else:
                     dgm_logger.warning(f"Attempt {i+1}: Health check returned {response.status_code}")
             except requests.exceptions.RequestException as e:

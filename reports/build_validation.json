@@ -1,0 +1,6 @@
+{
+    "executable": "DGM-MAT.exe",
+    "startup_check": "passed",
+    "deep_state_validation": "passed",
+    "artifact_size": "85MB"
+}

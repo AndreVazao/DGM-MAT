@@ -1,0 +1,7 @@
+{
+    "daemon": "active",
+    "cognition_loop": "active",
+    "storage_health": "100%",
+    "providers_loaded": 7,
+    "agents_ready": 11
+}

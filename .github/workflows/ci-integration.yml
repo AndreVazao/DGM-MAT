@@ -12,6 +12,7 @@ name: CI Integration
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   integration:
     name: "Integration (${{ matrix.os }}, Py${{ matrix.python-version }})"
@@ -37,11 +38,17 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Run Integration Tests
+      - name: Run Full Integration Stack
         env:
           PYTHONPATH: .
         run: |
-          pytest tests/integration/
-          pytest tests/bootstrap/
-          pytest tests/import_fabric/
-          pytest tests/execution_fabric/
+          pytest tests/integration/ -v
+          pytest tests/bootstrap/ -v
+          pytest tests/import_fabric/ -v
+          pytest tests/execution_fabric/ -v
+          pytest tests/provider_sync/ -v
+          pytest tests/knowledge_graph/ -v
+      - name: Verify Discovered Tests
+        run: |
+          echo "Integration Test Discovery Check"
+          pytest --collect-only tests/integration/

@@ -51,3 +51,7 @@ jobs:
             grep -q "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24" "$f" || \
               (echo "Error: $f is missing Node 24 enforcement" && false)
           done
+      - name: Verify no continue-on-error abuse
+        run: |
+          ! grep -ri --exclude=workflow-validation.yml \
+            "continue-on-error: true" .github/workflows/

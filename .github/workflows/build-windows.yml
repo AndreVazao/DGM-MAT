@@ -37,7 +37,7 @@ jobs:
         run: |
           pyinstaller build/dgm_mat.spec
 
-      - name: Validate Executable
+      - name: Validate Executable (Deep Check)
         env:
           PYTHONPATH: .
         run: |
@@ -59,6 +59,14 @@ jobs:
           copy scripts\runtime_smoke_test.py publish\scripts\
           powershell Compress-Archive -Path publish\* `
             -DestinationPath DGM-MAT-Windows-${{ matrix.python-version }}.zip
+
+      - name: Final Build Assertions
+        run: |
+          if (Test-Path dist\DGM-MAT.exe) { \
+            echo "Executable verified." \
+          } else { \
+            throw "Executable missing" \
+          }
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v6
