@@ -10,7 +10,7 @@ class TaskGenerator:
         return hashlib.sha256(content.encode()).hexdigest()[:16]
 
     def create_task(self, title: str, description: str, priority: int, origin: str, repo: Optional[str] = None) -> AutonomousTask:
-        """Helper to create task objects."""
+        """Helper for tests and runtime to create task objects."""
         task_id = self.generate_task_id(title, repo)
         return AutonomousTask(
             task_id=task_id,

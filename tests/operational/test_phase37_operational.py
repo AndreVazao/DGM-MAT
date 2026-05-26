@@ -11,4 +11,5 @@ def test_node_identity():
 def test_telemetry_collection():
     collector = MetricsCollector()
     collector.collect("test_metric", 100)
+    # verify directory exists at least
     assert collector.telemetry_dir.exists()
