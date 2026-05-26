@@ -14,6 +14,10 @@ class ExecutionQuota(BaseModel):
     current_token_count: int = 0
     current_modification_count: int = 0
     last_reset: datetime = Field(default_factory=datetime.now)
+    # Phase 37 Extensions
+    max_simultaneous_tasks: int = 10
+    degraded_mode_threshold: float = 0.8 # 80% failure rate triggers degraded mode
+    cooldown_seconds: int = 60
 
 class ExecutionGovernor:
     """
@@ -26,6 +30,7 @@ class ExecutionGovernor:
         self.quota_filename = "execution_quotas.json"
         self.quota = self._load_quota()
         self.dangerous_patterns = ["rm -rf /", "mkfs", "> /dev/sda", "chmod 777 /"]
+        self.active_tasks_count = 0
 
     def _load_quota(self) -> ExecutionQuota:
         content = self.storage.read_data(self.governance_domain, self.quota_filename)
@@ -59,6 +64,10 @@ class ExecutionGovernor:
             dgm_logger.warning("ExecutionGovernor: Autonomous operation limit reached.")
             return False
 
+        if self.active_tasks_count >= self.quota.max_simultaneous_tasks:
+            dgm_logger.warning("ExecutionGovernor: Max simultaneous tasks reached.")
+            return False
+
         # 2. Safety Checks
         if any(p in description.lower() for p in self.dangerous_patterns):
             dgm_logger.error(f"ExecutionGovernor: Dangerous pattern detected in operation: {description}")
@@ -74,6 +83,12 @@ class ExecutionGovernor:
         self._save_quota()
         dgm_logger.info(f"ExecutionGovernor: Authorized execution for {scope}")
         return True
+
+    def report_task_start(self):
+        self.active_tasks_count += 1
+
+    def report_task_end(self):
+        self.active_tasks_count = max(0, self.active_tasks_count - 1)
 
     def report_token_usage(self, count: int):
         self.quota.current_token_count += count

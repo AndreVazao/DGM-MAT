@@ -130,3 +130,30 @@ class TaskGenerator:
             task_category="maintenance",
             metadata=failure_report
         )
+
+    def generate_from_telemetry(self, anomaly: Dict[str, Any]) -> AutonomousTask:
+        """Generates a task based on telemetry anomalies."""
+        return self.create_task(
+            title=f"Resolve Anomaly: {anomaly.get('type', 'Unknown')}",
+            description=f"System detected an anomaly: {anomaly.get('description')}",
+            priority=90,
+            origin="telemetry_monitor",
+            risk="HIGH",
+            execution_type="SYSTEM",
+            task_category="infrastructure",
+            metadata=anomaly
+        )
+
+    def generate_from_debt(self, debt_report: Dict[str, Any]) -> AutonomousTask:
+        """Generates a task to address technical debt."""
+        return self.create_task(
+            title=f"Reduce Technical Debt: {debt_report.get('target')}",
+            description=debt_report.get("details"),
+            priority=50,
+            origin="debt_predictor",
+            repo=debt_report.get("repo"),
+            risk="LOW",
+            execution_type="SAFE",
+            task_category="refactoring",
+            metadata=debt_report
+        )
