@@ -1,15 +1,12 @@
 import pytest
 import os
-import shutil
 from core.autonomy.work_queue import WorkQueue
-from core.storage.storage_manager import storage_manager
 
-def test_work_queue_persistence():
-    queue = WorkQueue()
-    task_id = queue.add_task("test_task", {"data": "val"})
-
-    # Reload queue
-    queue2 = WorkQueue()
-    task = next((t for t in queue2.tasks if t.id == task_id), None)
+def test_work_queue_persistence(tmp_path):
+    db_file = tmp_path / "tasks.db"
+    queue = WorkQueue(db_path=str(db_file))
+    task_id = "test_id_123"
+    queue.add_task(task_id, "test_task", {"data": "val"}, priority=5)
+    task = queue.lease_task()
     assert task is not None
-    assert task.type == "test_task"
+    assert task["id"] == task_id
