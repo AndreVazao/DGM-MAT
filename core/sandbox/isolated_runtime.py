@@ -2,6 +2,7 @@ import subprocess
 import os
 import signal
 import sys
+import tempfile
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 from core.observability.logger import dgm_logger
@@ -19,7 +20,14 @@ class IsolatedRuntime:
         dgm_logger.info(f"IsolatedRuntime: Creating secure sandbox for task {task_id}")
         # Use task_id as branch name for worktree isolation
         worktree_path = self.worktree_runtime.create_worktree(f"sandbox_{task_id}")
-        return str(worktree_path) if worktree_path else f"/tmp/sandbox_{task_id}"
+        if worktree_path:
+            return str(worktree_path)
+
+        # Fallback to system temp directory (Phase 39 Bandit Fix)
+        temp_base = tempfile.gettempdir()
+        fallback_path = os.path.join(temp_base, f"dgm_sandbox_{task_id}")
+        os.makedirs(fallback_path, exist_ok=True)
+        return fallback_path
 
     def run_safe(self, sandbox_path: str, command: List[str], task_id: str) -> Dict[str, Any]:
         """
@@ -71,7 +79,7 @@ class IsolatedRuntime:
             if sys.platform != "win32":
                 try:
                     os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-                except ProcessLookupError:
+                except (ProcessLookupError, PermissionError):
                     pass
             else:
                 process.terminate()
