@@ -1,0 +1,8 @@
+{
+  "timestamp": 1779792672,
+  "domain": "telemetry",
+  "event_type": "metric",
+  "data": {
+    "test_metric": 100
+  }
+}

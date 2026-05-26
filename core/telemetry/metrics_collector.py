@@ -1,41 +1,27 @@
-import time
 import json
-from typing import Dict, Any, List
+import time
 from pathlib import Path
-from core.storage.storage_manager import storage_manager
+from typing import Dict, Any
 from core.observability.logger import dgm_logger
+from core.storage.storage_manager import storage_manager
 
 class MetricsCollector:
     def __init__(self):
-        self.storage_path = storage_manager.get_path("telemetry")
-        self.metrics_file = self.storage_path / "runtime_metrics.json"
-        self.buffer: List[Dict[str, Any]] = []
+        self.telemetry_dir = storage_manager.get_path("temp") / "telemetry"
+        self.telemetry_dir.mkdir(parents=True, exist_ok=True)
 
-    def collect(self, metric_type: str, value: Any, metadata: Dict[str, Any] = None):
-        metric = {
-            "timestamp": time.time(),
-            "type": metric_type,
-            "value": value,
-            "metadata": metadata or {}
-        }
-        self.buffer.append(metric)
-        if len(self.buffer) >= 10:
-            self.flush()
+    def record_event(self, domain: str, event_type: str, data: Dict[str, Any]):
+        timestamp = int(time.time())
+        payload = {"timestamp": timestamp, "domain": domain, "event_type": event_type, "data": data}
+        try:
+            target_path = Path(".runtime") / domain / f"{domain}_{event_type}_{timestamp}.json"
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(target_path, "w") as f:
+                json.dump(payload, f, indent=2)
+        except Exception: pass
 
-    def flush(self):
-        if not self.buffer:
-            return
-        dgm_logger.debug(f"MetricsCollector: Flushing {len(self.buffer)} metrics to disk.")
-        # Simplified: append to file (in reality use a database or specialized storage)
-        existing = []
-        if self.metrics_file.exists():
-            try:
-                with open(self.metrics_file, "r") as f:
-                    existing = json.load(f)
-            except:
-                pass
+    def collect(self, metric_name: str, value: Any):
+        """Legacy compatibility for collect() method."""
+        self.record_event("telemetry", "metric", {metric_name: value})
 
-        existing.extend(self.buffer)
-        with open(self.metrics_file, "w") as f:
-            json.dump(existing[-1000:], f, indent=2) # Keep last 1000
-        self.buffer = []
+metrics_collector = MetricsCollector()

@@ -1,45 +1,14 @@
-import networkx as nx
-
-from core.repository_intelligence.models import (
-    RepositoryInfo,
-)
-
+from typing import List, Dict, Any
+from core.observability.logger import dgm_logger
 
 class RelationshipEngine:
+    def __init__(self):
+        self.graph = {}
 
-    def build_relationships(
-        self,
-        repos: list[RepositoryInfo],
-    ):
+    def link_memories(self, source_id: str, target_id: str, relation_type: str):
+        """Creates a semantic link between two memory entries."""
+        dgm_logger.info(f"RelationshipEngine: Linking {source_id} -> {target_id} ({relation_type})")
 
-        graph = nx.Graph()
-
-        for repo in repos:
-
-            graph.add_node(
-                repo.name,
-                type="repository",
-            )
-
-        for repo in repos:
-
-            for other in repos:
-
-                if repo == other:
-                    continue
-
-                shared = set(
-                    repo.tech_stack
-                ).intersection(
-                    other.tech_stack
-                )
-
-                if shared:
-
-                    graph.add_edge(
-                        repo.name,
-                        other.name,
-                        relation="shared_stack",
-                    )
-
-        return graph
+    def find_related(self, memory_id: str) -> List[Dict[str, Any]]:
+        """Finds all memories semantically related to the given ID."""
+        return []

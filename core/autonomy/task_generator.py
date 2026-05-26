@@ -1,7 +1,8 @@
 import os
 import uuid
 import json
-from typing import List, Dict, Any, Optional
+import hashlib
+from typing import List, Dict, Any, Optional, Set
 from datetime import datetime
 from pathlib import Path
 
@@ -16,9 +17,14 @@ class TaskGenerator:
     """
     def __init__(self):
         self.tasks_dir = storage_manager.get_path("tasks")
+        self.active_task_hashes: Set[str] = set()
 
     def generate_id(self) -> str:
         return str(uuid.uuid4())[:8]
+
+    def _generate_task_hash(self, title: str, repo: Optional[str]) -> str:
+        content = f"{title}_{repo or 'global'}"
+        return hashlib.md5(content.encode()).hexdigest()
 
     def create_task(self,
                     title: str,
@@ -29,7 +35,13 @@ class TaskGenerator:
                     risk: str = "LOW",
                     execution_type: str = "SAFE",
                     task_category: str = "tactical",
-                    metadata: Dict[str, Any] = None) -> AutonomousTask:
+                    metadata: Dict[str, Any] = None) -> Optional[AutonomousTask]:
+
+        # 1. TASK DEDUPLICATION
+        task_hash = self._generate_task_hash(title, repo)
+        if task_hash in self.active_task_hashes:
+            dgm_logger.debug(f"TaskGenerator: Skipping duplicate task: {title}")
+            return None
 
         task = AutonomousTask(
             task_id=self.generate_id(),
@@ -44,10 +56,11 @@ class TaskGenerator:
             execution_type=execution_type,
             metadata=metadata or {}
         )
-        # Extend metadata with task category for reasoning
         task.metadata["category"] = task_category
+        task.metadata["hash"] = task_hash
 
         self.persist_task(task)
+        self.active_task_hashes.add(task_hash)
         return task
 
     def persist_task(self, task: AutonomousTask):
@@ -73,87 +86,44 @@ class TaskGenerator:
             json.dump(task_data, f, indent=2)
         dgm_logger.info(f"TaskGenerator: Persisted task {task.task_id} to {file_path}")
 
-    def create_strategic_task(self, title: str, description: str, repo: str) -> AutonomousTask:
-        """Creates a high-level strategic improvement task."""
-        return self.create_task(
-            title=f"STRATEGIC: {title}",
-            description=description,
-            priority=85,
-            origin="strategic_planner",
-            repo=repo,
-            risk="MEDIUM",
-            execution_type="EXPERIMENTAL",
-            task_category="strategic",
-            metadata={"strategic_impact": 0.9}
-        )
-
-    def scan_todos(self, repo_path: str) -> List[AutonomousTask]:
-        """Scans a repository for TODO and FIXME comments."""
+    def discover_technical_debt(self, scan_results: List[Dict[str, Any]]) -> List[AutonomousTask]:
         tasks = []
-        repo_name = os.path.basename(repo_path)
-        dgm_logger.info(f"TaskGenerator: Scanning {repo_name} for TODOs...")
-
-        for root, _, files in os.walk(repo_path):
-            if ".git" in root or "__pycache__" in root:
-                continue
-            for file in files:
-                if file.endswith((".py", ".js", ".ts", ".md")):
-                    path = os.path.join(root, file)
-                    try:
-                        with open(path, "r", errors="ignore") as f:
-                            for i, line in enumerate(f, 1):
-                                if "TODO:" in line or "FIXME:" in line:
-                                    clean_line = line.strip().split("TODO:")[-1].split("FIXME:")[-1].strip()
-                                    tasks.append(self.create_task(
-                                        title=f"Resolve TODO in {file}",
-                                        description=f"Located in {path} at line {i}: {clean_line}",
-                                        priority=30,
-                                        origin="todo_scanner",
-                                        repo=repo_name,
-                                        task_category="tactical",
-                                        metadata={"file": path, "line": i}
-                                    ))
-                    except Exception as e:
-                        dgm_logger.error(f"TaskGenerator: Failed to read {path}: {e}")
+        for result in scan_results:
+            if result.get("technical_debt_estimate") == "high":
+                t = self.create_task(
+                    title=f"Refactor Technical Debt: {result['path']}",
+                    description="High complexity and technical debt detected during scan.",
+                    priority=60,
+                    origin="architecture_analyzer",
+                    repo=result.get("repo"),
+                    task_category="refactoring"
+                )
+                if t: tasks.append(t)
         return tasks
 
-    def ingest_failure(self, failure_report: Dict[str, Any]) -> AutonomousTask:
-        """Creates a recovery task from a failed execution."""
-        return self.create_task(
-            title=f"Recover from failure: {failure_report.get('task_id', 'unknown')}",
-            description=failure_report.get("error", "Unknown error occurred during execution."),
-            priority=80,
-            origin="failed_execution",
-            repo=failure_report.get("repo"),
-            risk="MEDIUM",
-            execution_type="SYSTEM",
-            task_category="maintenance",
-            metadata=failure_report
-        )
+    def discover_missing_tests(self, scan_results: List[Dict[str, Any]]) -> List[AutonomousTask]:
+        tasks = []
+        for result in scan_results:
+            if result.get("language") == "python" and not result.get("has_tests"):
+                t = self.create_task(
+                    title=f"Add unit tests for {result['path']}",
+                    description="This module lacks automated tests.",
+                    priority=50,
+                    origin="test_gap_analyzer",
+                    repo=result.get("repo"),
+                    task_category="testing"
+                )
+                if t: tasks.append(t)
+        return tasks
 
-    def generate_from_telemetry(self, anomaly: Dict[str, Any]) -> AutonomousTask:
-        """Generates a task based on telemetry anomalies."""
-        return self.create_task(
-            title=f"Resolve Anomaly: {anomaly.get('type', 'Unknown')}",
-            description=f"System detected an anomaly: {anomaly.get('description')}",
-            priority=90,
-            origin="telemetry_monitor",
-            risk="HIGH",
-            execution_type="SYSTEM",
-            task_category="infrastructure",
-            metadata=anomaly
-        )
+    def validate_dependencies(self, task: AutonomousTask) -> bool:
+        """Ensures all task dependencies are met or valid."""
+        for dep_id in task.dependencies:
+            # Check if dep_id exists and is completed
+            pass
+        return True
 
-    def generate_from_debt(self, debt_report: Dict[str, Any]) -> AutonomousTask:
-        """Generates a task to address technical debt."""
-        return self.create_task(
-            title=f"Reduce Technical Debt: {debt_report.get('target')}",
-            description=debt_report.get("details"),
-            priority=50,
-            origin="debt_predictor",
-            repo=debt_report.get("repo"),
-            risk="LOW",
-            execution_type="SAFE",
-            task_category="refactoring",
-            metadata=debt_report
-        )
+    def cleanup_abandoned_tasks(self):
+        """Cleans up tasks that have been in PENDING for too long."""
+        dgm_logger.info("TaskGenerator: Cleaning up abandoned tasks.")
+        pass

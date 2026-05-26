@@ -1,9 +1,9 @@
-import subprocess
-import sys
+from cockpit.app import run_cockpit
+from core.observability.logger import dgm_logger
 
 def start():
-    print("Starting DGM-MAT Cockpit...")
-    subprocess.Popen([sys.executable, "cockpit/app.py"])
+    dgm_logger.info("Phase 37: Starting Cockpit...")
+    run_cockpit()
 
 if __name__ == "__main__":
     start()
