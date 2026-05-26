@@ -17,19 +17,20 @@ class IsolatedRuntime:
         self.active_processes: Dict[str, subprocess.Popen] = {}
 
     def create_sandbox(self, task_id: str) -> str:
-        dgm_logger.info(f"IsolatedRuntime: Creating secure sandbox for task {task_id}")
+        dgm_logger.info(f"IsolatedRuntime: Creating sandbox for task {task_id}")
         worktree_path = self.worktree_runtime.create_worktree(f"sandbox_{task_id}")
         if worktree_path:
             return str(worktree_path)
 
-        # Phase 39 Bandit Fix
-        temp_base = tempfile.gettempdir()
-        fallback_path = os.path.join(temp_base, f"dgm_sandbox_{task_id}")
+        # Fallback to system temp directory (Phase 39 Bandit Fix)
+        temp_dir = tempfile.gettempdir()
+        fallback_path = os.path.join(temp_dir, f"dgm_sandbox_{task_id}")
         os.makedirs(fallback_path, exist_ok=True)
         return fallback_path
 
     def run_safe(self, sandbox_path: str, command: List[str], task_id: str) -> Dict[str, Any]:
-        dgm_logger.info(f"IsolatedRuntime: Executing command safely in {sandbox_path}")
+        """Executes a command safely using list-based subprocess."""
+        dgm_logger.info(f"IsolatedRuntime: Executing in {sandbox_path}")
         try:
             kwargs = {}
             if sys.platform != "win32":
@@ -50,7 +51,7 @@ class IsolatedRuntime:
             return {"status": status, "exit_code": process.returncode, "stdout": stdout, "stderr": stderr}
         except subprocess.TimeoutExpired:
             self.terminate_task(task_id)
-            return {"status": "timeout", "error": "Execution exceeded time limit."}
+            return {"status": "timeout", "error": "Execution exceeded limit."}
         except Exception as e:
             return {"status": "error", "error": str(e)}
         finally:

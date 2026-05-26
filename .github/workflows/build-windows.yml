@@ -44,6 +44,7 @@ jobs:
           python scripts/validate_executable.py dist/DGM-MAT.exe
 
       - name: Prepare Artifacts
+        shell: pwsh
         run: |
           mkdir publish
           mkdir publish\scripts
@@ -57,7 +58,8 @@ jobs:
           copy config\*.json publish\config\
           copy scripts\autostart\*.py publish\scripts\autostart\
           copy scripts\runtime_smoke_test.py publish\scripts\
-          powershell Compress-Archive -Path publish\* -DestinationPath DFM-MAT-Windows-${{ matrix.python-version }}.zip
+          $zip = "DGM-MAT-Windows-${{ matrix.python-version }}.zip"
+          Compress-Archive -Path publish\* -DestinationPath $zip
 
       - name: Final Build Assertions
         shell: pwsh
@@ -72,5 +74,5 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: DFM-MAT-Windows-${{ matrix.python-version }}
-          path: DGM-MAT-Windows-${{ matrix.python-version }}.zip
+          name: "DGM-MAT-Windows-${{ matrix.python-version }}"
+          path: "DGM-MAT-Windows-${{ matrix.python-version }}.zip"
