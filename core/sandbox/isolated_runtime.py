@@ -1,7 +1,8 @@
 import subprocess
 import os
 import signal
-from typing import Dict, Any, Optional
+import sys
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 from core.observability.logger import dgm_logger
 from core.execution_fabric.worktree_runtime import WorktreeRuntime
@@ -20,18 +21,26 @@ class IsolatedRuntime:
         worktree_path = self.worktree_runtime.create_worktree(f"sandbox_{task_id}")
         return str(worktree_path) if worktree_path else f"/tmp/sandbox_{task_id}"
 
-    def run_safe(self, sandbox_path: str, command: str, task_id: str) -> Dict[str, Any]:
+    def run_safe(self, sandbox_path: str, command: List[str], task_id: str) -> Dict[str, Any]:
+        """
+        Executes a command safely using list-based subprocess to avoid shell=True vulnerabilities.
+        """
         dgm_logger.info(f"IsolatedRuntime: Executing command safely in {sandbox_path}")
 
         try:
+            # Use process group creation only on Unix-like systems
+            kwargs = {}
+            if sys.platform != "win32":
+                kwargs["preexec_fn"] = os.setsid
+
             process = subprocess.Popen(
                 command,
-                shell=True,
+                shell=False, # HARD REQUIREMENT: No shell=True
                 cwd=sandbox_path,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                preexec_fn=os.setsid # Create process group for easy termination
+                **kwargs
             )
             self.active_processes[task_id] = process
 
@@ -59,7 +68,13 @@ class IsolatedRuntime:
     def terminate_task(self, task_id: str):
         if task_id in self.active_processes:
             process = self.active_processes[task_id]
-            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+            if sys.platform != "win32":
+                try:
+                    os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+            else:
+                process.terminate()
             dgm_logger.info(f"IsolatedRuntime: Terminated runaway task {task_id}")
 
     def rollback_sandbox(self, task_id: str):
