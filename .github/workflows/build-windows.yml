@@ -57,19 +57,20 @@ jobs:
           copy config\*.json publish\config\
           copy scripts\autostart\*.py publish\scripts\autostart\
           copy scripts\runtime_smoke_test.py publish\scripts\
-          powershell Compress-Archive -Path publish\* `
-            -DestinationPath DGM-MAT-Windows-${{ matrix.python-version }}.zip
+          powershell Compress-Archive -Path publish\* -DestinationPath DFM-MAT-Windows-${{ matrix.python-version }}.zip
 
       - name: Final Build Assertions
+        shell: pwsh
         run: |
-          if (Test-Path dist\DGM-MAT.exe) { \
-            echo "Executable verified." \
-          } else { \
-            throw "Executable missing" \
+          if (Test-Path "dist\DGM-MAT.exe") {
+            Write-Host "Executable verified."
+          } else {
+            Write-Error "Executable missing"
+            exit 1
           }
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: DGM-MAT-Windows-${{ matrix.python-version }}
+          name: DFM-MAT-Windows-${{ matrix.python-version }}
           path: DGM-MAT-Windows-${{ matrix.python-version }}.zip

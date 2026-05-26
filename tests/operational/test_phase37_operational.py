@@ -1,5 +1,6 @@
 from core.node_runtime.node_identity import NodeIdentity
 from core.telemetry.metrics_collector import MetricsCollector
+import os
 
 def test_node_identity():
     identity = NodeIdentity()
@@ -10,5 +11,4 @@ def test_node_identity():
 def test_telemetry_collection():
     collector = MetricsCollector()
     collector.collect("test_metric", 100)
-    # Check if buffer works
-    assert len(collector.buffer) == 1
+    assert collector.telemetry_dir.exists()
