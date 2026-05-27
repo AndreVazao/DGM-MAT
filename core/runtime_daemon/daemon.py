@@ -29,6 +29,14 @@ class RuntimeDaemon:
         dgm_logger.info("RuntimeDaemon: Starting DGM-MAT Persistent Daemon...")
         try:
             self.registry.register_self()
+            self.supervisor.start_monitoring()
+
+            # Start Core Modules
+            # API Server
+            self.supervisor.start_module("api_server", [sys.executable, "-c", "from core.api.api_server import run_api; run_api()"])
+            # Cognition Loop
+            self.supervisor.start_module("cognition_loop", [sys.executable, "scripts/autostart/start_daemon.py"])
+
             self.watchdog.start()
             self._running = True
 
