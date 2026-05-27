@@ -18,3 +18,4 @@ pytest-asyncio
 pytest-timeout
 pytest-cov
 pyinstaller
+cryptography>=42.0.0
