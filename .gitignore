@@ -1,4 +1,4 @@
-# Python
+# --- PYTHON ---
 __pycache__/
 *.py[cod]
 *.pyo
@@ -6,33 +6,45 @@ __pycache__/
 *.so
 *.egg
 *.egg-info/
-dist/
-# build/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
 
-# Virtual environments
+# --- PYINSTALLER ---
+# PyInstaller outputs MUST go to /dist and /build-temp
+dist/
+build-temp/
+build/build/
+build/dgm_mat/
+*.toc
+*.pkg
+*.pyz
+xref-*.html
+warn-*.txt
+
+# Preserve important build configs
+!build/*.spec
+!build/windows/version_info.txt
+
+# --- VIRTUAL ENVIRONMENTS ---
 venv/
 .env/
 .venv/
+env/
 
-# Environment files
+# --- ENVIRONMENT & SECRETS ---
 .env
 .env.*
 *.env
+secrets/
+vault/
 
-# Logs
+# --- LOGS & RUNTIME ---
 logs/
 *.log
-
-# IDE
-!build/*.spec
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Runtime (Standard locations)
+.runtime/
 runtime/
 storage/runtime/
 storage/memory/
@@ -45,106 +57,59 @@ storage/logs/
 storage/snapshots/
 storage/temp/
 data/
+worktrees/
+tmp/
+temp/
 
-# Repositories (for local development)
+# --- IDE & OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# --- LOCAL DEVELOPMENT REPOS ---
 repositories/
 
-# Models
+# --- MODELS & DATA ---
 models/
 *.gguf
 *.bin
 *.safetensors
-
-# Databases
 *.db
 *.sqlite
 *.sqlite3
+qdrant_storage/
+neo4j/data/
+neo4j/logs/
+redis-data/
+postgres-data/
 
-# Node
-node_modules/
-
-# Docker
-docker-data/
-
-# Secrets
-secrets/
-vault/
-
-# Generated
-generated/
-exports/
-snapshots/
-
-# Monitoring
-grafana-data/
-prometheus-data/
-loki-data/
-
-# Mobile
+# --- BUILD OUTPUTS ---
+release/
+artifacts/
+*.exe
 *.apk
 *.aab
-
-# Windows
-*.exe
-
-# Archives
 *.zip
 *.rar
 *.7z
 
-# Coverage
-.coverage
-htmlcov/
+# --- WEB & DOCKER ---
+node_modules/
+docker-data/
+playwright/.cache/
+playwright/browser_data/
+grafana-data/
+prometheus-data/
+loki-data/
 
-# Pytest
-.pytest_cache/
-
-# Mypy
-.mypy_cache/
-
-# Ruff
-.ruff_cache/
-
-# Temporary
-tmp/
-temp/
-
-# AI Providers
+# --- USER DATA ---
+user_uploads/
+conversation_exports/
 provider_sessions/
 browser_profiles/
 
-# Playwright
-playwright/.cache/
-playwright/browser_data/
-
-# Qdrant
-qdrant_storage/
-
-# Neo4j
-neo4j/data/
-neo4j/logs/
-
-# Redis
-redis-data/
-
-# PostgreSQL
-postgres-data/
-
-# Local user data
-user_uploads/
-conversation_exports/
-
-# Build outputs
-release/
-artifacts/
-
-# CRITICAL: Prevent absolute path tracking (Windows/Unix)
-# Note: These are mostly to prevent accidental tracking of folders named like roots
+# --- CRITICAL: PREVENT ABSOLUTE PATH TRACKING ---
 [a-zA-Z]:/*
 /*:/*
-.runtime/
-__pycache__/
-worktrees/
-*.log
-.pytest_cache/
-storage/runtime/

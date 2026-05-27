@@ -33,9 +33,18 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
+      - name: Clean Build Environment
+        shell: pwsh
+        run: |
+          if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
+          if (Test-Path "build-temp") { Remove-Item -Recurse -Force "build-temp" }
+          Get-ChildItem -Path . -Filter "*.toc" -Recurse | Remove-Item -Force
+          Get-ChildItem -Path . -Filter "*.pkg" -Recurse | Remove-Item -Force
+          Get-ChildItem -Path . -Filter "*.pyz" -Recurse | Remove-Item -Force
+
       - name: Build Executable
         run: |
-          pyinstaller build/dgm_mat.spec
+          pyinstaller --workpath build-temp --distpath dist build/dgm_mat.spec
 
       - name: Validate Executable (Deep Check)
         env:
@@ -46,6 +55,7 @@ jobs:
       - name: Prepare Artifacts
         shell: pwsh
         run: |
+          if (Test-Path "publish") { Remove-Item -Recurse -Force "publish" }
           mkdir publish
           mkdir publish\scripts
           mkdir publish\scripts\autostart
@@ -68,7 +78,7 @@ jobs:
             Write-Host "Executable verified."
           } else {
             Write-Error "Executable missing"
-            exit 1
+            throw "Executable missing"
           }
 
       - name: Upload Build Artifacts
