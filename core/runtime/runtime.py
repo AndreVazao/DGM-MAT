@@ -22,6 +22,7 @@ from core.agents.autonomy_agent import (
 from core.lifecycle.bootstrap import (
     bootstrap_environment,
 )
+from core.runtime.runtime_state_store import state_store, StateEvents
 from core.runtime_state.runtime_state import (
     RuntimeState,
 )
@@ -65,6 +66,7 @@ except ImportError as exc:
 class Runtime:
     def __init__(self):
         bootstrap_environment()
+        self.state_store = state_store
         self.state = RuntimeState(
             started_at=datetime.now(),
         )

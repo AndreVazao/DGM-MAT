@@ -10,6 +10,7 @@ from cockpit.widgets.autonomy_dashboard import AutonomyDashboard
 from cockpit.widgets.cognitive_dashboard import CognitiveDashboard, StrategicRoadmapWidget
 from cockpit.widgets.architecture_graph_view import ArchitectureGraphView
 from cockpit.widgets.operational_dashboard import OperationalDashboard
+from cockpit.widgets.command_console import CommandConsoleWidget
 from cockpit.app.websocket_client import CockpitWebSocketClient
 from core.observability.logger import dgm_logger
 
@@ -30,12 +31,14 @@ class MainWindow(QMainWindow):
         self.health_graph = HealthGraph()
         self.tech_debt_dashboard = TechDebtDashboard()
         self.autonomy_dashboard = AutonomyDashboard()
+        self.command_console = CommandConsoleWidget()
 
         # New Cognitive and Strategic Tabs
         self.cognitive_dashboard = CognitiveDashboard()
         self.architecture_graph = ArchitectureGraphView()
         self.strategic_roadmap = StrategicRoadmapWidget()
 
+        self.tabs.addTab(self.command_console, "Command Console")
         self.tabs.addTab(self.operational_dashboard, "Operational Center")
         self.tabs.addTab(self.execution_feed, "Execution Feed")
         self.tabs.addTab(self.health_graph, "Ecosystem Health")

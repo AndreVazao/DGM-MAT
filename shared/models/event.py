@@ -12,6 +12,9 @@ class Event(BaseModel):
     event_type: str
     payload: dict[str, Any] = Field(default_factory=dict)
     priority: EventPriority = EventPriority.LOW
+    scope: str = "local" # local, global, node
+    domain: str = "general" # auth, storage, provider, etc.
+    ttl: int = 3600 # default 1 hour
     ecosystem: str = "core"
     trace_id: str = Field(default_factory=lambda: str(uuid4()))
     parent_trace_id: Optional[str] = None
