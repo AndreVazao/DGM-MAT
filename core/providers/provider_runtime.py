@@ -1,49 +1,25 @@
-from core.providers.chatgpt.chatgpt_provider import (
-    ChatGPTProvider,
-)
-
-from core.providers.conversation_classifier import (
-    ConversationClassifier,
-)
-
-from core.providers.conversation_memory import (
-    ConversationMemory,
-)
-
+import time
+from core.provider_sync.provider_registry import provider_registry, initialize_default_providers
+from core.observability.logger import dgm_logger
 
 class ProviderRuntime:
+    def __init__(self):
+        initialize_default_providers()
 
     def run(self):
+        dgm_logger.info("ProviderRuntime: Starting provider health checks and sync...")
+        providers = provider_registry.list_providers()
 
-        provider = ChatGPTProvider()
+        for name in providers:
+            provider = provider_registry.get_provider(name)
+            if provider:
+                try:
+                    dgm_logger.info(f"ProviderRuntime: Checking health for '{name}'")
+                    provider.broadcast_health()
+                except Exception as e:
+                    dgm_logger.error(f"ProviderRuntime: Failed health check for '{name}': {e}")
 
-        conversations = (
-            provider.list_conversations()
-        )
+        dgm_logger.info("ProviderRuntime: Provider sweep complete.")
 
-        conversations = (
-            ConversationClassifier()
-            .classify(conversations)
-        )
-
-        ConversationMemory().persist(
-            conversations
-        )
-
-        print("\n")
-
-        print("=" * 60)
-
-        print(
-            "CONVERSATIONS DETECTED"
-        )
-
-        print("=" * 60)
-
-        for convo in conversations:
-
-            print(
-                f"{convo.title} "
-                f"-> "
-                f"{convo.detected_projects}"
-            )
+if __name__ == "__main__":
+    ProviderRuntime().run()
