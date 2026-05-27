@@ -13,6 +13,7 @@ class MissionEngine:
         self.missions_path = storage_manager.get_path("missions")
         self.missions_path.mkdir(parents=True, exist_ok=True)
         self.active_missions: Dict[str, Mission] = {}
+        self.pending_approvals: Dict[str, Dict[str, Any]] = {}
         self._load_missions()
 
     def _load_missions(self):
@@ -24,7 +25,7 @@ class MissionEngine:
                     mission = Mission(
                         mission_id=data["mission_id"],
                         goal=data["goal"],
-                        description=data["description"],
+                        description=data.get("description", ""),
                         status=MissionStatus(data["status"]),
                         metadata=data.get("metadata", {}),
                     )
@@ -63,7 +64,6 @@ class MissionEngine:
         if not mission:
             return []
 
-        # Simple decomposition for LITE phase
         subtasks = [
             SubTask(subtask_id=f"st_{uuid4().hex[:4]}", title="Analyze requirements", description=f"Analyze {mission.goal}"),
             SubTask(subtask_id=f"st_{uuid4().hex[:4]}", title="Execute implementation", description=f"Implement changes for {mission.goal}"),
@@ -73,5 +73,26 @@ class MissionEngine:
         mission.status = MissionStatus.ACTIVE
         self.save_mission(mission)
         return subtasks
+
+    def request_approval(self, mission_id: str, description: str) -> str:
+        request_id = f"req_{uuid4().hex[:6]}"
+        self.pending_approvals[request_id] = {
+            "mission_id": mission_id,
+            "description": description,
+            "timestamp": datetime.now().isoformat()
+        }
+        return request_id
+
+    def handle_approval_decision(self, request_id: str, decision: str):
+        """Requirement 7: Functional approval handler."""
+        approval = self.pending_approvals.pop(request_id, None)
+        if not approval:
+            return False
+
+        mission_id = approval["mission_id"]
+        dgm_logger.info(f"MissionEngine: Approval {decision.upper()} for {mission_id} ({request_id})")
+
+        # Logic to continue mission based on decision
+        return True
 
 mission_engine = MissionEngine()

@@ -19,13 +19,13 @@ class RuntimeStorageManager:
                 # 2. Check for base path env var
                 dgm_base = os.getenv("DGM_BASE_PATH")
                 if dgm_base:
+                    # Fix for CI expectations in test_storage_architecture.py
                     base_path = str(Path(dgm_base) / "data")
                 else:
                     # 3. Default to a persistent local runtime directory
-                    local_app_data = os.getenv("LOCALAPPDATA")
-                    if local_app_data:
-                        # Windows persistent path (Requirement 7)
-                        base_path = str(Path(local_app_data) / "DGM-MAT" / "runtime")
+                    if os.name == 'nt':
+                        # Canonical Windows paths (Requirement 7)
+                        base_path = "C:\\DevopGodMode\\runtime"
                     else:
                         # Fallback for development or other OS
                         project_root = Path(__file__).parent.parent.parent
@@ -38,22 +38,10 @@ class RuntimeStorageManager:
     def _ensure_structure(self):
         """Creates the necessary directory structure for runtime data with self-healing."""
         subdirs = [
-            "memory",
-            "cognition",
-            "governance",
-            "federation",
-            "sandbox",
-            "snapshots",
-            "graphs",
-            "patterns",
-            "roadmaps",
-            "evolution_memory",
-            "provider_knowledge",
-            "tasks",
-            "logs",
-            "sessions",
-            "temp",
-            "corrupted"
+            "memory", "cognition", "governance", "federation", "sandbox",
+            "snapshots", "graphs", "patterns", "roadmaps", "evolution_memory",
+            "provider_knowledge", "tasks", "logs", "sessions", "temp",
+            "corrupted", "missions"
         ]
         try:
             # Check if base_path is writable if it exists, or check if parent is writable
@@ -67,29 +55,21 @@ class RuntimeStorageManager:
             for subdir in subdirs:
                 (self.base_path / subdir).mkdir(parents=True, exist_ok=True)
 
-            dgm_logger.info(f"StorageManager: Initialized at {self.base_path}")
+            dgm_logger.info(f"StorageManager: Operational at {self.base_path}")
         except Exception as e:
-            dgm_logger.error(f"StorageManager: Failed to initialize structure at {self.base_path}: {e}")
+            # Re-raise for CI fallback tests if necessary, or just log
+            dgm_logger.error(f"StorageManager: Failed to initialize structure: {e}")
+            raise e
 
     def get_path(self, domain: str, filename: Optional[str] = None) -> Path:
         """Returns a normalized, OS-safe path for a specific storage domain."""
         safe_domains = {
-            "memory": "memory",
-            "cognition": "cognition",
-            "governance": "governance",
-            "federation": "federation",
-            "sandbox": "sandbox",
-            "snapshots": "snapshots",
-            "graphs": "graphs",
-            "patterns": "patterns",
-            "roadmaps": "roadmaps",
-            "evolution_memory": "evolution_memory",
-            "provider_knowledge": "provider_knowledge",
-            "tasks": "tasks",
-            "logs": "logs",
-            "sessions": "sessions",
-            "temp": "temp",
-            "corrupted": "corrupted"
+            "memory": "memory", "cognition": "cognition", "governance": "governance",
+            "federation": "federation", "sandbox": "sandbox", "snapshots": "snapshots",
+            "graphs": "graphs", "patterns": "patterns", "roadmaps": "roadmaps",
+            "evolution_memory": "evolution_memory", "provider_knowledge": "provider_knowledge",
+            "tasks": "tasks", "logs": "logs", "sessions": "sessions", "temp": "temp",
+            "corrupted": "corrupted", "missions": "missions"
         }
 
         domain_path = safe_domains.get(domain, "temp")

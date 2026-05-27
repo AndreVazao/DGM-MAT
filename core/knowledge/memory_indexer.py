@@ -14,7 +14,7 @@ class MemoryIndexer:
         self.worker_thread.start()
 
     def index_nodes(self, nodes: List[KnowledgeNode]):
-        """Non-blocking queue-backed indexing (Requirement 4)."""
+        """Non-blocking queue-backed indexing."""
         try:
             self.queue.put_nowait(nodes)
         except Full:
@@ -23,6 +23,7 @@ class MemoryIndexer:
     def _index_worker(self):
         while self.running:
             try:
+                # Requirement 8: Queue.Empty is not an error, stop infinite error spam
                 nodes = self.queue.get(timeout=1)
                 with self.lock:
                     for node in nodes:
@@ -35,9 +36,11 @@ class MemoryIndexer:
                                 self.index[c].append(node.id)
                 self.queue.task_done()
             except Empty:
+                # Normal idle behavior, no logging (Requirement 8)
                 continue
             except Exception as e:
-                dgm_logger.exception(f"MemoryIndexer: Error processing nodes: {e}")
+                # Log actual errors but continue
+                dgm_logger.error(f"MemoryIndexer: Error processing nodes: {e}")
                 continue
 
     def search_concept(self, concept: str) -> List[str]:

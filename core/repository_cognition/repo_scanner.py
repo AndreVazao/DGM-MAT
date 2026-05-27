@@ -12,20 +12,28 @@ class CognitiveRepoScanner:
     def scan(self) -> List[Dict[str, Any]]:
         dgm_logger.info(f"CognitiveRepoScanner: Scanning {self.root_path}")
         results = []
-        for path in self.root_path.rglob("*"):
-            # Skip excluded directories and their contents
-            if any(part in self.exclusions for part in path.parts):
-                continue
+        try:
+            for path in self.root_path.rglob("*"):
+                try:
+                    # Skip excluded directories and their contents
+                    if any(part in self.exclusions for part in path.parts):
+                        continue
 
-            if path.is_file():
-                if path.suffix == ".py":
-                    results.append(self._analyze_python(path))
-                elif path.suffix in [".ts", ".js"]:
-                    results.append(self._analyze_js_ts(path))
-                elif path.suffix == ".rs":
-                    results.append(self._analyze_rust(path))
-                elif path.suffix == ".go":
-                    results.append(self._analyze_go(path))
+                    if path.is_file():
+                        if path.suffix == ".py":
+                            results.append(self._analyze_python(path))
+                        elif path.suffix in [".ts", ".js"]:
+                            results.append(self._analyze_js_ts(path))
+                        elif path.suffix == ".rs":
+                            results.append(self._analyze_rust(path))
+                        elif path.suffix == ".go":
+                            results.append(self._analyze_go(path))
+                except (PermissionError, OSError):
+                    # Requirement 8: Prevent Windows access denied errors
+                    continue
+        except Exception as e:
+            dgm_logger.error(f"CognitiveRepoScanner: Fatal error during scan: {e}")
+
         return results
 
     def _analyze_python(self, path: Path) -> Dict[str, Any]:
@@ -45,7 +53,6 @@ class CognitiveRepoScanner:
             return {"path": str(path), "error": str(e)}
 
     def _analyze_js_ts(self, path: Path) -> Dict[str, Any]:
-        # Simplified parser for JS/TS
         return {"path": str(path), "language": "javascript/typescript", "status": "scanned"}
 
     def _analyze_rust(self, path: Path) -> Dict[str, Any]:
