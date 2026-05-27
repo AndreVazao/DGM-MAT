@@ -41,17 +41,33 @@ class BootstrapEngine:
             try:
                 dgm_logger.info(f"BootstrapEngine: Processing phase {phase.name}...")
                 handler = self.handlers.get(phase)
-                if handler: handler()
-                self.context.mark_module_success(phase.name, time.time() - phase_start)
+                if handler:
+                    handler()
+                duration = time.time() - phase_start
+                self.context.mark_module_success(phase.name, duration)
             except Exception as e:
+                duration = time.time() - phase_start
                 dgm_logger.error(f"BootstrapEngine: Phase {phase.name} failed: {e}")
-                if phase in [BootstrapPhase.VALIDATE_ENVIRONMENT, BootstrapPhase.INITIALIZE_STORAGE]:
+                self.context.mark_module_failed(phase.name, duration)
+                if self._is_critical_phase(phase):
+                    dgm_logger.critical(f"BootstrapEngine: Critical phase {phase.name} failed. Preparation aborted.")
                     self.context.runtime_state = "failed"
                     self._expose_state()
                     return self.context
+                else:
+                    self.context.mark_module_degraded(phase.name, duration)
+
         self.context.runtime_state = "prepared"
         self._expose_state()
         return self.context
+
+    def _is_critical_phase(self, phase):
+        critical_phases = [
+            BootstrapPhase.VALIDATE_ENVIRONMENT,
+            BootstrapPhase.INITIALIZE_STORAGE,
+            BootstrapPhase.INITIALIZE_GOVERNANCE,
+        ]
+        return phase in critical_phases
 
     def _validate_environment(self):
         self.context.environment_metadata = detect_environment()
@@ -110,6 +126,7 @@ class BootstrapEngine:
             "role": self.context.node_role,
             "initialized": self.context.initialized_modules,
             "failed": self.context.failed_modules,
+            "degraded": self.context.degraded_modules,
             "environment": self.context.environment_metadata,
             "timestamp": datetime.now().isoformat()
         }
