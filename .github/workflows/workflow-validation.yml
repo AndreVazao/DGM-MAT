@@ -81,7 +81,8 @@ jobs:
           fi
       - name: Fail if cache folders are tracked
         run: |
-          CACHE_FOLDERS=$(git ls-files | grep -E "__pycache__/|\.pytest_cache/" || true)
+          C_REGEX="__pycache__/|\.pytest_cache/"
+          CACHE_FOLDERS=$(git ls-files | grep -E "$C_REGEX" || true)
           if [ -n "$CACHE_FOLDERS" ]; then
             echo "CRITICAL ERROR: Cache folders found in git tracking:"
             echo "$CACHE_FOLDERS"
