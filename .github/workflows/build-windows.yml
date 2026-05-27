@@ -36,11 +36,18 @@ jobs:
       - name: Clean Build Environment
         shell: pwsh
         run: |
-          if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
-          if (Test-Path "build-temp") { Remove-Item -Recurse -Force "build-temp" }
-          Get-ChildItem -Path . -Filter "*.toc" -Recurse | Remove-Item -Force
-          Get-ChildItem -Path . -Filter "*.pkg" -Recurse | Remove-Item -Force
-          Get-ChildItem -Path . -Filter "*.pyz" -Recurse | Remove-Item -Force
+          if (Test-Path "dist") {
+            Remove-Item -Recurse -Force "dist"
+          }
+          if (Test-Path "build-temp") {
+            Remove-Item -Recurse -Force "build-temp"
+          }
+          Get-ChildItem -Path . -Filter "*.toc" -Recurse |
+            Remove-Item -Force
+          Get-ChildItem -Path . -Filter "*.pkg" -Recurse |
+            Remove-Item -Force
+          Get-ChildItem -Path . -Filter "*.pyz" -Recurse |
+            Remove-Item -Force
 
       - name: Build Executable
         run: |
@@ -55,7 +62,9 @@ jobs:
       - name: Prepare Artifacts
         shell: pwsh
         run: |
-          if (Test-Path "publish") { Remove-Item -Recurse -Force "publish" }
+          if (Test-Path "publish") {
+            Remove-Item -Recurse -Force "publish"
+          }
           mkdir publish
           mkdir publish\scripts
           mkdir publish\scripts\autostart

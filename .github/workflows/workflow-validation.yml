@@ -62,7 +62,10 @@ jobs:
       - uses: actions/checkout@v6
       - name: Fail if PyInstaller artifacts are tracked
         run: |
-          PROHIBITED_FILES=$(git ls-files | grep -E "\.toc$|\.pkg$|\.pyz$|xref-.*\.html$|warn-.*\.txt$|build/build/|dist/|build-temp/|build/dgm_mat/")
+          # Use grep -E and allow exit code 1 if no matches
+          P_REGEX="\.toc$|\.pkg$|\.pyz$|xref-.*\.html$|warn-.*\.txt$"
+          P_REGEX="$P_REGEX|build/build/|dist/|build-temp/|build/dgm_mat/"
+          PROHIBITED_FILES=$(git ls-files | grep -E "$P_REGEX" || true)
           if [ -n "$PROHIBITED_FILES" ]; then
             echo "CRITICAL ERROR: Prohibited artifacts found in git tracking:"
             echo "$PROHIBITED_FILES"
@@ -78,7 +81,7 @@ jobs:
           fi
       - name: Fail if cache folders are tracked
         run: |
-          CACHE_FOLDERS=$(git ls-files | grep -E "__pycache__/|\.pytest_cache/")
+          CACHE_FOLDERS=$(git ls-files | grep -E "__pycache__/|\.pytest_cache/" || true)
           if [ -n "$CACHE_FOLDERS" ]; then
             echo "CRITICAL ERROR: Cache folders found in git tracking:"
             echo "$CACHE_FOLDERS"
