@@ -1,16 +1,59 @@
 DGM-MAT/
 ├─ .github/
 │  └─ workflows/
+│     ├─ autonomy-smoke.yml
 │     ├─ bootstrap-repositories.yml
-│     ├─ build-exe.yml
-│     ├─ ecosystem.yml
+│     ├─ build-windows.yml
+│     ├─ ci-core.yml
+│     ├─ ci-integration.yml
 │     ├─ release.yml
-│     ├─ repo-bootstrap.yml
-│     ├─ security.yml
-│     └─ validate.yml
+│     ├─ repo-analysis.yml
+│     ├─ runtime-validation.yml
+│     ├─ security-scan.yml
+│     └─ workflow-validation.yml
 ├─ .runtime/
-│  └─ ecosystem_registry.json
+│  ├─ execution_journals/
+│  │  └─ journal_test_1_20260525_124710.json
+│  ├─ memory_archive/
+│  │  ├─ 124557_mem1.json
+│  │  ├─ 124557_mem2.json
+│  │  ├─ mem_chatgpt_Build a CLI tool_20260525.json
+│  │  ├─ mem1.json
+│  │  └─ mem2.json
+│  ├─ provider_memory/
+│  │  └─ consolidated_chatgpt_build_a_cli_20260525_124557.json
+│  ├─ reports/
+│  │  ├─ report_DGM-MAT-Core_20260525_124418.json
+│  │  ├─ report_test_repo_20260525_125058.json
+│  │  ├─ report_test_repo_20260525_153047.json
+│  │  ├─ report_test_repo_20260525_153215.json
+│  │  ├─ report_test_repo_20260525_153724.json
+│  │  ├─ report_test_repo_20260525_202856.json
+│  │  ├─ report_test_repo_20260525_203004.json
+│  │  ├─ report_test_repo_20260526_103213.json
+│  │  ├─ report_test_repo_20260526_103527.json
+│  │  └─ report_test_repo_20260526_103733.json
+│  ├─ tasks/
+│  │  ├─ task_2012986e.json
+│  │  ├─ task_334a5dd3.json
+│  │  ├─ task_6d601313.json
+│  │  ├─ task_91ae4946.json
+│  │  ├─ task_9d99d8a5.json
+│  │  └─ task_adf95b6d.json
+│  ├─ telemetry/
+│  │  ├─ telemetry_metric_1779791728.json
+│  │  ├─ telemetry_metric_1779791854.json
+│  │  ├─ telemetry_metric_1779792394.json
+│  │  ├─ telemetry_metric_1779792458.json
+│  │  ├─ telemetry_metric_1779792672.json
+│  │  └─ telemetry_metric_1779792756.json
+│  ├─ ecosystem_registry.json
+│  ├─ external_registry.json
+│  └─ runtime_state.json
 ├─ AndreOS/
+│  ├─ memory/
+│  │  ├─ autonomous_tasks.json
+│  │  └─ ecosystem_topology.json
 │  ├─ agent_state_memory_sync_1_3c727839.json
 │  ├─ agent_state_memory_sync_1_4e71d343.json
 │  ├─ agent_state_memory_sync_1_7d9f82fd.json
@@ -25,58 +68,203 @@ DGM-MAT/
 │  ├─ evolution_evolution_fb6baff2_20260522165931.json
 │  ├─ evolution_phase12_13_1779478628.json
 │  └─ recovery_memory.json
+├─ build/
+│  └─ dgm_mat.spec
 ├─ cockpit/
+│  ├─ app/
+│  │  ├─ __init__.py
+│  │  ├─ app_foundation.py
+│  │  ├─ main.py
+│  │  └─ websocket_client.py
+│  ├─ approvals/
+│  │  ├─ patch_review_ui.py
+│  │  ├─ patch_review.py
+│  │  └─ queue_widget.py
+│  ├─ autonomy/
+│  │  └─ monitor_widget.py
+│  ├─ memory/
+│  │  └─ inspector_widget.py
+│  ├─ providers/
+│  │  ├─ login_form.py
+│  │  └─ management_widget.py
+│  ├─ streaming/
+│  │  └─ realtime_client.py
 │  ├─ styles/
 │  │  └─ theme.qss
 │  ├─ widgets/
+│  │  ├─ activity_stream_widget.py
 │  │  ├─ agent_widget.py
+│  │  ├─ architecture_graph_view.py
+│  │  ├─ autonomous_tasks_widget.py
+│  │  ├─ autonomy_dashboard.py
+│  │  ├─ cognitive_dashboard.py
 │  │  ├─ dashboard_widget.py
+│  │  ├─ duplicate_detection_widget.py
+│  │  ├─ ecosystem_graph_widget.py
 │  │  ├─ event_stream_widget.py
+│  │  ├─ execution_feed.py
 │  │  ├─ execution_queue_widget.py
 │  │  ├─ federation_widget.py
 │  │  ├─ governance_widget.py
+│  │  ├─ health_graph.py
+│  │  ├─ imported_repos_widget.py
+│  │  ├─ knowledge_feed_widget.py
 │  │  ├─ knowledge_graph_widget.py
 │  │  ├─ learning_dashboard_widget.py
+│  │  ├─ local_execution_widget.py
 │  │  ├─ logs_widget.py
 │  │  ├─ mesh_monitor_widget.py
+│  │  ├─ mission_widget.py
+│  │  ├─ operational_dashboard.py
 │  │  ├─ operational_search_widget.py
+│  │  ├─ project_families_widget.py
+│  │  ├─ provider_conversations_widget.py
 │  │  ├─ research_widget.py
-│  │  └─ strategy_widget.py
-│  ├─ app.py
+│  │  ├─ runtime_health_widget.py
+│  │  ├─ self_improvement_widget.py
+│  │  ├─ strategy_widget.py
+│  │  ├─ tech_debt_dashboard.py
+│  │  ├─ technical_debt_widget.py
+│  │  └─ workspace_graph_widget.py
+│  ├─ workspace/
+│  │  ├─ chat_widget.py
+│  │  ├─ cognition_graph.py
+│  │  ├─ execution_timeline_widget.py
+│  │  ├─ memory_graph.py
+│  │  └─ task_feed_widget.py
+│  ├─ __init__.py
 │  ├─ main_window.py
 │  └─ realtime_client.py
 ├─ config/
+│  ├─ autonomous_runtime.json
+│  ├─ import_targets.json
 │  ├─ nodes.json
 │  └─ runtime_limits.json
 ├─ core/
 │  ├─ agents/
+│  │  ├─ specialization/
+│  │  │  ├─ __init__.py
+│  │  │  ├─ adaptive_specialization.py
+│  │  │  ├─ agent_profiler.py
+│  │  │  ├─ capability_allocator.py
+│  │  │  ├─ execution_roles.py
+│  │  │  ├─ provider_affinity.py
+│  │  │  ├─ runtime_affinity.py
+│  │  │  ├─ skill_distribution.py
+│  │  │  ├─ specialization_registry.py
+│  │  │  └─ workload_optimizer.py
+│  │  ├─ architect_agent.py
 │  │  ├─ autonomy_agent.py
 │  │  ├─ base_agent.py
+│  │  ├─ debug_agent.py
+│  │  ├─ devops_agent.py
+│  │  ├─ memory_agent.py
 │  │  ├─ provider_agent.py
-│  │  └─ repo_agent.py
+│  │  ├─ refactor_agent.py
+│  │  ├─ repo_agent.py
+│  │  ├─ research_agent.py
+│  │  ├─ runtime_agent.py
+│  │  ├─ security_agent.py
+│  │  ├─ self_improvement_agent.py
+│  │  └─ ui_agent.py
 │  ├─ api/
-│  │  └─ api_server.py
+│  │  ├─ api_server.py
+│  │  ├─ mobile_bridge.py
+│  │  └─ runtime_api.py
+│  ├─ autonomous_dev/
+│  │  ├─ __init__.py
+│  │  ├─ architecture_optimizer.py
+│  │  ├─ autonomous_dev_engine.py
+│  │  ├─ cleanup_engine.py
+│  │  ├─ dead_code_detector.py
+│  │  ├─ dependency_fixer.py
+│  │  ├─ issue_detector.py
+│  │  ├─ merge_planner.py
+│  │  ├─ repo_refactor_loop.py
+│  │  ├─ roadmap_executor.py
+│  │  ├─ self_patch_engine.py
+│  │  ├─ task_generator.py
+│  │  └─ technical_debt_engine.py
 │  ├─ autonomy/
+│  │  ├─ active_runtime/
+│  │  │  ├─ autonomy_cycle.py
+│  │  │  ├─ cognition_loop.py
+│  │  │  ├─ execution_director.py
+│  │  │  ├─ learning_loop.py
+│  │  │  ├─ objective_engine.py
+│  │  │  └─ strategic_planner.py
+│  │  ├─ continuous_runtime/
+│  │  │  ├─ adaptive_router.py
+│  │  │  ├─ autonomous_director.py
+│  │  │  ├─ cognition_scheduler.py
+│  │  │  ├─ evolution_engine.py
+│  │  │  ├─ execution_coordinator.py
+│  │  │  ├─ lifecycle_manager.py
+│  │  │  ├─ observation_engine.py
+│  │  │  ├─ planning_engine.py
+│  │  │  ├─ reflection_engine.py
+│  │  │  └─ runtime_core.py
+│  │  ├─ scheduler/
+│  │  │  ├─ __init__.py
+│  │  │  ├─ execution_loop.py
+│  │  │  ├─ priority_router.py
+│  │  │  ├─ retry_manager.py
+│  │  │  ├─ scheduler_engine.py
+│  │  │  └─ task_queue.py
+│  │  ├─ autonomous_loop.py
+│  │  ├─ mission_engine.py
+│  │  ├─ mission_models.py
 │  │  ├─ models.py
 │  │  ├─ priority_engine.py
 │  │  ├─ repair_suggester.py
+│  │  ├─ repo_analysis_pipeline.py
+│  │  ├─ safe_autonomous_executor.py
+│  │  ├─ self_improvement_planner.py
 │  │  ├─ task_engine.py
+│  │  ├─ task_generator.py
 │  │  ├─ task_planner.py
 │  │  ├─ task_queue.py
+│  │  ├─ work_queue.py
 │  │  └─ worker_allocator.py
+│  ├─ bootstrap/
+│  │  ├─ __init__.py
+│  │  ├─ bootstrap_context.py
+│  │  ├─ bootstrap_engine.py
+│  │  ├─ bootstrap_sequence.py
+│  │  ├─ bootstrap_storage.py
+│  │  ├─ dependency_loader.py
+│  │  └─ environment_detector.py
+│  ├─ cockpit_runtime/
+│  │  ├─ __init__.py
+│  │  ├─ autonomy_status_api.py
+│  │  ├─ cognition_visualizer.py
+│  │  ├─ execution_dashboard.py
+│  │  ├─ live_task_feed.py
+│  │  ├─ realtime_runtime_api.py
+│  │  ├─ runtime_metrics.py
+│  │  ├─ telemetry_stream.py
+│  │  └─ websocket_runtime.py
 │  ├─ cognition/
+│  │  ├─ architecture_graph.py
 │  │  ├─ architecture_memory.py
 │  │  ├─ cognition_graph.py
 │  │  ├─ cognition_models.py
 │  │  ├─ cognition_snapshot.py
+│  │  ├─ cognitive_analysis_engine.py
 │  │  ├─ convergence_engine.py
 │  │  ├─ dependency_mapper.py
 │  │  ├─ ecosystem_engine.py
 │  │  ├─ ecosystem_health.py
 │  │  ├─ fragmentation_detector.py
 │  │  ├─ impact_analyzer.py
+│  │  ├─ pattern_extractor.py
 │  │  ├─ risk_predictor.py
 │  │  └─ topology_engine.py
+│  ├─ connectors/
+│  │  ├─ adapters/
+│  │  │  ├─ AIClient2API_adapter.py
+│  │  │  └─ gpt4free_adapter.py
+│  │  └─ obsidian_connector.py
 │  ├─ development/
 │  │  ├─ architecture_validator.py
 │  │  ├─ branch_execution.py
@@ -137,10 +325,25 @@ DGM-MAT/
 │  │  ├─ execution_context.py
 │  │  ├─ execution_engine.py
 │  │  ├─ execution_models.py
+│  │  ├─ git_utils.py
 │  │  ├─ merge_guard.py
 │  │  ├─ repair_loop.py
 │  │  ├─ rollback_engine.py
 │  │  └─ worktree_manager.py
+│  ├─ execution_fabric/
+│  │  ├─ __init__.py
+│  │  ├─ autonomous_executor.py
+│  │  ├─ branch_orchestrator.py
+│  │  ├─ execution_cycles.py
+│  │  ├─ execution_fabric.py
+│  │  ├─ execution_memory.py
+│  │  ├─ execution_recovery.py
+│  │  ├─ execution_state_machine.py
+│  │  ├─ execution_supervisor.py
+│  │  ├─ safe_patch_engine.py
+│  │  ├─ task_dispatcher.py
+│  │  ├─ validation_pipeline.py
+│  │  └─ worktree_runtime.py
 │  ├─ fabric/
 │  │  ├─ cluster_scheduler.py
 │  │  ├─ cognition_cluster.py
@@ -157,6 +360,7 @@ DGM-MAT/
 │  │  └─ workload_router.py
 │  ├─ federation/
 │  │  ├─ collaboration_engine.py
+│  │  ├─ convergence_analyzer.py
 │  │  ├─ ecosystem_bridge.py
 │  │  ├─ ecosystem_identity.py
 │  │  ├─ ecosystem_policy.py
@@ -175,6 +379,7 @@ DGM-MAT/
 │  │  ├─ deadlock_detector.py
 │  │  ├─ degradation_controller.py
 │  │  ├─ event_governor.py
+│  │  ├─ execution_governor.py
 │  │  ├─ execution_throttler.py
 │  │  ├─ governance_engine.py
 │  │  ├─ governance_models.py
@@ -183,10 +388,26 @@ DGM-MAT/
 │  │  ├─ provider_rate_control.py
 │  │  ├─ queue_balancer.py
 │  │  ├─ recursion_guard.py
+│  │  ├─ resource_governor.py
 │  │  ├─ resource_monitor.py
 │  │  ├─ runtime_limits.py
+│  │  ├─ self_modification_guard.py
 │  │  ├─ storm_protection.py
 │  │  └─ workload_scheduler.py
+│  ├─ import_fabric/
+│  │  ├─ __init__.py
+│  │  ├─ adapter_generator.py
+│  │  ├─ dependency_mapper.py
+│  │  ├─ duplication_engine.py
+│  │  ├─ external_registry.py
+│  │  ├─ import_orchestrator.py
+│  │  ├─ merge_analyzer.py
+│  │  ├─ repo_classifier.py
+│  │  ├─ repo_cloner.py
+│  │  ├─ repo_health.py
+│  │  ├─ repo_indexer.py
+│  │  ├─ skill_generator.py
+│  │  └─ upstream_tracker.py
 │  ├─ kernel/
 │  │  ├─ adaptive_scheduler.py
 │  │  ├─ cognition_pipeline.py
@@ -217,6 +438,11 @@ DGM-MAT/
 │  │  ├─ semantic_memory.py
 │  │  ├─ semantic_search.py
 │  │  └─ temporal_memory.py
+│  ├─ knowledge_graph/
+│  │  ├─ __init__.py
+│  │  ├─ graph_store.py
+│  │  ├─ memory_consolidator.py
+│  │  └─ semantic_linker.py
 │  ├─ labs/
 │  │  ├─ __init__.py
 │  │  ├─ architecture_analyzer.py
@@ -240,8 +466,20 @@ DGM-MAT/
 │  │  └─ specialization_engine.py
 │  ├─ lifecycle/
 │  │  └─ bootstrap.py
+│  ├─ local_runtime/
+│  │  ├─ __init__.py
+│  │  ├─ local_agent_runtime.py
+│  │  ├─ local_executor.py
+│  │  ├─ local_task_queue.py
+│  │  ├─ process_supervisor.py
+│  │  ├─ runtime_persistence.py
+│  │  ├─ runtime_watchdog.py
+│  │  ├─ sandbox_runner.py
+│  │  └─ terminal_bridge.py
 │  ├─ memory/
 │  │  ├─ __init__.py
+│  │  ├─ code_evolution_memory.py
+│  │  ├─ consolidation_engine.py
 │  │  ├─ context_snapshot.py
 │  │  ├─ memory_engine.py
 │  │  ├─ memory_store.py
@@ -249,25 +487,140 @@ DGM-MAT/
 │  │  ├─ project_families.py
 │  │  ├─ relationship_engine.py
 │  │  └─ repo_similarity.py
+│  ├─ model_router/
+│  │  ├─ fallback_router.py
+│  │  ├─ inference_dispatcher.py
+│  │  ├─ local_provider_adapter.py
+│  │  ├─ model_health.py
+│  │  ├─ model_registry.py
+│  │  └─ routing_engine.py
+│  ├─ node_runtime/
+│  │  ├─ capability_advertiser.py
+│  │  ├─ node_health.py
+│  │  ├─ node_identity.py
+│  │  ├─ node_registry.py
+│  │  └─ remote_task_schema.py
 │  ├─ observability/
 │  │  ├─ event_stream.py
-│  │  └─ logger.py
+│  │  ├─ execution_journal.py
+│  │  ├─ logger.py
+│  │  └─ runtime_metrics.py
+│  ├─ operator/
+│  │  ├─ __init__.py
+│  │  ├─ attachment_router.py
+│  │  ├─ autonomous_operator.py
+│  │  ├─ autonomous_scheduler.py
+│  │  ├─ background_runtime.py
+│  │  ├─ capability_extractor.py
+│  │  ├─ conversation_indexer.py
+│  │  ├─ env_manager.py
+│  │  ├─ execution_supervisor.py
+│  │  ├─ project_classifier.py
+│  │  ├─ provider_sync.py
+│  │  ├─ repo_consolidator.py
+│  │  ├─ self_improvement_loop.py
+│  │  ├─ task_daemon.py
+│  │  └─ workspace_mapper.py
 │  ├─ overseer/
 │  │  └─ overseer.py
+│  ├─ planning/
+│  │  ├─ capability_gap_detector.py
+│  │  ├─ dependency_planner.py
+│  │  ├─ milestone_tracker.py
+│  │  ├─ roadmap_engine.py
+│  │  └─ strategic_memory.py
+│  ├─ provider_memory/
+│  │  ├─ __init__.py
+│  │  ├─ models.py
+│  │  ├─ project_manager.py
+│  │  └─ relationship_manager.py
+│  ├─ provider_mesh/
+│  │  ├─ capability_router.py
+│  │  ├─ consensus_engine.py
+│  │  ├─ disagreement_detector.py
+│  │  ├─ latency_router.py
+│  │  ├─ provider_orchestrator.py
+│  │  ├─ provider_ranker.py
+│  │  └─ synthesis_engine.py
+│  ├─ provider_sync/
+│  │  ├─ __init__.py
+│  │  ├─ conversation_indexer.py
+│  │  ├─ provider_health.py
+│  │  ├─ provider_memory_sync.py
+│  │  ├─ provider_registry.py
+│  │  └─ sync_engine.py
 │  ├─ providers/
 │  │  ├─ base/
 │  │  │  └─ provider_base.py
 │  │  ├─ browser/
-│  │  │  └─ browser_manager.py
+│  │  │  ├─ browser_manager.py
+│  │  │  └─ recovery_connectors.py
 │  │  ├─ chatgpt/
 │  │  │  └─ chatgpt_provider.py
+│  │  ├─ claude/
+│  │  │  ├─ __init__.py
+│  │  │  └─ claude_provider.py
+│  │  ├─ conversation_sync/
+│  │  │  ├─ __init__.py
+│  │  │  └─ ingestion_engine.py
+│  │  ├─ custom/
+│  │  │  ├─ __init__.py
+│  │  │  └─ custom_provider.py
+│  │  ├─ deepseek/
+│  │  │  ├─ __init__.py
+│  │  │  └─ deepseek_provider.py
+│  │  ├─ gemini/
+│  │  │  ├─ __init__.py
+│  │  │  └─ gemini_provider.py
+│  │  ├─ grok/
+│  │  │  ├─ __init__.py
+│  │  │  └─ grok_provider.py
+│  │  ├─ local_ai_fabric/
+│  │  │  ├─ __init__.py
+│  │  │  ├─ ollama_adapter.py
+│  │  │  ├─ open_webui_adapter.py
+│  │  │  └─ provider_factory.py
 │  │  ├─ models/
 │  │  │  ├─ __init__.py
 │  │  │  └─ conversation.py
+│  │  ├─ ollama/
+│  │  │  ├─ __init__.py
+│  │  │  └─ ollama_provider.py
+│  │  ├─ openai/
+│  │  │  ├─ __init__.py
+│  │  │  └─ openai_provider.py
+│  │  ├─ openrouter/
+│  │  │  ├─ __init__.py
+│  │  │  └─ openrouter_provider.py
+│  │  ├─ openwebui/
+│  │  │  └─ openwebui_provider.py
+│  │  ├─ performance/
+│  │  │  ├─ __init__.py
+│  │  │  ├─ health_monitor.py
+│  │  │  ├─ provider_affinity_engine.py
+│  │  │  ├─ provider_benchmark.py
+│  │  │  ├─ provider_capability_matrix.py
+│  │  │  ├─ provider_cost_optimizer.py
+│  │  │  ├─ provider_memory_profiles.py
+│  │  │  ├─ provider_routing_engine.py
+│  │  │  └─ provider_scoring.py
+│  │  ├─ poisongpt/
+│  │  │  ├─ __init__.py
+│  │  │  └─ poisongpt_provider.py
+│  │  ├─ proxima/
+│  │  │  └─ proxima_bridge.py
+│  │  ├─ qwen/
+│  │  │  ├─ __init__.py
+│  │  │  └─ qwen_provider.py
 │  │  ├─ session/
 │  │  │  └─ session_manager.py
+│  │  ├─ z/
+│  │  │  ├─ __init__.py
+│  │  │  └─ z_provider.py
 │  │  ├─ conversation_classifier.py
 │  │  ├─ conversation_memory.py
+│  │  ├─ knowledge_normalizer.py
+│  │  ├─ model_router.py
 │  │  └─ provider_runtime.py
 │  ├─ realtime/
 │  │  ├─ realtime_broadcast.py
@@ -290,6 +643,11 @@ DGM-MAT/
 │  │  ├─ runtime_recovery.py
 │  │  ├─ service_restarter.py
 │  │  └─ state_rebuilder.py
+│  ├─ repository_cognition/
+│  │  ├─ __init__.py
+│  │  ├─ architecture_mapper.py
+│  │  ├─ repo_scanner.py
+│  │  └─ repository_civilizer.py
 │  ├─ repository_intelligence/
 │  │  ├─ __init__.py
 │  │  ├─ duplicate_detector.py
@@ -297,9 +655,12 @@ DGM-MAT/
 │  │  ├─ github_client.py
 │  │  ├─ intelligence_engine.py
 │  │  ├─ models.py
+│  │  ├─ operational_feed.py
 │  │  ├─ repo_classifier.py
+│  │  ├─ repo_federation.py
 │  │  ├─ repo_graph.py
 │  │  ├─ repo_importer.py
+│  │  ├─ repo_watchers.py
 │  │  ├─ scanner.py
 │  │  ├─ tech_detector.py
 │  │  └─ tree_generator.py
@@ -321,8 +682,47 @@ DGM-MAT/
 │  │  └─ technology_evaluator.py
 │  ├─ runtime/
 │  │  └─ runtime.py
+│  ├─ runtime_daemon/
+│  │  ├─ __init__.py
+│  │  ├─ daemon.py
+│  │  ├─ heartbeat.py
+│  │  ├─ process_registry.py
+│  │  ├─ supervisor.py
+│  │  └─ watchdog.py
 │  ├─ runtime_state/
 │  │  └─ runtime_state.py
+│  ├─ sandbox/
+│  │  ├─ execution_journal.py
+│  │  ├─ execution_limits.py
+│  │  ├─ isolated_runtime.py
+│  │  ├─ rollback_runtime.py
+│  │  ├─ runtime_replay.py
+│  │  └─ snapshot_manager.py
+│  ├─ search/
+│  │  └─ internal_search_engine.py
+│  ├─ security/
+│  │  ├─ __init__.py
+│  │  └─ vault.py
+│  ├─ self_evolution/
+│  │  ├─ architecture_optimizer.py
+│  │  ├─ autonomous_refactorer.py
+│  │  ├─ benchmark_engine.py
+│  │  ├─ capability_expander.py
+│  │  ├─ evolution_engine.py
+│  │  ├─ evolution_guardrails.py
+│  │  ├─ evolution_memory.py
+│  │  ├─ patch_candidate_generator.py
+│  │  ├─ patch_generator.py
+│  │  ├─ promotion_engine.py
+│  │  ├─ regression_guard.py
+│  │  ├─ rollback_manager.py
+│  │  ├─ safety_validator.py
+│  │  ├─ sandbox_runner.py
+│  │  └─ self_analysis_engine.py
+│  ├─ self_healing/
+│  │  ├─ __init__.py
+│  │  ├─ degraded_mode_router.py
+│  │  └─ runtime_recovery.py
 │  ├─ storage/
 │  │  ├─ database.py
 │  │  ├─ event_store.py
@@ -347,6 +747,12 @@ DGM-MAT/
 │  │  ├─ strategy_engine.py
 │  │  ├─ strategy_snapshot.py
 │  │  └─ sustainability_engine.py
+│  ├─ telemetry/
+│  │  ├─ anomaly_metrics.py
+│  │  ├─ execution_analytics.py
+│  │  ├─ metrics_collector.py
+│  │  ├─ resource_monitor.py
+│  │  └─ runtime_profiler.py
 │  ├─ update/
 │  │  ├─ artifact_downloader.py
 │  │  ├─ release_checker.py
@@ -354,8 +760,23 @@ DGM-MAT/
 │  │  ├─ safe_updater.py
 │  │  ├─ update_engine.py
 │  │  └─ version_registry.py
-│  └─ validation/
-│     └─ event_validator.py
+│  ├─ validation/
+│  │  └─ event_validator.py
+│  └─ workspace/
+│     ├─ __init__.py
+│     ├─ attachment_classifier.py
+│     ├─ conversation_linker.py
+│     ├─ duplicate_projects.py
+│     ├─ file_lineage.py
+│     ├─ project_families.py
+│     ├─ project_health.py
+│     ├─ project_identity.py
+│     ├─ repository_relationships.py
+│     ├─ semantic_project_mapper.py
+│     ├─ workspace_context.py
+│     ├─ workspace_engine.py
+│     ├─ workspace_graph.py
+│     └─ workspace_manager.py
 ├─ DGM-MAT-Agents/
 │  ├─ .gitignore
 │  ├─ architecture.md
@@ -462,10 +883,14 @@ DGM-MAT/
 │  │  └─ rules.md
 │  ├─ memory/
 │  │  └─ model.md
+│  ├─ ARCHITECTURE_GUARDRAILS.md
+│  ├─ AUTONOMOUS_RUNTIME.md
 │  ├─ BUILD_EXE_RECOVERY_PLAN.md
 │  ├─ COCKPIT_CONVERGENCE_PLAN.md
+│  ├─ COGNITIVE_RUNTIME.md
 │  ├─ DEPENDENCY_CONVERGENCE_REPORT.md
 │  ├─ OPERATIONAL_CONVERGENCE_ROADMAP.md
+│  ├─ OPERATIONAL_RUNTIME.md
 │  ├─ PHASE_HISTORY.md
 │  └─ SYSTEM_STATUS_REPORT.md
 ├─ legacy/
@@ -544,9 +969,16 @@ DGM-MAT/
 │  │  ├─ test_phase7.py
 │  │  └─ test_system.py
 │  └─ architecture.md
+├─ memory_sync/
+│  └─ phase41_lite_learnings.json
 ├─ Persist-Node/
 │  ├─ ecosystem.json
 │  └─ health.json
+├─ reports/
+│  ├─ build_validation.json
+│  ├─ platform_health.json
+│  ├─ runtime_validation.json
+│  └─ test_matrix.json
 ├─ requirements/
 │  ├─ base.txt
 │  ├─ build.txt
@@ -555,10 +987,33 @@ DGM-MAT/
 │  ├─ research.txt
 │  └─ runtime.txt
 ├─ scripts/
+│  ├─ autostart/
+│  │  ├─ __init__.py
+│  │  ├─ autonomous_loop.py
+│  │  ├─ boot_runtime.py
+│  │  ├─ recovery_monitor.py
+│  │  ├─ restore_runtime.py
+│  │  ├─ restore_sessions.py
+│  │  ├─ start_cockpit.py
+│  │  ├─ start_daemon.py
+│  │  ├─ start_dgm_mat.py
+│  │  ├─ start_runtime.py
+│  │  └─ worker_cluster.py
+│  ├─ bootstrap_tests/
+│  │  └─ test_bootstrap_logic.py
+│  ├─ autonomous_dry_run.py
+│  ├─ executable_runtime_test.py
+│  ├─ generate_validation_reports.py
 │  ├─ phase_finalizer.py
+│  ├─ phase35_imports.py
 │  ├─ repo_bootstrap_interactive.py
+│  ├─ runtime_smoke_test.py
+│  ├─ stress_test_memory.py
+│  ├─ stress_test_providers.py
 │  ├─ validate_dependencies.py
-│  └─ validate_storage.py
+│  ├─ validate_executable.py
+│  ├─ validate_storage.py
+│  └─ verify_cockpit_persistence.py
 ├─ shared/
 │  ├─ config/
 │  │  └─ settings.py
@@ -568,35 +1023,113 @@ DGM-MAT/
 │     ├─ __init__.py
 │     └─ event.py
 ├─ tests/
-│  ├─ test_dependency_integrity.py
-│  ├─ test_ecosystem_materializer.py
-│  ├─ test_ecosystem.py
-│  ├─ test_execution_logic.py
-│  ├─ test_federation_layer.py
-│  ├─ test_governance_sim.py
-│  ├─ test_import_intelligence_v7.py
-│  ├─ test_knowledge_fabric.py
-│  ├─ test_phase15_16_17_import.py
-│  ├─ test_repo_importer.py
-│  ├─ test_repository_intelligence.py
-│  ├─ test_research_layer.py
-│  ├─ test_runtime.py
-│  ├─ test_storage_architecture.py
-│  └─ test_strategic_orchestration.py
+│  ├─ autonomy/
+│  │  ├─ test_analysis.py
+│  │  ├─ test_continuous_runtime.py
+│  │  ├─ test_degraded_mode.py
+│  │  ├─ test_engines.py
+│  │  ├─ test_loop.py
+│  │  ├─ test_mission_system.py
+│  │  ├─ test_phase37_logic.py
+│  │  └─ test_scheduler.py
+│  ├─ bootstrap/
+│  │  ├─ __init__.py
+│  │  └─ test_bootstrap_logic.py
+│  ├─ cockpit/
+│  │  ├─ test_cockpit_boot.py
+│  │  ├─ test_cockpit_sync.py
+│  │  └─ test_realtime_integration.py
+│  ├─ daemon/
+│  │  └─ test_daemon_persistence.py
+│  ├─ execution_fabric/
+│  │  ├─ __init__.py
+│  │  ├─ test_execution_fabric.py
+│  │  └─ test_execution_logic.py
+│  ├─ import_fabric/
+│  │  ├─ __init__.py
+│  │  ├─ test_import_intelligence_v7.py
+│  │  ├─ test_phase15_16_17_import.py
+│  │  ├─ test_repo_import_validation.py
+│  │  └─ test_repo_importer.py
+│  ├─ integration/
+│  │  ├─ __init__.py
+│  │  ├─ test_api_endpoints.py
+│  │  ├─ test_ecosystem_materializer.py
+│  │  ├─ test_ecosystem.py
+│  │  ├─ test_federation_layer.py
+│  │  ├─ test_governance_sim.py
+│  │  ├─ test_knowledge_fabric.py
+│  │  ├─ test_provider_sync.py
+│  │  ├─ test_repository_intelligence.py
+│  │  ├─ test_research_layer.py
+│  │  ├─ test_storage_architecture.py
+│  │  └─ test_strategic_orchestration.py
+│  ├─ knowledge_graph/
+│  │  └─ test_consolidation.py
+│  ├─ operational/
+│  │  ├─ test_master_runtime.py
+│  │  ├─ test_phase37_operational.py
+│  │  ├─ test_recovery.py
+│  │  └─ test_work_queue.py
+│  ├─ platform/
+│  │  ├─ test_cognition_survival.py
+│  │  └─ test_runtime_restoration.py
+│  ├─ provider_mesh/
+│  │  └─ test_mesh_orchestration.py
+│  ├─ provider_sync/
+│  │  └─ test_sync.py
+│  ├─ repository_cognition/
+│  │  ├─ test_civilization.py
+│  │  └─ test_indexing.py
+│  ├─ runtime/
+│  │  └─ test_smoke.py
+│  ├─ runtime_daemon/
+│  │  ├─ test_daemon.py
+│  │  └─ test_recovery.py
+│  ├─ sandbox/
+│  │  └─ test_sandbox_security.py
+│  ├─ security/
+│  │  └─ __init__.py
+│  ├─ self_evolution/
+│  │  └─ test_self_analysis.py
+│  ├─ system/
+│  │  ├─ test_repo_scanning.py
+│  │  └─ test_worktree_execution.py
+│  ├─ unit/
+│  │  ├─ __init__.py
+│  │  ├─ test_dependency_integrity.py
+│  │  ├─ test_operational_stability.py
+│  │  ├─ test_persistent_paths.py
+│  │  ├─ test_provider_orchestration_new.py
+│  │  ├─ test_provider_registry.py
+│  │  ├─ test_runtime.py
+│  │  └─ test_vault_security.py
+│  ├─ __init__.py
+│  ├─ test_phase35_autonomy.py
+│  ├─ test_phase35_cognition.py
+│  └─ test_phase35_governance.py
 ├─ tools/
 │  ├─ repo_control_panel/
 │  │  ├─ app.py
 │  │  ├─ github_client.py
 │  │  └─ repo_manager.py
+│  ├─ controlled_import.py
 │  └─ import_engine.py
 ├─ .gitignore
+├─ apply_fix.sh
 ├─ architecture.md
-├─ core_review_request.txt
 ├─ DGM-MAT_TREE.txt
 ├─ ecosystem.json
 ├─ health.json
 ├─ LICENSE
 ├─ main.py
+├─ memory_recording.json
 ├─ pyproject.toml
+├─ pytest.ini
 ├─ README.md
-└─ requirements.txt
+├─ requirements.txt
+├─ test_pyside6.py
+├─ verify_all_phase37_38.py
+├─ verify_cockpit_phase38.py
+├─ verify_cockpit.py
+└─ verify_widgets.py
