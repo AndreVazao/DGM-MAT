@@ -1,5 +1,5 @@
 import threading
-from queue import Queue, Full
+from queue import Queue, Full, Empty
 from typing import Dict, List
 from core.knowledge.knowledge_models import KnowledgeNode
 from core.observability.logger import dgm_logger
@@ -34,6 +34,8 @@ class MemoryIndexer:
                             if node.id not in self.index[c]:
                                 self.index[c].append(node.id)
                 self.queue.task_done()
+            except Empty:
+                continue
             except Exception as e:
                 dgm_logger.exception(f"MemoryIndexer: Error processing nodes: {e}")
                 continue
