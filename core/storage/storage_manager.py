@@ -21,9 +21,15 @@ class RuntimeStorageManager:
                 if dgm_base:
                     base_path = str(Path(dgm_base) / "data")
                 else:
-                    # 3. Default to a gitignored local runtime directory
-                    project_root = Path(__file__).parent.parent.parent
-                    base_path = str(project_root / "storage" / "runtime")
+                    # 3. Default to a persistent local runtime directory
+                    local_app_data = os.getenv("LOCALAPPDATA")
+                    if local_app_data:
+                        # Windows persistent path (Requirement 7)
+                        base_path = str(Path(local_app_data) / "DGM-MAT" / "runtime")
+                    else:
+                        # Fallback for development or other OS
+                        project_root = Path(__file__).parent.parent.parent
+                        base_path = str(project_root / "storage" / "runtime")
 
         self.base_path = Path(base_path).resolve()
         self._fallback_path: Optional[Path] = None
