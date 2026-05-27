@@ -1,17 +1,22 @@
 import ast
 import os
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Set
 from core.observability.logger import dgm_logger
 
 class CognitiveRepoScanner:
     def __init__(self, root_path: str = "."):
         self.root_path = Path(root_path)
+        self.exclusions = {".runtime", ".git", "__pycache__", "node_modules", "dist", "build", ".venv"}
 
     def scan(self) -> List[Dict[str, Any]]:
         dgm_logger.info(f"CognitiveRepoScanner: Scanning {self.root_path}")
         results = []
         for path in self.root_path.rglob("*"):
+            # Skip excluded directories and their contents
+            if any(part in self.exclusions for part in path.parts):
+                continue
+
             if path.is_file():
                 if path.suffix == ".py":
                     results.append(self._analyze_python(path))
@@ -25,7 +30,8 @@ class CognitiveRepoScanner:
 
     def _analyze_python(self, path: Path) -> Dict[str, Any]:
         try:
-            tree = ast.parse(path.read_text(encoding="utf-8"))
+            content = path.read_text(encoding="utf-8")
+            tree = ast.parse(content)
             classes = [n.name for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]
             functions = [n.name for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)]
             return {
@@ -33,7 +39,7 @@ class CognitiveRepoScanner:
                 "language": "python",
                 "classes": classes,
                 "functions": functions,
-                "loc": len(path.read_text().splitlines())
+                "loc": len(content.splitlines())
             }
         except Exception as e:
             return {"path": str(path), "error": str(e)}

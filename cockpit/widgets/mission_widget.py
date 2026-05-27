@@ -13,19 +13,27 @@ class MissionWidget(QWidget):
 
         self.layout.addWidget(QLabel("<b>ACTIVE MISSIONS</b>"))
         self.mission_list = QListWidget()
+        self.mission_list.setStyleSheet("background-color: #f8f9fa; border: 1px solid #dee2e6;")
         self.layout.addWidget(self.mission_list)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
         self.layout.addWidget(self.progress_bar)
 
-        self._mock_data()
-
-    def _mock_data(self):
-        self.mission_list.addItem("Stabilize Repository CI [Active]")
-        self.progress_bar.setValue(35)
-
     def update_missions(self, missions: list):
         self.mission_list.clear()
+        if not missions:
+            self.mission_list.addItem("No active missions.")
+            self.progress_bar.setValue(0)
+            return
+
         for mission in missions:
-            self.mission_list.addItem(f"{mission.get('goal')} [{mission.get('status')}]")
+            goal = mission.get('goal', 'Unknown')
+            status = mission.get('status', 'unknown')
+            self.mission_list.addItem(f"• {goal} [{status.upper()}]")
+
+        # Simple progress heuristic for now
+        active_count = sum(1 for m in missions if m.get('status') == 'active')
+        total = len(missions)
+        if total > 0:
+            self.progress_bar.setValue(int((active_count / total) * 100))

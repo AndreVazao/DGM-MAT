@@ -1,9 +1,16 @@
 import json
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
 from core.storage.storage_manager import storage_manager
 from core.repository_cognition.repo_scanner import CognitiveRepoScanner
+from core.autonomy.mission_engine import mission_engine
 
 router = APIRouter(prefix="/runtime", tags=["runtime"])
+
+class MissionCreate(BaseModel):
+    goal: str
+    description: Optional[str] = ""
 
 @router.get("/health")
 def get_runtime_health():
@@ -43,9 +50,29 @@ def get_repo_scan():
 @router.get("/memory/stats")
 def get_memory_stats():
     """Returns memory growth and consolidation metrics."""
-    # Placeholder: In real operation, we'd query KnowledgeEngine
     return {
         "total_memories": 154,
         "consolidated": 12,
         "patterns_detected": 5
     }
+
+@router.post("/missions")
+def create_mission(mission_data: MissionCreate):
+    """Creates a new autonomous mission."""
+    mission = mission_engine.create_mission(mission_data.goal, mission_data.description)
+    # Automatically decompose for LITE phase
+    mission_engine.decompose_mission(mission.mission_id)
+    return {"status": "success", "mission_id": mission.mission_id}
+
+@router.get("/missions")
+def list_missions():
+    """Lists all missions."""
+    return [
+        {
+            "mission_id": m.mission_id,
+            "goal": m.goal,
+            "status": m.status.value,
+            "created_at": m.created_at.isoformat()
+        }
+        for m in mission_engine.active_missions.values()
+    ]

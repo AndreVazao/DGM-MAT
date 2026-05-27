@@ -16,15 +16,14 @@ htmlcov/
 # PyInstaller outputs MUST go to /dist and /build-temp
 dist/
 build-temp/
-build/build/
-build/dgm_mat/
+build/
 *.toc
 *.pkg
 *.pyz
 xref-*.html
 warn-*.txt
 
-# Preserve important build configs
+# Preserve important build configs (overriding the build/ exclusion)
 !build/*.spec
 !build/windows/version_info.txt
 
