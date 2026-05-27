@@ -1,20 +1,32 @@
+from typing import List, Dict, Any, Optional
 from core.providers.base.provider_base import ProviderBase
 from core.observability.logger import dgm_logger
-from typing import List, Dict, Any
 
 class GeminiProvider(ProviderBase):
     def __init__(self):
         super().__init__("gemini")
+        self.update_capabilities(
+            coding=0.8,
+            reasoning=0.85,
+            speed=0.95,
+            context_size=1000000,
+            cost_profile="low"
+        )
 
-    def authenticate(self) -> bool:
-        dgm_logger.info("GeminiProvider: Authenticating with Google.")
-        return True
+    async def chat(self, messages: List[Dict[str, str]], **kwargs) -> str:
+        api_key = self.get_credential("api_key")
+        if not api_key:
+            self.health_metrics["status"] = "unauthorized"
+            return "Error: Google Gemini API key missing."
 
-    def list_conversations(self) -> List[Dict[str, Any]]:
-        return [{"id": "g1", "title": "Gemini Chat 1"}]
-
-    def sync_conversation(self, conversation_id: str) -> bool:
-        return True
+        dgm_logger.info(f"GeminiProvider: Sending chat request.")
+        self.record_latency(1200)
+        return "Gemini response placeholder"
 
     def check_health(self) -> Dict[str, Any]:
-        return {"status": "ok", "latency": 150}
+        api_key = self.get_credential("api_key")
+        if not api_key:
+            self.health_metrics["status"] = "unauthorized"
+        else:
+            self.health_metrics["status"] = "ok"
+        return super().check_health()
