@@ -55,3 +55,32 @@ jobs:
         run: |
           ! grep -ri --exclude=workflow-validation.yml \
             "continue-on-error: true" .github/workflows/
+
+  repository-detox-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Fail if PyInstaller artifacts are tracked
+        run: |
+          PROHIBITED_FILES=$(git ls-files | grep -E "\.toc$|\.pkg$|\.pyz$|xref-.*\.html$|warn-.*\.txt$|build/build/|dist/|build-temp/|build/dgm_mat/")
+          if [ -n "$PROHIBITED_FILES" ]; then
+            echo "CRITICAL ERROR: Prohibited artifacts found in git tracking:"
+            echo "$PROHIBITED_FILES"
+            false
+          fi
+      - name: Fail if oversized binaries are tracked (>1MB)
+        run: |
+          OVERSIZED=$(find . -size +1M -not -path '*/.*' -not -path './.git/*')
+          if [ -n "$OVERSIZED" ]; then
+            echo "CRITICAL ERROR: Oversized files (>1MB) found in repository:"
+            echo "$OVERSIZED"
+            false
+          fi
+      - name: Fail if cache folders are tracked
+        run: |
+          CACHE_FOLDERS=$(git ls-files | grep -E "__pycache__/|\.pytest_cache/")
+          if [ -n "$CACHE_FOLDERS" ]; then
+            echo "CRITICAL ERROR: Cache folders found in git tracking:"
+            echo "$CACHE_FOLDERS"
+            false
+          fi
