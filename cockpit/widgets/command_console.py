@@ -137,7 +137,7 @@ class CommandConsoleWidget(QWidget):
             <div style='margin-bottom: 8px;'>
                 <span style='color: #808080; font-size: 8pt;'>[{ts}]</span>
                 <b style='color: {color};'>{sender}:</b>
-                <div style='margin-left: 15px; color: #d4d4d4;'>{text.replace('\n', '<br>')}</div>
+                <div style='margin-left: 15px; color: #d4d4d4;'>{text.replace(chr(10), '<br>')}</div>
             </div>
         """
 

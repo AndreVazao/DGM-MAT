@@ -24,9 +24,12 @@ def test_event_validation():
 
 def test_storage_persistence():
     from core.storage.event_store import EventStore
-    from core.storage.database import SessionLocal
-    from core.storage.models import EventRecord
+    from core.storage.database import SessionLocal, engine
+    from core.storage.models import EventRecord, Base
     import json
+
+    # Ensure tables exist
+    Base.metadata.create_all(bind=engine)
 
     event = Event(
         source="test_source",
