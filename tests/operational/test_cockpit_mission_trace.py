@@ -40,4 +40,4 @@ def test_failed_mission_trace():
     # 2. Verify Mission marked as FAILED in Truth State
     truth = state_store.get_snapshot()
     assert mission_id in truth.missions
-    assert truth.missions[mission_id]["status"] == "failed"
+    assert truth.missions[mission_id]["status"] == "FAILED"
