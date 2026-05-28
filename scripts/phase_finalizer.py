@@ -1,7 +1,8 @@
 import os
 import json
 from datetime import datetime
-from core.storage.storage_manager import RuntimeStorageManager
+from pathlib import Path
+from core.storage.storage_manager import storage_manager
 from core.federation.ecosystem_registry import EcosystemRegistry
 from core.kernel.cognitive_kernel import CognitiveKernel
 from core.strategy.strategic_memory import StrategicMemory
@@ -14,11 +15,10 @@ def datetime_serializer(obj):
 def run_phase_finalization():
     print("Starting Phase Finalization Pipeline...")
 
-    storage = RuntimeStorageManager()
     registry = EcosystemRegistry()
     kernel = CognitiveKernel()
     kernel.boot()
-    strategy_memory = StrategicMemory(storage)
+    strategy_memory = StrategicMemory(storage_manager)
 
     # 1. Snapshot Ecosystem Topology
     ecosystems = registry.get_ecosystems()
@@ -29,7 +29,7 @@ def run_phase_finalization():
         "maturity_level": "Phase 21/22"
     }
 
-    storage.save_data("topology", f"snapshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json", json.dumps(topology_snapshot, indent=2, default=datetime_serializer))
+    storage_manager.save_data("topology", f"snapshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json", json.dumps(topology_snapshot, indent=2, default=datetime_serializer))
     print("Ecosystem topology snapshotted.")
 
     # 2. Update Strategic Memory
@@ -52,12 +52,12 @@ def run_phase_finalization():
         "strategic_direction": "Modular Federated AI Operating Civilization"
     }
 
-    storage.save_data("evolution", "current_summary.json", json.dumps(evolution_summary, indent=2))
+    storage_manager.save_data("evolution_memory", "current_summary.json", json.dumps(evolution_summary, indent=2))
     print("Evolution summary generated.")
 
-    # 4. Create Architecture Checkpoint in AndreOS (Simulated or via storage)
-    checkpoint_path = os.path.join("AndreOS", f"architecture_checkpoint_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-    os.makedirs("AndreOS", exist_ok=True)
+    # 4. Create Architecture Checkpoint in Persistent Memory
+    checkpoint_path = storage_manager.get_path("memory", f"architecture_checkpoint_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     with open(checkpoint_path, "w") as f:
         json.dump(topology_snapshot, f, indent=2, default=datetime_serializer)
     print(f"Architecture checkpoint created at {checkpoint_path}")

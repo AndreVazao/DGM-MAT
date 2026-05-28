@@ -3,7 +3,7 @@ import time
 import sys
 import argparse
 import os
-from core.bootstrap.bootstrap_engine import BootstrapEngine
+from core.bootstrap import BootstrapEngine
 from core.observability.logger import dgm_logger
 
 def run_runtime(profile="FULL"):

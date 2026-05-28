@@ -1,6 +1,7 @@
 import asyncio
 import json
 import websockets
+import time
 from typing import Callable, List, Optional
 from core.observability.logger import dgm_logger
 
@@ -10,25 +11,46 @@ class RealtimeClient:
         self.websocket: Optional[websockets.WebSocketClientProtocol] = None
         self.listeners: List[Callable[[dict], None]] = []
         self._running = False
+        self.is_connected = False
+        self.connection_state_callbacks: List[Callable[[bool], None]] = []
+        self._retry_delay = 1.0
+        self._max_retry_delay = 30.0
+
+    def add_connection_callback(self, callback: Callable[[bool], None]):
+        self.connection_state_callbacks.append(callback)
+
+    def _update_connection_state(self, state: bool):
+        self.is_connected = state
+        for cb in self.connection_state_callbacks:
+            try:
+                cb(state)
+            except Exception as e:
+                dgm_logger.error(f"RealtimeClient: Connection state callback failed: {e}")
 
     async def connect(self):
-        """Establishes a persistent connection to the realtime server."""
+        """Establishes a persistent connection with exponential backoff."""
         self._running = True
         while self._running:
             try:
+                dgm_logger.info(f"RealtimeClient: Attempting connection to {self.uri}...")
                 async with websockets.connect(self.uri) as websocket:
                     self.websocket = websocket
+                    self._retry_delay = 1.0 # Reset on success
+                    self._update_connection_state(True)
                     dgm_logger.info(f"RealtimeClient: Connected to {self.uri}")
+
                     async for message in websocket:
                         try:
                             data = json.loads(message)
                             self._notify_listeners(data)
                         except json.JSONDecodeError:
-                            dgm_logger.warning(f"RealtimeClient: Received malformed message: {message}")
+                            dgm_logger.warning(f"RealtimeClient: Received malformed message.")
             except Exception as e:
-                dgm_logger.error(f"RealtimeClient: Connection error: {e}")
+                self._update_connection_state(False)
                 if self._running:
-                    await asyncio.sleep(5) # Retry after 5 seconds
+                    dgm_logger.error(f"RealtimeClient: Connection failed ({e}). Retrying in {self._retry_delay:.1f}s")
+                    await asyncio.sleep(self._retry_delay)
+                    self._retry_delay = min(self._retry_delay * 2, self._max_retry_delay)
 
     def _notify_listeners(self, data: dict):
         for listener in self.listeners:

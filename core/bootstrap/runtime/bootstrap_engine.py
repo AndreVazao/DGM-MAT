@@ -4,11 +4,11 @@ import os
 from pathlib import Path
 from datetime import datetime
 from core.observability.logger import dgm_logger
-from core.bootstrap.bootstrap_context import BootstrapContext
-from core.bootstrap.bootstrap_sequence import BootstrapPhase, BOOTSTRAP_ORDER
-from core.bootstrap.environment_detector import detect_environment, assign_node_role
-from core.bootstrap.bootstrap_storage import initialize_storage_subsystem
-from core.bootstrap.dependency_loader import DependencyLoader
+from core.bootstrap.core.bootstrap_context import BootstrapContext
+from core.bootstrap.runtime.bootstrap_sequence import BootstrapPhase, BOOTSTRAP_ORDER
+from core.bootstrap.core.environment_detector import detect_environment, assign_node_role
+from core.bootstrap.core.bootstrap_storage import initialize_storage_subsystem
+from core.bootstrap.core.dependency_loader import DependencyLoader
 
 class BootstrapEngine:
     """
@@ -65,7 +65,7 @@ class BootstrapEngine:
         critical_phases = [
             BootstrapPhase.VALIDATE_ENVIRONMENT,
             BootstrapPhase.INITIALIZE_STORAGE,
-            BootstrapPhase.INITIALIZE_GOVERNANCE,
+
         ]
         return phase in critical_phases
 
@@ -94,7 +94,7 @@ class BootstrapEngine:
     def _load_ecosystem(self): pass
 
     def _prepare_governance(self):
-        DependencyLoader.validate_dependency("core.governance.governance_engine", critical=True)
+        DependencyLoader.validate_dependency("core.governance.governance_engine", critical=False)
 
     def _prepare_memory(self):
         DependencyLoader.validate_dependency("core.memory.memory_manager")

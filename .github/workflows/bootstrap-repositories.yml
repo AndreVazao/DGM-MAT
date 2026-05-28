@@ -30,6 +30,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python -c "
-          from core.bootstrap.bootstrap_engine import BootstrapEngine
+          from core.bootstrap import BootstrapEngine
           BootstrapEngine(profile='HEADLESS').prepare()
           "

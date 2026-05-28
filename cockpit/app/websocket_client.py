@@ -16,7 +16,12 @@ class CockpitWebSocketClient:
         self.client.add_listener(callback)
 
     async def send_command(self, command: str, payload: dict):
+        # Requirement 3: Exponential reconnect handled by RealtimeClient
+        # This wrapper preserves the interface
         await self.client.send({
             "command": command,
             "payload": payload
         })
+
+    def stop(self):
+        self.client.stop()
