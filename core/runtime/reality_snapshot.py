@@ -32,7 +32,8 @@ class RealitySnapshotService:
                 "agents": self._get_agent_status(),
                 "workspaces": self._get_workspace_state(),
                 "processes": self._get_running_processes(),
-                "memory": self._get_memory_folders()
+                "memory": self._get_memory_folders(),
+                "canonical_paths": self._validate_canonical_paths()
             }
 
             elapsed = time.time() - start_time
@@ -52,7 +53,8 @@ class RealitySnapshotService:
             "total_repos": len(data.get("repos", [])),
             "total_processes": len(data.get("processes", [])),
             "active_providers": len([p for p in data.get("providers", []) if p.get("status") == "active"]),
-            "is_runtime_healthy": all(v.get("exists") for v in data.get("runtime", {}).values())
+            "is_runtime_healthy": all(v.get("exists") for v in data.get("runtime", {}).values()),
+            "canonical_paths_valid": all(data.get("canonical_paths", {}).values())
         }
 
     def _get_runtime_folders(self) -> Dict[str, Any]:
@@ -70,6 +72,16 @@ class RealitySnapshotService:
             except PermissionError:
                 result[folder] = {"path": str(path), "exists": False, "is_dir": False, "error": "PermissionDenied"}
         return result
+
+    def _validate_canonical_paths(self) -> Dict[str, bool]:
+        paths = ["C:/DevopGodMode", "C:/ProgramasGodMode", "C:/ProgramasGodMode/andreos-memory"]
+        results = {}
+        for p in paths:
+            try:
+                results[p] = Path(p).exists()
+            except Exception:
+                results[p] = False
+        return results
 
     def _get_providers_status(self) -> List[Dict[str, Any]]:
         # Get from state_store

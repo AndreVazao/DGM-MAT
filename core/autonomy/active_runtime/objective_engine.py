@@ -25,7 +25,7 @@ class ObjectiveEngine:
         # 2. Process Active Missions
         if active_missions:
             for mission in active_missions:
-                if mission.status == MissionStatus.ACTIVE:
+                if mission.status == MissionStatus.RUNNING:
                     for st in mission.subtasks:
                         if st.status == "pending":
                             objectives.append({

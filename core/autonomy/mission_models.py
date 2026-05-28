@@ -4,11 +4,12 @@ from datetime import datetime
 from enum import Enum
 
 class MissionStatus(Enum):
-    PENDING = "pending"
-    ACTIVE = "active"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
+    CREATED = "CREATED"
+    QUEUED = "QUEUED"
+    APPROVAL_PENDING = "APPROVAL_PENDING"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 @dataclass
 class SubTask:
@@ -26,7 +27,7 @@ class Mission:
     mission_id: str
     goal: str
     description: str
-    status: MissionStatus = MissionStatus.PENDING
+    status: MissionStatus = MissionStatus.CREATED
     subtasks: List[SubTask] = field(default_factory=list)
     assigned_agents: List[str] = field(default_factory=list)
     artifacts: List[str] = field(default_factory=list)
