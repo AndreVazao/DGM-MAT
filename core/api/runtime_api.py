@@ -88,8 +88,8 @@ def index_obsidian():
 @router.post("/missions")
 def create_mission(mission_data: MissionCreate):
     """Requirement 7: Mission creation interface."""
+    # Let the Mission Consumer (CognitionLoop) handle transitions
     mission = mission_engine.create_mission(mission_data.goal, mission_data.description)
-    mission_engine.decompose_mission(mission.mission_id)
     return {"status": "success", "mission_id": mission.mission_id}
 
 @router.get("/missions")
@@ -99,7 +99,10 @@ def list_missions():
             "mission_id": m.mission_id,
             "goal": m.goal,
             "status": m.status.value,
-            "created_at": getattr(m, 'created_at', None).isoformat() if hasattr(m, 'created_at') and m.created_at else None
+            "created_at": getattr(m, 'created_at', None).isoformat() if hasattr(m, 'created_at') and m.created_at else None,
+            "progress": m.progress,
+            "logs": m.logs,
+            "error": m.error
         }
         for m in mission_engine.active_missions.values()
     ]

@@ -35,3 +35,6 @@ class Mission:
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
     execution_timeline: List[Dict[str, Any]] = field(default_factory=list)
+    logs: List[str] = field(default_factory=list)
+    progress: float = 0.0
+    error: Optional[str] = None

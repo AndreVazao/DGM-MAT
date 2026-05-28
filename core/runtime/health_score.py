@@ -66,8 +66,19 @@ class RuntimeHealthScore:
         if snapshot_summary.get("is_runtime_healthy"):
              score += self.weights["memory"]
 
+        # Requirement 5: Strict consistency.
+        # If critical issues exist, the score must be capped or heavily penalized to avoid "nominal" reports.
+        if critical:
+            score = min(score, 49) # Force score below 50 if critical issues exist
+            status = "CRITICAL"
+        elif score < 75:
+            status = "DEGRADED"
+        else:
+            status = "NOMINAL"
+
         return {
             "score": score,
+            "status": status,
             "warnings": warnings,
             "critical": critical
         }

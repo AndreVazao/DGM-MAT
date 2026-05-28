@@ -31,6 +31,7 @@ class MainWindow(QMainWindow):
         self.ws_client = CockpitWebSocketClient()
         self.is_connected = False
         self.runtime_prepared = False
+        self.connection_reason = "UNKNOWN"
 
         self._setup_ui()
         self._setup_connections()
@@ -46,7 +47,7 @@ class MainWindow(QMainWindow):
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #007acc;")
 
         self.status_badge = QLabel("DISCONNECTED")
-        self.status_badge.setFixedSize(200, 25) # Increased size to fit "CONNECTED | READY"
+        self.status_badge.setFixedSize(250, 25) # Increased size to fit detailed status
         self.status_badge.setAlignment(Qt.AlignCenter)
         self.status_badge.setStyleSheet("background-color: #f44336; color: white; border-radius: 5px; font-weight: bold;")
 
@@ -100,9 +101,10 @@ class MainWindow(QMainWindow):
         loop = asyncio.get_event_loop()
         asyncio.run_coroutine_threadsafe(self.ws_client.connect(), loop)
 
-    @Slot(bool)
-    def _on_connection_changed(self, connected):
+    @Slot(bool, str)
+    def _on_connection_changed(self, connected, reason="UNKNOWN"):
         self.is_connected = connected
+        self.connection_reason = reason
         if not connected:
             self.runtime_prepared = False
         self._update_status_badge()
@@ -114,8 +116,6 @@ class MainWindow(QMainWindow):
             self.runtime_prepared = state.get("status") == "running"
             self._update_status_badge()
 
-        # Dispatch to other widgets as needed
-
     def _update_status_badge(self):
         if self.is_connected and self.runtime_prepared:
             self.status_badge.setText("CONNECTED | READY")
@@ -123,12 +123,13 @@ class MainWindow(QMainWindow):
             self.command_console.set_enabled(True)
             self.statusBar().showMessage("System Operational.")
         elif self.is_connected:
-            self.status_badge.setText("API CONNECTED")
+            self.status_badge.setText("API CONNECTED | SYNCING")
             self.status_badge.setStyleSheet("background-color: #ff9800; color: white; border-radius: 5px; font-weight: bold;")
             self.command_console.set_enabled(False)
             self.statusBar().showMessage("Waiting for Runtime to prepare...")
         else:
-            self.status_badge.setText("OFFLINE")
+            reason_text = f"OFFLINE | {self.connection_reason}"
+            self.status_badge.setText(reason_text)
             self.status_badge.setStyleSheet("background-color: #f44336; color: white; border-radius: 5px; font-weight: bold;")
             self.command_console.set_enabled(False)
-            self.statusBar().showMessage("Disconnected from API.")
+            self.statusBar().showMessage(f"Disconnected from API ({self.connection_reason}).")

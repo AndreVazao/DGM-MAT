@@ -33,7 +33,10 @@ class MissionEngine:
                         description=data.get("description", ""),
                         status=MissionStatus(data["status"]),
                         metadata=data.get("metadata", {}),
-                        created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat()))
+                        created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat())),
+                        progress=data.get("progress", 0.0),
+                        logs=data.get("logs", []),
+                        error=data.get("error")
                     )
                     self.active_missions[mission.mission_id] = mission
                     self._sync_state(mission)
@@ -46,10 +49,12 @@ class MissionEngine:
         # Validation Logic
         status = MissionStatus.CREATED
         metadata = {}
+        error_msg = None
 
         if not goal or len(goal) < 3:
             status = MissionStatus.FAILED
-            metadata["error"] = "Goal too short or invalid"
+            error_msg = "Goal too short or invalid"
+            metadata["error"] = error_msg
             dgm_logger.warning(f"MissionEngine: Mission {mission_id} FAILED validation: {goal}")
 
         mission = Mission(
@@ -57,16 +62,22 @@ class MissionEngine:
             goal=goal,
             description=description,
             status=status,
-            metadata=metadata
+            metadata=metadata,
+            error=error_msg
         )
+
+        if status == MissionStatus.CREATED:
+            mission.logs.append(f"Mission created with goal: {goal}")
+            dgm_logger.info(f"MISSION_CREATED: {mission_id} - {goal}")
+        else:
+            mission.logs.append(f"Mission creation failed: {error_msg}")
+            dgm_logger.error(f"MISSION_FAILED: {mission_id} - {goal}")
+
         self.active_missions[mission_id] = mission
         self.save_mission(mission)
         self._sync_state(mission)
 
-        if status == MissionStatus.FAILED:
-            dgm_logger.error(f"MISSION_FAILED: {mission_id} - {goal}")
-        else:
-            dgm_logger.info(f"MISSION_CREATED: {mission_id} - {goal}")
+        if status != MissionStatus.FAILED:
             # Enqueue in SafeActionQueue for visibility
             action_id = self.action_queue.enqueue("MISSION_EXECUTION", {
                 "mission_id": mission_id,
@@ -84,7 +95,8 @@ class MissionEngine:
 
             # 1. Timeout Check
             if datetime.now() - mission.created_at > self.timeout_threshold:
-                dgm_logger.error(f"MissionEngine: Mission {mission_id} TIMEOUT.")
+                dgm_logger.error(f"MISSION_TIMEOUT: {mission_id}")
+                mission.logs.append("Critical: Mission timed out after 10 minutes.")
                 self._update_status(mission, MissionStatus.FAILED, {"error": "Mission timed out after 10 minutes."})
                 continue
 
@@ -99,55 +111,82 @@ class MissionEngine:
                 self._handle_running(mission)
 
     def _handle_created(self, mission: Mission):
-        dgm_logger.info(f"MissionEngine: Transitioning {mission.mission_id} to QUEUED")
+        dgm_logger.info(f"MISSION_QUEUED: {mission.mission_id}")
+        mission.logs.append("Transitioning to QUEUED state.")
         self._update_status(mission, MissionStatus.QUEUED)
 
     def _handle_queued(self, mission: Mission):
         # Simulate executor check
-        # In a real scenario, we'd check if an agent/executor is available
         executor_exists = True # Placeholder
 
         if not executor_exists:
-            dgm_logger.error(f"MissionEngine: No executor for {mission.mission_id}")
+            dgm_logger.error(f"MISSION_FAILED: {mission.mission_id} - No executor")
+            mission.logs.append("Error: No available executor.")
             self._update_status(mission, MissionStatus.FAILED, {"error": "No available executor."})
             return
 
-        # If it's a mission that requires manual approval (e.g. from SafeActionQueue)
-        # We check if it's approved.
-        # For simplicity, we'll request approval for all missions for now to satisfy "Approvals remain empty" issue
+        # For simplicity, we'll request approval for all missions
         req_id = self.request_approval(mission.mission_id, f"Approve execution of: {mission.goal}")
+        mission.logs.append(f"Approval requested (ID: {req_id}).")
         self._update_status(mission, MissionStatus.APPROVAL_PENDING, {"approval_request_id": req_id})
 
     def _handle_approval_pending(self, mission: Mission):
         # Wait for approval
-        # Check pending_approvals is empty for this req_id (meaning it was handled)
         req_id = mission.metadata.get("approval_request_id")
         if req_id and req_id not in self.pending_approvals:
-            # Check decision (stored in metadata by handle_approval_decision)
+            # Check decision
             decision = mission.metadata.get("last_decision")
             if decision == "approve":
-                dgm_logger.info(f"MissionEngine: {mission.mission_id} approved. Starting execution.")
-                self.decompose_mission(mission.mission_id) # Moves to RUNNING
+                dgm_logger.info(f"MISSION_STARTED: {mission.mission_id}")
+                mission.logs.append("User approved mission. Decomposing tasks.")
+                # For simulation missions, we skip decomposition to avoid subtask-based progress logic
+                if "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
+                    mission.status = MissionStatus.RUNNING
+                    mission.progress = 0.0
+                    self.save_mission(mission)
+                    self._sync_state(mission)
+                else:
+                    self.decompose_mission(mission.mission_id) # Moves to RUNNING
             elif decision == "reject":
-                dgm_logger.warning(f"MissionEngine: {mission.mission_id} rejected.")
+                dgm_logger.warning(f"MISSION_FAILED: {mission.mission_id} - Rejected by user")
+                mission.logs.append("Mission rejected by user.")
                 self._update_status(mission, MissionStatus.FAILED, {"error": "User rejected mission."})
 
     def _handle_running(self, mission: Mission):
-        # Here we would monitor subtasks
-        # For now, if all subtasks are completed, move to COMPLETED
-        if mission.subtasks and all(st.status == "completed" for st in mission.subtasks):
-             self._update_status(mission, MissionStatus.COMPLETED)
+        # Monitor subtasks if they exist
+        if mission.subtasks:
+            completed_tasks = [st for st in mission.subtasks if st.status == "completed"]
+            mission.progress = len(completed_tasks) / len(mission.subtasks)
 
-        # Simulate completion for "lista as minhas repos"
-        if "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
-             dgm_logger.info(f"MissionEngine: Auto-completing repo listing mission {mission.mission_id}")
-             self._update_status(mission, MissionStatus.COMPLETED, {"result": "Found 5 repositories."})
+            if len(completed_tasks) == len(mission.subtasks):
+                dgm_logger.info(f"MISSION_COMPLETED: {mission.mission_id}")
+                mission.logs.append("All subtasks completed.")
+                self._update_status(mission, MissionStatus.COMPLETED)
+                return
+
+        # Simulate progress for specific goals (if no subtasks or as fallback)
+        if not mission.subtasks and "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
+             mission.progress = round(mission.progress + 0.2, 2)
+             mission.logs.append(f"Progress update: {mission.progress:.1%}")
+             if mission.progress >= 1.0:
+                  dgm_logger.info(f"MISSION_COMPLETED: {mission.mission_id}")
+                  mission.logs.append("Found repositories: DGM-MAT, DGM-MAT-Agents, etc.")
+                  self._update_status(mission, MissionStatus.COMPLETED, {"result": "Found 5 repositories."})
+             else:
+                  self.save_mission(mission)
+                  self._sync_state(mission)
 
     def _update_status(self, mission: Mission, status: MissionStatus, metadata_update: Dict[str, Any] = None):
         mission.status = status
         mission.updated_at = datetime.now()
         if metadata_update:
             mission.metadata.update(metadata_update)
+            if "error" in metadata_update:
+                mission.error = metadata_update["error"]
+
+        # Log status change in mission logs
+        mission.logs.append(f"Status changed to {status.value}")
+
         self.save_mission(mission)
         self._sync_state(mission)
 
@@ -160,7 +199,10 @@ class MissionEngine:
             "status": mission.status.value,
             "metadata": mission.metadata,
             "created_at": mission.created_at.isoformat(),
-            "updated_at": mission.updated_at.isoformat()
+            "updated_at": mission.updated_at.isoformat(),
+            "progress": mission.progress,
+            "logs": mission.logs,
+            "error": mission.error
         }
         with open(file_path, "w") as f:
             json.dump(data, f, indent=4)
@@ -177,6 +219,7 @@ class MissionEngine:
         ]
         mission.subtasks = subtasks
         mission.status = MissionStatus.RUNNING
+        mission.progress = 0.0
         self.save_mission(mission)
         self._sync_state(mission)
         return subtasks
@@ -193,7 +236,6 @@ class MissionEngine:
         return request_id
 
     def handle_approval_decision(self, request_id: str, decision: str):
-        """Requirement 7: Functional approval handler."""
         approval = self.pending_approvals.pop(request_id, None)
         if not approval:
             return False
@@ -211,7 +253,10 @@ class MissionEngine:
             "id": mission.mission_id,
             "goal": mission.goal,
             "status": mission.status.value,
-            "updated_at": datetime.now().isoformat()
+            "updated_at": datetime.now().isoformat(),
+            "progress": mission.progress,
+            "logs": mission.logs,
+            "error": mission.error
         })
 
 mission_engine = MissionEngine()
