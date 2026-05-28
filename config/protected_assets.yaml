@@ -1,0 +1,7 @@
+protected_workflows:
+  - ".github/workflows/manual-repo-bootstrap.yml"
+
+protected_paths:
+  - "external_imports"
+  - "manual_clones"
+  - "user_assets"

@@ -3,22 +3,36 @@ import time
 from shared.models.event import Event
 from core.runtime.runtime import Runtime
 from core.governance.runtime_limits import RuntimeLimits
+from core.storage.database import engine
+from core.storage.models import Base
 
 def test_storm_protection():
+    # Ensure tables exist
+    Base.metadata.create_all(bind=engine)
+
     runtime = Runtime()
     # Force state to non-degraded to ensure deterministic test
     runtime.governance_engine.degradation_controller.state.is_degraded = False
     runtime.governance_engine.degradation_controller.state.emergency_slowdown = False
 
+    # Reset history
+    runtime.governance_engine.event_governor.event_history = []
+    # Clear event bus throttling
+    runtime.event_bus.event_counts.clear()
+
     # Manually trigger a storm
+    # Use Critical priority to bypass EventBus throttling but hit EventGovernor limits
+    from shared.enums.event_priority import EventPriority
     for i in range(150):
-        event = Event(source="test_source", target="test_target", event_type="storm.event")
+        event = Event(source="test_source", target="test_target", event_type="storm.event", priority=EventPriority.CRITICAL)
         runtime.event_bus.publish(event)
 
     # Check if degradation or storm protection was triggered
     # The EventGovernor drops events once threshold is hit (100)
     # Or if degradation is triggered by high CPU (which can happen in CI)
-    assert runtime.governance_engine.degradation_controller.state.emergency_slowdown is True or            runtime.governance_engine.degradation_controller.state.is_degraded is True or            len(runtime.governance_engine.event_governor.event_history) >= 100
+    assert runtime.governance_engine.degradation_controller.state.emergency_slowdown is True or \
+           runtime.governance_engine.degradation_controller.state.is_degraded is True or \
+           len(runtime.governance_engine.event_governor.event_history) >= 100
 
 def test_recursion_depth_limit():
     runtime = Runtime()

@@ -11,6 +11,17 @@ class EcosystemStatus(str, Enum):
     DEGRADED = "degraded"
     DEPRECATED = "deprecated"
     ARCHIVED = "archived"
+    # New reality sync states
+    DISCOVERED = "discovered"
+    REGISTERED = "registered"
+    CLONED = "cloned"
+    BROKEN = "broken"
+    EXTERNAL = "external"
+    UNKNOWN = "unknown"
+    # Safe import pipeline states
+    LABS = "labs"
+    EVALUATION = "evaluation"
+    MANUAL_APPROVAL = "manual_approval"
 
 class EcosystemRole(str, Enum):
     CORE = "core"
@@ -27,6 +38,7 @@ class EcosystemRole(str, Enum):
     LABS = "labs"
     MEMORY = "memory"
     EXTERNAL_LABS = "external-labs"
+    OPERATORS = "operators"
 
 class EcosystemNode(BaseModel):
     name: str
@@ -38,6 +50,9 @@ class EcosystemNode(BaseModel):
     owner: str = "system"
     description: Optional[str] = None
     metadata: Dict[str, str] = Field(default_factory=dict)
+    # New fields for Reality Sync and UI-TARS prep
+    priority: str = "MEDIUM" # VERY_HIGH, HIGH, MEDIUM, LOW
+    destination: Optional[str] = None
 
 class EcosystemState(BaseModel):
     nodes: Dict[str, EcosystemNode] = Field(default_factory=dict)

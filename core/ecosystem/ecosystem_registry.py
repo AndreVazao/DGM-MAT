@@ -1,17 +1,31 @@
 import json
 import os
-from typing import Dict, List, Optional
+import yaml
+from typing import Dict, List, Optional, Any
 from datetime import datetime
+from pathlib import Path
 from core.ecosystem.ecosystem_models import EcosystemNode, EcosystemStatus, EcosystemRole, EcosystemState
 from core.storage.storage_manager import storage_manager
+from core.observability.logger import dgm_logger
 
 class EcosystemRegistry:
     def __init__(self):
         self.state = EcosystemState()
         self.registry_path = storage_manager.get_path("federation", "ecosystem_registry.json")
+        self.protected_config_path = Path("config/protected_assets.yaml")
+        self.protected_assets: Dict[str, Any] = self._load_protected_assets()
         self.load()
-        if not self.state.nodes:
-            self._initialize_defaults()
+        self._initialize_defaults()
+        self.register_ui_tars_placeholder()
+
+    def _load_protected_assets(self) -> Dict[str, Any]:
+        if self.protected_config_path.exists():
+            try:
+                with open(self.protected_config_path, "r") as f:
+                    return yaml.safe_load(f) or {}
+            except Exception as e:
+                dgm_logger.error(f"EcosystemRegistry: Failed to load protected assets: {e}")
+        return {}
 
     def _initialize_defaults(self):
         defaults = [
@@ -33,9 +47,28 @@ class EcosystemRegistry:
             ("DGM-MAT-Deploy", EcosystemRole.INFRA, EcosystemStatus.ACTIVE),
         ]
 
+        modified = False
         for name, role, status in defaults:
-            self.register_node(EcosystemNode(name=name, role=role, status=status))
-        self.save()
+            if name not in self.state.nodes:
+                self.register_node(EcosystemNode(name=name, role=role, status=status))
+                modified = True
+
+        if modified:
+            self.save()
+
+    def register_ui_tars_placeholder(self):
+        if "UI-TARS" not in self.state.nodes:
+            node = EcosystemNode(
+                name="UI-TARS",
+                role=EcosystemRole.OPERATORS,
+                status=EcosystemStatus.DISCOVERED,
+                priority="VERY_HIGH",
+                destination="Operators",
+                description="Placeholder for future UI-TARS ingestion."
+            )
+            self.register_node(node)
+            self.save()
+            dgm_logger.info("EcosystemRegistry: Registered UI-TARS placeholder.")
 
     def register_node(self, node: EcosystemNode):
         self.state.nodes[node.name] = node
@@ -61,7 +94,7 @@ class EcosystemRegistry:
         try:
             self.registry_path.write_text(self.state.model_dump_json(indent=2), encoding="utf-8")
         except Exception as e:
-            print(f"Error saving registry: {e}")
+            dgm_logger.error(f"Error saving registry: {e}")
 
     def load(self):
         if self.registry_path.exists():
@@ -70,7 +103,7 @@ class EcosystemRegistry:
                     data = json.load(f)
                     self.state = EcosystemState(**data)
             except Exception as e:
-                print(f"Error loading registry: {e}")
+                dgm_logger.error(f"Error loading registry: {e}")
                 self.state = EcosystemState()
 
     def sync_filesystem(self, dry_run: bool = False):
