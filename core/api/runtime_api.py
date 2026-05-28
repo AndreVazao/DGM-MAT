@@ -3,12 +3,13 @@ import os
 import psutil
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from core.storage.storage_manager import storage_manager
 from core.repository_cognition.repo_scanner import CognitiveRepoScanner
 from core.autonomy.mission_engine import mission_engine
 from core.workspace.workspace_manager import workspace_manager
 from core.connectors.obsidian_connector import obsidian_connector
+from core.runtime.runtime_state_store import state_store
 
 router = APIRouter(prefix="/runtime", tags=["runtime"])
 
@@ -21,32 +22,42 @@ class ApprovalDecision(BaseModel):
 
 @router.get("/health")
 def get_runtime_health():
-    health_file = storage_manager.get_path("temp", "startup_health.json")
-    if not health_file.exists():
-        raise HTTPException(status_code=404, detail="Health report not found.")
-    with open(health_file, "r") as f:
-        return json.load(f)
+    """Unified health endpoint pulling from state_store."""
+    truth = state_store.get_snapshot()
+    return truth.health or {"status": "unknown"}
 
 @router.get("/status")
 def get_runtime_status():
-    """Requirement 7: Comprehensive status with resources and agents."""
-    health_file = storage_manager.get_path("temp", "startup_health.json")
-    status = "uninitialized"
-    if health_file.exists():
-        with open(health_file, "r") as f:
-            status = json.load(f).get("status", "unknown")
-
+    """Comprehensive status pulling from state_store."""
+    truth = state_store.get_snapshot()
     return {
-        "status": status,
+        "status": truth.status,
+        "is_degraded": truth.is_degraded,
         "resources": {
             "cpu": psutil.cpu_percent(),
             "memory": psutil.virtual_memory().percent
         },
-        "agents": [
-            {"name": "ArchitectAgent", "status": "healthy", "current_task": "Idle"},
-            {"name": "RepoAgent", "status": "active", "current_task": "Scanning Workspace"},
-            {"name": "DevOpsAgent", "status": "healthy", "current_task": "Idle"}
-        ]
+        "agents": truth.agents,
+        "missions_active": len(truth.missions)
+    }
+
+@router.get("/truth")
+def get_runtime_truth():
+    """Requirement 4: Expose single source of truth."""
+    return state_store.to_dict()
+
+@router.get("/reality")
+def get_runtime_reality():
+    """Requirement 4: Expose observed reality."""
+    return state_store.get_snapshot().reality
+
+@router.get("/degradation")
+def get_runtime_degradation():
+    """Requirement 4: Expose degradation details."""
+    truth = state_store.get_snapshot()
+    return {
+        "is_degraded": truth.is_degraded,
+        "degradation": truth.degradation
     }
 
 @router.get("/repo_scan")
@@ -62,11 +73,7 @@ def get_repo_scan():
 @router.get("/memory/stats")
 def get_memory_stats():
     """Restored for compatibility with existing tests."""
-    return {
-        "total_memories": 154,
-        "consolidated": 12,
-        "patterns_detected": 5
-    }
+    return state_store.get_snapshot().memory_stats
 
 @router.get("/workspace/scan")
 def scan_workspace():

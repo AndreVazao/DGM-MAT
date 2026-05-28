@@ -1,4 +1,5 @@
 import sys
+import requests
 from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit,
@@ -6,15 +7,18 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QFont, QTextCursor
+from core.observability.logger import dgm_logger
 
 class CommandConsoleWidget(QWidget):
     """
-    Advanced Cognitive Chat Console - Phase 42.3-LITE.
+    Advanced Cognitive Chat Console - Phase 42.5.1-LITE.
     Target UX: scrolling history, streamed responses, execution state.
+    Now wired to the actual Runtime API.
     """
     def __init__(self):
         super().__init__()
         self.history = []
+        self.api_url = "http://localhost:8181/runtime"
         self._setup_ui()
 
     def _setup_ui(self):
@@ -87,40 +91,53 @@ class CommandConsoleWidget(QWidget):
             return
 
         self.input_field.clear()
-        ts = datetime.now().strftime("%H:%M:%S")
 
         # User message
         self._append_message("You", cmd, "user")
+        dgm_logger.info(f"COCKPIT_MESSAGE_RECEIVED: {cmd}")
 
         # Process logic
         self._process_directive(cmd)
 
     def _process_directive(self, directive: str):
-        # Handle "runtime status" explicitly
         if directive.lower() == "runtime status":
             self._handle_runtime_status()
             return
 
-        # Generic processing
-        self._append_message("Runtime", f"Analyzing directive: '{directive}'", "system")
-
-        # Simulate streaming/async response
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(500, lambda: self._append_message("Kernel", "Request dispatched to specialized agents.", "info"))
+        # Create actual mission via API
+        try:
+            response = requests.post(
+                f"{self.api_url}/missions",
+                json={"goal": directive, "description": "Directive from Cockpit Console"},
+                timeout=5
+            )
+            if response.status_code == 200:
+                data = response.json()
+                self._append_message("Runtime", f"Mission created: {data.get('mission_id')}", "info")
+            else:
+                self._append_message("Error", f"Failed to create mission: {response.text}", "error")
+        except Exception as e:
+            self._append_message("Error", f"Communication failure: {str(e)}", "error")
 
     def _handle_runtime_status(self):
-        """Displays comprehensive system health."""
-        status_msg = (
-            "--- RUNTIME OPERATIONAL STATUS ---\n"
-            "Bootstrap: [SUCCESS] System Prepared\n"
-            "API Server: [ONLINE] listening at 127.0.0.1:8181\n"
-            "WebSocket: [CONNECTED] active channel\n"
-            "Governance: [ACTIVE] monitoring resources\n"
-            "Knowledge: [CONSISTENT] 124 nodes indexed\n"
-            "Providers: [READY] ChatGPT, Grok, DeepSeek\n"
-            "---"
-        )
-        self._append_message("Status", status_msg, "system")
+        """Displays comprehensive system health from Truth API."""
+        try:
+            response = requests.get(f"{self.api_url}/status", timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                status_msg = (
+                    f"--- RUNTIME OPERATIONAL STATUS ---\n"
+                    f"Status: [{data.get('status', 'unknown').upper()}]\n"
+                    f"Degraded: {data.get('is_degraded', False)}\n"
+                    f"CPU: {data.get('resources', {}).get('cpu')}% | MEM: {data.get('resources', {}).get('memory')}%\n"
+                    f"Active Missions: {data.get('missions_active', 0)}\n"
+                    "---"
+                )
+                self._append_message("Status", status_msg, "system")
+            else:
+                self._append_message("Error", "Could not retrieve status.", "error")
+        except Exception as e:
+            self._append_message("Error", f"Status failure: {str(e)}", "error")
 
     def _append_message(self, sender: str, text: str, msg_type: str = "info"):
         ts = datetime.now().strftime("%H:%M:%S")

@@ -2,7 +2,7 @@ from core.observability.logger import dgm_logger
 from core.execution_fabric.worktree_runtime import WorktreeRuntime
 from core.execution_fabric.execution_supervisor import ExecutionSupervisor
 from core.execution_fabric.safe_patch_engine import SafePatchEngine
-from core.execution.approval_manager import approval_manager, ApprovalStatus
+from core.execution.approval_manager import approval_manager
 
 class AutonomousExecutor:
     """
@@ -16,7 +16,7 @@ class AutonomousExecutor:
 
     def execute_task(self, task: dict):
         task_id = task.get('id', 'unknown')
-        dgm_logger.info(f"AutonomousExecutor: Starting task {task_id}")
+        dgm_logger.info(f"AGENT_DISPATCHED: Task {task_id}")
 
         if not self.supervisor.validate_plan(task):
             dgm_logger.error("Execution rejected by supervisor")
