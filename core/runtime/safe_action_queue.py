@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 from sqlalchemy import String, Text, Integer, Boolean, DateTime, Column
 from core.storage.database import Base, engine, SessionLocal
+from core.storage.init_db import init_database
 from core.observability.logger import dgm_logger
 
 class ActionStatus(str, Enum):
@@ -46,11 +47,8 @@ class SafeActionQueue:
         if self._initialized:
             return
 
-        # Ensure table exists
-        try:
-            Base.metadata.create_all(bind=engine)
-        except Exception as e:
-            dgm_logger.warning(f"SafeActionQueue: Early DB init failed (expected during build): {e}")
+        # Ensure table exists using centralized idempotent init
+        init_database()
         self._initialized = True
         dgm_logger.info("SafeActionQueue: Initialized.")
 

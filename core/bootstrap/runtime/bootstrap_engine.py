@@ -64,7 +64,6 @@ class BootstrapEngine:
     def _is_critical_phase(self, phase):
         critical_phases = [
             BootstrapPhase.VALIDATE_ENVIRONMENT,
-            BootstrapPhase.INITIALIZE_STORAGE,
 
         ]
         return phase in critical_phases
