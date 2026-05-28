@@ -7,7 +7,7 @@ def test_mission_lifecycle():
     engine = MissionEngine()
     mission = engine.create_mission("Test Goal", "Test Description")
     assert mission.mission_id.startswith("mission_")
-    assert mission.status == MissionStatus.CREATED
+    assert mission.status == MissionStatus.QUEUED
 
     subtasks = engine.decompose_mission(mission.mission_id)
     assert len(subtasks) == 3
