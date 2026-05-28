@@ -7,6 +7,8 @@ from datetime import datetime
 from core.autonomy.mission_models import Mission, MissionStatus, SubTask
 from core.storage.storage_manager import storage_manager
 from core.observability.logger import dgm_logger
+from core.runtime.runtime_state_store import state_store, StateEvents
+from core.runtime.safe_action_queue import SafeActionQueue
 
 class MissionEngine:
     def __init__(self):
@@ -14,6 +16,7 @@ class MissionEngine:
         self.missions_path.mkdir(parents=True, exist_ok=True)
         self.active_missions: Dict[str, Mission] = {}
         self.pending_approvals: Dict[str, Dict[str, Any]] = {}
+        self.action_queue = SafeActionQueue()
         self._load_missions()
 
     def _load_missions(self):
@@ -30,20 +33,44 @@ class MissionEngine:
                         metadata=data.get("metadata", {}),
                     )
                     self.active_missions[mission.mission_id] = mission
+                    self._sync_state(mission)
             except Exception as e:
                 dgm_logger.error(f"MissionEngine: Failed to load mission {mission_file}: {e}")
 
     def create_mission(self, goal: str, description: str) -> Mission:
         mission_id = f"mission_{uuid4().hex[:8]}"
+
+        # Validation Logic
+        status = MissionStatus.PENDING
+        metadata = {}
+
+        if not goal or len(goal) < 3:
+            status = MissionStatus.FAILED
+            metadata["error"] = "Goal too short or invalid"
+            dgm_logger.warning(f"MissionEngine: Mission {mission_id} FAILED validation: {goal}")
+
         mission = Mission(
             mission_id=mission_id,
             goal=goal,
             description=description,
-            status=MissionStatus.PENDING
+            status=status,
+            metadata=metadata
         )
         self.active_missions[mission_id] = mission
         self.save_mission(mission)
-        dgm_logger.info(f"MissionEngine: Created mission {mission_id}: {goal}")
+        self._sync_state(mission)
+
+        if status == MissionStatus.FAILED:
+            dgm_logger.error(f"MISSION_FAILED: {mission_id} - {goal}")
+        else:
+            dgm_logger.info(f"MISSION_CREATED: {mission_id} - {goal}")
+            # Enqueue in SafeActionQueue for visibility
+            action_id = self.action_queue.enqueue("MISSION_EXECUTION", {
+                "mission_id": mission_id,
+                "goal": goal
+            })
+            dgm_logger.info(f"QUEUE_PUSHED: Action {action_id} for mission {mission_id}")
+
         return mission
 
     def save_mission(self, mission: Mission):
@@ -61,7 +88,7 @@ class MissionEngine:
 
     def decompose_mission(self, mission_id: str) -> List[SubTask]:
         mission = self.active_missions.get(mission_id)
-        if not mission:
+        if not mission or mission.status == MissionStatus.FAILED:
             return []
 
         subtasks = [
@@ -72,6 +99,7 @@ class MissionEngine:
         mission.subtasks = subtasks
         mission.status = MissionStatus.ACTIVE
         self.save_mission(mission)
+        self._sync_state(mission)
         return subtasks
 
     def request_approval(self, mission_id: str, description: str) -> str:
@@ -81,6 +109,8 @@ class MissionEngine:
             "description": description,
             "timestamp": datetime.now().isoformat()
         }
+        dgm_logger.info(f"APPROVAL_CREATED: {request_id} for mission {mission_id}")
+        state_store.dispatch(StateEvents.APPROVAL_REQUESTED, self.pending_approvals[request_id])
         return request_id
 
     def handle_approval_decision(self, request_id: str, decision: str):
@@ -94,5 +124,13 @@ class MissionEngine:
 
         # Logic to continue mission based on decision
         return True
+
+    def _sync_state(self, mission: Mission):
+        state_store.dispatch(StateEvents.MISSION_UPDATED, {
+            "id": mission.mission_id,
+            "goal": mission.goal,
+            "status": mission.status.value,
+            "updated_at": datetime.now().isoformat()
+        })
 
 mission_engine = MissionEngine()

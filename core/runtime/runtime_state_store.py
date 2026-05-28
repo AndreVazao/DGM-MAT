@@ -17,10 +17,18 @@ class StateEvents(Enum):
     TASK_UPDATED = "task_updated"
     MEMORY_STATS_UPDATED = "memory_stats_updated"
     COCKPIT_STATE_CHANGED = "cockpit_state_changed"
+    REALITY_UPDATED = "reality_updated"
+    HEALTH_UPDATED = "health_updated"
+    DEGRADATION_UPDATED = "degradation_updated"
 
 @dataclass
-class RuntimeSnapshot:
+class RuntimeTruthState:
     timestamp: float
+    status: str = "starting"
+    is_degraded: bool = False
+    degradation: Dict[str, Any] = field(default_factory=dict)
+    health: Dict[str, Any] = field(default_factory=dict)
+    reality: Dict[str, Any] = field(default_factory=dict)
     providers: Dict[str, Any] = field(default_factory=dict)
     missions: Dict[str, Any] = field(default_factory=dict)
     agents: Dict[str, Any] = field(default_factory=dict)
@@ -33,15 +41,19 @@ class RuntimeSnapshot:
 
 class StateReducer:
     @staticmethod
-    def reduce(state: RuntimeSnapshot, event_type: StateEvents, payload: Any) -> RuntimeSnapshot:
+    def reduce(state: RuntimeTruthState, event_type: StateEvents, payload: Any) -> RuntimeTruthState:
         """
         Redux-style reducer for state updates.
         Returns a new snapshot or modifies in place if controlled.
-        For Phase 42.3-LITE, we'll perform a partial update on a copy.
         """
-        # Shallow copy for the snapshot
-        new_state = RuntimeSnapshot(
+        # Shallow copy for the state
+        new_state = RuntimeTruthState(
             timestamp=time.time(),
+            status=state.status,
+            is_degraded=state.is_degraded,
+            degradation=state.degradation.copy(),
+            health=state.health.copy(),
+            reality=state.reality.copy(),
             providers=state.providers.copy(),
             missions=state.missions.copy(),
             agents=state.agents.copy(),
@@ -78,6 +90,20 @@ class StateReducer:
 
         elif event_type == StateEvents.COCKPIT_STATE_CHANGED:
             new_state.cockpit.update(payload)
+            if "runtime_status" in payload:
+                new_state.status = payload["runtime_status"]
+            if "is_degraded" in payload:
+                new_state.is_degraded = payload["is_degraded"]
+
+        elif event_type == StateEvents.REALITY_UPDATED:
+            new_state.reality.update(payload)
+
+        elif event_type == StateEvents.HEALTH_UPDATED:
+            new_state.health.update(payload)
+
+        elif event_type == StateEvents.DEGRADATION_UPDATED:
+            new_state.degradation.update(payload)
+            new_state.is_degraded = payload.get("is_degraded", new_state.is_degraded)
 
         elif event_type == StateEvents.WEBSOCKET_CLIENT_CONNECTED:
             client_id = payload.get("id")
@@ -109,16 +135,15 @@ class RuntimeStateStore:
         if self._initialized:
             return
 
-        self.state = RuntimeSnapshot(timestamp=time.time())
+        self.state = RuntimeTruthState(timestamp=time.time())
         self.lock = threading.Lock()
         self.subscribers: List[Callable] = []
         self._initialized = True
-        dgm_logger.info("RuntimeStateStore: Initialized.")
+        dgm_logger.info("RuntimeStateStore: Initialized with RuntimeTruthState.")
 
     def dispatch(self, event_type: StateEvents, payload: Any):
         """Dispatches an event to update the state."""
         with self.lock:
-            old_state = self.state
             self.state = StateReducer.reduce(self.state, event_type, payload)
             dgm_logger.debug(f"RuntimeStateStore: State updated via {event_type.value}")
 
@@ -139,7 +164,7 @@ class RuntimeStateStore:
             except Exception as e:
                 dgm_logger.error(f"RuntimeStateStore: Subscriber notification failed: {e}")
 
-    def get_snapshot(self) -> RuntimeSnapshot:
+    def get_snapshot(self) -> RuntimeTruthState:
         """Returns the current state snapshot."""
         with self.lock:
             return self.state

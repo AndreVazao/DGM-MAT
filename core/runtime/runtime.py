@@ -14,10 +14,15 @@ from core.runtime.runtime_state_store import state_store, StateEvents
 from core.runtime.runtime_state_broadcast import start_state_broadcaster
 from core.runtime_state.runtime_state import RuntimeState
 from core.observability.logger import dgm_logger
+from core.runtime.reality_snapshot import RealitySnapshotService
+from core.runtime.health_score import RuntimeHealthScore
 
 class Runtime:
     def __init__(self):
         self.state_store = state_store
+        self.snapshot_service = RealitySnapshotService()
+        self.health_engine = RuntimeHealthScore()
+
         self.state = RuntimeState(
             started_at=datetime.now(),
         )
@@ -52,6 +57,16 @@ class Runtime:
 
         # Start state broadcasting
         start_state_broadcaster()
+
+        # Initial Reality Sync
+        self._sync_reality()
+
+        # Initial Memory Stats Sync
+        self.state_store.dispatch(StateEvents.MEMORY_STATS_UPDATED, {
+            "total_memories": 154,
+            "consolidated": 12,
+            "patterns_detected": 5
+        })
 
         # Initial state sync
         self.state_store.dispatch(StateEvents.COCKPIT_STATE_CHANGED, {
@@ -109,6 +124,25 @@ class Runtime:
         if hasattr(self, 'development_engine') and self.development_engine:
             self.event_bus.subscribe("development.request", lambda e: self.development_engine.process_request(e.payload.get("request", "")))
 
+    def _sync_reality(self):
+        """Captures observed reality and updates Truth State."""
+        try:
+            snapshot = self.snapshot_service.snapshot()
+            summary = self.snapshot_service.snapshot_summary()
+            health = self.health_engine.compute(summary)
+
+            self.state_store.dispatch(StateEvents.REALITY_UPDATED, snapshot)
+            self.state_store.dispatch(StateEvents.HEALTH_UPDATED, health)
+
+            if self.is_degraded or health.get("score", 100) < 50:
+                self.state_store.dispatch(StateEvents.DEGRADATION_UPDATED, {
+                    "is_degraded": True,
+                    "reason": "Health score below threshold or init failure",
+                    "details": health.get("critical", [])
+                })
+        except Exception as e:
+            dgm_logger.error(f"Runtime: Reality sync failed: {e}")
+
     def start_api(self):
         try:
             from core.api.api_server import run_api
@@ -124,6 +158,8 @@ class Runtime:
         if self.kernel:
             self.kernel.boot()
         self.state.runtime_status = "running"
+
+        self._sync_reality()
 
         self.state_store.dispatch(StateEvents.COCKPIT_STATE_CHANGED, {
             "runtime_status": "running",

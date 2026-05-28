@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 from core.observability.logger import dgm_logger
+from core.runtime.runtime_state_store import state_store, StateEvents
 
 class HeartbeatManager:
     def __init__(self, heartbeat_path: str = ".runtime/heartbeat.json"):
@@ -21,6 +22,12 @@ class HeartbeatManager:
             temp_path = self.path.with_suffix(".tmp")
             temp_path.write_text(json.dumps(data, indent=2))
             temp_path.replace(self.path)
+
+            # Sync with Truth State
+            state_store.dispatch(StateEvents.COCKPIT_STATE_CHANGED, {
+                "daemon_status": status,
+                "last_heartbeat": data["datetime"]
+            })
         except Exception as e:
             dgm_logger.error(f"HeartbeatManager: Failed to write heartbeat: {e}")
 
