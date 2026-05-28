@@ -16,6 +16,7 @@ from core.runtime_state.runtime_state import RuntimeState
 from core.observability.logger import dgm_logger
 from core.runtime.reality_snapshot import RealitySnapshotService
 from core.runtime.health_score import RuntimeHealthScore
+from core.runtime.safe_action_queue import SafeActionQueue
 
 class Runtime:
     def __init__(self):
@@ -160,6 +161,15 @@ class Runtime:
         self.event_bus.start()
         if self.kernel:
             self.kernel.boot()
+
+        # Start SafeActionQueue consumer
+        try:
+            SafeActionQueue().start_consumer()
+            dgm_logger.info("Runtime: SafeActionQueue consumer started.")
+        except Exception as e:
+            dgm_logger.error(f"Runtime: Failed to start SafeActionQueue consumer: {e}")
+            self.is_degraded = True
+
         self.state.runtime_status = "running"
 
         self._sync_reality()
@@ -183,6 +193,10 @@ class Runtime:
 
     def shutdown(self):
         dgm_logger.info("Runtime: Initiating shutdown...")
+        try:
+            SafeActionQueue().stop_consumer()
+        except:
+            pass
         if self.kernel: self.kernel.shutdown()
         if self.governance_engine: self.governance_engine.shutdown()
         if self.knowledge_engine: self.knowledge_engine.shutdown()

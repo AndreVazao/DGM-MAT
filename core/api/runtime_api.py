@@ -10,6 +10,7 @@ from core.autonomy.mission_engine import mission_engine
 from core.workspace.workspace_manager import workspace_manager
 from core.connectors.obsidian_connector import obsidian_connector
 from core.runtime.runtime_state_store import state_store
+from core.runtime.safe_action_queue import SafeActionQueue
 
 router = APIRouter(prefix="/runtime", tags=["runtime"])
 
@@ -121,3 +122,12 @@ def list_approvals():
         {"id": rid, "description": app["description"], "timestamp": app["timestamp"]}
         for rid, app in mission_engine.pending_approvals.items()
     ]
+
+@router.get("/queue")
+def get_queue_status():
+    """Requirement 5: Add queue inspection endpoint."""
+    queue = SafeActionQueue()
+    return {
+        "health": queue.get_health(),
+        "recent_actions": queue.list_all(limit=20)
+    }
