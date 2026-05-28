@@ -36,7 +36,11 @@ class RuntimeTruthState:
     websocket: Dict[str, Any] = field(default_factory=dict)
     approvals: List[Any] = field(default_factory=list)
     tasks: Dict[str, Any] = field(default_factory=dict)
-    memory_stats: Dict[str, Any] = field(default_factory=dict)
+    memory_stats: Dict[str, Any] = field(default_factory=lambda: {
+        "total_memories": 0,
+        "consolidated": 0,
+        "patterns_detected": 0
+    })
     cockpit: Dict[str, Any] = field(default_factory=dict)
 
 class StateReducer:

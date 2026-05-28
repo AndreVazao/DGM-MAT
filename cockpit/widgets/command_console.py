@@ -33,13 +33,13 @@ class CommandConsoleWidget(QWidget):
         # Output area (Chat History)
         self.output = QTextEdit()
         self.output.setReadOnly(True)
-        self.output.setStyleSheet(\"\"\"
+        self.output.setStyleSheet("""
             background-color: #0f0f0f;
             color: #d4d4d4;
             font-family: 'Consolas', 'Courier New', monospace;
             border: none;
             line-height: 1.4;
-        \"\"\")
+        """)
         self.output.setFont(QFont("Consolas", 10))
         layout.addWidget(self.output, 1)
 
@@ -51,23 +51,23 @@ class CommandConsoleWidget(QWidget):
 
         self.input_field = QLineEdit()
         self.input_field.setPlaceholderText("Type directive...")
-        self.input_field.setStyleSheet(\"\"\"
+        self.input_field.setStyleSheet("""
             background-color: #3c3c3c;
             color: #ffffff;
             border: 1px solid #505050;
             padding: 8px;
             border-radius: 3px;
-        \"\"\")
+        """)
         self.input_field.returnPressed.connect(self._handle_command)
 
         self.send_btn = QPushButton("RUN")
-        self.send_btn.setStyleSheet(\"\"\"
+        self.send_btn.setStyleSheet("""
             background-color: #007acc;
             color: white;
             font-weight: bold;
             padding: 8px 20px;
             border-radius: 3px;
-        \"\"\")
+        """)
         self.send_btn.clicked.connect(self._handle_command)
 
         input_layout.addWidget(self.input_field)
@@ -150,13 +150,13 @@ class CommandConsoleWidget(QWidget):
         }
         color = colors.get(msg_type, "#d4d4d4")
 
-        html = f\"\"\"
+        html = f"""
             <div style='margin-bottom: 8px;'>
                 <span style='color: #808080; font-size: 8pt;'>[{ts}]</span>
                 <b style='color: {color};'>{sender}:</b>
                 <div style='margin-left: 15px; color: #d4d4d4;'>{text.replace(chr(10), '<br>')}</div>
             </div>
-        \"\"\"
+        """
 
         self.output.append(html)
         self.output.moveCursor(QTextCursor.End)
