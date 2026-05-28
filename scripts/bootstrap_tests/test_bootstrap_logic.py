@@ -1,7 +1,7 @@
 import pytest
 import os
-from core.bootstrap.bootstrap_engine import BootstrapEngine
-from core.bootstrap.bootstrap_sequence import BootstrapPhase
+from core.bootstrap import BootstrapEngine
+from core.bootstrap import BootstrapPhase
 
 def test_full_bootstrap_success():
     engine = BootstrapEngine(profile="FULL")

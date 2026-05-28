@@ -1,7 +1,7 @@
 import os
 import sys
 import time
-from core.bootstrap.bootstrap_engine import BootstrapEngine
+from core.bootstrap import BootstrapEngine
 from core.runtime.runtime import Runtime
 from core.observability.logger import dgm_logger
 

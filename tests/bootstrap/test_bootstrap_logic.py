@@ -1,7 +1,6 @@
 import pytest
 import os
-from core.bootstrap.bootstrap_engine import BootstrapEngine
-from core.bootstrap.bootstrap_sequence import BootstrapPhase
+from core.bootstrap import BootstrapEngine, BootstrapPhase
 
 def test_full_bootstrap_success():
     engine = BootstrapEngine(profile="FULL")
@@ -17,25 +16,26 @@ def test_headless_bootstrap_skips_cockpit():
     assert BootstrapPhase.INITIALIZE_COCKPIT_BRIDGE.name in context.initialized_modules
 
 def test_critical_phase_failure():
+    # Since Governance is now non-critical, we fail Environment Validation instead
     class FailingEngine(BootstrapEngine):
-        def _prepare_governance(self):
-            raise RuntimeError("Governance failure")
+        def _validate_environment(self):
+            raise RuntimeError("Environment failure")
 
     engine = FailingEngine(profile="FULL")
     context = engine.prepare()
     assert context.runtime_state == "failed"
-    assert BootstrapPhase.INITIALIZE_GOVERNANCE.name in context.failed_modules
+    assert BootstrapPhase.VALIDATE_ENVIRONMENT.name in context.failed_modules
 
 def test_non_critical_phase_degradation():
     class DegradedEngine(BootstrapEngine):
-        def _prepare_federation(self):
-            raise RuntimeError("Federation failure")
+        def _prepare_governance(self):
+            raise RuntimeError("Governance failure")
 
     engine = DegradedEngine(profile="FULL")
     context = engine.prepare()
     assert context.runtime_state == "prepared"
-    assert BootstrapPhase.INITIALIZE_FEDERATION.name in context.failed_modules
-    assert BootstrapPhase.INITIALIZE_FEDERATION.name in context.degraded_modules
+    assert BootstrapPhase.INITIALIZE_GOVERNANCE.name in context.failed_modules
+    assert BootstrapPhase.INITIALIZE_GOVERNANCE.name in context.degraded_modules
 
 def test_health_exposure():
     engine = BootstrapEngine(profile="FULL")

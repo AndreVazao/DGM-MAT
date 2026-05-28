@@ -2,92 +2,42 @@ from datetime import datetime
 from threading import Thread
 import sys
 import os
+import time
 
 from shared.models.event import Event
-from core.event_bus.event_bus import (
-    EventBus,
-)
-from core.overseer.overseer import (
-    Overseer,
-)
-from core.agents.repo_agent import (
-    RepoAgent,
-)
-from core.agents.provider_agent import (
-    ProviderAgent,
-)
-from core.agents.autonomy_agent import (
-    AutonomyAgent,
-)
-from core.lifecycle.bootstrap import (
-    bootstrap_environment,
-)
+from core.event_bus.event_bus import EventBus
+from core.overseer.overseer import Overseer
+from core.agents.repo_agent import RepoAgent
+from core.agents.provider_agent import ProviderAgent
+from core.agents.autonomy_agent import AutonomyAgent
 from core.runtime.runtime_state_store import state_store, StateEvents
-from core.runtime_state.runtime_state import (
-    RuntimeState,
-)
-from core.api.api_server import run_api
+from core.runtime.runtime_state_broadcast import start_state_broadcaster
+from core.runtime_state.runtime_state import RuntimeState
 from core.observability.logger import dgm_logger
-
-# Phase 21 governance
-from core.governance.governance_engine import GovernanceEngine
-
-# Phase 22 knowledge
-from core.knowledge.knowledge_engine import KnowledgeEngine
-
-# Phase 26 Kernel
-from core.kernel.cognitive_kernel import CognitiveKernel
-
-# Phase 27 Evolution
-from core.evolution.evolution_engine import EvolutionEngine
-
-# Phase 28 Update
-from core.update.update_engine import UpdateEngine
-
-# Advanced Engine Imports
-try:
-    from core.cognition.ecosystem_engine import EcosystemEngine
-    from core.recovery.recovery_engine import RecoveryEngine
-    from core.development.development_engine import DevelopmentEngine
-
-    # Phase 23, 24, 25
-    from core.strategy.strategy_engine import StrategyEngine
-    from core.research.research_engine import ResearchEngine
-    from core.federation.federation_engine import FederationEngine
-except ImportError as exc:
-    dgm_logger.error(f"Runtime: Failed to import advanced modules: {exc}")
-    EcosystemEngine = None
-    RecoveryEngine = None
-    DevelopmentEngine = None
-    StrategyEngine = None
-    ResearchEngine = None
-    FederationEngine = None
 
 class Runtime:
     def __init__(self):
-        bootstrap_environment()
         self.state_store = state_store
         self.state = RuntimeState(
             started_at=datetime.now(),
         )
+        self.is_degraded = False
 
-        # Initialize Cognitive Kernel (Phase 26)
-        self.kernel = CognitiveKernel()
+        # Guarded Subsystem Initialization
+        self.governance_engine = self._load_and_init("core.governance.governance_engine", "GovernanceEngine", "Governance")
+        if self.governance_engine:
+            try:
+                self.governance_engine.start_monitoring()
+            except Exception as e:
+                dgm_logger.error(f"Runtime: Governance monitoring failed: {e}")
+                self.is_degraded = True
 
-        # Initialize Governance
-        self.governance_engine = GovernanceEngine()
-        self.governance_engine.start_monitoring()
+        self.knowledge_engine = self._load_and_init("core.knowledge.knowledge_engine", "KnowledgeEngine", "Knowledge")
+        self.kernel = self._load_and_init("core.kernel.cognitive_kernel", "CognitiveKernel", "Kernel")
+        self.evolution_engine = self._load_and_init("core.evolution.evolution_engine", "EvolutionEngine", "Evolution")
+        self.update_engine = self._load_and_init("core.update.update_engine", "UpdateEngine", "Update")
 
-        # Initialize Knowledge
-        self.knowledge_engine = KnowledgeEngine()
-
-        # Initialize Evolution Engine (Phase 27)
-        self.evolution_engine = EvolutionEngine()
-
-        # Initialize Update Engine (Phase 28)
-        self.update_engine = UpdateEngine()
-
-        # Pass governance to event bus
+        # Pass governance to event bus (handles None internally)
         self.event_bus = EventBus(governance_engine=self.governance_engine)
 
         self.overseer = Overseer()
@@ -95,84 +45,73 @@ class Runtime:
         self.provider_agent = ProviderAgent("provider-agent")
         self.autonomy_agent = AutonomyAgent("autonomy-agent")
 
-        # Initialize advanced engines with safety guards
-        self.ecosystem_engine = self._init_subsystem(EcosystemEngine, "Cognition")
-        self.recovery_engine = self._init_subsystem(RecoveryEngine, "Recovery")
-        self.development_engine = self._init_subsystem(DevelopmentEngine, "Development")
-        self.strategy_engine = self._init_subsystem(StrategyEngine, "Strategy")
-        self.research_engine = self._init_subsystem(ResearchEngine, "Research")
-        self.federation_engine = self._init_subsystem(FederationEngine, "Federation")
+        # Initialize advanced engines via late import
+        self._init_advanced_engines()
 
         self._register()
 
-    def _init_subsystem(self, cls, name):
-        if cls is None:
-            dgm_logger.warning(f"Runtime: {name} Engine class is missing. Subsystem disabled.")
-            return None
+        # Start state broadcasting
+        start_state_broadcaster()
+
+        # Initial state sync
+        self.state_store.dispatch(StateEvents.COCKPIT_STATE_CHANGED, {
+            "runtime_status": "starting",
+            "is_degraded": self.is_degraded
+        })
+
+    def _load_and_init(self, module_path, class_name, friendly_name):
         try:
+            import importlib
+            module = importlib.import_module(module_path)
+            cls = getattr(module, class_name)
             instance = cls()
-            dgm_logger.info(f"Runtime: {name} Engine initialized successfully.")
+            dgm_logger.info(f"Runtime: {friendly_name} initialized.")
             return instance
-        except Exception as exc:
-            dgm_logger.error(f"Runtime: Failed to initialize {name} Engine: {exc}")
+        except Exception as e:
+            dgm_logger.error(f"Runtime: Failed to initialize {friendly_name}: {e}")
+            self.is_degraded = True
             return None
+
+    def _init_advanced_engines(self):
+        subsystems = [
+            ("core.cognition.ecosystem_engine", "EcosystemEngine", "ecosystem_engine", "Cognition"),
+            ("core.recovery.recovery_engine", "RecoveryEngine", "recovery_engine", "Recovery"),
+            ("core.development.development_engine", "DevelopmentEngine", "development_engine", "Development"),
+            ("core.strategy.strategy_engine", "StrategyEngine", "strategy_engine", "Strategy"),
+            ("core.research.research_engine", "ResearchEngine", "research_engine", "Research"),
+            ("core.federation.federation_engine", "FederationEngine", "federation_engine", "Federation")
+        ]
+
+        for mod_path, cls_name, attr_name, label in subsystems:
+            instance = self._load_and_init(mod_path, cls_name, label)
+            setattr(self, attr_name, instance)
 
     def _register(self):
-        # Universal knowledge subscription
-        self.event_bus.subscribe("*", self.knowledge_engine.process_event)
-
-        # Kernel Event Processing (Phase 26)
-        self.event_bus.subscribe("*", self.kernel.process_event)
+        if self.knowledge_engine:
+            self.event_bus.subscribe("*", self.knowledge_engine.process_event)
+        if self.kernel:
+            self.event_bus.subscribe("*", self.kernel.process_event)
 
         self.event_bus.subscribe("ecosystem.scan", self.repo_agent.handle_event)
         self.event_bus.subscribe("ecosystem.scan", self.overseer.observe)
         self.event_bus.subscribe("providers.scan", self.provider_agent.handle_event)
         self.event_bus.subscribe("autonomy.analyze", self.autonomy_agent.handle_event)
 
-        # Guarded subscriptions
-        if self.ecosystem_engine:
-            self.event_bus.subscribe(
-                "cognition.run",
-                lambda e: self.ecosystem_engine.perform_cognition(
-                    e.payload.get("repos", []),
-                    e.payload.get("agents", []),
-                    e.payload.get("providers", [])
-                ),
-            )
+        self._register_advanced_handlers()
 
-        if self.recovery_engine:
-            self.event_bus.subscribe(
-                "recovery.handle",
-                lambda e: self.recovery_engine.handle_crash(e.payload),
-            )
-
-        if self.development_engine:
-            self.event_bus.subscribe(
-                "development.request",
-                lambda e: self.development_engine.process_request(e.payload.get("request", "")),
-            )
-
-        if self.strategy_engine:
-            self.event_bus.subscribe(
-                "strategy.orchestrate",
-                lambda e: self.strategy_engine.generate_strategy(e.payload)
-            )
-
-        if self.research_engine:
-            self.event_bus.subscribe(
-                "research.experiment",
-                lambda e: self.research_engine.run_experiment(e.payload.get("experiment"))
-            )
-
-        if self.federation_engine:
-            self.event_bus.subscribe(
-                "federation.message",
-                lambda e: self.federation_engine.handle_federated_request(e.payload.get("message"))
-            )
+    def _register_advanced_handlers(self):
+        if hasattr(self, 'ecosystem_engine') and self.ecosystem_engine:
+            self.event_bus.subscribe("cognition.run", lambda e: self.ecosystem_engine.perform_cognition(
+                e.payload.get("repos", []), e.payload.get("agents", []), e.payload.get("providers", [])
+            ))
+        if hasattr(self, 'recovery_engine') and self.recovery_engine:
+            self.event_bus.subscribe("recovery.handle", lambda e: self.recovery_engine.handle_crash(e.payload))
+        if hasattr(self, 'development_engine') and self.development_engine:
+            self.event_bus.subscribe("development.request", lambda e: self.development_engine.process_request(e.payload.get("request", "")))
 
     def start_api(self):
-        """Isolated API startup."""
         try:
+            from core.api.api_server import run_api
             thread = Thread(target=run_api, daemon=True)
             thread.start()
             dgm_logger.info("Runtime: API Server thread started.")
@@ -182,12 +121,17 @@ class Runtime:
     def bootstrap(self):
         self.start_api()
         self.event_bus.start()
-        self.kernel.boot()
+        if self.kernel:
+            self.kernel.boot()
         self.state.runtime_status = "running"
 
-        # Log degradation if critical engines are missing
-        if not all([self.ecosystem_engine, self.recovery_engine, self.development_engine]):
-            dgm_logger.warning("Runtime: Bootstrap complete in DEGRADED MODE (some engines offline).")
+        self.state_store.dispatch(StateEvents.COCKPIT_STATE_CHANGED, {
+            "runtime_status": "running",
+            "is_degraded": self.is_degraded
+        })
+
+        if self.is_degraded:
+            dgm_logger.warning("Runtime: Bootstrap complete in DEGRADED MODE.")
         else:
             dgm_logger.info("Runtime: Bootstrap complete. All systems nominal.")
 
@@ -199,8 +143,8 @@ class Runtime:
         self.event_bus.publish(Event(source="runtime", target="autonomy-agent", event_type="autonomy.analyze", payload={}))
 
     def shutdown(self):
-        """Clean shutdown."""
         dgm_logger.info("Runtime: Initiating shutdown...")
-        self.kernel.shutdown()
-        self.governance_engine.shutdown()
-        self.knowledge_engine.shutdown()
+        if self.kernel: self.kernel.shutdown()
+        if self.governance_engine: self.governance_engine.shutdown()
+        if self.knowledge_engine: self.knowledge_engine.shutdown()
+        self.state_store.dispatch(StateEvents.COCKPIT_STATE_CHANGED, {"runtime_status": "stopped"})

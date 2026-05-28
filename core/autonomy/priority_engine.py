@@ -15,6 +15,17 @@ class PriorityEngine:
             "cognitive": 0.3
         }
 
+    def calculate(self, issue_type: str) -> int:
+        """Legacy support for issue type scoring."""
+        mapping = {
+            "bug": 80,
+            "feature": 50,
+            "refactor": 40,
+            "docs": 20,
+            "security": 95
+        }
+        return mapping.get(issue_type.lower(), 30)
+
     def calculate_score(self, task: AutonomousTask) -> int:
         """
         Calculates a dynamic priority score between 0 and 100.

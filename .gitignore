@@ -44,7 +44,7 @@ vault/
 logs/
 *.log
 .runtime/
-runtime/
+/runtime/
 storage/runtime/
 storage/memory/
 storage/cognition/
@@ -112,3 +112,12 @@ browser_profiles/
 # --- CRITICAL: PREVENT ABSOLUTE PATH TRACKING ---
 [a-zA-Z]:/*
 /*:/*
+
+# --- COGNITIVE PERSISTENCE ---
+semantic_knowledge.json
+/runtime/knowledge/
+/storage/runtime/
+/.runtime/
+/memory/
+/embeddings/
+/indexes/
