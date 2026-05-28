@@ -1,24 +1,70 @@
 import os
 import subprocess
+import yaml
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from core.observability.logger import dgm_logger
 
 class WorkspaceManager:
     """
     Requirement 4 & 5: Repository Workspace & Persistent Evolution Memory.
-    Treats C:\\ProgramasGodMode as the canonical multi-repository workspace.
+    Treats C:/ProgramasGodMode as the canonical multi-repository workspace.
     """
     def __init__(self, workspace_root: str = "C:/ProgramasGodMode"):
         self.root = Path(workspace_root)
+        self.manual_clones_root = self.root / "manual_clones"
+        self.protected_config_path = Path("config/protected_assets.yaml")
+        self.protected_assets = self._load_protected_assets()
+
         if os.name == 'nt' and not self.root.exists():
             try:
                 self.root.mkdir(parents=True, exist_ok=True)
             except Exception as e:
                 dgm_logger.warning(f"WorkspaceManager: Could not create root {workspace_root}: {e}")
 
+        if os.name == 'nt' and not self.manual_clones_root.exists():
+            try:
+                self.manual_clones_root.mkdir(parents=True, exist_ok=True)
+                dgm_logger.info(f"WorkspaceManager: Created manual clones directory at {self.manual_clones_root}")
+            except Exception as e:
+                dgm_logger.warning(f"WorkspaceManager: Could not create manual clones directory: {e}")
+
         self.memory_repo = self.root / "andreos-memory"
         self._ensure_memory_repo()
+
+    def _load_protected_assets(self) -> Dict[str, Any]:
+        if self.protected_config_path.exists():
+            try:
+                with open(self.protected_config_path, "r") as f:
+                    return yaml.safe_load(f) or {}
+            except Exception as e:
+                dgm_logger.error(f"WorkspaceManager: Failed to load protected assets: {e}")
+        return {}
+
+    def is_protected(self, path: str) -> bool:
+        """
+        Checks if a given path (relative or absolute) is protected.
+        """
+        path_obj = Path(path)
+
+        # Check protected workflows
+        protected_workflows = self.protected_assets.get("protected_workflows", [])
+        for workflow in protected_workflows:
+            if str(path_obj).endswith(workflow):
+                return True
+
+        # Check protected paths
+        protected_paths = self.protected_assets.get("protected_paths", [])
+        for p in protected_paths:
+            # Check if path is inside a protected root (like manual_clones)
+            if p in str(path_obj.absolute()) or p in str(path_obj):
+                return True
+
+        # Hardcoded rule for manual_clones directory
+        if "manual_clones" in str(path_obj.absolute()):
+            return True
+
+        return False
 
     def _ensure_memory_repo(self):
         """Requirement 5: Persistent Evolution Memory repo setup."""
@@ -37,9 +83,17 @@ class WorkspaceManager:
         if not self.root.exists():
             return repos
         try:
+            # Discover in root
             for item in self.root.iterdir():
                 if item.is_dir() and (item / ".git").exists():
                     repos.append(item)
+
+            # Discover in manual_clones
+            if self.manual_clones_root.exists():
+                for item in self.manual_clones_root.iterdir():
+                    if item.is_dir() and (item / ".git").exists():
+                        repos.append(item)
+
         except (PermissionError, OSError):
             dgm_logger.error(f"WorkspaceManager: Permission denied scanning {self.root}")
         return repos
@@ -48,45 +102,7 @@ class WorkspaceManager:
         health = {
             "name": repo_path.name,
             "path": str(repo_path),
-            "is_git": (repo_path / ".git").exists(),
-            "status": "unknown",
-            "branch": "unknown",
-            "uncommitted_changes": False
+            "is_protected": self.is_protected(str(repo_path)),
+            "is_manual": "manual_clones" in str(repo_path.absolute())
         }
-        if health["is_git"]:
-            try:
-                branch = subprocess.check_output(
-                    ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                    cwd=str(repo_path), stderr=subprocess.DEVNULL
-                ).decode().strip()
-                health["branch"] = branch
-                status_out = subprocess.check_output(
-                    ["git", "status", "--porcelain"],
-                    cwd=str(repo_path), stderr=subprocess.DEVNULL
-                ).decode().strip()
-                health["uncommitted_changes"] = len(status_out) > 0
-                health["status"] = "dirty" if health["uncommitted_changes"] else "clean"
-            except Exception:
-                health["status"] = "git_error"
         return health
-
-    def scan_workspace(self) -> List[Dict[str, Any]]:
-        repos = self.discover_repositories()
-        return [self.get_repo_health(repo) for repo in repos]
-
-    def sync_memory_repo(self):
-        """Requirement 5: Automatic sync support for evolution memory."""
-        if not self.memory_repo.exists():
-            return {"status": "error", "message": "Memory repository missing"}
-        try:
-            # Stage everything
-            subprocess.run(["git", "add", "."], cwd=str(self.memory_repo), capture_output=True)
-            # Commit if changes
-            subprocess.run(["git", "commit", "-m", "Auto-sync evolution memory"], cwd=str(self.memory_repo), capture_output=True)
-            # Placeholder for git push/pull logic
-            dgm_logger.info(f"WorkspaceManager: Sync complete for {self.memory_repo}")
-            return {"status": "success", "repo": str(self.memory_repo)}
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
-
-workspace_manager = WorkspaceManager()
