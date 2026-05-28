@@ -1,4 +1,4 @@
-name: DGM-MAT Repo Bootstrap (Interactive)
+name: DGM-MAT Manual Repo Bootstrap (Interactive)
 
 on:
   workflow_dispatch:
