@@ -134,11 +134,14 @@ class Runtime:
             self.state_store.dispatch(StateEvents.REALITY_UPDATED, snapshot)
             self.state_store.dispatch(StateEvents.HEALTH_UPDATED, health)
 
-            if self.is_degraded or health.get("score", 100) < 50:
+            # Requirement 5: Align degradation with health status
+            is_degraded = self.is_degraded or health.get("status") in ["CRITICAL", "DEGRADED"]
+
+            if is_degraded:
                 self.state_store.dispatch(StateEvents.DEGRADATION_UPDATED, {
                     "is_degraded": True,
-                    "reason": "Health score below threshold or init failure",
-                    "details": health.get("critical", [])
+                    "reason": f"Health status: {health.get('status')}",
+                    "details": health.get("critical", []) + health.get("warnings", [])
                 })
         except Exception as e:
             dgm_logger.error(f"Runtime: Reality sync failed: {e}")
