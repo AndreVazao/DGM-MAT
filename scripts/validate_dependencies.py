@@ -34,6 +34,7 @@ def main():
     # Map requirements to importable names if they differ
     import_map = {
         "pyside6": "PySide6",
+        "pyyaml": "yaml",
         "websocket-client": "websocket",
         "pytest-asyncio": "pytest_asyncio",
         "pytest-timeout": "pytest_timeout",

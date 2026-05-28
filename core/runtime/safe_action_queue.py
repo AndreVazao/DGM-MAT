@@ -47,7 +47,10 @@ class SafeActionQueue:
             return
 
         # Ensure table exists
-        Base.metadata.create_all(bind=engine)
+        try:
+            Base.metadata.create_all(bind=engine)
+        except Exception as e:
+            dgm_logger.warning(f"SafeActionQueue: Early DB init failed (expected during build): {e}")
         self._initialized = True
         dgm_logger.info("SafeActionQueue: Initialized.")
 
