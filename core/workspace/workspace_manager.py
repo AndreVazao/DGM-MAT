@@ -106,3 +106,5 @@ class WorkspaceManager:
             "is_manual": "manual_clones" in str(repo_path.absolute())
         }
         return health
+
+workspace_manager = WorkspaceManager()
