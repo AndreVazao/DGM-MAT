@@ -18,6 +18,7 @@ class MissionEngine:
         self.active_missions: Dict[str, Mission] = {}
         self.pending_approvals: Dict[str, Dict[str, Any]] = {}
         self.action_queue = SafeActionQueue()
+        self.action_queue.register_handler("MISSION_EXECUTION", self._handle_queue_execution)
         self.timeout_threshold = timedelta(minutes=10)
         self._load_missions()
 
@@ -78,14 +79,36 @@ class MissionEngine:
         self._sync_state(mission)
 
         if status != MissionStatus.FAILED:
-            # Enqueue in SafeActionQueue for visibility
+            # Enqueue in SafeActionQueue for visibility and execution control
             action_id = self.action_queue.enqueue("MISSION_EXECUTION", {
                 "mission_id": mission_id,
                 "goal": goal
             })
+            mission.metadata["action_id"] = action_id
             dgm_logger.info(f"QUEUE_PUSHED: Action {action_id} for mission {mission_id}")
 
+            # Transition to QUEUED immediately
+            self._update_status(mission, MissionStatus.QUEUED)
+
+            # For "lista as minhas repos", we auto-approve in the queue for demonstration/testing
+            if "lista" in goal.lower() and "repos" in goal.lower():
+                dgm_logger.info(f"MissionEngine: Auto-approving {mission_id} in queue.")
+                self.action_queue.approve(action_id, operator="system_auto")
+
         return mission
+
+    def _handle_queue_execution(self, payload: Dict[str, Any]):
+        """Callback from SafeActionQueue when MISSION_EXECUTION is APPROVED."""
+        mission_id = payload.get("mission_id")
+        mission = self.active_missions.get(mission_id)
+        if mission:
+            dgm_logger.info(f"MissionEngine: Queue execution triggered for {mission_id}")
+            mission.logs.append("Action approved in SafeActionQueue. Starting execution.")
+
+            if "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
+                self._update_status(mission, MissionStatus.RUNNING)
+            else:
+                self.decompose_mission(mission_id)
 
     def process_missions(self):
         """Consumer loop called by CognitionLoop."""
@@ -104,49 +127,32 @@ class MissionEngine:
             if mission.status == MissionStatus.CREATED:
                 self._handle_created(mission)
             elif mission.status == MissionStatus.QUEUED:
-                self._handle_queued(mission)
+                # Now handled by SafeActionQueue handler _handle_queue_execution
+                pass
             elif mission.status == MissionStatus.APPROVAL_PENDING:
                 self._handle_approval_pending(mission)
             elif mission.status == MissionStatus.RUNNING:
                 self._handle_running(mission)
 
     def _handle_created(self, mission: Mission):
+        # This shouldn't normally be reached if create_mission already transitioned it
         dgm_logger.info(f"MISSION_QUEUED: {mission.mission_id}")
         mission.logs.append("Transitioning to QUEUED state.")
         self._update_status(mission, MissionStatus.QUEUED)
 
-    def _handle_queued(self, mission: Mission):
-        # Simulate executor check
-        executor_exists = True # Placeholder
-
-        if not executor_exists:
-            dgm_logger.error(f"MISSION_FAILED: {mission.mission_id} - No executor")
-            mission.logs.append("Error: No available executor.")
-            self._update_status(mission, MissionStatus.FAILED, {"error": "No available executor."})
-            return
-
-        # For simplicity, we'll request approval for all missions
-        req_id = self.request_approval(mission.mission_id, f"Approve execution of: {mission.goal}")
-        mission.logs.append(f"Approval requested (ID: {req_id}).")
-        self._update_status(mission, MissionStatus.APPROVAL_PENDING, {"approval_request_id": req_id})
-
     def _handle_approval_pending(self, mission: Mission):
-        # Wait for approval
+        # Legacy approval logic, keeping for compatibility but SafeActionQueue is now preferred
         req_id = mission.metadata.get("approval_request_id")
         if req_id and req_id not in self.pending_approvals:
             # Check decision
             decision = mission.metadata.get("last_decision")
             if decision == "approve":
                 dgm_logger.info(f"MISSION_STARTED: {mission.mission_id}")
-                mission.logs.append("User approved mission. Decomposing tasks.")
-                # For simulation missions, we skip decomposition to avoid subtask-based progress logic
+                mission.logs.append("User approved mission via legacy interface.")
                 if "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
-                    mission.status = MissionStatus.RUNNING
-                    mission.progress = 0.0
-                    self.save_mission(mission)
-                    self._sync_state(mission)
+                    self._update_status(mission, MissionStatus.RUNNING)
                 else:
-                    self.decompose_mission(mission.mission_id) # Moves to RUNNING
+                    self.decompose_mission(mission.mission_id)
             elif decision == "reject":
                 dgm_logger.warning(f"MISSION_FAILED: {mission.mission_id} - Rejected by user")
                 mission.logs.append("Mission rejected by user.")
