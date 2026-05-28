@@ -38,6 +38,11 @@ class RuntimeHealthWidget(QWidget):
         self.health_bar.setFormat("%p%")
         health_layout.addWidget(self.health_bar)
 
+        # Score Breakdown Area
+        self.breakdown_label = QLabel("Breakdown: Loading...")
+        self.breakdown_label.setStyleSheet("font-family: monospace; font-size: 10px; color: #95a5a6;")
+        health_layout.addWidget(self.breakdown_label)
+
         self.layout.addWidget(self.health_group)
 
         # Stats Grid
@@ -79,8 +84,13 @@ class RuntimeHealthWidget(QWidget):
             else:
                 self.health_bar.setStyleSheet("QProgressBar::chunk { background-color: #e74c3c; }")
 
+            # Update Breakdown
+            breakdown = health_result.get("breakdown", {})
+            breakdown_text = " | ".join([f"{k.capitalize()}: {v}" for k, v in breakdown.items()])
+            self.breakdown_label.setText(f"Breakdown: {breakdown_text}")
+
             # Update Stats
-            status = "Nominal" if summary.get("is_runtime_healthy") else "Degraded"
+            status = health_result.get("status", "Unknown")
             self.reality_status_label.setText(f"Reality Status: {status}")
 
             # Drift calculation (simplified for UI)

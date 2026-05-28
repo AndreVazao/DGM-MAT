@@ -134,16 +134,25 @@ class Runtime:
 
             self.state_store.dispatch(StateEvents.REALITY_UPDATED, snapshot)
             self.state_store.dispatch(StateEvents.HEALTH_UPDATED, health)
+            self.state_store.dispatch(StateEvents.QUEUE_UPDATED, snapshot.get("queue", {}))
 
+            # Requirement 4: Replace generic degraded with why.
             # Requirement 5: Align degradation with health status
-            is_degraded = self.is_degraded or health.get("status") in ["CRITICAL", "DEGRADED"]
+            status_tag = health.get("status")
+            is_degraded = self.is_degraded or status_tag in ["CRITICAL", "DEGRADED"]
 
-            if is_degraded:
-                self.state_store.dispatch(StateEvents.DEGRADATION_UPDATED, {
-                    "is_degraded": True,
-                    "reason": f"Health status: {health.get('status')}",
-                    "details": health.get("critical", []) + health.get("warnings", [])
-                })
+            degradation_payload = {
+                "is_degraded": is_degraded,
+                "status": status_tag,
+                "reasons": health.get("degradation_reasons", []),
+                "details": health.get("critical", []) + health.get("warnings", [])
+            }
+            self.state_store.dispatch(StateEvents.DEGRADATION_UPDATED, degradation_payload)
+
+            # Sync provider truth explicitly
+            for p_status in snapshot.get("providers", []):
+                self.state_store.dispatch(StateEvents.PROVIDER_UPDATED, p_status)
+
         except Exception as e:
             dgm_logger.error(f"Runtime: Reality sync failed: {e}")
 
@@ -164,11 +173,22 @@ class Runtime:
 
         # Start SafeActionQueue consumer
         try:
-            SafeActionQueue().start_consumer()
+            queue = SafeActionQueue()
+            queue.start_consumer()
+            self.state_store.dispatch(StateEvents.CONSUMER_STATUS_CHANGED, {
+                "id": "SafeActionQueueConsumer",
+                "status": "running",
+                "details": queue.get_health()
+            })
             dgm_logger.info("Runtime: SafeActionQueue consumer started.")
         except Exception as e:
             dgm_logger.error(f"Runtime: Failed to start SafeActionQueue consumer: {e}")
             self.is_degraded = True
+            self.state_store.dispatch(StateEvents.CONSUMER_STATUS_CHANGED, {
+                "id": "SafeActionQueueConsumer",
+                "status": "failed",
+                "error": str(e)
+            })
 
         self.state.runtime_status = "running"
 
@@ -195,6 +215,10 @@ class Runtime:
         dgm_logger.info("Runtime: Initiating shutdown...")
         try:
             SafeActionQueue().stop_consumer()
+            self.state_store.dispatch(StateEvents.CONSUMER_STATUS_CHANGED, {
+                "id": "SafeActionQueueConsumer",
+                "status": "stopped"
+            })
         except:
             pass
         if self.kernel: self.kernel.shutdown()
