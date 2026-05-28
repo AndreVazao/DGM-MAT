@@ -2,6 +2,7 @@ import json
 import sqlite3
 from core.storage.database import SessionLocal, engine
 from core.storage.models import EventRecord, Base
+from core.storage.init_db import init_database
 from shared.models.event import Event
 from core.observability.logger import dgm_logger
 
@@ -9,10 +10,7 @@ class EventStore:
     @staticmethod
     def persist(event: Event):
         # Ensure tables exist before first persist attempt
-        try:
-            Base.metadata.create_all(bind=engine)
-        except Exception as e:
-            dgm_logger.error(f"EventStore: Failed to ensure schema: {e}")
+        init_database()
 
         db = SessionLocal()
         try:
