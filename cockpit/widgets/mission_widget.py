@@ -33,7 +33,7 @@ class MissionWidget(QWidget):
             self.mission_list.addItem(f"• {goal} [{status.upper()}]")
 
         # Simple progress heuristic for now
-        active_count = sum(1 for m in missions if m.get('status') == 'active')
+        active_count = sum(1 for m in missions if m.get('status') in ["active", "RUNNING"])
         total = len(missions)
         if total > 0:
             self.progress_bar.setValue(int((active_count / total) * 100))

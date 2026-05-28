@@ -46,7 +46,7 @@ class MainWindow(QMainWindow):
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #007acc;")
 
         self.status_badge = QLabel("DISCONNECTED")
-        self.status_badge.setFixedSize(140, 25)
+        self.status_badge.setFixedSize(200, 25) # Increased size to fit "CONNECTED | READY"
         self.status_badge.setAlignment(Qt.AlignCenter)
         self.status_badge.setStyleSheet("background-color: #f44336; color: white; border-radius: 5px; font-weight: bold;")
 
@@ -103,6 +103,8 @@ class MainWindow(QMainWindow):
     @Slot(bool)
     def _on_connection_changed(self, connected):
         self.is_connected = connected
+        if not connected:
+            self.runtime_prepared = False
         self._update_status_badge()
 
     def _handle_server_message(self, data):

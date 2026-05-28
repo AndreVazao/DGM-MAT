@@ -7,11 +7,11 @@ def test_mission_lifecycle():
     engine = MissionEngine()
     mission = engine.create_mission("Test Goal", "Test Description")
     assert mission.mission_id.startswith("mission_")
-    assert mission.status == MissionStatus.PENDING
+    assert mission.status == MissionStatus.CREATED
 
     subtasks = engine.decompose_mission(mission.mission_id)
     assert len(subtasks) == 3
-    assert mission.status == MissionStatus.ACTIVE
+    assert mission.status == MissionStatus.RUNNING
 
 def test_objective_generation_with_missions():
     obj_engine = ObjectiveEngine()

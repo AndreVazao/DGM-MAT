@@ -5,7 +5,7 @@ class RuntimeHealthScore:
     """
     Lightweight health scoring for the DGM-MAT runtime.
     Weights:
-    - Bootstrap = 25
+    - Bootstrap / Canonical Paths = 25
     - State Store = 20
     - Providers = 20
     - Repos = 15
@@ -28,15 +28,21 @@ class RuntimeHealthScore:
         warnings = []
         critical = []
 
-        # 1. Bootstrap (25)
-        if snapshot_summary.get("is_runtime_healthy"):
+        # 1. Bootstrap & Canonical Paths (25)
+        # Requirement: Health system must consume same logic used by bootstrap
+        is_healthy = snapshot_summary.get("is_runtime_healthy", False)
+        paths_valid = snapshot_summary.get("canonical_paths_valid", False)
+
+        if is_healthy and paths_valid:
             score += self.weights["bootstrap"]
         else:
-            critical.append("Bootstrap: Runtime folders are missing or invalid.")
+            if not is_healthy:
+                critical.append("Bootstrap: Runtime folders (storage, config, etc) are missing or invalid.")
+            if not paths_valid:
+                critical.append("Bootstrap: Canonical paths (C:/DevopGodMode, etc) are missing.")
 
         # 2. State Store (20)
-        # Assuming if we have a snapshot, state store is partially alive
-        # In a real scenario, we'd check if it's responsive
+        # Assuming if we have a summary, state store is alive
         score += self.weights["state_store"]
 
         # 3. Providers (20)
@@ -54,13 +60,10 @@ class RuntimeHealthScore:
             warnings.append("Repos: No cloned repositories found.")
 
         # 5. Agents (10)
-        # Simplified: if runtime is healthy, agents are likely ok or at least reachable
         score += self.weights["agents"]
 
         # 6. Memory (10)
-        # Usually memory is in snapshot if it exists
-        # We'll assume 10 if present, 0 if not
-        if snapshot_summary.get("is_runtime_healthy"): # placeholder for actual memory check
+        if snapshot_summary.get("is_runtime_healthy"):
              score += self.weights["memory"]
 
         return {

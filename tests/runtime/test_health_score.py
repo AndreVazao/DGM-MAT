@@ -5,6 +5,7 @@ def test_health_score_perfect():
     engine = RuntimeHealthScore()
     summary = {
         "is_runtime_healthy": True,
+        "canonical_paths_valid": True,
         "active_providers": 1,
         "total_repos": 1
     }
@@ -18,6 +19,7 @@ def test_health_score_degraded():
     engine = RuntimeHealthScore()
     summary = {
         "is_runtime_healthy": False,
+        "canonical_paths_valid": False,
         "active_providers": 0,
         "total_repos": 0
     }

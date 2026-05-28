@@ -14,6 +14,7 @@ from core.autonomy.active_runtime.learning_loop import LearningLoop
 from core.autonomy.scheduler.scheduler_engine import SchedulerEngine
 from core.repository_cognition.repo_scanner import CognitiveRepoScanner
 from core.realtime.realtime_broadcast import safe_broadcast
+from core.autonomy.mission_engine import mission_engine
 
 class CognitionLoop:
     def __init__(self, config_path: str = "config/autonomous_runtime.json"):
@@ -72,6 +73,13 @@ class CognitionLoop:
         else: return now >= start_t or now <= dt_time(hour=end_hour)
 
     async def run_cycle(self):
+        # Mission Processing: Requirement 1
+        dgm_logger.info("CognitionLoop: Processing active missions...")
+        try:
+            mission_engine.process_missions()
+        except Exception as e:
+            dgm_logger.error(f"CognitionLoop: Mission processing failed: {e}")
+
         cycle = AutonomyCycle()
         self.cycle_count += 1
         cid = cycle.cycle_id
