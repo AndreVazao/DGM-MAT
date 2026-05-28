@@ -1,4 +1,3 @@
-import sys
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTabWidget, QLabel, QStatusBar, QFrame
@@ -30,7 +29,9 @@ class MainWindow(QMainWindow):
 
         self.ws_client = CockpitWebSocketClient()
         self.is_connected = False
-        self.runtime_prepared = False
+        self.runtime_status = "offline"
+        self.is_degraded = False
+        self.degradation_reasons = []
         self.connection_reason = "UNKNOWN"
 
         self._setup_ui()
@@ -47,9 +48,9 @@ class MainWindow(QMainWindow):
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #007acc;")
 
         self.status_badge = QLabel("DISCONNECTED")
-        self.status_badge.setFixedSize(250, 25) # Increased size to fit detailed status
+        self.status_badge.setFixedSize(350, 30)
         self.status_badge.setAlignment(Qt.AlignCenter)
-        self.status_badge.setStyleSheet("background-color: #f44336; color: white; border-radius: 5px; font-weight: bold;")
+        self.status_badge.setStyleSheet("background-color: #f44336; color: white; border-radius: 5px; font-weight: bold; font-size: 11px;")
 
         header_layout.addWidget(title_label)
         header_layout.addStretch()
@@ -106,30 +107,38 @@ class MainWindow(QMainWindow):
         self.is_connected = connected
         self.connection_reason = reason
         if not connected:
-            self.runtime_prepared = False
+            self.runtime_status = "offline"
         self._update_status_badge()
 
     def _handle_server_message(self, data):
-        """Requirement 3: Connection status based on API reachability AND Runtime prepared."""
+        """Requirement 5: Cockpit connection state based on Truth."""
         if data.get("type") == "state_update":
             state = data.get("data", {})
-            self.runtime_prepared = state.get("status") == "running"
+            self.runtime_status = state.get("runtime_status", "unknown")
+            self.is_degraded = state.get("is_degraded", False)
+
+            # Extract reasons from degradation dict
+            degradation = state.get("degradation", {})
+            self.degradation_reasons = degradation.get("reasons", [])
+
             self._update_status_badge()
 
     def _update_status_badge(self):
-        if self.is_connected and self.runtime_prepared:
-            self.status_badge.setText("CONNECTED | READY")
-            self.status_badge.setStyleSheet("background-color: #4caf50; color: white; border-radius: 5px; font-weight: bold;")
-            self.command_console.set_enabled(True)
-            self.statusBar().showMessage("System Operational.")
-        elif self.is_connected:
-            self.status_badge.setText("API CONNECTED | SYNCING")
-            self.status_badge.setStyleSheet("background-color: #ff9800; color: white; border-radius: 5px; font-weight: bold;")
-            self.command_console.set_enabled(False)
-            self.statusBar().showMessage("Waiting for Runtime to prepare...")
+        if self.is_connected:
+            if self.runtime_status == "running":
+                if self.is_degraded:
+                    reason = self.degradation_reasons[0] if self.degradation_reasons else "DEGRADED"
+                    self.status_badge.setText(f"CONNECTED | DEGRADED ({reason})")
+                    self.status_badge.setStyleSheet("background-color: #ff9800; color: white; border-radius: 5px; font-weight: bold;")
+                else:
+                    self.status_badge.setText("CONNECTED | NOMINAL")
+                    self.status_badge.setStyleSheet("background-color: #4caf50; color: white; border-radius: 5px; font-weight: bold;")
+                self.command_console.set_enabled(True)
+            else:
+                self.status_badge.setText(f"CONNECTED | {self.runtime_status.upper()}")
+                self.status_badge.setStyleSheet("background-color: #2196f3; color: white; border-radius: 5px; font-weight: bold;")
+                self.command_console.set_enabled(False)
         else:
-            reason_text = f"OFFLINE | {self.connection_reason}"
-            self.status_badge.setText(reason_text)
+            self.status_badge.setText(f"OFFLINE | {self.connection_reason}")
             self.status_badge.setStyleSheet("background-color: #f44336; color: white; border-radius: 5px; font-weight: bold;")
             self.command_console.set_enabled(False)
-            self.statusBar().showMessage(f"Disconnected from API ({self.connection_reason}).")

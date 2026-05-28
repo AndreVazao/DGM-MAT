@@ -20,11 +20,13 @@ class StateEvents(Enum):
     REALITY_UPDATED = "reality_updated"
     HEALTH_UPDATED = "health_updated"
     DEGRADATION_UPDATED = "degradation_updated"
+    QUEUE_UPDATED = "queue_updated"
+    CONSUMER_STATUS_CHANGED = "consumer_status_changed"
 
 @dataclass
 class RuntimeTruthState:
     timestamp: float
-    status: str = "starting"
+    runtime_status: str = "starting"
     is_degraded: bool = False
     degradation: Dict[str, Any] = field(default_factory=dict)
     health: Dict[str, Any] = field(default_factory=dict)
@@ -42,6 +44,8 @@ class RuntimeTruthState:
         "patterns_detected": 0
     })
     cockpit: Dict[str, Any] = field(default_factory=dict)
+    queue: Dict[str, Any] = field(default_factory=dict)
+    consumers: Dict[str, Any] = field(default_factory=dict)
 
 class StateReducer:
     @staticmethod
@@ -53,7 +57,7 @@ class StateReducer:
         # Shallow copy for the state
         new_state = RuntimeTruthState(
             timestamp=time.time(),
-            status=state.status,
+            runtime_status=state.runtime_status,
             is_degraded=state.is_degraded,
             degradation=state.degradation.copy(),
             health=state.health.copy(),
@@ -66,7 +70,9 @@ class StateReducer:
             approvals=list(state.approvals),
             tasks=state.tasks.copy(),
             memory_stats=state.memory_stats.copy(),
-            cockpit=state.cockpit.copy()
+            cockpit=state.cockpit.copy(),
+            queue=state.queue.copy(),
+            consumers=state.consumers.copy()
         )
 
         if event_type == StateEvents.PROVIDER_UPDATED:
@@ -95,7 +101,7 @@ class StateReducer:
         elif event_type == StateEvents.COCKPIT_STATE_CHANGED:
             new_state.cockpit.update(payload)
             if "runtime_status" in payload:
-                new_state.status = payload["runtime_status"]
+                new_state.runtime_status = payload["runtime_status"]
             if "is_degraded" in payload:
                 new_state.is_degraded = payload["is_degraded"]
 
@@ -117,6 +123,14 @@ class StateReducer:
             client_id = payload.get("id")
             if client_id in new_state.websocket:
                 del new_state.websocket[client_id]
+
+        elif event_type == StateEvents.QUEUE_UPDATED:
+            new_state.queue.update(payload)
+
+        elif event_type == StateEvents.CONSUMER_STATUS_CHANGED:
+            consumer_id = payload.get("id")
+            if consumer_id:
+                new_state.consumers[consumer_id] = payload
 
         return new_state
 

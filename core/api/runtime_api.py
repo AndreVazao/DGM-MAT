@@ -32,7 +32,7 @@ def get_runtime_status():
     """Comprehensive status pulling from state_store."""
     truth = state_store.get_snapshot()
     return {
-        "status": truth.status,
+        "status": truth.runtime_status,
         "is_degraded": truth.is_degraded,
         "resources": {
             "cpu": psutil.cpu_percent(),
@@ -44,12 +44,12 @@ def get_runtime_status():
 
 @router.get("/truth")
 def get_runtime_truth():
-    """Requirement 4: Expose single source of truth."""
+    """Requirement 2: Expose single source of truth."""
     return state_store.to_dict()
 
 @router.get("/reality")
 def get_runtime_reality():
-    """Requirement 4: Expose observed reality."""
+    """Requirement 2: Expose observed reality."""
     return state_store.get_snapshot().reality
 
 @router.get("/degradation")
