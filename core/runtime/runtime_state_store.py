@@ -22,11 +22,15 @@ class StateEvents(Enum):
     DEGRADATION_UPDATED = "degradation_updated"
     QUEUE_UPDATED = "queue_updated"
     CONSUMER_STATUS_CHANGED = "consumer_status_changed"
+    BOOT_PHASE_UPDATED = "boot_phase_updated"
 
 @dataclass
 class RuntimeTruthState:
     timestamp: float
     runtime_status: str = "starting"
+    system_state: str = "INITIALIZING"  # Priority 3 requirement
+    boot_phase: str = "STARTUP"        # Priority 3 requirement
+    node_status: str = "UNKNOWN"       # Priority 3 requirement
     is_degraded: bool = False
     degradation: Dict[str, Any] = field(default_factory=dict)
     health: Dict[str, Any] = field(default_factory=dict)
@@ -54,10 +58,12 @@ class StateReducer:
         Redux-style reducer for state updates.
         Returns a new snapshot or modifies in place if controlled.
         """
-        # Shallow copy for the state
         new_state = RuntimeTruthState(
             timestamp=time.time(),
             runtime_status=state.runtime_status,
+            system_state=state.system_state,
+            boot_phase=state.boot_phase,
+            node_status=state.node_status,
             is_degraded=state.is_degraded,
             degradation=state.degradation.copy(),
             health=state.health.copy(),
@@ -90,10 +96,10 @@ class StateReducer:
             if agent_id:
                 new_state.agents[agent_id] = payload
 
-        elif event_type == StateEvents.TASK_UPDATED:
-            task_id = payload.get("id")
-            if task_id:
-                new_state.tasks[task_id] = payload
+        elif event_type == StateEvents.BOOT_PHASE_UPDATED:
+            new_state.boot_phase = payload.get("phase", new_state.boot_phase)
+            if "status" in payload:
+                new_state.node_status = payload["status"]
 
         elif event_type == StateEvents.MEMORY_STATS_UPDATED:
             new_state.memory_stats.update(payload)
@@ -102,6 +108,7 @@ class StateReducer:
             new_state.cockpit.update(payload)
             if "runtime_status" in payload:
                 new_state.runtime_status = payload["runtime_status"]
+                new_state.system_state = payload["runtime_status"].upper()
             if "is_degraded" in payload:
                 new_state.is_degraded = payload["is_degraded"]
 

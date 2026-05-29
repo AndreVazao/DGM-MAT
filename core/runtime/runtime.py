@@ -80,7 +80,7 @@ class Runtime:
 
         # Initial state sync
         self.state_store.dispatch(StateEvents.COCKPIT_STATE_CHANGED, {
-            "runtime_status": "starting",
+            "runtime_status": "starting", "system_state": "INITIALIZING", "boot_phase": "SYSTEM_BOOT", "node_status": "STARTING",
             "is_degraded": self.is_degraded
         })
 
@@ -218,7 +218,7 @@ class Runtime:
         self._sync_reality()
 
         self.state_store.dispatch(StateEvents.COCKPIT_STATE_CHANGED, {
-            "runtime_status": "running",
+            "runtime_status": "running", "system_state": "ACTIVE", "boot_phase": "READY", "node_status": "NOMINAL",
             "is_degraded": self.is_degraded
         })
 
