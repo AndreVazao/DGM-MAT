@@ -10,6 +10,7 @@ from core.ecosystem.ecosystem_registry import EcosystemRegistry
 from core.runtime.safe_action_queue import SafeActionQueue
 from core.provider_sync.provider_registry import provider_registry
 from core.runtime.runtime_profile import detect_runtime_profile, RuntimeProfile
+from core.runtime.runtime_path_validator import RuntimePathValidator
 
 class RealitySnapshotService:
     def __init__(self, workspace_root: str = "C:/ProgramasGodMode", profile: Optional[RuntimeProfile] = None):
@@ -19,6 +20,7 @@ class RealitySnapshotService:
         # Base dir for provider discovery
         self.base_dir = Path(__file__).parent.parent.parent
         self.profile = profile or detect_runtime_profile()
+        self.path_validator = RuntimePathValidator()
         self._last_snapshot_at = 0.0
         self._last_snapshot: Dict[str, Any] = {}
 
@@ -71,12 +73,13 @@ class RealitySnapshotService:
         if not data:
             return {"status": "error"}
 
+        runtime_paths_valid = self.path_validator.is_valid(data.get("runtime", {}))
         return {
             "timestamp": data.get("timestamp"),
             "total_repos": len(data.get("repos", [])),
             "total_processes": len(data.get("processes", [])),
             "active_providers": len([p for p in data.get("providers", []) if p.get("status") == "active" or p.get("status") == "ok"]),
-            "is_runtime_healthy": all(v.get("exists") for v in data.get("runtime", {}).values()),
+            "is_runtime_healthy": runtime_paths_valid,
             "canonical_paths_valid": all(data.get("canonical_paths", {}).values()),
             "queue_health": data.get("queue", {}).get("health", {}),
             "runtime_profile": self.profile.name,
@@ -85,23 +88,10 @@ class RealitySnapshotService:
         }
 
     def _get_runtime_folders(self) -> Dict[str, Any]:
-        folders = ["runtime", "storage", "config", "logs"]
-        result = {}
-        for folder in folders:
-            path = self.runtime_root / folder
-            try:
-                exists = path.exists()
-                result[folder] = {
-                    "path": str(path),
-                    "exists": exists,
-                    "is_dir": path.is_dir() if exists else False
-                }
-            except PermissionError:
-                result[folder] = {"path": str(path), "exists": False, "is_dir": False, "error": "PermissionDenied"}
-        return result
+        return self.path_validator.validate(ensure=True)
 
     def _validate_canonical_paths(self) -> Dict[str, bool]:
-        paths = ["C:/DevopGodMode", "C:/ProgramasGodMode", "C:/ProgramasGodMode/andreos-memory"]
+        paths = [str(path) for path in RuntimePathValidator.REQUIRED_PATHS]
         results = {}
         for p in paths:
             try:

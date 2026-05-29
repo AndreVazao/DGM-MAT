@@ -14,6 +14,12 @@ from core.runtime.safe_action_queue import SafeActionQueue, ActionStatus
 from core.realtime.realtime_broadcast import safe_broadcast
 
 class MissionEngine:
+    REPO_SCAN_ROOTS = [Path("C:/ProgramasGodMode"), Path("C:/DevopGodMode")]
+    REPO_SCAN_LIMIT = 20
+    BRANCH_SCAN_LIMIT = 20
+    REPO_TIMEOUT_SECONDS = 5.0
+    MISSION_EXECUTION_TIMEOUT_SECONDS = 60.0
+
     def __init__(self):
         self.missions_path = storage_manager.get_path("missions")
         self.missions_path.mkdir(parents=True, exist_ok=True)
@@ -21,7 +27,7 @@ class MissionEngine:
         self.pending_approvals: Dict[str, Dict[str, Any]] = {}
         self.action_queue = SafeActionQueue()
         self.action_queue.register_handler("MISSION_EXECUTION", self._handle_queue_execution)
-        self.timeout_threshold = timedelta(minutes=10)
+        self.timeout_threshold = timedelta(seconds=self.MISSION_EXECUTION_TIMEOUT_SECONDS)
         self._load_missions()
 
     def _load_missions(self):
@@ -114,7 +120,7 @@ class MissionEngine:
                 mission.logs.append("Action approved in SafeActionQueue. Starting execution.")
 
                 if "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
-                    self._update_status(mission, MissionStatus.RUNNING)
+                    self._mark_execution_started(mission)
                     result = self._execute_list_repositories_mission(mission)
                     self._finish_mission_success(mission, result)
                     return result
@@ -134,9 +140,7 @@ class MissionEngine:
 
             # 1. Timeout Check
             if datetime.now() - mission.created_at > self.timeout_threshold:
-                dgm_logger.error(f"MISSION_TIMEOUT: {mission_id}")
-                mission.logs.append("Critical: Mission timed out after 10 minutes.")
-                self._update_status(mission, MissionStatus.FAILED, {"error": "Mission timed out after 10 minutes."})
+                self._timeout_mission(mission, "Mission timed out before execution completed.")
                 continue
 
             # 2. Lifecycle Transitions
@@ -148,6 +152,9 @@ class MissionEngine:
             elif mission.status == MissionStatus.APPROVAL_PENDING:
                 self._handle_approval_pending(mission)
             elif mission.status == MissionStatus.RUNNING:
+                if self._mission_execution_timed_out(mission):
+                    self._timeout_mission(mission, "Mission execution exceeded 60 seconds.")
+                    continue
                 self._handle_running(mission)
 
     def _handle_created(self, mission: Mission):
@@ -166,7 +173,7 @@ class MissionEngine:
                 dgm_logger.info(f"MISSION_STARTED: {mission.mission_id}")
                 mission.logs.append("User approved mission via legacy interface.")
                 if "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
-                    self._update_status(mission, MissionStatus.RUNNING)
+                    self._mark_execution_started(mission)
                 else:
                     self.decompose_mission(mission.mission_id)
             elif decision == "reject":
@@ -196,13 +203,19 @@ class MissionEngine:
 
     def _execute_list_repositories_mission(self, mission: Mission) -> Dict[str, Any]:
         dgm_logger.info(f"MISSION_HANDLER_SELECTED: {mission.mission_id} - list_repositories")
-        repositories = self._discover_workspace_repositories()
+        started = time.monotonic()
+        repositories, scan_meta = self._discover_workspace_repositories(started)
         output = self._render_repository_output(repositories)
+        execution_duration = round(time.monotonic() - started, 3)
         result = {
             "mission_id": mission.mission_id,
             "handler": "list_repositories",
             "repositories": repositories,
             "count": len(repositories),
+            "repos_scanned": scan_meta["repos_scanned"],
+            "repos_skipped": scan_meta["repos_skipped"],
+            "branches_truncated": scan_meta["branches_truncated"],
+            "execution_duration": execution_duration,
             "summary": f"Found {len(repositories)} repositories.",
             "output": output,
             "generated_at": datetime.now().isoformat()
@@ -210,21 +223,25 @@ class MissionEngine:
         dgm_logger.info(f"MISSION_RESULT_GENERATED: {mission.mission_id} - {len(repositories)} repositories")
         return result
 
-    def _discover_workspace_repositories(self) -> List[Dict[str, Any]]:
-        roots = [Path("C:/ProgramasGodMode"), Path("C:/DevopGodMode")]
+    def _discover_workspace_repositories(self, mission_started: float) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
         repositories: Dict[str, Dict[str, Any]] = {}
+        repos_skipped = 0
+        branches_truncated = 0
 
-        for root in roots:
+        for root in self.REPO_SCAN_ROOTS:
             if not root.exists():
                 continue
 
-            candidates = [root]
             try:
-                candidates.extend([p for p in root.iterdir() if p.is_dir()])
+                candidates = [p for p in root.iterdir() if p.is_dir()]
             except PermissionError:
                 continue
 
-            for path in candidates:
+            for path in sorted(candidates, key=lambda item: item.name.lower()):
+                if time.monotonic() - mission_started >= self.MISSION_EXECUTION_TIMEOUT_SECONDS:
+                    dgm_logger.error("MISSION_TIMEOUT: repository scan exceeded mission budget")
+                    raise TimeoutError("Repository scan exceeded 60 seconds.")
+
                 if not (path / ".git").exists():
                     continue
 
@@ -232,33 +249,76 @@ class MissionEngine:
                 if key in repositories:
                     continue
 
-                repositories[key] = self._inspect_git_repository(path)
+                if len(repositories) >= self.REPO_SCAN_LIMIT:
+                    repos_skipped += 1
+                    dgm_logger.warning(f"MISSION_REPO_SCAN_LIMIT: max repos scanned={self.REPO_SCAN_LIMIT}")
+                    dgm_logger.info(f"MISSION_REPO_SCAN_SKIPPED: {path}")
+                    continue
 
-        return sorted(repositories.values(), key=lambda repo: repo["name"].lower())
+                repo_started = time.monotonic()
+                repo = self._inspect_git_repository(path, repo_started, mission_started)
+                if repo.get("branches_truncated"):
+                    branches_truncated += 1
+                repositories[key] = repo
 
-    def _inspect_git_repository(self, path: Path) -> Dict[str, Any]:
-        branch = self._run_git(path, ["branch", "--show-current"]) or "detached"
-        last_commit = self._run_git(path, ["rev-parse", "--short", "HEAD"]) or "unknown"
-        status_output = self._run_git(path, ["status", "--short"])
+        return (
+            sorted(repositories.values(), key=lambda repo: repo["name"].lower()),
+            {
+                "repos_scanned": len(repositories),
+                "repos_skipped": repos_skipped,
+                "branches_truncated": branches_truncated,
+            },
+        )
+
+    def _inspect_git_repository(self, path: Path, repo_started: float, mission_started: float) -> Dict[str, Any]:
+        branch = self._run_git(path, ["branch", "--show-current"], repo_started, mission_started) or "detached"
+        last_commit = self._run_git(path, ["rev-parse", "--short", "HEAD"], repo_started, mission_started) or "unknown"
+        status_output = self._run_git(path, ["status", "--short"], repo_started, mission_started)
+        branches = self._run_git(
+            path,
+            [
+                "for-each-ref",
+                f"--count={self.BRANCH_SCAN_LIMIT + 1}",
+                "--format=%(refname:short)",
+                "refs/heads",
+                "refs/remotes",
+            ],
+            repo_started,
+            mission_started,
+        )
+        branch_names = [line for line in branches.splitlines() if line.strip()]
+        branches_truncated = len(branch_names) > self.BRANCH_SCAN_LIMIT
+        if branches_truncated:
+            branch_names = branch_names[:self.BRANCH_SCAN_LIMIT]
         changes = len([line for line in status_output.splitlines() if line.strip()]) if status_output else 0
 
         return {
             "name": path.name,
             "path": str(path),
             "branch": branch,
+            "branches": branch_names,
+            "branches_truncated": branches_truncated,
             "last_commit": last_commit,
             "uncommitted_changes": changes,
             "git_status": "dirty" if changes else "clean"
         }
 
-    def _run_git(self, cwd: Path, args: List[str]) -> str:
+    def _run_git(self, cwd: Path, args: List[str], repo_started: float, mission_started: float) -> str:
         try:
+            now = time.monotonic()
+            repo_remaining = self.REPO_TIMEOUT_SECONDS - (now - repo_started)
+            mission_remaining = self.MISSION_EXECUTION_TIMEOUT_SECONDS - (now - mission_started)
+            remaining = min(repo_remaining, mission_remaining)
+            if remaining <= 0:
+                dgm_logger.info(f"MISSION_REPO_SCAN_SKIPPED: {cwd} repo timeout")
+                return ""
+
             result = subprocess.run(
                 ["git", "-c", f"safe.directory={cwd}", *args],
                 cwd=str(cwd),
                 capture_output=True,
                 text=True,
-                timeout=3,
+                timeout=max(0.1, remaining),
                 check=False
             )
             if result.returncode != 0:
@@ -275,22 +335,58 @@ class MissionEngine:
         for repo in repositories:
             lines.append(
                 f"- {repo['name']} | branch={repo['branch']} | status={repo['git_status']} | "
-                f"changes={repo['uncommitted_changes']} | last_commit={repo['last_commit']} | path={repo['path']}"
+                f"changes={repo['uncommitted_changes']} | last_commit={repo['last_commit']} | "
+                f"branches_shown={len(repo.get('branches', []))}"
+                f"{' truncated' if repo.get('branches_truncated') else ''} | path={repo['path']}"
             )
         return "\n".join(lines)
+
+    def _mark_execution_started(self, mission: Mission):
+        now = datetime.now()
+        mission.metadata["execution_started_at"] = now.isoformat()
+        mission.metadata["execution_timeout_seconds"] = self.MISSION_EXECUTION_TIMEOUT_SECONDS
+        self._update_status(mission, MissionStatus.RUNNING)
+
+    def _mission_execution_timed_out(self, mission: Mission) -> bool:
+        started_at = mission.metadata.get("execution_started_at")
+        if not started_at:
+            return False
+        try:
+            started = datetime.fromisoformat(started_at)
+        except ValueError:
+            return False
+        return (datetime.now() - started).total_seconds() > self.MISSION_EXECUTION_TIMEOUT_SECONDS
+
+    def _timeout_mission(self, mission: Mission, reason: str):
+        dgm_logger.error(f"MISSION_TIMEOUT: {mission.mission_id} - {reason}")
+        self._finish_mission_failure(mission, TimeoutError(reason))
 
     def _finish_mission_success(self, mission: Mission, result: Dict[str, Any]):
         self._store_mission_result(mission, result)
         self._emit_mission_result(mission, result)
         self._update_status(mission, MissionStatus.COMPLETED, {"completed_at": datetime.now().isoformat()})
         dgm_logger.info(f"MISSION_EXECUTION_FINISHED: {mission.mission_id}")
+        dgm_logger.info(f"MISSION_FORCE_COMPLETE: {mission.mission_id}")
         dgm_logger.info(f"MISSION_COMPLETED: {mission.mission_id}")
 
     def _finish_mission_failure(self, mission: Mission, exc: Exception) -> Dict[str, Any]:
         output = f"Mission execution failed: {exc}"
+        started_at = mission.metadata.get("execution_started_at")
+        execution_duration = 0.0
+        if started_at:
+            try:
+                execution_duration = round((datetime.now() - datetime.fromisoformat(started_at)).total_seconds(), 3)
+            except ValueError:
+                execution_duration = 0.0
         result = {
             "mission_id": mission.mission_id,
             "handler": "mission_execution",
+            "repositories": [],
+            "count": 0,
+            "repos_scanned": 0,
+            "repos_skipped": 0,
+            "branches_truncated": 0,
+            "execution_duration": execution_duration,
             "summary": "Mission execution failed.",
             "output": output,
             "error": str(exc),
