@@ -1,7 +1,7 @@
 import json
 import os
 import psutil
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from core.storage.storage_manager import storage_manager
@@ -9,8 +9,11 @@ from core.repository_cognition.repo_scanner import CognitiveRepoScanner
 from core.autonomy.mission_engine import mission_engine
 from core.workspace.workspace_manager import workspace_manager
 from core.connectors.obsidian_connector import obsidian_connector
-from core.runtime.runtime_state_store import state_store
+from core.runtime.runtime_state_store import state_store, StateEvents
 from core.runtime.safe_action_queue import SafeActionQueue
+from core.provider_sync.provider_registry import provider_registry
+from core.runtime.reality_snapshot import RealitySnapshotService
+from core.realtime.websocket_manager import manager
 
 router = APIRouter(prefix="/runtime", tags=["runtime"])
 
@@ -20,6 +23,16 @@ class MissionCreate(BaseModel):
 
 class ApprovalDecision(BaseModel):
     decision: str # "approve" or "reject"
+
+@router.websocket("/ws")
+async def runtime_websocket_endpoint(websocket: WebSocket):
+    """Compatibility websocket for clients that connect to /runtime/ws."""
+    await manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 
 @router.get("/health")
 def get_runtime_health():
@@ -41,6 +54,11 @@ def get_runtime_status():
         "agents": truth.agents,
         "missions_active": len(truth.missions)
     }
+
+@router.get("/state")
+def get_runtime_state():
+    """Compatibility endpoint for cockpit clients that request /runtime/state."""
+    return state_store.to_dict()
 
 @router.get("/truth")
 def get_runtime_truth():
@@ -75,6 +93,56 @@ def get_repo_scan():
 def get_memory_stats():
     """Restored for compatibility with existing tests."""
     return state_store.get_snapshot().memory_stats
+
+@router.get("/memory")
+def get_memory_status():
+    memory_stats = state_store.get_snapshot().memory_stats
+    return {
+        "status": "recognized",
+        "manager": "core.memory.memory_manager",
+        "stats": memory_stats,
+    }
+
+@router.get("/providers")
+def list_providers():
+    snapshot = state_store.get_snapshot()
+    providers = list(snapshot.providers.values())
+
+    if not providers:
+        providers = RealitySnapshotService()._get_providers_status()
+        for provider in providers:
+            state_store.dispatch(StateEvents.PROVIDER_UPDATED, provider)
+
+    return {
+        "status": "success",
+        "providers": providers,
+        "registered": provider_registry.list_providers(),
+    }
+
+@router.get("/governance")
+def get_governance_status():
+    truth = state_store.get_snapshot()
+    resources = {
+        "cpu": psutil.cpu_percent(),
+        "memory": psutil.virtual_memory().percent,
+    }
+    return {
+        "status": truth.degradation.get("status", "unknown"),
+        "is_degraded": truth.is_degraded,
+        "resources": resources,
+        "degradation": truth.degradation,
+    }
+
+@router.get("/autonomy")
+def get_autonomy_status():
+    truth = state_store.get_snapshot()
+    return {
+        "status": truth.runtime_status,
+        "mode": "LOW_MEMORY" if truth.health.get("low_memory_profile") else "STANDARD",
+        "missions_active": len(truth.missions),
+        "tasks": truth.tasks,
+        "memory_stats": truth.memory_stats,
+    }
 
 @router.get("/workspace/scan")
 def scan_workspace():

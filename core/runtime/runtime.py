@@ -3,6 +3,7 @@ from threading import Thread, Timer
 import sys
 import os
 import time
+import psutil
 
 from shared.models.event import Event
 from core.event_bus.event_bus import EventBus
@@ -147,6 +148,12 @@ class Runtime:
             snapshot = self.snapshot_service.snapshot(mode=mode)
             summary = self.snapshot_service.snapshot_summary(snapshot, mode=mode)
             health = self.health_engine.compute(summary)
+            health["low_memory_profile"] = summary.get("low_memory_profile", False)
+            health["runtime_profile"] = summary.get("runtime_profile")
+            health["resources"] = {
+                "cpu": psutil.cpu_percent(),
+                "memory": psutil.virtual_memory().percent
+            }
 
             self.state_store.dispatch(StateEvents.REALITY_UPDATED, snapshot)
             self.state_store.dispatch(StateEvents.HEALTH_UPDATED, health)

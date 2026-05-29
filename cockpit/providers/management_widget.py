@@ -4,8 +4,11 @@ from PySide6.QtWidgets import (
     QMessageBox, QInputDialog, QLineEdit
 )
 from PySide6.QtCore import Qt
+import requests
+from pathlib import Path
 from core.provider_sync.provider_registry import provider_registry
 from core.security.vault import credential_vault
+from shared.config.settings import API_HOST, API_PORT
 
 class ProviderManagementWidget(QWidget):
     def __init__(self):
@@ -43,39 +46,92 @@ class ProviderManagementWidget(QWidget):
         self.refresh_providers()
 
     def refresh_providers(self):
-        """Updates the table with data from the registry."""
-        providers = provider_registry.list_providers()
+        """Updates the table with data from the runtime API, then local registry as fallback."""
         self.provider_table.setRowCount(0)
+        providers = self._load_backend_providers()
 
-        for name in providers:
+        if providers:
+            for provider in providers:
+                self._add_provider_row(provider)
+            return
+
+        for name in provider_registry.list_providers():
             p = provider_registry.get_provider(name)
-            if not p:
-                continue
+            if p:
+                self._add_provider_row({
+                    "name": name,
+                    "status": p.health_metrics.get("status", "unknown"),
+                    "latency": p.get_avg_latency(),
+                    "quota_used": p.health_metrics.get("quota_used", 0),
+                    "capabilities": p.capabilities,
+                    "cooldown_until": p.health_metrics.get("cooldown_until", 0),
+                    "loaded": True,
+                    "installed": True,
+                })
 
-            row = self.provider_table.rowCount()
-            self.provider_table.insertRow(row)
+        if self.provider_table.rowCount() == 0:
+            for name in self._load_installed_provider_names():
+                self._add_provider_row({
+                    "name": name,
+                    "status": "installed",
+                    "latency": 0,
+                    "quota_used": 0,
+                    "capabilities": {},
+                    "installed": True,
+                    "loaded": False,
+                })
 
-            self.provider_table.setItem(row, 0, QTableWidgetItem(name))
+    def _load_backend_providers(self):
+        try:
+            response = requests.get(f"http://{API_HOST}:{API_PORT}/runtime/providers", timeout=1)
+            if response.status_code == 200:
+                return response.json().get("providers", [])
+        except Exception:
+            return []
+        return []
 
-            status_item = QTableWidgetItem(p.health_metrics["status"])
-            if p.health_metrics["status"] == "ok":
-                status_item.setForeground(Qt.green)
-            elif p.health_metrics["status"] == "cooldown":
-                status_item.setForeground(Qt.red)
-            self.provider_table.setItem(row, 1, status_item)
+    def _load_installed_provider_names(self):
+        providers_dir = Path(__file__).resolve().parents[2] / "core" / "providers"
+        if not providers_dir.exists():
+            return []
+        names = []
+        for entry in providers_dir.iterdir():
+            if entry.is_dir() and not entry.name.startswith("__"):
+                if (entry / f"{entry.name}_provider.py").exists():
+                    names.append(entry.name)
+        return sorted(names)
 
-            self.provider_table.setItem(row, 2, QTableWidgetItem(f"{p.get_avg_latency():.0f}ms"))
-            self.provider_table.setItem(row, 3, QTableWidgetItem(str(p.health_metrics["quota_used"])))
+    def _add_provider_row(self, provider: dict):
+        name = provider.get("name", "unknown")
+        status = provider.get("status", "unknown")
+        row = self.provider_table.rowCount()
+        self.provider_table.insertRow(row)
 
-            caps = ", ".join([f"{k}:{v}" for k, v in p.capabilities.items() if isinstance(v, (int, float))])
-            self.provider_table.setItem(row, 4, QTableWidgetItem(caps))
+        self.provider_table.setItem(row, 0, QTableWidgetItem(name))
 
-            cooldown = "No"
-            if p.health_metrics["status"] == "cooldown":
-                import time
-                remaining = max(0, int(p.health_metrics["cooldown_until"] - time.time()))
-                cooldown = f"{remaining}s"
-            self.provider_table.setItem(row, 5, QTableWidgetItem(cooldown))
+        status_item = QTableWidgetItem(status)
+        if status in ["ok", "active", "deferred", "installed"]:
+            status_item.setForeground(Qt.green)
+        elif status == "cooldown":
+            status_item.setForeground(Qt.red)
+        self.provider_table.setItem(row, 1, status_item)
+
+        latency = provider.get("latency", 0) or 0
+        self.provider_table.setItem(row, 2, QTableWidgetItem(f"{float(latency):.0f}ms"))
+        self.provider_table.setItem(row, 3, QTableWidgetItem(str(provider.get("quota_used", 0))))
+
+        capabilities = provider.get("capabilities", {}) or {}
+        caps = ", ".join([f"{k}:{v}" for k, v in capabilities.items() if isinstance(v, (int, float))])
+        if not caps:
+            caps = "installed" if provider.get("installed") else "not installed"
+        self.provider_table.setItem(row, 4, QTableWidgetItem(caps))
+
+        cooldown = "No"
+        if status == "cooldown":
+            import time
+            remaining = max(0, int((provider.get("cooldown_until") or 0) - time.time()))
+            cooldown = f"{remaining}s"
+        self.provider_table.setItem(row, 5, QTableWidgetItem(cooldown))
 
     def prompt_set_key(self):
         """Prompts the user to set an API key for a provider."""

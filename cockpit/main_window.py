@@ -62,15 +62,22 @@ class MainWindow(QMainWindow):
 
         # Left side: Navigation and Tools (Tabs)
         self.tabs = QTabWidget()
-        self.tabs.addTab(DashboardWidget(), "Dashboard")
-        self.tabs.addTab(MissionWidget(), "Missions")
-        self.tabs.addTab(AgentWidget(), "Agents")
+        self.dashboard_widget = DashboardWidget()
+        self.mission_widget = MissionWidget()
+        self.agent_widget = AgentWidget()
+        self.provider_widget = ProviderManagementWidget()
+        self.autonomy_dashboard = AutonomyDashboard()
+        self.governance_widget = GovernanceWidget()
+
+        self.tabs.addTab(self.dashboard_widget, "Dashboard")
+        self.tabs.addTab(self.mission_widget, "Missions")
+        self.tabs.addTab(self.agent_widget, "Agents")
         self.tabs.addTab(ImportedReposWidget(), "Repositories")
-        self.tabs.addTab(ProviderManagementWidget(), "Providers")
-        self.tabs.addTab(AutonomyDashboard(), "Autonomy")
+        self.tabs.addTab(self.provider_widget, "Providers")
+        self.tabs.addTab(self.autonomy_dashboard, "Autonomy")
         self.tabs.addTab(KnowledgeGraphWidget(), "Knowledge")
         self.tabs.addTab(FederationWidget(), "Federation")
-        self.tabs.addTab(GovernanceWidget(), "Governance")
+        self.tabs.addTab(self.governance_widget, "Governance")
         self.tabs.addTab(EventStreamWidget(), "Events")
         self.tabs.addTab(RuntimeHealthWidget(), "System Health")
 
@@ -122,6 +129,7 @@ class MainWindow(QMainWindow):
             self.degradation_reasons = degradation.get("reasons", [])
 
             self._update_status_badge()
+            self._update_child_widgets(state)
         elif data.get("type") == "mission_result":
             payload = data.get("payload", {})
             output = payload.get("output") or payload.get("summary")
@@ -132,6 +140,27 @@ class MainWindow(QMainWindow):
                     rendered += f"\n... output truncated ({len(lines) - 120} more lines)"
                 self.command_console._append_message("Runtime", rendered, "info")
                 dgm_logger.info(f"MISSION_OUTPUT_RENDERED: {payload.get('mission_id')}")
+        elif data.get("type") == "provider_health":
+            self.provider_widget.refresh_providers()
+        elif data.get("type") == "autonomy_cycle":
+            self.autonomy_dashboard.update_cycle(data.get("payload", {}))
+
+    def _update_child_widgets(self, state):
+        missions = list(state.get("missions", {}).values())
+        if missions:
+            self.mission_widget.update_missions(missions)
+
+        resources = state.get("health", {}).get("resources", {})
+        if not resources:
+            resources = state.get("cockpit", {}).get("resources", {})
+
+        cpu = resources.get("cpu", 0)
+        mem = resources.get("memory", 0)
+        self.governance_widget.update_metrics(cpu, mem, state.get("is_degraded", False))
+        self.autonomy_dashboard.update_state({
+            "status": state.get("runtime_status", "UNKNOWN"),
+            "config": {"execution_mode": "LOW_MEMORY" if state.get("health", {}).get("low_memory_profile") else "STANDARD"}
+        })
 
     def _update_status_badge(self):
         if self.is_connected:
