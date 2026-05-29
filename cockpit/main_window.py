@@ -30,6 +30,9 @@ class MainWindow(QMainWindow):
         self.ws_client = CockpitWebSocketClient()
         self.is_connected = False
         self.runtime_status = "offline"
+        self.system_state = "UNKNOWN"
+        self.boot_phase = "UNKNOWN"
+        self.node_status = "UNKNOWN"
         self.is_degraded = False
         self.degradation_reasons = []
         self.connection_reason = "UNKNOWN"
@@ -106,8 +109,28 @@ class MainWindow(QMainWindow):
 
         # Start connection attempt
         import asyncio
-        loop = asyncio.get_event_loop()
-        asyncio.run_coroutine_threadsafe(self.ws_client.connect(), loop)
+        try:
+            loop = asyncio.get_event_loop()
+            asyncio.run_coroutine_threadsafe(self.ws_client.connect(), loop)
+        except RuntimeError:
+            # Fallback if no loop in current thread
+            pass
+
+    def _fetch_initial_state(self):
+        """Priority 2: Manual state hydration on connect."""
+        import requests
+        import threading
+        from shared.config.settings import API_HOST, API_PORT
+        def run_fetch():
+            try:
+                response = requests.get(f"http://{API_HOST}:{API_PORT}/runtime/truth", timeout=2)
+                if response.status_code == 200:
+                    self._handle_server_message({"type": "state_update", "data": response.json()})
+                    dgm_logger.info("Cockpit: Initial state hydration complete.")
+            except Exception as e:
+                dgm_logger.warning(f"Cockpit: Initial hydration failed: {e}")
+
+        threading.Thread(target=run_fetch, daemon=True).start()
 
     @Slot(bool, str)
     def _on_connection_changed(self, connected, reason="UNKNOWN"):
@@ -115,13 +138,21 @@ class MainWindow(QMainWindow):
         self.connection_reason = reason
         if not connected:
             self.runtime_status = "offline"
+            self.system_state = "OFFLINE"
+
         self._update_status_badge()
+
+        if connected:
+            self._fetch_initial_state()
 
     def _handle_server_message(self, data):
         """Requirement 5: Cockpit connection state based on Truth."""
         if data.get("type") == "state_update":
             state = data.get("data", {})
             self.runtime_status = state.get("runtime_status", "unknown")
+            self.system_state = state.get("system_state", "UNKNOWN")
+            self.boot_phase = state.get("boot_phase", "STARTUP")
+            self.node_status = state.get("node_status", "UNKNOWN")
             self.is_degraded = state.get("is_degraded", False)
 
             # Extract reasons from degradation dict
@@ -170,11 +201,11 @@ class MainWindow(QMainWindow):
                     self.status_badge.setText(f"CONNECTED | DEGRADED ({reason})")
                     self.status_badge.setStyleSheet("background-color: #ff9800; color: white; border-radius: 5px; font-weight: bold;")
                 else:
-                    self.status_badge.setText("CONNECTED | NOMINAL")
+                    self.status_badge.setText(f"CONNECTED | {self.system_state} ({self.boot_phase})")
                     self.status_badge.setStyleSheet("background-color: #4caf50; color: white; border-radius: 5px; font-weight: bold;")
                 self.command_console.set_enabled(True)
             else:
-                self.status_badge.setText(f"CONNECTED | {self.runtime_status.upper()}")
+                self.status_badge.setText(f"CONNECTED | {self.system_state} ({self.boot_phase})")
                 self.status_badge.setStyleSheet("background-color: #2196f3; color: white; border-radius: 5px; font-weight: bold;")
                 self.command_console.set_enabled(False)
         else:

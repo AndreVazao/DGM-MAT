@@ -9,6 +9,7 @@ from core.bootstrap.runtime.bootstrap_sequence import BootstrapPhase, BOOTSTRAP_
 from core.bootstrap.core.environment_detector import detect_environment, assign_node_role
 from core.bootstrap.core.bootstrap_storage import initialize_storage_subsystem
 from core.bootstrap.core.dependency_loader import DependencyLoader
+from core.runtime.runtime_state_store import state_store, StateEvents
 
 class BootstrapEngine:
     """
@@ -40,6 +41,7 @@ class BootstrapEngine:
             phase_start = time.time()
             try:
                 dgm_logger.info(f"BootstrapEngine: Processing phase {phase.name}...")
+                state_store.dispatch(StateEvents.BOOT_PHASE_UPDATED, {"phase": phase.name, "status": "processing"})
                 handler = self.handlers.get(phase)
                 if handler:
                     handler()
