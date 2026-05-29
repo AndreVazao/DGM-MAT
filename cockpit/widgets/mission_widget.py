@@ -1,11 +1,12 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QListWidget, QLabel, QProgressBar
-from PySide6.QtCore import Qt
+
 
 class MissionWidget(QWidget):
     """
     Displays active missions and system progress.
     Uses non-blocking data updates.
     """
+
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout(self)
@@ -28,12 +29,16 @@ class MissionWidget(QWidget):
             return
 
         for mission in missions:
-            goal = mission.get('goal', 'Unknown')
-            status = mission.get('status', 'unknown')
-            self.mission_list.addItem(f"• {goal} [{status.upper()}]")
+            goal = mission.get("goal", "Unknown")
+            status = mission.get("status", "unknown")
+            self.mission_list.addItem(f"- {goal} [{status.upper()}]")
 
-        # Simple progress heuristic for now
-        active_count = sum(1 for m in missions if m.get('status') in ["active", "RUNNING"])
+            output = mission.get("output") or mission.get("metadata", {}).get("output")
+            if output:
+                for line in output.splitlines():
+                    self.mission_list.addItem(f"  {line}")
+
+        active_count = sum(1 for m in missions if m.get("status") in ["active", "RUNNING"])
         total = len(missions)
         if total > 0:
             self.progress_bar.setValue(int((active_count / total) * 100))

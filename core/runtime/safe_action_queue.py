@@ -124,17 +124,20 @@ class SafeActionQueue:
 
                     try:
                         if handler:
-                            handler(payload)
+                            handler_result = handler(payload)
 
                             with SessionLocal() as session:
                                 act = session.get(ActionRecord, action_id)
                                 act.status = ActionStatus.COMPLETED
                                 audit = json.loads(act.audit_trail)
-                                audit.append({
+                                audit_entry = {
                                     "timestamp": datetime.now().isoformat(),
                                     "status": ActionStatus.COMPLETED,
                                     "message": "Action completed successfully"
-                                })
+                                }
+                                if handler_result is not None:
+                                    audit_entry["result"] = handler_result
+                                audit.append(audit_entry)
                                 act.audit_trail = json.dumps(audit)
                                 session.commit()
                             dgm_logger.info(f"QUEUE_FINISHED: Action {action_id}")

@@ -103,7 +103,10 @@ def list_missions():
             "created_at": getattr(m, 'created_at', None).isoformat() if hasattr(m, 'created_at') and m.created_at else None,
             "progress": m.progress,
             "logs": m.logs,
-            "error": m.error
+            "error": m.error,
+            "metadata": m.metadata,
+            "result": m.metadata.get("result"),
+            "output": m.metadata.get("output")
         }
         for m in mission_engine.active_missions.values()
     ]

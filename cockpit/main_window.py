@@ -122,6 +122,11 @@ class MainWindow(QMainWindow):
             self.degradation_reasons = degradation.get("reasons", [])
 
             self._update_status_badge()
+        elif data.get("type") == "mission_result":
+            payload = data.get("payload", {})
+            output = payload.get("output") or payload.get("summary")
+            if output:
+                self.command_console._append_message("Runtime", output, "info")
 
     def _update_status_badge(self):
         if self.is_connected:

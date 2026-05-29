@@ -10,6 +10,7 @@ from core.storage.storage_manager import storage_manager
 from core.observability.logger import dgm_logger
 from core.runtime.runtime_state_store import state_store, StateEvents
 from core.runtime.safe_action_queue import SafeActionQueue, ActionStatus
+from core.realtime.realtime_broadcast import safe_broadcast
 
 class MissionEngine:
     def __init__(self):
@@ -102,13 +103,22 @@ class MissionEngine:
         mission_id = payload.get("mission_id")
         mission = self.active_missions.get(mission_id)
         if mission:
+            dgm_logger.info(f"MISSION_EXECUTION_STARTED: {mission_id}")
             dgm_logger.info(f"MissionEngine: Queue execution triggered for {mission_id}")
             mission.logs.append("Action approved in SafeActionQueue. Starting execution.")
 
             if "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
                 self._update_status(mission, MissionStatus.RUNNING)
+                result = self._execute_list_repositories_mission(mission)
+                self._store_mission_result(mission, result)
+                self._emit_mission_result(mission, result)
+                self._update_status(mission, MissionStatus.COMPLETED, {"completed_at": datetime.now().isoformat()})
+                dgm_logger.info(f"MISSION_COMPLETED: {mission.mission_id}")
+                return result
             else:
+                dgm_logger.info(f"MISSION_HANDLER_SELECTED: {mission_id} - decompose_mission")
                 self.decompose_mission(mission_id)
+                return {"status": "decomposed", "mission_id": mission_id}
 
     def process_missions(self):
         """Consumer loop called by CognitionLoop."""
@@ -170,17 +180,64 @@ class MissionEngine:
                 self._update_status(mission, MissionStatus.COMPLETED)
                 return
 
-        # Simulate progress for specific goals (if no subtasks or as fallback)
+        # Execute directly for specific goals that do not need subtasks.
         if not mission.subtasks and "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
-             mission.progress = round(mission.progress + 0.2, 2)
-             mission.logs.append(f"Progress update: {mission.progress:.1%}")
-             if mission.progress >= 1.0:
-                  dgm_logger.info(f"MISSION_COMPLETED: {mission.mission_id}")
-                  mission.logs.append("Found repositories: DGM-MAT, DGM-MAT-Agents, etc.")
-                  self._update_status(mission, MissionStatus.COMPLETED, {"result": "Found 5 repositories."})
-             else:
-                  self.save_mission(mission)
-                  self._sync_state(mission)
+            result = self._execute_list_repositories_mission(mission)
+            self._store_mission_result(mission, result)
+            self._emit_mission_result(mission, result)
+            self._update_status(mission, MissionStatus.COMPLETED, {"completed_at": datetime.now().isoformat()})
+            dgm_logger.info(f"MISSION_COMPLETED: {mission.mission_id}")
+
+    def _execute_list_repositories_mission(self, mission: Mission) -> Dict[str, Any]:
+        dgm_logger.info(f"MISSION_HANDLER_SELECTED: {mission.mission_id} - list_repositories")
+        repositories = self._discover_workspace_repositories()
+        output = "Found repositories:\n" + "\n".join(f"- {repo}" for repo in repositories)
+        result = {
+            "mission_id": mission.mission_id,
+            "handler": "list_repositories",
+            "repositories": repositories,
+            "count": len(repositories),
+            "summary": f"Found {len(repositories)} repositories.",
+            "output": output,
+            "generated_at": datetime.now().isoformat()
+        }
+        dgm_logger.info(f"MISSION_RESULT_GENERATED: {mission.mission_id} - {len(repositories)} repositories")
+        return result
+
+    def _discover_workspace_repositories(self) -> List[str]:
+        workspace_root = Path(__file__).resolve().parents[2]
+        candidates = [workspace_root] + [p for p in workspace_root.iterdir() if p.is_dir()]
+        repositories = []
+
+        for path in candidates:
+            repo_markers = [
+                path / ".git",
+                path / "README.md",
+                path / "architecture.md",
+                path / "ecosystem.json",
+                path / "health.json"
+            ]
+            if any(marker.exists() for marker in repo_markers):
+                repositories.append(path.name)
+
+        return sorted(set(repositories))
+
+    def _store_mission_result(self, mission: Mission, result: Dict[str, Any]):
+        mission.metadata["result"] = result
+        mission.metadata["output"] = result["output"]
+        mission.progress = 1.0
+        mission.logs.append(result["output"])
+        self.save_mission(mission)
+        self._sync_state(mission)
+        dgm_logger.info(f"MISSION_RESULT_STORED: {mission.mission_id}")
+
+    def _emit_mission_result(self, mission: Mission, result: Dict[str, Any]):
+        payload = {
+            "type": "mission_result",
+            "payload": result
+        }
+        safe_broadcast(payload)
+        dgm_logger.info(f"MISSION_RESULT_EMITTED: {mission.mission_id}")
 
     def _update_status(self, mission: Mission, status: MissionStatus, metadata_update: Dict[str, Any] = None):
         mission.status = status
@@ -257,12 +314,16 @@ class MissionEngine:
     def _sync_state(self, mission: Mission):
         state_store.dispatch(StateEvents.MISSION_UPDATED, {
             "id": mission.mission_id,
+            "mission_id": mission.mission_id,
             "goal": mission.goal,
             "status": mission.status.value,
             "updated_at": datetime.now().isoformat(),
             "progress": mission.progress,
             "logs": mission.logs,
-            "error": mission.error
+            "error": mission.error,
+            "metadata": mission.metadata,
+            "result": mission.metadata.get("result"),
+            "output": mission.metadata.get("output")
         })
 
 mission_engine = MissionEngine()
