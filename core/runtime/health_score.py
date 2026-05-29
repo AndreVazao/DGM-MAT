@@ -55,9 +55,13 @@ class RuntimeHealthScore:
 
         # 3. Providers (20)
         active_providers = snapshot_summary.get("active_providers", 0)
+        low_memory_profile = snapshot_summary.get("low_memory_profile", False)
         provider_score = 0
         if active_providers > 0:
             provider_score = self.weights["providers"]
+        elif low_memory_profile:
+            provider_score = self.weights["providers"]
+            warnings.append("Providers: Startup provider scan deferred by low-memory profile.")
         else:
             warnings.append("Providers: No active providers detected.")
             degradation_reasons.append("NO_ACTIVE_PROVIDER")

@@ -126,7 +126,12 @@ class MainWindow(QMainWindow):
             payload = data.get("payload", {})
             output = payload.get("output") or payload.get("summary")
             if output:
-                self.command_console._append_message("Runtime", output, "info")
+                lines = output.splitlines()
+                rendered = "\n".join(lines[:120])
+                if len(lines) > 120:
+                    rendered += f"\n... output truncated ({len(lines) - 120} more lines)"
+                self.command_console._append_message("Runtime", rendered, "info")
+                dgm_logger.info(f"MISSION_OUTPUT_RENDERED: {payload.get('mission_id')}")
 
     def _update_status_badge(self):
         if self.is_connected:

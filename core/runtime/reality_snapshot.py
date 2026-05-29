@@ -3,25 +3,42 @@ import psutil
 import time
 import platform
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from datetime import datetime
 from core.observability.logger import dgm_logger
 from core.ecosystem.ecosystem_registry import EcosystemRegistry
 from core.runtime.safe_action_queue import SafeActionQueue
 from core.provider_sync.provider_registry import provider_registry
+from core.runtime.runtime_profile import detect_runtime_profile, RuntimeProfile
 
 class RealitySnapshotService:
-    def __init__(self, workspace_root: str = "C:/ProgramasGodMode"):
+    def __init__(self, workspace_root: str = "C:/ProgramasGodMode", profile: Optional[RuntimeProfile] = None):
         self.workspace_root = Path(workspace_root)
         self.registry = EcosystemRegistry()
         self.runtime_root = Path("C:/DevopGodMode")
         # Base dir for provider discovery
         self.base_dir = Path(__file__).parent.parent.parent
+        self.profile = profile or detect_runtime_profile()
+        self._last_snapshot_at = 0.0
+        self._last_snapshot: Dict[str, Any] = {}
 
-    def snapshot(self) -> Dict[str, Any]:
+    def _interval_for_mode(self, mode: str) -> int:
+        if mode == "active":
+            return self.profile.active_snapshot_interval
+        if mode == "degraded":
+            return self.profile.degraded_snapshot_interval
+        return self.profile.idle_snapshot_interval
+
+    def snapshot(self, mode: str = "idle", force: bool = False) -> Dict[str, Any]:
         """
         Collects actual observed state.
         """
+        now = time.time()
+        interval = self._interval_for_mode(mode)
+        if not force and self._last_snapshot and now - self._last_snapshot_at < interval:
+            dgm_logger.debug(f"RealitySnapshotService: Reusing cached {mode} snapshot.")
+            return self._last_snapshot
+
         dgm_logger.debug("RealitySnapshotService: Capturing snapshot...")
         start_time = time.time()
 
@@ -41,14 +58,16 @@ class RealitySnapshotService:
             }
 
             elapsed = time.time() - start_time
+            self._last_snapshot = snapshot_data
+            self._last_snapshot_at = now
             dgm_logger.debug(f"RealitySnapshotService: Snapshot captured in {elapsed:.2f}s")
             return snapshot_data
         except Exception as e:
             dgm_logger.error(f"RealitySnapshotService: Failed to capture snapshot: {e}")
             return {}
 
-    def snapshot_summary(self) -> Dict[str, Any]:
-        data = self.snapshot()
+    def snapshot_summary(self, data: Optional[Dict[str, Any]] = None, mode: str = "idle") -> Dict[str, Any]:
+        data = data or self.snapshot(mode=mode)
         if not data:
             return {"status": "error"}
 
@@ -59,7 +78,10 @@ class RealitySnapshotService:
             "active_providers": len([p for p in data.get("providers", []) if p.get("status") == "active" or p.get("status") == "ok"]),
             "is_runtime_healthy": all(v.get("exists") for v in data.get("runtime", {}).values()),
             "canonical_paths_valid": all(data.get("canonical_paths", {}).values()),
-            "queue_health": data.get("queue", {}).get("health", {})
+            "queue_health": data.get("queue", {}).get("health", {}),
+            "runtime_profile": self.profile.name,
+            "low_memory_profile": self.profile.low_memory,
+            "system_memory_percent": self.profile.memory_percent
         }
 
     def _get_runtime_folders(self) -> Dict[str, Any]:
@@ -107,11 +129,14 @@ class RealitySnapshotService:
             latency = 0
 
             if provider:
-                health_data = provider.check_health()
-                status = health_data.get("status", "unknown")
-                healthy = status == "ok"
-                available = provider.is_available()
-                latency = provider.get_avg_latency()
+                if self.profile.lazy_provider_health:
+                    status = "deferred"
+                else:
+                    health_data = provider.check_health()
+                    status = health_data.get("status", "unknown")
+                    healthy = status == "ok"
+                    available = provider.is_available()
+                    latency = provider.get_avg_latency()
 
             providers_status.append({
                 "name": name,

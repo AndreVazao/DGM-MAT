@@ -5,8 +5,8 @@ import traceback
 from enum import Enum
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Callable
-from sqlalchemy import String, Text, Integer, Boolean, DateTime, Column
-from core.storage.database import Base, engine, SessionLocal
+from core.storage.database import SessionLocal
+from core.storage.models import ActionRecord
 from core.storage.init_db import init_database
 from core.observability.logger import dgm_logger
 
@@ -18,21 +18,6 @@ class ActionStatus(str, Enum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     REJECTED = "REJECTED"
-
-class ActionRecord(Base):
-    __tablename__ = "safe_action_queue"
-
-    id = Column(Integer, primary_key=True)
-    action_type = Column(String(255))
-    payload = Column(Text)
-    status = Column(String(50), default=ActionStatus.DISCOVERED)
-    is_approved = Column(Boolean, default=False)
-    approved_by = Column(String(255), nullable=True)
-    approved_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    audit_trail = Column(Text, default="[]")
-    error_message = Column(Text, nullable=True)
 
 class SafeActionQueue:
     _instance = None

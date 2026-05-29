@@ -3,6 +3,7 @@ import os
 import threading
 import concurrent.futures
 from shared.models.event import Event
+from shared.enums.event_priority import EventPriority
 from core.observability.logger import dgm_logger
 from core.governance.runtime_limits import RuntimeLimits
 from core.governance.event_governor import EventGovernor
@@ -18,10 +19,14 @@ from core.governance.provider_rate_control import ProviderRateControl
 from core.governance.workload_scheduler import WorkloadScheduler
 from core.governance.degradation_controller import DegradationController
 from core.governance.self_modification_guard import SelfModificationGuard
+from core.runtime.runtime_profile import detect_runtime_profile
 
 class GovernanceEngine:
     def __init__(self, config_path: str = "config/runtime_limits.json"):
         self.limits = self._load_limits(config_path)
+        self.profile = detect_runtime_profile()
+        if self.profile.low_memory:
+            self.limits.memory_degradation_threshold = self.profile.memory_degradation_threshold
         self.lock = threading.Lock()
 
         # Initialize components
@@ -92,13 +97,14 @@ class GovernanceEngine:
                 return False
 
             # 4. Degradation check
-            if self.degradation_controller.should_throttle_low_priority() and event.priority == "low":
+            if self.degradation_controller.should_throttle_low_priority() and event.priority == EventPriority.LOW:
                 dgm_logger.info(f"GovernanceEngine: Throttling low priority event {event.event_type} due to degradation.")
                 return False
 
         return True
 
     def start_monitoring(self):
+        self.resource_monitor.interval = self.profile.governance_monitor_interval
         self.resource_monitor.start(callback=self._handle_resource_update)
 
     def _handle_resource_update(self, snapshot):

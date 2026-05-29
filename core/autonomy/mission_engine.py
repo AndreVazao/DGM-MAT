@@ -1,4 +1,5 @@
 import json
+import subprocess
 import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -102,23 +103,28 @@ class MissionEngine:
         """Callback from SafeActionQueue when MISSION_EXECUTION is APPROVED."""
         mission_id = payload.get("mission_id")
         mission = self.active_missions.get(mission_id)
-        if mission:
-            dgm_logger.info(f"MISSION_EXECUTION_STARTED: {mission_id}")
-            dgm_logger.info(f"MissionEngine: Queue execution triggered for {mission_id}")
-            mission.logs.append("Action approved in SafeActionQueue. Starting execution.")
+        if not mission:
+            dgm_logger.error(f"MISSION_EXECUTION_FAILED: {mission_id} - mission not found")
+            raise ValueError(f"Mission not found: {mission_id}")
 
-            if "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
-                self._update_status(mission, MissionStatus.RUNNING)
-                result = self._execute_list_repositories_mission(mission)
-                self._store_mission_result(mission, result)
-                self._emit_mission_result(mission, result)
-                self._update_status(mission, MissionStatus.COMPLETED, {"completed_at": datetime.now().isoformat()})
-                dgm_logger.info(f"MISSION_COMPLETED: {mission.mission_id}")
-                return result
-            else:
-                dgm_logger.info(f"MISSION_HANDLER_SELECTED: {mission_id} - decompose_mission")
-                self.decompose_mission(mission_id)
-                return {"status": "decomposed", "mission_id": mission_id}
+        if mission:
+            try:
+                dgm_logger.info(f"MISSION_EXECUTION_STARTED: {mission_id}")
+                dgm_logger.info(f"MissionEngine: Queue execution triggered for {mission_id}")
+                mission.logs.append("Action approved in SafeActionQueue. Starting execution.")
+
+                if "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
+                    self._update_status(mission, MissionStatus.RUNNING)
+                    result = self._execute_list_repositories_mission(mission)
+                    self._finish_mission_success(mission, result)
+                    return result
+                else:
+                    dgm_logger.info(f"MISSION_HANDLER_SELECTED: {mission_id} - decompose_mission")
+                    self.decompose_mission(mission_id)
+                    return {"status": "decomposed", "mission_id": mission_id}
+            except Exception as exc:
+                result = self._finish_mission_failure(mission, exc)
+                raise RuntimeError(result["output"]) from exc
 
     def process_missions(self):
         """Consumer loop called by CognitionLoop."""
@@ -182,16 +188,16 @@ class MissionEngine:
 
         # Execute directly for specific goals that do not need subtasks.
         if not mission.subtasks and "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
-            result = self._execute_list_repositories_mission(mission)
-            self._store_mission_result(mission, result)
-            self._emit_mission_result(mission, result)
-            self._update_status(mission, MissionStatus.COMPLETED, {"completed_at": datetime.now().isoformat()})
-            dgm_logger.info(f"MISSION_COMPLETED: {mission.mission_id}")
+            try:
+                result = self._execute_list_repositories_mission(mission)
+                self._finish_mission_success(mission, result)
+            except Exception as exc:
+                self._finish_mission_failure(mission, exc)
 
     def _execute_list_repositories_mission(self, mission: Mission) -> Dict[str, Any]:
         dgm_logger.info(f"MISSION_HANDLER_SELECTED: {mission.mission_id} - list_repositories")
         repositories = self._discover_workspace_repositories()
-        output = "Found repositories:\n" + "\n".join(f"- {repo}" for repo in repositories)
+        output = self._render_repository_output(repositories)
         result = {
             "mission_id": mission.mission_id,
             "handler": "list_repositories",
@@ -204,23 +210,97 @@ class MissionEngine:
         dgm_logger.info(f"MISSION_RESULT_GENERATED: {mission.mission_id} - {len(repositories)} repositories")
         return result
 
-    def _discover_workspace_repositories(self) -> List[str]:
-        workspace_root = Path(__file__).resolve().parents[2]
-        candidates = [workspace_root] + [p for p in workspace_root.iterdir() if p.is_dir()]
-        repositories = []
+    def _discover_workspace_repositories(self) -> List[Dict[str, Any]]:
+        roots = [Path("C:/ProgramasGodMode"), Path("C:/DevopGodMode")]
+        repositories: Dict[str, Dict[str, Any]] = {}
 
-        for path in candidates:
-            repo_markers = [
-                path / ".git",
-                path / "README.md",
-                path / "architecture.md",
-                path / "ecosystem.json",
-                path / "health.json"
-            ]
-            if any(marker.exists() for marker in repo_markers):
-                repositories.append(path.name)
+        for root in roots:
+            if not root.exists():
+                continue
 
-        return sorted(set(repositories))
+            candidates = [root]
+            try:
+                candidates.extend([p for p in root.iterdir() if p.is_dir()])
+            except PermissionError:
+                continue
+
+            for path in candidates:
+                if not (path / ".git").exists():
+                    continue
+
+                key = str(path.resolve()).lower()
+                if key in repositories:
+                    continue
+
+                repositories[key] = self._inspect_git_repository(path)
+
+        return sorted(repositories.values(), key=lambda repo: repo["name"].lower())
+
+    def _inspect_git_repository(self, path: Path) -> Dict[str, Any]:
+        branch = self._run_git(path, ["branch", "--show-current"]) or "detached"
+        last_commit = self._run_git(path, ["rev-parse", "--short", "HEAD"]) or "unknown"
+        status_output = self._run_git(path, ["status", "--short"])
+        changes = len([line for line in status_output.splitlines() if line.strip()]) if status_output else 0
+
+        return {
+            "name": path.name,
+            "path": str(path),
+            "branch": branch,
+            "last_commit": last_commit,
+            "uncommitted_changes": changes,
+            "git_status": "dirty" if changes else "clean"
+        }
+
+    def _run_git(self, cwd: Path, args: List[str]) -> str:
+        try:
+            result = subprocess.run(
+                ["git", "-c", f"safe.directory={cwd}", *args],
+                cwd=str(cwd),
+                capture_output=True,
+                text=True,
+                timeout=3,
+                check=False
+            )
+            if result.returncode != 0:
+                return ""
+            return result.stdout.strip()
+        except Exception:
+            return ""
+
+    def _render_repository_output(self, repositories: List[Dict[str, Any]]) -> str:
+        if not repositories:
+            return "Found repositories: none"
+
+        lines = ["Found repositories:"]
+        for repo in repositories:
+            lines.append(
+                f"- {repo['name']} | branch={repo['branch']} | status={repo['git_status']} | "
+                f"changes={repo['uncommitted_changes']} | last_commit={repo['last_commit']} | path={repo['path']}"
+            )
+        return "\n".join(lines)
+
+    def _finish_mission_success(self, mission: Mission, result: Dict[str, Any]):
+        self._store_mission_result(mission, result)
+        self._emit_mission_result(mission, result)
+        self._update_status(mission, MissionStatus.COMPLETED, {"completed_at": datetime.now().isoformat()})
+        dgm_logger.info(f"MISSION_EXECUTION_FINISHED: {mission.mission_id}")
+        dgm_logger.info(f"MISSION_COMPLETED: {mission.mission_id}")
+
+    def _finish_mission_failure(self, mission: Mission, exc: Exception) -> Dict[str, Any]:
+        output = f"Mission execution failed: {exc}"
+        result = {
+            "mission_id": mission.mission_id,
+            "handler": "mission_execution",
+            "summary": "Mission execution failed.",
+            "output": output,
+            "error": str(exc),
+            "generated_at": datetime.now().isoformat()
+        }
+        self._store_mission_result(mission, result)
+        self._emit_mission_result(mission, result)
+        self._update_status(mission, MissionStatus.FAILED, {"error": str(exc), "completed_at": datetime.now().isoformat()})
+        dgm_logger.error(f"MISSION_EXECUTION_FAILED: {mission.mission_id} - {exc}")
+        return result
 
     def _store_mission_result(self, mission: Mission, result: Dict[str, Any]):
         mission.metadata["result"] = result
