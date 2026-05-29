@@ -6,6 +6,7 @@ DGM-MAT/
 │     ├─ build-windows.yml
 │     ├─ ci-core.yml
 │     ├─ ci-integration.yml
+│     ├─ manual-repo-bootstrap.yml
 │     ├─ release.yml
 │     ├─ repo-analysis.yml
 │     ├─ runtime-validation.yml
@@ -50,24 +51,6 @@ DGM-MAT/
 │  ├─ ecosystem_registry.json
 │  ├─ external_registry.json
 │  └─ runtime_state.json
-├─ AndreOS/
-│  ├─ memory/
-│  │  ├─ autonomous_tasks.json
-│  │  └─ ecosystem_topology.json
-│  ├─ agent_state_memory_sync_1_3c727839.json
-│  ├─ agent_state_memory_sync_1_4e71d343.json
-│  ├─ agent_state_memory_sync_1_7d9f82fd.json
-│  ├─ agent_state_repo_intel_1_000f9f8c.json
-│  ├─ agent_state_repo_intel_1_3d6fd110.json
-│  ├─ agent_state_repo_intel_1_72ef32c4.json
-│  ├─ architecture_checkpoint_20260524_065003.json
-│  ├─ architecture_checkpoint_20260524_065204.json
-│  ├─ architecture_memory.json
-│  ├─ development_memory.json
-│  ├─ evolution_evolution_bbe9de69_20260522165931.json
-│  ├─ evolution_evolution_fb6baff2_20260522165931.json
-│  ├─ evolution_phase12_13_1779478628.json
-│  └─ recovery_memory.json
 ├─ build/
 │  └─ dgm_mat.spec
 ├─ cockpit/
@@ -98,6 +81,7 @@ DGM-MAT/
 │  │  ├─ autonomous_tasks_widget.py
 │  │  ├─ autonomy_dashboard.py
 │  │  ├─ cognitive_dashboard.py
+│  │  ├─ command_console.py
 │  │  ├─ dashboard_widget.py
 │  │  ├─ duplicate_detection_widget.py
 │  │  ├─ ecosystem_graph_widget.py
@@ -139,6 +123,7 @@ DGM-MAT/
 │  ├─ autonomous_runtime.json
 │  ├─ import_targets.json
 │  ├─ nodes.json
+│  ├─ protected_assets.yaml
 │  └─ runtime_limits.json
 ├─ core/
 │  ├─ agents/
@@ -158,6 +143,7 @@ DGM-MAT/
 │  │  ├─ base_agent.py
 │  │  ├─ debug_agent.py
 │  │  ├─ devops_agent.py
+│  │  ├─ isolated_runtime.py
 │  │  ├─ memory_agent.py
 │  │  ├─ provider_agent.py
 │  │  ├─ refactor_agent.py
@@ -166,7 +152,8 @@ DGM-MAT/
 │  │  ├─ runtime_agent.py
 │  │  ├─ security_agent.py
 │  │  ├─ self_improvement_agent.py
-│  │  └─ ui_agent.py
+│  │  ├─ ui_agent.py
+│  │  └─ watchdog.py
 │  ├─ api/
 │  │  ├─ api_server.py
 │  │  ├─ mobile_bridge.py
@@ -227,13 +214,23 @@ DGM-MAT/
 │  │  ├─ work_queue.py
 │  │  └─ worker_allocator.py
 │  ├─ bootstrap/
-│  │  ├─ __init__.py
-│  │  ├─ bootstrap_context.py
-│  │  ├─ bootstrap_engine.py
-│  │  ├─ bootstrap_sequence.py
-│  │  ├─ bootstrap_storage.py
-│  │  ├─ dependency_loader.py
-│  │  └─ environment_detector.py
+│  │  ├─ core/
+│  │  │  ├─ __init__.py
+│  │  │  ├─ bootstrap_context.py
+│  │  │  ├─ bootstrap_storage.py
+│  │  │  ├─ dependency_loader.py
+│  │  │  └─ environment_detector.py
+│  │  ├─ federation/
+│  │  │  └─ __init__.py
+│  │  ├─ providers/
+│  │  │  └─ __init__.py
+│  │  ├─ runtime/
+│  │  │  ├─ __init__.py
+│  │  │  ├─ bootstrap_engine.py
+│  │  │  └─ bootstrap_sequence.py
+│  │  ├─ ui/
+│  │  │  └─ __init__.py
+│  │  └─ __init__.py
 │  ├─ cockpit_runtime/
 │  │  ├─ __init__.py
 │  │  ├─ autonomy_status_api.py
@@ -299,7 +296,9 @@ DGM-MAT/
 │  │  ├─ ecosystem_materializer.py
 │  │  ├─ ecosystem_models.py
 │  │  ├─ ecosystem_registry.py
-│  │  └─ ecosystem_validator.py
+│  │  ├─ ecosystem_validator.py
+│  │  ├─ reality_sync_engine.py
+│  │  └─ safe_import_system.py
 │  ├─ event_bus/
 │  │  └─ event_bus.py
 │  ├─ evolution/
@@ -359,6 +358,7 @@ DGM-MAT/
 │  │  ├─ storage_replication.py
 │  │  └─ workload_router.py
 │  ├─ federation/
+│  │  ├─ __init__.py
 │  │  ├─ collaboration_engine.py
 │  │  ├─ convergence_analyzer.py
 │  │  ├─ ecosystem_bridge.py
@@ -373,6 +373,8 @@ DGM-MAT/
 │  │  ├─ federation_scheduler.py
 │  │  ├─ federation_security.py
 │  │  ├─ federation_snapshot.py
+│  │  ├─ node_identity.py
+│  │  ├─ node_registry.py
 │  │  ├─ shared_knowledge.py
 │  │  └─ trust_engine.py
 │  ├─ governance/
@@ -482,6 +484,7 @@ DGM-MAT/
 │  │  ├─ consolidation_engine.py
 │  │  ├─ context_snapshot.py
 │  │  ├─ memory_engine.py
+│  │  ├─ memory_manager.py
 │  │  ├─ memory_store.py
 │  │  ├─ models.py
 │  │  ├─ project_families.py
@@ -621,6 +624,7 @@ DGM-MAT/
 │  │  ├─ conversation_memory.py
 │  │  ├─ knowledge_normalizer.py
 │  │  ├─ model_router.py
+│  │  ├─ provider_registry.py
 │  │  └─ provider_runtime.py
 │  ├─ realtime/
 │  │  ├─ realtime_broadcast.py
@@ -681,7 +685,16 @@ DGM-MAT/
 │  │  ├─ sandbox_runtime.py
 │  │  └─ technology_evaluator.py
 │  ├─ runtime/
-│  │  └─ runtime.py
+│  │  ├─ __init__.py
+│  │  ├─ health_score.py
+│  │  ├─ reality_diff.py
+│  │  ├─ reality_snapshot.py
+│  │  ├─ runtime_path_validator.py
+│  │  ├─ runtime_profile.py
+│  │  ├─ runtime_state_broadcast.py
+│  │  ├─ runtime_state_store.py
+│  │  ├─ runtime.py
+│  │  └─ safe_action_queue.py
 │  ├─ runtime_daemon/
 │  │  ├─ __init__.py
 │  │  ├─ daemon.py
@@ -765,6 +778,7 @@ DGM-MAT/
 │  └─ workspace/
 │     ├─ __init__.py
 │     ├─ attachment_classifier.py
+│     ├─ cognitive_filesystem.py
 │     ├─ conversation_linker.py
 │     ├─ duplicate_projects.py
 │     ├─ file_lineage.py
@@ -975,6 +989,7 @@ DGM-MAT/
 │  ├─ ecosystem.json
 │  └─ health.json
 ├─ reports/
+│  ├─ BUILD_FAILURE_REPORT.md
 │  ├─ build_validation.json
 │  ├─ platform_health.json
 │  ├─ runtime_validation.json
@@ -1013,7 +1028,8 @@ DGM-MAT/
 │  ├─ validate_dependencies.py
 │  ├─ validate_executable.py
 │  ├─ validate_storage.py
-│  └─ verify_cockpit_persistence.py
+│  ├─ verify_cockpit_persistence.py
+│  └─ verify_mission_recovery.py
 ├─ shared/
 │  ├─ config/
 │  │  └─ settings.py
@@ -1041,6 +1057,9 @@ DGM-MAT/
 │  │  └─ test_realtime_integration.py
 │  ├─ daemon/
 │  │  └─ test_daemon_persistence.py
+│  ├─ ecosystem/
+│  │  ├─ test_protection_rules.py
+│  │  └─ test_reality_sync.py
 │  ├─ execution_fabric/
 │  │  ├─ __init__.py
 │  │  ├─ test_execution_fabric.py
@@ -1062,11 +1081,13 @@ DGM-MAT/
 │  │  ├─ test_provider_sync.py
 │  │  ├─ test_repository_intelligence.py
 │  │  ├─ test_research_layer.py
+│  │  ├─ test_runtime_truth.py
 │  │  ├─ test_storage_architecture.py
 │  │  └─ test_strategic_orchestration.py
 │  ├─ knowledge_graph/
 │  │  └─ test_consolidation.py
 │  ├─ operational/
+│  │  ├─ test_cockpit_mission_trace.py
 │  │  ├─ test_master_runtime.py
 │  │  ├─ test_phase37_operational.py
 │  │  ├─ test_recovery.py
@@ -1082,6 +1103,11 @@ DGM-MAT/
 │  │  ├─ test_civilization.py
 │  │  └─ test_indexing.py
 │  ├─ runtime/
+│  │  ├─ test_health_breakdown.py
+│  │  ├─ test_health_score.py
+│  │  ├─ test_reality_diff.py
+│  │  ├─ test_reality_snapshot.py
+│  │  ├─ test_safe_action_queue.py
 │  │  └─ test_smoke.py
 │  ├─ runtime_daemon/
 │  │  ├─ test_daemon.py
@@ -1120,6 +1146,7 @@ DGM-MAT/
 ├─ architecture.md
 ├─ DGM-MAT_TREE.txt
 ├─ ecosystem.json
+├─ fix_verify.py
 ├─ health.json
 ├─ LICENSE
 ├─ main.py
@@ -1130,6 +1157,7 @@ DGM-MAT/
 ├─ requirements.txt
 ├─ test_pyside6.py
 ├─ verify_all_phase37_38.py
+├─ verify_architecture.py
 ├─ verify_cockpit_phase38.py
 ├─ verify_cockpit.py
 └─ verify_widgets.py
