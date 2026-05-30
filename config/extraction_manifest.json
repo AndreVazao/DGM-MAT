@@ -1,0 +1,25 @@
+{
+  "runtime": [
+    "core/runtime",
+    "core/runtime_state",
+    "core/runtime_daemon",
+    "core/autonomy/continuous_runtime"
+  ],
+  "providers": [
+    "core/providers",
+    "core/provider_mesh",
+    "core/provider_sync",
+    "core/model_router"
+  ],
+  "memory": [
+    "core/memory",
+    "core/provider_memory",
+    "core/knowledge",
+    "core/knowledge_graph"
+  ],
+  "cockpit": [
+    "cockpit",
+    "core/cockpit_runtime",
+    "core/realtime"
+  ]
+}
