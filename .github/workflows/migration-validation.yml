@@ -1,0 +1,40 @@
+name: Migration Subsystem Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  validate-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pydantic astor pytest pytest-cov
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run Migration Subsystem Tests
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest tests/migration/
+
+      - name: Execute Full Repository Scan
+        run: |
+          python3 -m core.migration.migration_engine
+
+      - name: Verify Reports Generation
+        run: |
+          ls -l .runtime/migration/module_inventory.json
+          ls -l .runtime/migration/duplicates.json
+          ls -l .runtime/migration/orphans.json
