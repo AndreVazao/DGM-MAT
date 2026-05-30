@@ -12,12 +12,32 @@ from core.bootstrap.core.dependency_loader import DependencyLoader
 from core.runtime.runtime_state_store import state_store, StateEvents
 
 class BootstrapEngine:
+    def _trace(self, message: str):
+        print(message)
+        trace_dir = Path(".runtime")
+        trace_dir.mkdir(parents=True, exist_ok=True)
+        with open(trace_dir / "runtime_trace.log", "a", encoding="utf-8") as f:
+            f.write(message + "\n")
+
     """
     Minimalist Bootstrap Engine.
     Phase 42.1: Handles environment validation and canonical path initialization.
     """
     def __init__(self, profile: str = "FULL"):
+        self._trace(f"TRACE_IMPORT:core.observability.logger")
+        self._trace(f"TRACE_IMPORT:core.bootstrap.core.bootstrap_context")
+        self._trace(f"TRACE_IMPORT:core.bootstrap.runtime.bootstrap_sequence")
+        self._trace(f"TRACE_IMPORT:core.bootstrap.core.environment_detector")
+        self._trace(f"TRACE_IMPORT:core.bootstrap.core.bootstrap_storage")
+        self._trace(f"TRACE_IMPORT:core.bootstrap.core.dependency_loader")
+        self._trace(f"TRACE_IMPORT:core.runtime.runtime_state_store")
+
+        self._trace(f"TRACE_OWNER:BootstrapEngine:core/bootstrap/runtime/bootstrap_engine.py")
+        self._trace(f"TRACE_OWNER:RuntimeStateStore:core/runtime/runtime_state_store.py")
+
         self.context = BootstrapContext(runtime_profile=profile)
+        self._trace(f"TRACE_OWNER:BootstrapContext:core/bootstrap/core/bootstrap_context.py")
+
         self.handlers = {
             BootstrapPhase.VALIDATE_ENVIRONMENT: self._validate_environment,
             BootstrapPhase.INITIALIZE_STORAGE: self._initialize_storage,
@@ -38,6 +58,7 @@ class BootstrapEngine:
         dgm_logger.info(f"BootstrapEngine: Preparing system with profile {self.context.runtime_profile}")
         total_start = time.time()
         for phase in BOOTSTRAP_ORDER:
+            self._trace(f"TRACE_STAGE_START:{phase.name}")
             phase_start = time.time()
             try:
                 dgm_logger.info(f"BootstrapEngine: Processing phase {phase.name}...")
@@ -55,9 +76,11 @@ class BootstrapEngine:
                     dgm_logger.critical(f"BootstrapEngine: Critical phase {phase.name} failed. Preparation aborted.")
                     self.context.runtime_state = "failed"
                     self._expose_state()
+                    self._trace(f"TRACE_STAGE_END:{phase.name}")
                     return self.context
                 else:
                     self.context.mark_module_degraded(phase.name, duration)
+            self._trace(f"TRACE_STAGE_END:{phase.name}")
 
         self.context.runtime_state = "prepared"
         self._expose_state()
@@ -89,37 +112,46 @@ class BootstrapEngine:
 
     def _validate_runtime_paths(self):
         from core.storage.storage_manager import storage_manager
+        self._trace(f"TRACE_OWNER:RuntimeStorageManager:core/storage/storage_manager.py")
         if not storage_manager.base_path.exists():
             storage_manager._ensure_structure()
 
     def _load_ecosystem(self): pass
 
     def _prepare_governance(self):
+        self._trace(f"TRACE_IMPORT:core.governance.governance_engine")
         DependencyLoader.validate_dependency("core.governance.governance_engine", critical=False)
 
     def _prepare_memory(self):
+        self._trace(f"TRACE_IMPORT:core.memory.memory_manager")
         DependencyLoader.validate_dependency("core.memory.memory_manager")
 
     def _prepare_providers(self):
+        self._trace(f"TRACE_IMPORT:core.providers.provider_registry")
         DependencyLoader.validate_dependency("core.providers.provider_registry")
 
     def _prepare_federation(self):
+        self._trace(f"TRACE_IMPORT:core.federation.federation_engine")
         DependencyLoader.validate_dependency("core.federation.federation_engine")
 
     def _prepare_kernel(self):
+        self._trace(f"TRACE_IMPORT:core.kernel.cognitive_kernel")
         DependencyLoader.validate_dependency("core.kernel.cognitive_kernel")
 
     def _prepare_realtime(self):
+        self._trace(f"TRACE_IMPORT:core.realtime.websocket_manager")
         DependencyLoader.validate_dependency("core.realtime.websocket_manager")
 
     def _prepare_cockpit_bridge(self):
         if self.context.runtime_profile != "HEADLESS":
+            self._trace(f"TRACE_IMPORT:PySide6")
             DependencyLoader.validate_dependency("PySide6")
 
     def _validate_health(self): pass
 
     def _expose_state(self):
         from core.storage.storage_manager import storage_manager
+        self._trace(f"TRACE_OWNER:RuntimeStorageManager:core/storage/storage_manager.py")
         health_file = storage_manager.get_path("temp", "startup_health.json")
         health_data = {
             "status": self.context.runtime_state,
