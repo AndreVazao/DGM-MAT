@@ -209,3 +209,38 @@ DGM-MAT currently has multiple command execution paths and multiple approval aut
 DGM-HUB remains legacy/research/reference only. TruthLayer concepts can inform Core verification. AgentLoop and ToolReasoner are not authorities. PatchOrchestrator concepts may inform the patch lifecycle.
 
 Physical migration remains blocked. FULL-MIRROR remains untouched.
+
+
+## 2026-10-06 — Contracts consolidation checkpoint
+
+Inspected the actual current mission, execution, approval, queue, storage and event models plus DGM-MCP tool metadata/adapter implementation.
+
+Created:
+- reports/DGM-MAT_CONTRACTS_CONSOLIDATION_MATRIX.md
+- reports/ADR-001-CONTRACTS-AND-EXECUTION-BOUNDARY.md
+
+Decisions:
+- ExecutionRequest is the semantic request; SafeActionQueue is a durable implementation boundary, not the public contract.
+- SafeActionQueue is the leading candidate for the single durable execution/approval authority, pending schema/test validation.
+- MissionEngine.pending_approvals and ApprovalManager are legacy/compatibility authorities and must converge on durable approval.
+- EventEnvelope is public; EventBus is process-local routing; EventStore is persistence; RuntimeStateStore is projection only.
+- DGM-MCP ToolDefinition/tool schemas become ToolDescriptor-compatible and MCP response formatting becomes an adapter over ExecutionResult.
+- No physical repository migration yet. FULL-MIRROR untouched.
+
+Next gate: implement Contracts with compatibility adapters and cross-process tests before extracting repositories.
+
+
+## 2026-10-06 — ToolDescriptor + durable approval checkpoint
+
+Completed the next contract boundary without physical repository extraction:
+- Added a DGM-MAT compatibility adapter from DGM-MCP `ToolDefinition`-shaped metadata to public `ToolDescriptor`.
+- The adapter accepts dataclass or mapping input and does not import DGM-MCP private runtime classes.
+- Added focused tests for filesystem, unknown-tool conservative policy, and deterministic batch conversion.
+- Removed `MissionEngine.pending_approvals` as a process-local authority; MissionEngine approval entry points now delegate to durable SafeActionQueue through the ApprovalManager facade.
+- Removed the duplicate `approve_approval` implementation in SafeActionQueue.
+- Focused contract/queue/cross-process validation: 10 passed.
+- Commit: `81141fc`.
+
+Physical migration remains blocked. FULL-MIRROR remains untouched.
+
+Next gate: consolidate EventEnvelope persistence/live projection and then run the broader regression suite.

@@ -1,7 +1,7 @@
 # ADR-001 — DGM-MAT Contracts and Execution Boundary
 
 Date: 2026-10-06
-Status: ACCEPTED FOR DESIGN / NOT YET IMPLEMENTED
+Status: IMPLEMENTED IN DGM-MAT COMPATIBILITY LAYER / PHYSICAL EXTRACTION BLOCKED
 
 ## Context
 DGM-MAT currently has several overlapping representations of missions, actions, execution tasks, approvals and events. SafeActionQueue is durable across processes while MissionEngine and ApprovalManager also keep process-local state. DGM-MCP defines transport-specific tool schemas and result envelopes.
@@ -54,10 +54,10 @@ Negative:
 - no blind merge of DGM-HUB or DGM-MCP
 
 ## Migration gates
-1. Implement contracts and schema tests.
-2. Add adapters from existing MissionEngine/SafeActionQueue models.
-3. Prove cross-process queue execution and mission reload.
-4. Prove durable approval across restart.
-5. Prove EventEnvelope persistence and live projection.
-6. Rewrite MCP adapter to consume ToolDescriptor/ExecutionRequest.
-7. Only then physically extract repositories.
+1. Implement contracts and schema tests. **DONE**
+2. Add adapters from existing MissionEngine/SafeActionQueue models. **DONE**
+3. Prove cross-process queue execution and mission reload. **DONE**
+4. Prove durable approval boundary. **DONE**
+5. Prove EventEnvelope persistence and live projection. **NEXT**
+6. Adapt DGM-MCP ToolDefinition to ToolDescriptor without Core importing MCP internals. **DONE (compatibility adapter)**
+7. Only then physically extract repositories. **BLOCKED until Event gate + broader regression pass.**

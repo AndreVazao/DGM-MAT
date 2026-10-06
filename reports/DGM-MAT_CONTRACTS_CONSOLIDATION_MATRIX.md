@@ -1,48 +1,72 @@
 # DGM-MAT Contracts Consolidation Matrix
 
 Date: 2026-10-06
-Status: IMPLEMENTATION STARTED / NO PHYSICAL MIGRATION
+Status: IMPLEMENTATION CHECKPOINT / NO PHYSICAL MIGRATION
 
+## Decision
 Contracts become the stable language between Core, Agents, Connectors, Providers and Cockpit. Existing runtime/storage models are evidence, not automatically authoritative.
 
-| CURRENT TYPE / FILE | SEMANTIC ROLE | CURRENT OWNER | TARGET CONTRACT | PROCESS BOUNDARY | MIGRATION RISK |
-|---|---|---|---|---|---|
-| core/autonomy/mission_models.py :: Mission | durable mission domain state | Core Autonomy | MissionReference + MissionState | mission storage/API | HIGH |
-| core/runtime/safe_action_queue.py :: ActionStatus | durable execution lifecycle | Core Runtime | ExecutionStatus | SQLite/cross-process | HIGH |
-| core/storage/models.py :: ActionRecord | durable queued action | Core Storage | ExecutionRequest persistence envelope | SQLite/cross-process | VERY HIGH |
-| core/execution/approval_manager.py :: ApprovalStatus | process-local approval | Core Execution | ApprovalRequest/Decision | must become durable | VERY HIGH |
-| mission_engine.py :: pending_approvals | legacy approval state | Core Autonomy | remove as authority | currently unsafe cross-process | VERY HIGH |
-| DGM-MCP ToolDefinition | public tool metadata | DGM-MCP | ToolDescriptor | API/MCP boundary | HIGH |
-| DGM-MCP adapter schemas | transport-owned schema | DGM-MCP | ToolDescriptor adapter | transport boundary | HIGH |
-| shared/models/event.py :: Event | event envelope | shared/Core | EventEnvelope | event boundary | VERY HIGH |
-| core/storage/models.py :: EventRecord | durable event projection | Core Storage | EventStore persistence derived from EventEnvelope | SQLite | HIGH |
-| EventBus queue | process-local routing | Core | internal implementation | process-local | MEDIUM |
-| RuntimeStateStore | process-local projection | Core Runtime | RuntimeSnapshot/projection | process-local | HIGH |
+## Matrix
 
-## Authoritative contracts
+| CURRENT TYPE / FILE | SEMANTIC ROLE | CURRENT OWNER | DUPLICATES / OVERLAP | TARGET CONTRACT | READERS | WRITERS | PROCESS BOUNDARY | MIGRATION RISK | TESTS |
+|---|---|---|---|---|---|---|---|---|---|
+| core/autonomy/mission_models.py :: Mission | durable mission domain state | Core Autonomy | MissionEngine in-memory + JSON persistence + API projection | MissionReference + MissionState | MissionEngine, API, CognitionLoop, UI | MissionEngine | Cross-process via mission storage/API | HIGH | mission serialization, reload, lifecycle |
+| core/autonomy/mission_models.py :: SubTask | mission decomposition item | Core Autonomy | autonomous task models elsewhere | SubTask contract | MissionEngine, agents | MissionEngine/agents | Cross-process if exposed | MEDIUM | serialization, assignment |
+| core/runtime/safe_action_queue.py :: ActionStatus | durable execution lifecycle | Core Runtime | MissionStatus, ApprovalStatus | ExecutionStatus | queue, API, execution | queue | Cross-process durable | HIGH | state transitions, concurrency |
+| core/storage/models.py :: ActionRecord | durable queued action | Core Storage | SafeActionQueue payload + approval fields | ExecutionRequest persistence envelope | SafeActionQueue, API | SafeActionQueue | SQLite / cross-process | VERY HIGH | restart/reload, approval, exactly-once guard |
+| core/execution/approval_manager.py :: ApprovalStatus | compatibility view over durable approval | Core Execution | ActionRecord approval | ApprovalStatus + ApprovalRequest/Decision | API, Core | SafeActionQueue | Durable | HIGH | approval persistence, duplicate decisions |
+| core/autonomy/mission_engine.py :: pending_approvals | legacy process-local approval | Core Autonomy | ApprovalManager, ActionRecord | REMOVE AS AUTHORITY; use ApprovalRequest | runtime API, mission flow | currently MissionEngine | Cross-process currently unsafe | VERY HIGH | restart between request/decision |
+| core/execution/execution_models.py :: ExecutionTask | minimal execution DTO | Core Execution | SafeActionQueue ActionRecord | superseded by ExecutionRequest/Result | execution code | execution code | process-local today | HIGH | schema validation |
+| DGM-MCP mcp/tool_registry.py :: ToolDefinition | public tool metadata + input schema | DGM-MCP | adapter hardcoded schemas | ToolDescriptor | MCP, Core, Agents, Cockpit | tool registration | cross-process/API | HIGH | schema roundtrip, listing |
+| DGM-MCP mcp/adapter.py :: _schema_for | transport-bound tool schema | DGM-MCP | ToolDefinition | REMOVE DUPLICATE; consume ToolDescriptor | MCP adapter | none | transport boundary | HIGH | MCP list/call compatibility |
+| DGM-MCP tool result model (runtime tool results) | execution result | DGM-MCP | MCP response envelope | ExecutionResult + transport adapter | Connectors, MCP, agents | execution service | cross-process | HIGH | success/error/structured data |
+| shared/models/event.py :: Event | event envelope | shared/Core | EventRecord + state broadcasts + mission result payload | EventEnvelope | Core, Cockpit, Agents, Connectors | EventBus | cross-process/event boundary | VERY HIGH | validation, persistence, replay |
+| core/storage/models.py :: EventRecord | durable event projection | Core Storage | EventEnvelope fields | EventStore persistence model derived from EventEnvelope | EventStore | EventStore | SQLite | HIGH | persist/reload/replay |
+| core/event_bus/event_bus.py :: EventBus queue | process-local routing | Core EventBus | EventStore + realtime stream | Internal transport implementation; not public contract | subscribers | EventBus | process-local | MEDIUM | ordering, dedup, DLQ |
+| core/observability/event_stream.py | live event adapter | Core Observability | WebSocket/realtime | EventEnvelope -> live projection | Cockpit | stream adapter | process/API boundary | HIGH | reconnect/replay semantics |
+| core/runtime/runtime_state_store.py | process-local state projection | Core Runtime | mission JSON + API | RuntimeSnapshot (projection only) | API/Cockpit | runtime components | process-local | HIGH | restart must reconstruct |
 
-- ExecutionRequest: semantic execution request; SafeActionQueue stores a durable representation.
-- ExecutionResult: normalized execution outcome.
-- ToolDescriptor: public tool capability/schema metadata.
-- ApprovalRequest / ApprovalDecision: durable approval vocabulary.
-- EventEnvelope: public event vocabulary.
-- MissionReference / MissionState: cross-process mission identity/lifecycle.
+## Proposed authoritative contracts
 
-## Decisions
+### ExecutionRequest
+Fields: request_id, actor/source, tool_name, operation, arguments, target/resource, risk_class, approval_requirement, idempotency_key, timeout, correlation_id, mission_id optional, created_at.
 
-1. SafeActionQueue is the leading candidate for one durable execution/approval authority, but is not itself the public contract.
-2. ApprovalManager and MissionEngine.pending_approvals must converge on that durable authority.
-3. EventBus is process-local routing; EventStore is persistence; RuntimeStateStore is projection only.
-4. MCP is transport/integration, not DGM-MAT authority.
-5. Contracts must not import Core storage/filesystem/provider implementations.
-6. Physical repository extraction waits for compatibility adapters and cross-process lifecycle tests.
+### ExecutionResult
+Fields: request_id, success, status, message, stdout, structured_data, error, started_at, completed_at, duration_ms, audit_event_id, correlation_id.
 
-## Implementation checkpoint
+### ToolDescriptor
+Fields: name, description, input_schema, capabilities, risk_class, approval_policy, allowed_transports, version.
 
-DGM-Contracts now contains the first contract package and serialization tests. DGM-MAT autonomy tests were repaired where they asserted an obsolete .runtime/runtime_state.json artifact instead of the actual scheduler behavior. The repaired focused suite is green: 4 passed.
+### ApprovalRequest
+Fields: approval_id, request_id/mission_id, requested_by, operation summary, diff/preview optional, risk_class, impact, created_at, expires_at, status.
 
-FULL-MIRROR remains untouched.
+### ApprovalDecision
+Fields: approval_id, decision, decided_by, decided_at, reason, correlation_id.
 
-## Next gate
+### EventEnvelope
+Fields: event_id, timestamp, source, target, event_type, payload, priority, scope, domain, ttl, ecosystem, trace_id, parent_trace_id, depth, schema_version.
 
-Build compatibility adapters in DGM-MAT, then prove durable approval and cross-process mission execution. Only after those gates pass will repository extraction begin.
+### MissionReference / MissionState
+Mission identity and lifecycle are separated from the full mutable Mission aggregate. Cross-process consumers should not depend on MissionEngine.active_missions.
+
+## Key design decisions
+
+1. ExecutionRequest is the higher-level semantic request. SafeActionQueue stores a durable execution record containing the request envelope; the queue is not the public contract itself.
+2. SafeActionQueue is the leading candidate for the single durable execution/approval authority, but its schema must be upgraded and tested before it is declared authoritative.
+3. ApprovalManager and MissionEngine.pending_approvals must not remain independent authorities.
+4. EventEnvelope is public; EventBus is an implementation; EventRecord is persistence.
+5. RuntimeStateStore is a projection, never source of truth.
+6. MCP remains a transport/integration boundary. MCP-specific response formatting must adapt to ExecutionResult instead of defining a second execution model.
+7. Contracts must not import Core storage, filesystem, database, or provider implementations.
+8. No new contract code is promoted until cross-process serialization and lifecycle tests pass.
+
+## Implemented checkpoint — 2026-10-06
+- DGM-Contracts package is operational and contains the public schemas.
+- DGM-MAT has compatibility adapters for queue actions, approvals, events and missions.
+- DGM-MCP ToolDefinition -> ToolDescriptor is implemented as a one-way adapter without importing DGM-MCP internals.
+- MissionEngine no longer owns a `pending_approvals` dictionary; approval entry points delegate to durable storage through ApprovalManager.
+- Duplicate SafeActionQueue approval implementation was removed.
+- Focused contract/queue/cross-process suite: 10 passed.
+
+## Immediate next implementation gate
+Consolidate Event -> EventEnvelope -> EventStore/EventBus with persistence and replay tests, then run the broader regression suite before any physical repository extraction.
