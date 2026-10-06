@@ -251,3 +251,113 @@ class SafeActionQueue:
             "audit_trail": json.loads(action.audit_trail),
             "error_message": action.error_message
         }
+
+    def get_execution_request(self, action_id: int):
+        """Return the durable queue action as the public ExecutionRequest contract."""
+        action = self.get_action(action_id)
+        if not action:
+            return None
+        from core.contracts.compat import action_payload_to_execution_request
+        payload = dict(action["payload"])
+        payload["action_id"] = action_id
+        return action_payload_to_execution_request(payload, actor=action.get("approved_by") or "system", source="dgm-mat.safe_action_queue", tool_name=action["action_type"])
+
+    def record_execution_result(self, action_id: int, result):
+        """Persist an ExecutionResult representation in the durable action audit trail."""
+        with SessionLocal() as session:
+            action = session.get(ActionRecord, action_id)
+            if not action:
+                raise ValueError(f"Action not found: {action_id}")
+            audit = json.loads(action.audit_trail)
+            audit.append({
+                "timestamp": datetime.now().isoformat(),
+                "event": "EXECUTION_RESULT",
+                "result": result.model_dump(mode="json") if hasattr(result, "model_dump") else result,
+            })
+            action.audit_trail = json.dumps(audit)
+            session.commit()
+
+    def request_approval(self, task_id: str, diff: str, risk_score: float = 0.0, impact: str = "LOW") -> int:
+        """Persist a human approval request using the durable queue store."""
+        return self.enqueue("APPROVAL_REQUEST", {
+            "task_id": task_id,
+            "diff": diff,
+            "risk_score": risk_score,
+            "impact": impact,
+        })
+
+    def list_pending_approvals(self) -> List[Dict[str, Any]]:
+        """Return durable approval requests that have not received a decision."""
+        with SessionLocal() as session:
+            actions = session.query(ActionRecord).filter(
+                ActionRecord.action_type == "APPROVAL_REQUEST",
+                ActionRecord.status == ActionStatus.QUEUED,
+            ).order_by(ActionRecord.created_at.asc()).all()
+            return [self._to_dict(a) for a in actions]
+
+    def approve_approval(self, task_id: str, operator: str = "manual") -> bool:
+        """Persist approval for a task without executing the approval record itself."""
+        with SessionLocal() as session:
+            actions = session.query(ActionRecord).filter(ActionRecord.action_type == "APPROVAL_REQUEST").all()
+            for action in actions:
+                payload = json.loads(action.payload)
+                if payload.get("task_id") == task_id and action.status == ActionStatus.QUEUED:
+                    action.status = ActionStatus.APPROVED
+                    action.is_approved = True
+                    action.approved_by = operator
+                    action.approved_at = datetime.now()
+                    audit = json.loads(action.audit_trail)
+                    audit.append({"timestamp": datetime.now().isoformat(), "status": "APPROVED", "operator": operator})
+                    action.audit_trail = json.dumps(audit)
+                    session.commit()
+                    return True
+        return False
+
+    def reject_approval(self, task_id: str, reason: str = "", operator: str = "manual") -> bool:
+        """Persist rejection for a task without executing the approval record."""
+        with SessionLocal() as session:
+            actions = session.query(ActionRecord).filter(ActionRecord.action_type == "APPROVAL_REQUEST").all()
+            for action in actions:
+                payload = json.loads(action.payload)
+                if payload.get("task_id") == task_id and action.status == ActionStatus.QUEUED:
+                    action.status = ActionStatus.REJECTED
+                    action.error_message = reason
+                    audit = json.loads(action.audit_trail)
+                    audit.append({"timestamp": datetime.now().isoformat(), "status": "REJECTED", "operator": operator, "reason": reason})
+                    action.audit_trail = json.dumps(audit)
+                    session.commit()
+                    return True
+        return False
+
+    def get_approval(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """Return the durable approval state for a task."""
+        with SessionLocal() as session:
+            actions = session.query(ActionRecord).filter(ActionRecord.action_type == "APPROVAL_REQUEST").all()
+            for action in actions:
+                payload = json.loads(action.payload)
+                if payload.get("task_id") == task_id:
+                    data = self._to_dict(action)
+                    data["task_id"] = task_id
+                    data["risk_score"] = payload.get("risk_score", 0.0)
+                    data["impact"] = payload.get("impact", "LOW")
+                    data["diff"] = payload.get("diff", "")
+                    return data
+        return None
+
+    def approve_approval(self, task_id: str, operator: str = "manual") -> bool:
+        """Persist approval state while keeping the approval record out of execution polling."""
+        with SessionLocal() as session:
+            actions = session.query(ActionRecord).filter(ActionRecord.action_type == "APPROVAL_REQUEST").all()
+            for action in actions:
+                payload = json.loads(action.payload)
+                if payload.get("task_id") == task_id and action.status == ActionStatus.QUEUED:
+                    action.status = ActionStatus.APPROVED
+                    action.is_approved = False
+                    action.approved_by = operator
+                    action.approved_at = datetime.now()
+                    audit = json.loads(action.audit_trail)
+                    audit.append({"timestamp": datetime.now().isoformat(), "status": "APPROVED", "operator": operator})
+                    action.audit_trail = json.dumps(audit)
+                    session.commit()
+                    return True
+        return False

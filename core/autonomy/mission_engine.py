@@ -11,6 +11,7 @@ from core.storage.storage_manager import storage_manager
 from core.observability.logger import dgm_logger
 from core.runtime.runtime_state_store import state_store, StateEvents
 from core.runtime.safe_action_queue import SafeActionQueue, ActionStatus
+from core.execution.approval_manager import ApprovalManager
 from core.realtime.realtime_broadcast import safe_broadcast
 
 class MissionEngine:
@@ -24,7 +25,7 @@ class MissionEngine:
         self.missions_path = storage_manager.get_path("missions")
         self.missions_path.mkdir(parents=True, exist_ok=True)
         self.active_missions: Dict[str, Mission] = {}
-        self.pending_approvals: Dict[str, Dict[str, Any]] = {}
+        self.approval_manager = ApprovalManager()
         self.action_queue = SafeActionQueue()
         self.action_queue.register_handler("MISSION_EXECUTION", self._handle_queue_execution)
         self.timeout_threshold = timedelta(seconds=self.MISSION_EXECUTION_TIMEOUT_SECONDS)
@@ -109,6 +110,11 @@ class MissionEngine:
         """Callback from SafeActionQueue when MISSION_EXECUTION is APPROVED."""
         mission_id = payload.get("mission_id")
         mission = self.active_missions.get(mission_id)
+        if not mission:
+            # Queue consumers may run in a different process from the API/creator.
+            # Reload persisted missions before declaring the action invalid.
+            self._load_missions()
+            mission = self.active_missions.get(mission_id)
         if not mission:
             dgm_logger.error(f"MISSION_EXECUTION_FAILED: {mission_id} - mission not found")
             raise ValueError(f"Mission not found: {mission_id}")
@@ -464,27 +470,37 @@ class MissionEngine:
         return subtasks
 
     def request_approval(self, mission_id: str, description: str) -> str:
+        """Create a durable approval request; MissionEngine is not its authority."""
         request_id = f"req_{uuid4().hex[:6]}"
-        self.pending_approvals[request_id] = {
-            "mission_id": mission_id,
-            "description": description,
-            "timestamp": datetime.now().isoformat()
-        }
+        approval = self.approval_manager.request_approval(request_id, description, 0.0, "LOW")
+        mission = self.active_missions.get(mission_id)
+        if mission:
+            mission.metadata["approval_request_id"] = request_id
+            mission.metadata["approval_action_id"] = approval.get("action_id") if isinstance(approval, dict) else None
+            self.save_mission(mission)
+            self._sync_state(mission)
         dgm_logger.info(f"APPROVAL_CREATED: {request_id} for mission {mission_id}")
-        state_store.dispatch(StateEvents.APPROVAL_REQUESTED, self.pending_approvals[request_id])
+        state_store.dispatch(StateEvents.APPROVAL_REQUESTED, {"request_id": request_id, "mission_id": mission_id, "description": description})
         return request_id
 
     def handle_approval_decision(self, request_id: str, decision: str):
-        approval = self.pending_approvals.pop(request_id, None)
+        """Compatibility entry point delegating the decision to durable storage."""
+        approval = self.approval_manager.approvals.get(request_id)
         if not approval:
             return False
-
-        mission_id = approval["mission_id"]
-        mission = self.active_missions.get(mission_id)
-        if mission:
-            mission.metadata["last_decision"] = decision
-            dgm_logger.info(f"MissionEngine: Approval {decision.upper()} for {mission_id} ({request_id})")
-
+        normalized = decision.lower()
+        if normalized in {"approve", "approved"}:
+            self.approval_manager.approve(request_id)
+        elif normalized in {"reject", "rejected"}:
+            self.approval_manager.reject(request_id)
+        else:
+            return False
+        for mission in self.active_missions.values():
+            if mission.metadata.get("approval_request_id") == request_id:
+                mission.metadata["last_decision"] = decision
+                self.save_mission(mission)
+                self._sync_state(mission)
+                break
         return True
 
     def _sync_state(self, mission: Mission):
