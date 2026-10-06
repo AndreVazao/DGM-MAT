@@ -195,4 +195,17 @@ Um ficheiro só muda definitivamente de repo quando:
 - reports/DGM-MAT_INTERCONNECTION_MAP.md
 - reports/dgm_mat_dependency_graph.json
 - reports/DGM-MAT_REORGANIZATION_PLAN.md
+- reports/DGM-MAT_EXECUTION_TOOL_SYMBOL_MATRIX.md
 - tools/generate_dependency_map.py
+
+## 2026-10-06 — execution/tool/HUB checkpoint
+
+Completed symbol-level comparison of DGM-MCP and DGM-HUB against DGM-MAT execution, security, runtime and autonomy.
+
+DGM-MCP is the historical PC-control/MCP boundary. MCP transport belongs at Connectors; public tool descriptors belong in Contracts; machine operations belong behind one controlled Core execution boundary. MCP must not own mission, autonomy, memory or orchestration state.
+
+DGM-MAT currently has multiple command execution paths and multiple approval authorities. These must converge before extraction. SafeActionQueue remains the candidate durable cross-process action authority. LocalExecutor and SafeAutonomousExecutor should converge into one execution service with policy controls.
+
+DGM-HUB remains legacy/research/reference only. TruthLayer concepts can inform Core verification. AgentLoop and ToolReasoner are not authorities. PatchOrchestrator concepts may inform the patch lifecycle.
+
+Physical migration remains blocked. FULL-MIRROR remains untouched.
