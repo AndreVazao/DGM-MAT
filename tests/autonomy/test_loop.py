@@ -1,11 +1,11 @@
-import pytest
 from core.autonomy.autonomous_loop import AutonomousLoop
-from pathlib import Path
+
 
 def test_loop_cycle():
     loop = AutonomousLoop()
-    loop.run_cycle()
-    assert Path(".runtime/runtime_state.json").exists()
+    assert loop.run_cycle() is True
+    assert "scan_001" in loop.scheduler.active_tasks
+
 
 def test_config_loading():
     loop = AutonomousLoop()

@@ -1,8 +1,6 @@
 import time
 import json
-import signal
-from typing import List, Dict, Any
-from datetime import datetime, time as dt_time
+from typing import Dict, Any
 from pathlib import Path
 
 from core.observability.logger import dgm_logger
@@ -10,7 +8,10 @@ from core.autonomy.scheduler.scheduler_engine import SchedulerEngine
 from core.repository_cognition.repo_scanner import CognitiveRepoScanner
 from core.autonomy.models import AutonomousTask
 
+
 class AutonomousLoop:
+    """Legacy compatibility loop; CognitionLoop is the active autonomy runtime."""
+
     def __init__(self, config_path: str = "config/autonomous_runtime.json"):
         self.config = self._load_config(config_path)
         self.scheduler = SchedulerEngine()
@@ -19,9 +20,12 @@ class AutonomousLoop:
 
     def _load_config(self, path: str) -> Dict[str, Any]:
         p = Path(path)
+        if not p.is_absolute():
+            project_root = Path(__file__).resolve().parents[2]
+            p = project_root / p
         if not p.exists():
-            return {"loop_interval": 60, "night_cycle_start": "02:00", "night_cycle_duration_hours": 4}
-        with open(p, "r") as f:
+            return {"enabled": True, "loop_interval": 60, "night_cycle_start": "02:00", "night_cycle_duration_hours": 4}
+        with p.open("r", encoding="utf-8") as f:
             return json.load(f)
 
     def start(self):
@@ -35,7 +39,8 @@ class AutonomousLoop:
         finally:
             self.stop()
 
-    def stop(self): self._running = False
+    def stop(self):
+        self._running = False
 
     def run_cycle(self):
         task = AutonomousTask(
@@ -47,5 +52,4 @@ class AutonomousLoop:
             status="PENDING",
             origin="loop"
         )
-        self.scheduler.schedule_task(task)
-
+        return self.scheduler.schedule_task(task)
