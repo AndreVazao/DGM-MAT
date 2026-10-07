@@ -6,34 +6,14 @@ from core.storage.database import Base
 class EventRecord(Base):
     __tablename__ = "events"
 
-    id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-    )
-
-    event_id: Mapped[str] = mapped_column(
-        String(255),
-    )
-
-    source: Mapped[str] = mapped_column(
-        String(255),
-    )
-
-    target: Mapped[str] = mapped_column(
-        String(255),
-    )
-
-    event_type: Mapped[str] = mapped_column(
-        String(255),
-    )
-
-    payload: Mapped[str] = mapped_column(
-        Text,
-    )
-
-    trace_id: Mapped[str] = mapped_column(
-        String(255),
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_id: Mapped[str] = mapped_column(String(255))
+    source: Mapped[str] = mapped_column(String(255))
+    target: Mapped[str] = mapped_column(String(255))
+    event_type: Mapped[str] = mapped_column(String(255))
+    payload: Mapped[str] = mapped_column(Text)
+    trace_id: Mapped[str] = mapped_column(String(255))
+    envelope_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 class ActionRecord(Base):
     __tablename__ = "safe_action_queue"

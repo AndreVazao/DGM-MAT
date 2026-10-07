@@ -70,3 +70,13 @@ Mission identity and lifecycle are separated from the full mutable Mission aggre
 
 ## Immediate next implementation gate
 Consolidate Event -> EventEnvelope -> EventStore/EventBus with persistence and replay tests, then run the broader regression suite before any physical repository extraction.
+
+## 2026-10-07 — Event contract gate completed
+- Event -> EventEnvelope conversion is now the public event boundary.
+- EventStore persists the complete envelope and supports get/replay.
+- Existing SQLite event tables receive envelope_json non-destructively.
+- Legacy records remain readable.
+- EventBus/live stream use the complete contract projection.
+- Focused validation: 13 passed.
+
+Next gate: broader regression suite. Physical extraction remains blocked until that validation passes.

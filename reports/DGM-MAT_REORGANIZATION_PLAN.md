@@ -244,3 +244,17 @@ Completed the next contract boundary without physical repository extraction:
 Physical migration remains blocked. FULL-MIRROR remains untouched.
 
 Next gate: consolidate EventEnvelope persistence/live projection and then run the broader regression suite.
+
+
+## 2026-10-07 — Event boundary checkpoint
+
+Completed the Event contract gate:
+- Event runtime objects are converted to complete EventEnvelope contracts before persistence/streaming.
+- EventStore persists the complete envelope and supports deterministic replay.
+- Existing SQLite event tables are upgraded non-destructively with a nullable envelope column.
+- Legacy rows remain readable through compatibility reconstruction.
+- EventBus timezone handling was hardened for aware/naive timestamps.
+- Focused contract/runtime suite: 13 passed.
+
+Next gate: broader regression and only then physical repository extraction.
+FULL-MIRROR remains untouched.

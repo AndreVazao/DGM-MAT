@@ -4,7 +4,7 @@ from collections import defaultdict
 from queue import PriorityQueue, Queue
 from threading import Lock, Thread
 from typing import Callable, Optional, Set, Dict, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from shared.models.event import Event
 from shared.enums.event_priority import EventPriority
@@ -63,7 +63,11 @@ class EventBus:
                 self.seen_event_ids = set(list(self.seen_event_ids)[-self.max_seen_history:])
 
         # 2. TTL Check
-        age = (datetime.now() - event.timestamp).total_seconds()
+        now_dt = datetime.now(timezone.utc)
+        event_ts = event.timestamp
+        if event_ts.tzinfo is None:
+            event_ts = event_ts.replace(tzinfo=timezone.utc)
+        age = (now_dt - event_ts).total_seconds()
         if age > event.ttl:
             dgm_logger.warning(f"EventBus V2: Event {event.id} expired (TTL: {event.ttl}s). Dropping.")
             return
