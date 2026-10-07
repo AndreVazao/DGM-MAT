@@ -3,12 +3,6 @@ name: Bootstrap Ecosystem
 
 "on":
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - "ecosystem.json"
-
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:

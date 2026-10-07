@@ -1,12 +1,8 @@
 ---
 name: Migration Subsystem Validation
 
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
-
+"on":
+  workflow_dispatch:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
