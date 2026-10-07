@@ -1,15 +1,12 @@
-from shared.models.event import Event
+from dgm_contracts import Event, NullProviderService, ProviderService
 
-from core.agents.base_agent import (
-    BaseAgent,
-)
-
-from core.providers.provider_runtime import (
-    ProviderRuntime,
-)
+from core.agents.base_agent import BaseAgent
 
 
 class ProviderAgent(BaseAgent):
+    def __init__(self, agent_id: str, logger=None, provider_service: ProviderService | None = None):
+        super().__init__(agent_id, logger)
+        self.provider_service = provider_service or NullProviderService()
 
     def handle_event(
         self,
@@ -20,4 +17,4 @@ class ProviderAgent(BaseAgent):
             "Scanning providers..."
         )
 
-        ProviderRuntime().run()
+        self.provider_service.run()

@@ -11,6 +11,7 @@ from core.overseer.overseer import Overseer
 from core.agents.repo_agent import RepoAgent
 from core.agents.provider_agent import ProviderAgent
 from core.agents.autonomy_agent import AutonomyAgent
+from core.agents.service_adapters import CoreLoggerAdapter, CoreProviderServiceAdapter, CoreTaskServiceAdapter
 from core.runtime.runtime_state_store import state_store, StateEvents
 from core.runtime.runtime_state_broadcast import start_state_broadcaster
 from core.runtime_state.runtime_state import RuntimeState
@@ -54,9 +55,18 @@ class Runtime:
         self.event_bus = EventBus(governance_engine=self.governance_engine)
 
         self.overseer = Overseer()
-        self.repo_agent = RepoAgent("repo-agent")
-        self.provider_agent = ProviderAgent("provider-agent")
-        self.autonomy_agent = AutonomyAgent("autonomy-agent")
+        agent_logger = CoreLoggerAdapter()
+        self.repo_agent = RepoAgent("repo-agent", logger=agent_logger)
+        self.provider_agent = ProviderAgent(
+            "provider-agent",
+            logger=agent_logger,
+            provider_service=CoreProviderServiceAdapter(),
+        )
+        self.autonomy_agent = AutonomyAgent(
+            "autonomy-agent",
+            logger=agent_logger,
+            task_service=CoreTaskServiceAdapter(),
+        )
 
         # Initialize advanced engines via late import
         if self.profile.low_memory:

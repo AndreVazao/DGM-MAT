@@ -90,3 +90,15 @@ Next gate: broader regression suite. Physical extraction remains blocked until t
 - Physical extraction remains blocked by global regression debt; no authority move is authorized yet.
 - Full baseline currently reports 9 unrelated/pre-existing failures documented in `reports/REGRESSION_CONTRACT_CONSUMER_CHECKPOINT_2026-10-07.md`.
 - FULL-MIRROR remains untouched.
+
+
+## Checkpoint 2026-10-07 — Agents service boundary
+
+- DGM-Contracts agora fornece `AgentLogger`, `ProviderService` e `TaskService`, além dos no-op implementations.
+- `core/agents/service_adapters.py` é a ponte Core → Agents.
+- `BaseAgent`, `ProviderAgent` e `AutonomyAgent` aceitam dependências por injeção.
+- Os restantes agentes usam `Event` canónico de DGM-Contracts.
+- `DGM-MAT-Agents` recebeu a primeira cópia física validada e não contém imports `core.*`.
+- Testes do satélite: 2 passed; compileall OK.
+- DGM-MAT completo: 100% green (~64 s).
+- Remoção de `core/agents` continua bloqueada até migração dos consumidores e teste de integração Core → Agents.
