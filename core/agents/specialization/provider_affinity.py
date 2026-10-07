@@ -1,9 +1,6 @@
-from core.observability.logger import dgm_logger
-
-class ProviderAffinity:
-    """
-    Maps agents to providers based on task type performance.
-    """
-    def get_preferred_provider(self, agent_role: str):
-        # Example: Coding tasks -> Claude, Reasoning -> GPT-4
-        return "claude-3-opus"
+"""Compatibility shim; implementation lives in DGM-MAT-Agents."""
+from .._compat import load
+_impl = load("dgm_mat_agents.specialization.provider_affinity")
+for _name in dir(_impl):
+    if not _name.startswith("_"):
+        globals()[_name] = getattr(_impl, _name)

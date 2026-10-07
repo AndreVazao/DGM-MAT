@@ -1,9 +1,6 @@
-from core.observability.logger import dgm_logger
-
-class AgentProfiler:
-    """
-    Tracks agent performance and evolves their specialized profiles.
-    """
-    def profile_agent(self, agent_id: str):
-        dgm_logger.info(f"AgentProfiler: Analyzing performance for {agent_id}")
-        # Performance metrics: success rate, execution time, etc.
+"""Compatibility shim; implementation lives in DGM-MAT-Agents."""
+from .._compat import load
+_impl = load("dgm_mat_agents.specialization.agent_profiler")
+for _name in dir(_impl):
+    if not _name.startswith("_"):
+        globals()[_name] = getattr(_impl, _name)

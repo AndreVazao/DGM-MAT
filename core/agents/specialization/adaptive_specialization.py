@@ -1,8 +1,6 @@
-from core.observability.logger import dgm_logger
-
-class AdaptiveSpecialization:
-    """
-    Enables agents to evolve their capabilities based on success patterns.
-    """
-    def evolve_agent(self, agent_id: str, success_feedback: dict):
-        dgm_logger.info(f"AdaptiveSpecialization: Evolving agent {agent_id}")
+"""Compatibility shim; implementation lives in DGM-MAT-Agents."""
+from .._compat import load
+_impl = load("dgm_mat_agents.specialization.adaptive_specialization")
+for _name in dir(_impl):
+    if not _name.startswith("_"):
+        globals()[_name] = getattr(_impl, _name)

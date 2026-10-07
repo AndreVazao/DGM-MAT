@@ -1,6 +1,6 @@
-from core.agents.base_agent import BaseAgent
-from dgm_contracts import Event
-
-class SelfImprovementAgent(BaseAgent):
-    def handle_event(self, event: Event):
-        self.emit_log("Identifying self-improvement opportunities...")
+"""Compatibility shim; implementation lives in DGM-MAT-Agents."""
+from ._compat import load
+_impl = load("dgm_mat_agents.self_improvement_agent")
+for _name in dir(_impl):
+    if not _name.startswith("_"):
+        globals()[_name] = getattr(_impl, _name)

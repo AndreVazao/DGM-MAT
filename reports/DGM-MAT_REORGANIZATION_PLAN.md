@@ -268,3 +268,9 @@ The contract/event/approval boundaries are now materially safer, but the reposit
 ## Agents extraction checkpoint — 2026-10-07
 
 A primeira extração física de validação do domínio Agents foi concluída sem apagar a origem. A nova fronteira usa DGM-Contracts para eventos e portas de logger/provider/task; DGM-MAT Core injeta adapters concretos. `DGM-MAT-Agents` foi testado isoladamente e verificado sem imports `core.*`. A remoção definitiva de `core/agents` permanece bloqueada até a migração dos consumidores reais e uma regressão completa adicional.
+
+## Agents implementation-authority closure — 2026-10-07
+
+The Agents extraction gate is now closed at the implementation-authority level. Active implementations live in `DGM-MAT-Agents`; `core/agents` retains compatibility shims plus Core composition infrastructure (`boundary.py`, `service_adapters.py`). No active production consumer imports the implementation modules directly. Legacy imports under `legacy/` remain archive-only. Focused validation passed 9/9, full DGM-MAT validation passed 100%, and the standalone Agents suite passed 2/2. No GitHub Actions were triggered and FULL-MIRROR remained untouched.
+
+The next extraction must follow the same consumer-first gate: map consumers, define/verify public contracts, migrate the real boundary, run local regression, then remove or shim only after validation.

@@ -1,19 +1,6 @@
-from abc import ABC, abstractmethod
-
-from dgm_contracts import AgentLogger, Event, NullAgentLogger
-
-
-class BaseAgent(ABC):
-
-    def __init__(self, agent_id: str, logger: AgentLogger | None = None):
-        self.agent_id = agent_id
-        self.health = "healthy"
-        self.logger = logger or NullAgentLogger()
-
-    @abstractmethod
-    def handle_event(self, event: Event) -> None:
-        pass
-
-    def emit_log(self, message: str):
-
-        self.logger.info(f"[{self.agent_id}] {message}")
+"""Compatibility shim; implementation lives in DGM-MAT-Agents."""
+from ._compat import load
+_impl = load("dgm_mat_agents.base_agent")
+for _name in dir(_impl):
+    if not _name.startswith("_"):
+        globals()[_name] = getattr(_impl, _name)

@@ -1,10 +1,6 @@
-from core.observability.logger import dgm_logger
-
-class RuntimeAffinity:
-    """
-    Determines if a task should run locally or in the cloud.
-    """
-    def get_execution_target(self, task_complexity: str):
-        if task_complexity == "low":
-            return "local"
-        return "cloud"
+"""Compatibility shim; implementation lives in DGM-MAT-Agents."""
+from .._compat import load
+_impl = load("dgm_mat_agents.specialization.runtime_affinity")
+for _name in dir(_impl):
+    if not _name.startswith("_"):
+        globals()[_name] = getattr(_impl, _name)

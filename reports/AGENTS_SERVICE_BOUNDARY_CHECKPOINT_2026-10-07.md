@@ -98,3 +98,20 @@ Validation:
 - no GitHub Actions used
 
 This closes the Core → Agents composition gate. `core/agents` remains preserved as source/rollback material; deletion is still deferred until a second consumer audit confirms no required legacy consumers remain.
+
+## 2026-10-07 — Legacy consumer audit closed
+
+The post-extraction audit found no remaining active production consumer that imports the agent implementations directly.
+
+- `core/runtime/runtime.py` uses the public `core.agents.boundary.create_runtime_agents()` composition boundary.
+- `tests/contracts/test_agent_boundary.py` intentionally tests that boundary.
+- Historical imports under `legacy/` remain archive material only.
+- The implementation files under `core/agents` are now compatibility shims to `DGM-MAT-Agents`.
+- `core/agents/_compat.py` resolves an installed package, `DGM_AGENTS_PATH`, or the sibling local source tree.
+- `boundary.py` and `service_adapters.py` remain Core composition infrastructure.
+- Focused suite: **9 passed**.
+- Full DGM-MAT suite: **100% passed**, ~69.77 s.
+- DGM-MAT-Agents standalone suite: **2 passed**.
+- No GitHub Actions triggered; FULL-MIRROR untouched.
+
+This closes the `core/agents` implementation-authority gate without destructive deletion.

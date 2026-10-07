@@ -1,7 +1,6 @@
-from enum import Enum
-
-class AgentRole(Enum):
-    REPO_OPERATOR = "repo_operator"
-    EXECUTION_AGENT = "execution_agent"
-    MEMORY_ARCHITECT = "memory_architect"
-    RESEARCHER = "researcher"
+"""Compatibility shim; implementation lives in DGM-MAT-Agents."""
+from .._compat import load
+_impl = load("dgm_mat_agents.specialization.execution_roles")
+for _name in dir(_impl):
+    if not _name.startswith("_"):
+        globals()[_name] = getattr(_impl, _name)

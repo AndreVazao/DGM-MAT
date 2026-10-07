@@ -1,19 +1,6 @@
-from core.observability.logger import dgm_logger
-
-class SpecializationRegistry:
-    """
-    Registry for tracking specialized agent capabilities and roles.
-    """
-    def __init__(self):
-        self.registry = {
-            "repository": ["analysis", "restructuring", "cleanup"],
-            "execution": ["patching", "validation", "orchestration"],
-            "memory": ["semantic_linking", "knowledge_extraction"],
-            "research": ["ecosystem_analysis", "benchmarking"]
-        }
-
-    def get_agents_by_role(self, role: str):
-        return self.registry.get(role, [])
-
-    def register_capability(self, agent_id: str, capability: str):
-        dgm_logger.info(f"Registry: Registering capability '{capability}' for agent {agent_id}")
+"""Compatibility shim; implementation lives in DGM-MAT-Agents."""
+from .._compat import load
+_impl = load("dgm_mat_agents.specialization.specialization_registry")
+for _name in dir(_impl):
+    if not _name.startswith("_"):
+        globals()[_name] = getattr(_impl, _name)

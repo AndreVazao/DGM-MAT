@@ -1,9 +1,6 @@
-from core.observability.logger import dgm_logger
-
-class WorkloadOptimizer:
-    """
-    Optimizes agent distribution to avoid overlap and bottlenecks.
-    """
-    def optimize(self):
-        dgm_logger.info("WorkloadOptimizer: Balancing agent workloads")
-        # Logic to redistribute tasks among specialized agents
+"""Compatibility shim; implementation lives in DGM-MAT-Agents."""
+from .._compat import load
+_impl = load("dgm_mat_agents.specialization.workload_optimizer")
+for _name in dir(_impl):
+    if not _name.startswith("_"):
+        globals()[_name] = getattr(_impl, _name)

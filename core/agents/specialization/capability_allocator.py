@@ -1,11 +1,6 @@
-from core.observability.logger import dgm_logger
-
-class CapabilityAllocator:
-    """
-    Allocates tasks to agents based on their specialized capabilities.
-    """
-    def allocate_task(self, task: dict):
-        required_capability = task.get("required_capability")
-        dgm_logger.info(f"Allocator: Allocating task requiring {required_capability}")
-        # Logic to find the best agent
-        return "agent-001"
+"""Compatibility shim; implementation lives in DGM-MAT-Agents."""
+from .._compat import load
+_impl = load("dgm_mat_agents.specialization.capability_allocator")
+for _name in dir(_impl):
+    if not _name.startswith("_"):
+        globals()[_name] = getattr(_impl, _name)
