@@ -1,5 +1,6 @@
 import ast
 import os
+import time
 from pathlib import Path
 from typing import List, Dict, Any, Set
 from core.observability.logger import dgm_logger
@@ -9,11 +10,18 @@ class CognitiveRepoScanner:
         self.root_path = Path(root_path)
         self.exclusions = {".runtime", ".git", "__pycache__", "node_modules", "dist", "build", ".venv"}
 
-    def scan(self) -> List[Dict[str, Any]]:
+    def scan(self, max_files: int = 2000, timeout_seconds: float = 10.0) -> List[Dict[str, Any]]:
         dgm_logger.info(f"CognitiveRepoScanner: Scanning {self.root_path}")
         results = []
+        started = time.monotonic()
         try:
             for path in self.root_path.rglob("*"):
+                if len(results) >= max_files:
+                    dgm_logger.warning(f"CognitiveRepoScanner: file limit reached ({max_files})")
+                    break
+                if time.monotonic() - started >= timeout_seconds:
+                    dgm_logger.warning(f"CognitiveRepoScanner: timeout reached ({timeout_seconds}s)")
+                    break
                 try:
                     # Skip excluded directories and their contents
                     if any(part in self.exclusions for part in path.parts):

@@ -172,10 +172,12 @@ class MissionEngine:
     def _handle_approval_pending(self, mission: Mission):
         # Legacy approval logic, keeping for compatibility but SafeActionQueue is now preferred
         req_id = mission.metadata.get("approval_request_id")
-        if req_id and req_id not in self.pending_approvals:
-            # Check decision
+        if req_id:
+            approval = self.approval_manager.approvals.get(req_id)
+            # Check durable approval decision
             decision = mission.metadata.get("last_decision")
-            if decision == "approve":
+            approval_status = getattr(approval.get("status"), "value", None) if approval else None
+            if decision == "approve" or approval_status == "approved":
                 dgm_logger.info(f"MISSION_STARTED: {mission.mission_id}")
                 mission.logs.append("User approved mission via legacy interface.")
                 if "lista" in mission.goal.lower() and "repos" in mission.goal.lower():

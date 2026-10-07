@@ -1,5 +1,4 @@
 import ast
-import astor
 from typing import Dict
 
 class ImportRewriter:
@@ -36,7 +35,7 @@ class ImportRewriter:
                             break
 
         if modified:
-            return astor.to_source(tree)
+            return ast.unparse(tree) + "\n"
         return content
 
     def update_map(self, old_mod: str, new_mod: str):
