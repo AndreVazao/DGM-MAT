@@ -5,10 +5,10 @@ from core.storage.storage_manager import RuntimeStorageManager
 
 def test_storage_manager_persistent_path():
     sm = RuntimeStorageManager()
-    if os.name == 'nt':
-        assert "DevopGodMode" in str(sm.base_path)
-    else:
-        assert "runtime" in str(sm.base_path)
+    # The runtime path must be persistent and repository/install configurable,
+    # not tied to the historical C:\\DevopGodMode location.
+    assert "runtime" in str(sm.base_path).lower()
+    assert "devopgodmode" not in str(sm.base_path).lower()
 
 def test_storage_manager_subdirs():
     sm = RuntimeStorageManager()

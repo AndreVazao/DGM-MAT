@@ -100,7 +100,9 @@ class RepositoryExtractor:
                     shutil.copy2(source_path, dst_file)
 
         # Detect broken imports
-        broken_imports = self.detect_broken_imports(component, migration_report["files_copied"])
+        # Normalize paths in reports so extraction diagnostics are portable across OSes.
+        normalized_copied_files = [Path(path).as_posix() for path in migration_report["files_copied"]]
+        broken_imports = self.detect_broken_imports(component, normalized_copied_files)
 
         # Save reports
         if not dry_run:

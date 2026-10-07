@@ -9,6 +9,22 @@ class TaskGenerator:
         content = f"{title}_{repo or 'global'}"
         return hashlib.sha256(content.encode()).hexdigest()[:16]
 
+    def create_strategic_task(self, title: str, description: str, repo: Optional[str] = None) -> AutonomousTask:
+        """Create a backward-compatible strategic task with explicit metadata."""
+        task = self.create_task(
+            title=f"STRATEGIC: {title}",
+            description=description,
+            priority=0,
+            origin="strategic_planner",
+            repo=repo,
+        )
+        task.metadata.update({
+            "category": "strategic",
+            "strategic_impact": 1.0,
+            "cognitive_gain": 1.0,
+        })
+        return task
+
     def create_task(self, title: str, description: str, priority: int, origin: str, repo: Optional[str] = None) -> AutonomousTask:
         """Helper for tests and runtime to create task objects."""
         task_id = self.generate_task_id(title, repo)

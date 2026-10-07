@@ -23,13 +23,11 @@ class RuntimeStorageManager:
                     base_path = str(Path(dgm_base) / "data")
                 else:
                     # 3. Default to a persistent local runtime directory
-                    if os.name == 'nt':
-                        # Canonical Windows paths (Requirement 7)
-                        base_path = "C:\\DevopGodMode\\runtime"
-                    else:
-                        # Fallback for development or other OS
-                        project_root = Path(__file__).parent.parent.parent
-                        base_path = str(project_root / "storage" / "runtime")
+                    # Never hardcode a machine-specific Windows path.
+                    # The repository-local default is deterministic and can be overridden
+                    # by DGM_STORAGE_PATH or DGM_BASE_PATH when an installation needs it.
+                    project_root = Path(__file__).parent.parent.parent
+                    base_path = str(project_root / "storage" / "runtime")
 
         self.base_path = Path(base_path).resolve()
         self._fallback_path: Optional[Path] = None

@@ -11,6 +11,7 @@ from cockpit.widgets.mission_widget import MissionWidget
 from cockpit.widgets.command_console import CommandConsoleWidget
 from cockpit.widgets.runtime_health_widget import RuntimeHealthWidget
 from cockpit.widgets.event_stream_widget import EventStreamWidget
+from cockpit.widgets.execution_feed import ExecutionFeed
 from cockpit.widgets.imported_repos_widget import ImportedReposWidget
 from cockpit.widgets.autonomy_dashboard import AutonomyDashboard
 from cockpit.widgets.knowledge_graph_widget import KnowledgeGraphWidget
@@ -71,6 +72,7 @@ class MainWindow(QMainWindow):
         self.provider_widget = ProviderManagementWidget()
         self.autonomy_dashboard = AutonomyDashboard()
         self.governance_widget = GovernanceWidget()
+        self.execution_feed = ExecutionFeed()
 
         self.tabs.addTab(self.dashboard_widget, "Dashboard")
         self.tabs.addTab(self.mission_widget, "Missions")
@@ -110,7 +112,7 @@ class MainWindow(QMainWindow):
         # Start connection attempt
         import asyncio
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             asyncio.run_coroutine_threadsafe(self.ws_client.connect(), loop)
         except RuntimeError:
             # Fallback if no loop in current thread
@@ -171,10 +173,28 @@ class MainWindow(QMainWindow):
                     rendered += f"\n... output truncated ({len(lines) - 120} more lines)"
                 self.command_console._append_message("Runtime", rendered, "info")
                 dgm_logger.info(f"MISSION_OUTPUT_RENDERED: {payload.get('mission_id')}")
+        elif data.get("type") == "execution_event":
+            self.execution_feed.add_execution_event(data.get("payload", {}))
         elif data.get("type") == "provider_health":
             self.provider_widget.refresh_providers()
         elif data.get("type") == "autonomy_cycle":
             self.autonomy_dashboard.update_cycle(data.get("payload", {}))
+
+    def dispatch_message(self, data):
+        """Public message-dispatch boundary used by realtime clients and tests."""
+        if data.get("type") == "runtime_status":
+            payload = data.get("payload", {})
+            data = {
+                "type": "state_update",
+                "data": {
+                    "runtime_status": payload.get("status", "unknown"),
+                    "health": {"resources": {
+                        "cpu": payload.get("cpu", 0),
+                        "memory": payload.get("memory", 0),
+                    }},
+                },
+            }
+        self._handle_server_message(data)
 
     def _update_child_widgets(self, state):
         missions = list(state.get("missions", {}).values())

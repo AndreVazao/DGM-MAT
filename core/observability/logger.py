@@ -20,12 +20,12 @@ logger.add(
 
 # 2. Persistent File Logging (Canonical path Requirement 7)
 try:
-    if os.name == 'nt':
-        log_dir = Path("C:/DevopGodMode/runtime/logs")
+    configured_log_dir = os.getenv("DGM_LOG_PATH")
+    if configured_log_dir:
+        log_dir = Path(configured_log_dir)
     else:
-        # Fallback to local project dir for non-Windows or if env var not set
         project_root = Path(__file__).parent.parent.parent
-        log_dir = project_root / "runtime" / "logs"
+        log_dir = project_root / "storage" / "runtime" / "logs"
 
     log_dir.mkdir(parents=True, exist_ok=True)
 

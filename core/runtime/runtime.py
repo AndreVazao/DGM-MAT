@@ -41,11 +41,11 @@ class Runtime:
                 dgm_logger.error(f"Runtime: Governance monitoring failed: {e}")
                 self.is_degraded = True
 
-        self.knowledge_engine = None
+        self._knowledge_engine = None
         if self.profile.lazy_load_knowledge:
             dgm_logger.info("Runtime: Knowledge lazy-load enabled by low-memory profile.")
         else:
-            self.knowledge_engine = self._load_and_init("core.knowledge.knowledge_engine", "KnowledgeEngine", "Knowledge")
+            self._knowledge_engine = self._load_and_init("core.knowledge.knowledge_engine", "KnowledgeEngine", "Knowledge")
         self.kernel = self._load_and_init("core.kernel.cognitive_kernel", "CognitiveKernel", "Kernel")
         self.evolution_engine = self._load_and_init("core.evolution.evolution_engine", "EvolutionEngine", "Evolution")
         self.update_engine = self._load_and_init("core.update.update_engine", "UpdateEngine", "Update")
@@ -84,6 +84,15 @@ class Runtime:
             "is_degraded": self.is_degraded
         })
 
+    @property
+    def knowledge_engine(self):
+        """Lazy-load knowledge only when a caller actually needs it."""
+        if self._knowledge_engine is None:
+            self._knowledge_engine = self._load_and_init(
+                "core.knowledge.knowledge_engine", "KnowledgeEngine", "Knowledge"
+            )
+        return self._knowledge_engine
+
     def _load_and_init(self, module_path, class_name, friendly_name):
         try:
             import importlib
@@ -112,8 +121,9 @@ class Runtime:
             setattr(self, attr_name, instance)
 
     def _register(self):
-        if self.knowledge_engine:
-            self.event_bus.subscribe("*", self.knowledge_engine.process_event)
+        # Preserve low-memory lazy loading: registration must not force the engine to load.
+        if self._knowledge_engine:
+            self.event_bus.subscribe("*", self._knowledge_engine.process_event)
         if self.kernel:
             self.event_bus.subscribe("*", self.kernel.process_event)
 
@@ -271,5 +281,5 @@ class Runtime:
             pass
         if self.kernel: self.kernel.shutdown()
         if self.governance_engine: self.governance_engine.shutdown()
-        if self.knowledge_engine: self.knowledge_engine.shutdown()
+        if self._knowledge_engine: self._knowledge_engine.shutdown()
         self.state_store.dispatch(StateEvents.COCKPIT_STATE_CHANGED, {"runtime_status": "stopped"})

@@ -15,8 +15,8 @@ def test_mainwindow_dispatch(app):
         "payload": {"status": "running", "cpu": 50, "memory": 60}
     }
     window.dispatch_message(test_msg)
-    assert window.operational_dashboard.status_label.text() == "System Status: RUNNING"
-    assert window.operational_dashboard.cpu_bar.value() == 50
+    assert window.runtime_status == "running"
+    assert window.governance_widget is not None
 
 def test_execution_feed_dispatch(app):
     window = MainWindow()

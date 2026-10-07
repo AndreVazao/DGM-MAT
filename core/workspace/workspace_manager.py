@@ -50,7 +50,7 @@ class WorkspaceManager:
         # Check protected workflows
         protected_workflows = self.protected_assets.get("protected_workflows", [])
         for workflow in protected_workflows:
-            if str(path_obj).endswith(workflow):
+            if str(path_obj).replace(chr(92), "/").endswith(str(workflow).replace(chr(92), "/")):
                 return True
 
         # Check protected paths
