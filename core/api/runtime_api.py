@@ -8,7 +8,7 @@ from core.storage.storage_manager import storage_manager
 from core.repository_cognition.repo_scanner import CognitiveRepoScanner
 from core.autonomy.mission_engine import mission_engine
 from core.workspace.workspace_manager import workspace_manager
-from core.connectors.obsidian_connector import obsidian_connector
+from core.connectors.boundary import create_runtime_connectors
 from core.runtime.runtime_state_store import state_store, StateEvents
 from core.runtime.safe_action_queue import SafeActionQueue
 from core.execution.approval_manager import ApprovalManager
@@ -17,6 +17,8 @@ from core.runtime.reality_snapshot import RealitySnapshotService
 from core.realtime.websocket_manager import manager
 
 router = APIRouter(prefix="/runtime", tags=["runtime"])
+connectors = create_runtime_connectors()
+obsidian_connector = connectors["obsidian"]
 
 class MissionCreate(BaseModel):
     goal: str
