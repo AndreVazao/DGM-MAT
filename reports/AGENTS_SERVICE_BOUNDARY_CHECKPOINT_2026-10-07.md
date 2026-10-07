@@ -79,3 +79,22 @@ Antes de remover `core/agents`, ainda é obrigatório:
 5. só então transformar `core/agents` em compatibilidade mínima ou removê-lo, conforme os consumidores reais.
 
 A extração física deste checkpoint é, portanto, **validada mas ainda não é a remoção definitiva da fonte**.
+
+
+## Integration gate — completed
+
+The Core Runtime no longer imports the standalone agent implementations directly. `core/agents/boundary.py` now owns satellite discovery and composition, with optional `DGM_AGENTS_PATH` override and the default sibling repository path.
+
+`core/runtime/runtime.py` consumes `create_runtime_agents()` instead of importing `RepoAgent`, `ProviderAgent` and `AutonomyAgent` directly.
+
+The stale agent import in `scripts/autostart/worker_cluster.py` was removed because that module was not actually using the class.
+
+Validation:
+- focused Core contract/autonomy/runtime suite: **14 passed**
+- DGM-MAT full suite: **100% passed**, 65.38 s
+- DGM-MAT-Agents: **2 passed**
+- DGM-Contracts: **1 passed**
+- DGM-MAT-Agents compileall: **OK**
+- no GitHub Actions used
+
+This closes the Core → Agents composition gate. `core/agents` remains preserved as source/rollback material; deletion is still deferred until a second consumer audit confirms no required legacy consumers remain.
