@@ -278,3 +278,7 @@ The next extraction must follow the same consumer-first gate: map consumers, def
 ## Connectors extraction checkpoint — 2026-10-07
 
 The active Obsidian connector consumer was identified in `core/api/runtime_api.py`. The implementation was extracted into `DGM-MAT-Connectors`, with a Core composition boundary and compatibility shim preserved. The standalone package has 2 passing tests; the connector/API/autonomy focused suite has 8 passing tests; the full DGM-MAT suite remains 100% green. Placeholder connector adapters have no active consumers and remain unpromoted.
+
+## Providers audit — next extraction gate identified — 2026-10-07
+
+The Providers area is materially more coupled than Agents and Connectors. Active consumers include `core/agents/service_adapters.py`, `core/provider_sync/provider_registry.py`, and `core/provider_sync/sync_engine.py`, with additional stress tooling. The destination `DGM-MAT-Providers` is currently empty apart from repository metadata. No physical provider extraction is being attempted in this pass. The next gate is to map provider interfaces, registry/runtime ownership, model schemas, and Core service adapters before moving any implementation.
