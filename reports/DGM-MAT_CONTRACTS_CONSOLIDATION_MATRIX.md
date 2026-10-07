@@ -80,3 +80,13 @@ Consolidate Event -> EventEnvelope -> EventStore/EventBus with persistence and r
 - Focused validation: 13 passed.
 
 Next gate: broader regression suite. Physical extraction remains blocked until that validation passes.
+
+
+## 2026-10-07 — Consumer regression gate
+
+- Durable approval authority confirmed as `SafeActionQueue`; `runtime_api` and legacy `MissionEngine` consumers were aligned.
+- EventEnvelope boundary remains green.
+- DGM-MCP ToolDescriptor adapter remains green.
+- Physical extraction remains blocked by global regression debt; no authority move is authorized yet.
+- Full baseline currently reports 9 unrelated/pre-existing failures documented in `reports/REGRESSION_CONTRACT_CONSUMER_CHECKPOINT_2026-10-07.md`.
+- FULL-MIRROR remains untouched.

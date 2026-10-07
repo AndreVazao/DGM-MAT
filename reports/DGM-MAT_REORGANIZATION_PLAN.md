@@ -258,3 +258,8 @@ Completed the Event contract gate:
 
 Next gate: broader regression and only then physical repository extraction.
 FULL-MIRROR remains untouched.
+
+
+## 2026-10-07 — Regression gate before physical extraction
+
+The contract/event/approval boundaries are now materially safer, but the repository-wide baseline is not green. Consumer rewrites were applied to durable approvals, scanner execution was bounded, and test collection/runtime hygiene was improved. The next phase is regression debt reduction before any physical repo extraction. No source deletion or FULL-MIRROR operation is authorized.
