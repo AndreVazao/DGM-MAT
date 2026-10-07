@@ -282,3 +282,7 @@ The active Obsidian connector consumer was identified in `core/api/runtime_api.p
 ## Providers audit — next extraction gate identified — 2026-10-07
 
 The Providers area is materially more coupled than Agents and Connectors. Active consumers include `core/agents/service_adapters.py`, `core/provider_sync/provider_registry.py`, and `core/provider_sync/sync_engine.py`, with additional stress tooling. The destination `DGM-MAT-Providers` is currently empty apart from repository metadata. No physical provider extraction is being attempted in this pass. The next gate is to map provider interfaces, registry/runtime ownership, model schemas, and Core service adapters before moving any implementation.
+
+## Providers architecture gate completed — 2026-10-07
+
+The deeper provider audit confirms that Providers must not be extracted as a blind directory move. ProviderBase depends on Core realtime/security; ProviderRegistry owns Core persistence and hardcoded package discovery; runtime/Agents/Cockpit consume different parts of the provider subsystem. The next gate is contract-first: define minimal provider request/response/descriptor/health/registration/selection schemas, create a Core provider service facade, migrate cockpit away from direct registry imports, adapt the Agent ProviderService, and only then extract provider implementations.

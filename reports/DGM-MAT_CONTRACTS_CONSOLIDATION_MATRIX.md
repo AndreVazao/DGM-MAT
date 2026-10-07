@@ -102,3 +102,26 @@ Next gate: broader regression suite. Physical extraction remains blocked until t
 - Testes do satélite: 2 passed; compileall OK.
 - DGM-MAT completo: 100% green (~64 s).
 - Remoção de `core/agents` continua bloqueada até migração dos consumidores e teste de integração Core → Agents.
+
+## Providers boundary gate — 2026-10-07
+
+Providers are **not ready for physical extraction**. The audit found that ProviderBase depends on Core realtime/security, ProviderRegistry owns Core persistence, dynamic discovery is hardcoded to `core.providers.*`, and cockpit directly imports ProviderRegistry.
+
+Existing Agent `ProviderService.run()` is a useful orchestration port but is insufficient as the final provider contract.
+
+Required next contract work:
+- ProviderDescriptor
+- ProviderCapability
+- ProviderHealth
+- ProviderRequest
+- ProviderResponse
+- ProviderRegistration
+- ProviderSelection/routing result.
+
+Target authority:
+- DGM-MAT-Providers: adapter implementations/protocol handling.
+- DGM-MAT Core: registry, persistence, credentials, governance, routing policy, health aggregation and lifecycle.
+- DGM-Contracts: public provider schemas.
+- Cockpit: API/WebSocket consumer only.
+
+Provider-focused local validation: **9 passed**. No Actions triggered.
