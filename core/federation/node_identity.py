@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict
 
-IDENTITY_FILE = Path("C:/ProgramasGodMode/DGM-MAT/config/node_identity.json")
+IDENTITY_FILE = Path("C:/ProgramasGodMode/DGM-MAT/.runtime/node_identity.json")
 
 
 def _load_or_create_id() -> str:
