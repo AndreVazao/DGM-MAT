@@ -139,7 +139,19 @@ class BootstrapEngine:
             import subprocess
             endpoint = None
             try:
-                endpoint = "http://" + subprocess.check_output(["tailscale", "ip", "-4"], text=True, timeout=3).strip() + ":8181"
+                raw_status = subprocess.check_output(
+                    ["tailscale", "status", "--json"],
+                    text=True,
+                    timeout=3,
+                )
+                import json
+                self_node = json.loads(raw_status).get("Self", {})
+                dns_name = str(self_node.get("DNSName") or "").rstrip(".")
+                if dns_name:
+                    endpoint = "https://" + dns_name
+                else:
+                    ip = subprocess.check_output(["tailscale", "ip", "-4"], text=True, timeout=3).strip()
+                    endpoint = "http://" + ip + ":8181" if ip else None
             except Exception:
                 pass
             RendezvousClient().register(
@@ -147,8 +159,17 @@ class BootstrapEngine:
                 node_type=self.context.node_role or "worker",
                 name=local_node.hostname,
                 endpoint=endpoint,
-                capabilities=["api", "cockpit", "filesystem", "git", "conversation-intelligence", "telescope"],
-                version="phase-44",
+                capabilities=[
+                    "api",
+                    "cockpit",
+                    "mobile-chat",
+                    "conversation-intelligence",
+                    "filesystem",
+                    "git",
+                    "telescope",
+                    "ollama-local-ai",
+                ],
+                version="phase-45-mobile-cockpit",
             )
             self._trace("RENDEZVOUS_REGISTERED")
         except Exception as exc:
