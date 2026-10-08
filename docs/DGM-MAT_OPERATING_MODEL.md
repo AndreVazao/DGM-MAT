@@ -64,3 +64,28 @@ DGM-MAT may automatically observe, analyze, test and prepare changes. Mutating a
 **manual control > destructive automation**
 
 The end state is autonomous engineering with human interruption only where the human is genuinely required.
+
+
+## Mandatory conversation-to-program sequence
+
+The normative procedure is defined in docs/DGM-MAT_CONVERSATION_RECOVERY_AND_PROJECT_ASSEMBLY.md.
+
+1. LIST conversations across ChatGPT, Grok, Claude, Gemini and DeepSeek through browser/local adapters.
+2. CREATE a durable context vault for every conversation.
+3. RELATE conversations across the same or different providers.
+4. CLUSTER related conversations into canonical project threads.
+5. RENAME/GROUP only after evidence-backed clustering.
+6. RECOVER scripts by scrolling real conversations when exports are insufficient, preserving context and provenance.
+7. STAGE recovered artifacts by project before modifying product repositories.
+8. DISCOVER/VERIFY local and GitHub repository, or create a new repository only when justified.
+9. GENERATE <PROJECT>_TREE.txt as an evidence-based structural snapshot.
+10. ASSEMBLE code into the correct files/modules according to responsibility and architecture.
+11. CONSOLIDATE competing AI implementations into one coherent implementation.
+12. MAP the actual program architecture.
+13. AUDIT.
+14. TEST and REPAIR.
+15. VALIDATE.
+16. PERSIST memory and synchronize with AndreOS/andreos-memory.
+17. RESUME safely from the last idempotent checkpoint after interruption.
+
+**Invariant: context travels with code.** A recovered script without its originating reasoning, provenance, project relationship and later corrections is incomplete engineering evidence.
