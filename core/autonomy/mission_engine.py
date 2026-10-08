@@ -13,6 +13,7 @@ from core.runtime.runtime_state_store import state_store, StateEvents
 from core.runtime.safe_action_queue import SafeActionQueue, ActionStatus
 from core.execution.approval_manager import ApprovalManager
 from core.realtime.realtime_broadcast import safe_broadcast
+from core.organization import CapabilityScout, InternalMessageBus, Message, MessagePriority
 
 class MissionEngine:
     REPO_SCAN_ROOTS = [Path("C:/ProgramasGodMode"), Path("C:/DevopGodMode")]
@@ -26,6 +27,8 @@ class MissionEngine:
         self.missions_path.mkdir(parents=True, exist_ok=True)
         self.active_missions: Dict[str, Mission] = {}
         self.approval_manager = ApprovalManager()
+        self.capability_scout = CapabilityScout()
+        self.organization_bus = InternalMessageBus()
         self.action_queue = SafeActionQueue()
         self.action_queue.register_handler("MISSION_EXECUTION", self._handle_queue_execution)
         self.timeout_threshold = timedelta(seconds=self.MISSION_EXECUTION_TIMEOUT_SECONDS)
@@ -106,6 +109,69 @@ class MissionEngine:
 
         return mission
 
+    def _capability_request_from_goal(self, goal: str) -> Optional[str]:
+        """Extract an explicit capability-gap signal without invoking execution."""
+        normalized = goal.strip()
+        lowered = normalized.lower()
+        markers = (
+            "não temos capacidade", "não tenho capacidade",
+            "não temos essa capacidade", "não tenho essa capacidade",
+            "não consigo", "não conseguimos",
+            "capability missing", "missing capability", "need a capability",
+            "preciso de uma capacidade", "precisamos de uma capacidade",
+        )
+        if not any(marker in lowered for marker in markers):
+            return None
+
+        separators = (" para ", " de ", " em ", ":", "-", "—")
+        for separator in separators:
+            if separator in normalized:
+                candidate = normalized.split(separator, 1)[1].strip(" .,:;-—")
+                if candidate:
+                    return candidate[:200]
+        return normalized[:200]
+
+    def discover_capability_for_mission(
+        self,
+        mission: Mission,
+        capability: str | None = None,
+    ) -> Dict[str, Any]:
+        """Ask the Capability Scout to find reusable sources for a mission gap.
+
+        Discovery is deliberately read-only: no promotion, import or execution occurs.
+        """
+        requested_capability = (capability or self._capability_request_from_goal(mission.goal) or "").strip()
+        if not requested_capability:
+            return {"status": "not_requested", "mission_id": mission.mission_id}
+
+        reason = mission.description or mission.goal
+        report = self.capability_scout.discover(
+            capability=requested_capability,
+            reason=reason,
+            mission_id=mission.mission_id,
+        )
+        mission.metadata["capability_discovery"] = report
+        mission.logs.append(
+            f"Capability Scout searched the approved ecosystem for: {requested_capability}"
+        )
+        self.organization_bus.send(
+            Message(
+                sender_id="agent:hq-orchestrator",
+                recipient_id=CapabilityScout.agent_id,
+                subject=f"Capability discovery completed: {requested_capability}",
+                body=json.dumps(report, ensure_ascii=False),
+                mission_id=mission.mission_id,
+                priority=MessagePriority.NORMAL,
+                requires_response=False,
+            )
+        )
+        self.save_mission(mission)
+        self._sync_state(mission)
+        dgm_logger.info(
+            f"CAPABILITY_DISCOVERY_COMPLETED: {mission.mission_id} - {requested_capability}"
+        )
+        return report
+
     def _handle_queue_execution(self, payload: Dict[str, Any]):
         """Callback from SafeActionQueue when MISSION_EXECUTION is APPROVED."""
         mission_id = payload.get("mission_id")
@@ -131,9 +197,16 @@ class MissionEngine:
                     self._finish_mission_success(mission, result)
                     return result
                 else:
+                    capability = self._capability_request_from_goal(mission.goal)
+                    if capability and "capability_discovery" not in mission.metadata:
+                        self.discover_capability_for_mission(mission, capability)
                     dgm_logger.info(f"MISSION_HANDLER_SELECTED: {mission_id} - decompose_mission")
                     self.decompose_mission(mission_id)
-                    return {"status": "decomposed", "mission_id": mission_id}
+                    return {
+                        "status": "decomposed",
+                        "mission_id": mission_id,
+                        "capability_discovery": "performed" if capability else "not_requested",
+                    }
             except Exception as exc:
                 result = self._finish_mission_failure(mission, exc)
                 raise RuntimeError(result["output"]) from exc
