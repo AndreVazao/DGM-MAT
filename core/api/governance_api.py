@@ -47,3 +47,25 @@ def apply_self_repair(request: RepairRequest):
     if not request.confirm:
         raise HTTPException(status_code=400, detail="Explicit confirm=true is required.")
     return SelfRepairEngine().apply_safe(dry_run=request.dry_run)
+from core.conversation_intelligence import ConversationIntelligencePipeline, ConversationRecord
+
+class ConversationRequest(BaseModel):
+    conversation_id: str
+    provider: str
+    title: str
+    content: str
+    url: str | None = None
+
+@router.post("/conversations/analyze")
+def analyze_conversation(request: ConversationRequest):
+    pipeline = ConversationIntelligencePipeline()
+    conversation = ConversationRecord(request.conversation_id, request.provider, request.title, request.content, "dashboard", request.url)
+    artifacts = pipeline.extractor.extract(conversation)
+    audit = pipeline.auditor.audit(conversation, artifacts)
+    return {
+        "conversation": audit.conversation.__dict__,
+        "artifacts": [a.__dict__ for a in audit.artifacts],
+        "findings": [f.__dict__ for f in audit.findings],
+        "suggested_project": audit.suggested_project,
+        "suggested_title": audit.suggested_title,
+    }
