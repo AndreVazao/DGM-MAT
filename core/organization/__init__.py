@@ -1,10 +1,15 @@
-"""DGM-MAT Digital Organization foundation.
+"""DGM-MAT Digital Organization foundation."""
 
-The organization layer models DGM-MAT as a governed digital company:
-departments, specialized agents, missions/tasks, internal communication,
-evidence/provenance, ownership and controlled evolution.
-"""
-
+from .capability_models import (
+    CapabilityCandidate,
+    CapabilityRequest,
+    CapabilitySource,
+    CapabilityStatus,
+    RecruitmentOrder,
+    RecruitmentStatus,
+)
+from .capability_registry import CapabilityRegistry
+from .message_bus import InternalMessageBus
 from .models import (
     AgentProfile,
     AgentStatus,
@@ -16,23 +21,20 @@ from .models import (
     Task,
     TaskStatus,
 )
+from .recruitment import RecruitmentDecision, RecruitmentEngine
 from .registry import AgentRegistry
-from .message_bus import InternalMessageBus
+from .skill_forge import ForgeResult, SkillForge
+from .source_discovery import LocalSourceDiscovery
 from .task_manager import OrganizationTaskManager
 from .workspace import OrganizationWorkspace
 
 __all__ = [
-    "AgentProfile",
-    "AgentRegistry",
-    "AgentStatus",
-    "Department",
-    "Evidence",
-    "EvolutionProposal",
-    "InternalMessageBus",
-    "Message",
-    "MessagePriority",
-    "OrganizationTaskManager",
-    "OrganizationWorkspace",
-    "Task",
-    "TaskStatus",
+    "AgentProfile", "AgentRegistry", "AgentStatus",
+    "CapabilityCandidate", "CapabilityRegistry", "CapabilityRequest",
+    "CapabilitySource", "CapabilityStatus", "Department", "Evidence",
+    "EvolutionProposal", "ForgeResult", "InternalMessageBus",
+    "LocalSourceDiscovery", "Message", "MessagePriority",
+    "OrganizationTaskManager", "OrganizationWorkspace",
+    "RecruitmentDecision", "RecruitmentEngine", "RecruitmentOrder",
+    "RecruitmentStatus", "SkillForge", "Task", "TaskStatus",
 ]
