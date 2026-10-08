@@ -1,5 +1,6 @@
 """DGM-MAT Digital Organization foundation."""
 
+from .bootstrap import bootstrap_registry
 from .capability_models import (
     CapabilityCandidate,
     CapabilityRequest,
@@ -29,7 +30,7 @@ from .task_manager import OrganizationTaskManager
 from .workspace import OrganizationWorkspace
 
 __all__ = [
-    "AgentProfile", "AgentRegistry", "AgentStatus",
+    "AgentProfile", "AgentRegistry", "AgentStatus", "bootstrap_registry",
     "CapabilityCandidate", "CapabilityRegistry", "CapabilityRequest",
     "CapabilitySource", "CapabilityStatus", "Department", "Evidence",
     "EvolutionProposal", "ForgeResult", "InternalMessageBus",
