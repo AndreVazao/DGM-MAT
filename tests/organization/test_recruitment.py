@@ -55,7 +55,7 @@ def test_internal_lab_capability_can_enter_governed_pipeline(tmp_path):
 
     forge = SkillForge(tmp_path / "forge")
     snapshot = forge.snapshot(candidate)
-    assert (snapshot / "candidate" / "SKILL.md").exists()
+    assert (snapshot / "SKILL.md").exists()
     assert forge.create_adaptation_workspace(candidate).exists()
 
 
