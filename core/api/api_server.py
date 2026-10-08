@@ -8,19 +8,23 @@ from core.realtime.websocket_manager import (
 )
 from core.api.runtime_api import router as runtime_router
 from core.api.mobile_bridge import router as mobile_router
+from core.api.governance_api import router as governance_router
 
 app = FastAPI(
     title="DGM-MAT API",
 )
 
 app.include_router(runtime_router)
-app.include_router(mobile_router) # Phase 32: Mobile Bridge
+app.include_router(mobile_router)  # Phase 32: Mobile Bridge
+app.include_router(governance_router)
+
 
 @app.get("/health")
 def health():
     return {
         "status": "healthy"
     }
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(
@@ -32,6 +36,7 @@ async def websocket_endpoint(
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
 
 def run_api():
     import uvicorn
