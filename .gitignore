@@ -121,3 +121,4 @@ semantic_knowledge.json
 /memory/
 /embeddings/
 /indexes/
+config/rendezvous.secret

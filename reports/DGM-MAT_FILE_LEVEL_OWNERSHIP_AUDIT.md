@@ -1,5 +1,3 @@
-[Reading 151 lines from start (total: 151 lines, 0 remaining)]
-
 # DGM-MAT FILE-LEVEL OWNERSHIP AUDIT
 ## 2026-10-06
 
@@ -7,11 +5,11 @@
 
 ## Summary
 - cockpit: 55 Python files
-- core: 587 Python files
+- core: 590 Python files
 - legacy: 48 Python files
 - scripts: 29 Python files
 - shared: 4 Python files
-- tests: 78 Python files
+- tests: 84 Python files
 - tools: 7 Python files
 
 ## Highest internal coupling files
@@ -19,23 +17,24 @@
 |---|---|---:|---|---|
 | tests/import_fabric/test_phase15_16_17_import.py | tests follow destination | 36 | core.execution.worktree_manager, core.execution.branch_manager, core.execution.execution_engine, core.execution.execution_context, core.execution.approval_manager, core.execution.r |  |
 | core/governance/governance_engine.py | DGM-Core-Backend | 18 | shared.models.event, shared.enums.event_priority, core.observability.logger, core.governance.runtime_limits, core.governance.event_governor, core.governance.loop_detector, core.gov |  |
-| cockpit/main_window.py | DGM-Cockpit-Frontend | 15 | cockpit.widgets.dashboard_widget, cockpit.widgets.agent_widget, cockpit.widgets.mission_widget, cockpit.widgets.command_console, cockpit.widgets.runtime_health_widget, cockpit.widg |  |
+| cockpit/main_window.py | DGM-Cockpit-Frontend | 16 | cockpit.widgets.dashboard_widget, cockpit.widgets.agent_widget, cockpit.widgets.mission_widget, cockpit.widgets.command_console, cockpit.widgets.runtime_health_widget, cockpit.widg |  |
 | core/runtime/runtime.py | DGM-Core-Backend | 15 | shared.models.event, core.event_bus.event_bus, core.overseer.overseer, core.agents.repo_agent, core.agents.provider_agent, core.agents.autonomy_agent, core.runtime.runtime_state_st |  |
 | core/knowledge/knowledge_engine.py | DGM-Core-Backend | 13 | shared.models.event, core.knowledge.knowledge_models, core.knowledge.semantic_graph, core.knowledge.semantic_memory, core.knowledge.concept_extractor, core.knowledge.context_linker |  |
+| core/api/runtime_api.py | DGM-Core-Backend | 11 | core.storage.storage_manager, core.repository_cognition.repo_scanner, core.autonomy.mission_engine, core.workspace.workspace_manager, core.connectors.obsidian_connector, core.runti |  |
 | core/autonomy/active_runtime/cognition_loop.py | DGM-Core-Backend | 11 | core.observability.logger, core.storage.storage_manager, core.autonomy.active_runtime.autonomy_cycle, core.autonomy.active_runtime.strategic_planner, core.autonomy.active_runtime.o |  |
 | core/cognition/ecosystem_engine.py | DGM-Core-Backend | 11 | core.cognition.topology_engine, core.cognition.dependency_mapper, core.cognition.fragmentation_detector, core.cognition.convergence_engine, core.cognition.risk_predictor, core.cogn |  |
-| core/api/runtime_api.py | DGM-Core-Backend | 10 | core.storage.storage_manager, core.repository_cognition.repo_scanner, core.autonomy.mission_engine, core.workspace.workspace_manager, core.connectors.obsidian_connector, core.runti |  |
 | legacy/tests/test_phase6.py | DGM-MAT root/review | 10 | core.event_bus.bus, core.overseer.overseer, core.self_healing.engine, core.repository_intelligence.auto_repair, core.git_engine.git_manager, core.deployment.manager, core.health.ca |  |
 | core/bootstrap/runtime/bootstrap_engine.py | DGM-Core-Backend | 9 | core.observability.logger, core.bootstrap.core.bootstrap_context, core.bootstrap.runtime.bootstrap_sequence, core.bootstrap.core.environment_detector, core.bootstrap.core.bootstrap | C:/DevopGodMode, C:/ProgramasGodMode, C:/ProgramasGodMode/andreos-memory |
 | legacy/tests/test_phase7.py | DGM-MAT root/review | 9 | core.event_bus.bus, core.ecosystem_state.manager, core.gap_detection.detector, core.agents.prompt_intelligence_agent, core.agents.provider_connector_agent, core.knowledge_integrati |  |
 | core/recovery/recovery_engine.py | DGM-Core-Backend | 8 | core.recovery.health_monitor, core.recovery.crash_classifier, core.recovery.isolation_engine, core.recovery.runtime_recovery, core.recovery.provider_recovery, core.recovery.repair_ |  |
+| core/autonomy/mission_engine.py | DGM-Core-Backend | 7 | core.autonomy.mission_models, core.storage.storage_manager, core.observability.logger, core.runtime.runtime_state_store, core.runtime.safe_action_queue, core.execution.approval_man | C:/DevopGodMode, C:/ProgramasGodMode |
 | core/import_fabric/import_orchestrator.py | DGM-Core-Backend | 7 | core.import_fabric.repo_cloner, core.import_fabric.repo_classifier, core.import_fabric.repo_indexer, core.import_fabric.external_registry, core.import_fabric.repo_health, core.impo |  |
 | core/repository_intelligence/repo_importer.py | DGM-Core-Backend | 7 | core.observability.logger, core.ecosystem.ecosystem_registry, core.ecosystem.ecosystem_models, core.repository_intelligence.repo_classifier, core.repository_intelligence.tech_detec |  |
-| core/autonomy/mission_engine.py | DGM-Core-Backend | 6 | core.autonomy.mission_models, core.storage.storage_manager, core.observability.logger, core.runtime.runtime_state_store, core.runtime.safe_action_queue, core.realtime.realtime_broa | C:/DevopGodMode, C:/ProgramasGodMode |
 | core/bootstrap/__init__.py | DGM-Core-Backend | 6 | core.bootstrap.core.bootstrap_context, core.bootstrap.core.bootstrap_storage, core.bootstrap.core.dependency_loader, core.bootstrap.core.environment_detector, core.bootstrap.runtim |  |
 | core/development/development_engine.py | DGM-Core-Backend | 6 | core.development.feature_planner, core.development.implementation_engine, core.development.validation_engine, core.development.execution_fabric, core.development.development_memory |  |
 | core/event_bus/event_bus.py | DGM-Core-Backend | 6 | shared.models.event, shared.enums.event_priority, core.validation.event_validator, core.observability.logger, core.storage.event_store, core.observability.event_stream |  |
 | core/runtime/reality_snapshot.py | DGM-Core-Backend | 6 | core.observability.logger, core.ecosystem.ecosystem_registry, core.runtime.safe_action_queue, core.provider_sync.provider_registry, core.runtime.runtime_profile, core.runtime.runti | C:/DevopGodMode, C:/ProgramasGodMode |
+| core/storage/event_store.py | DGM-Core-Backend | 6 | core.storage.database, core.storage.models, core.storage.init_db, core.contracts.compat, shared.models.event, core.observability.logger |  |
 | core/strategy/strategy_engine.py | DGM-Core-Backend | 6 | core.strategy.roadmap_engine, core.strategy.priority_engine, core.strategy.debt_predictor, core.strategy.sustainability_engine, core.strategy.strategy_snapshot, core.observability. |  |
 | legacy/tests/test_system.py | DGM-MAT root/review | 6 | core.event_bus.bus, core.validation.engine, core.overseer.overseer, core.agents.base, core.observability.logger, core.validation.drift |  |
 | tests/integration/test_governance_sim.py | tests follow destination | 6 | shared.models.event, core.runtime.runtime, core.governance.runtime_limits, core.storage.database, core.storage.models, shared.enums.event_priority |  |
@@ -47,8 +46,8 @@
 | core/kernel/cognitive_kernel.py | DGM-Core-Backend | 5 | core.kernel.kernel_models, core.kernel.execution_context, core.observability.logger, shared.models.event, core.federation.ecosystem_registry |  |
 | core/kernel/live_kernel.py | DGM-Core-Backend | 5 | core.repository_intelligence.repo_importer, core.repository_intelligence.intelligence_engine, core.strategy.goal_engine, core.observability.logger, core.operator.autonomous_operato |  |
 | core/research/research_engine.py | DGM-MAT-Labs | 5 | core.research.experimentation_engine, core.research.sandbox_runtime, core.research.isolation_controller, core.research.research_models, core.observability.logger |  |
+| core/runtime/safe_action_queue.py | DGM-Core-Backend | 5 | core.storage.database, core.storage.models, core.storage.init_db, core.observability.logger, core.contracts.compat |  |
 | core/runtime_daemon/daemon.py | DGM-Core-Backend | 5 | core.observability.logger, core.runtime_daemon.heartbeat, core.runtime_daemon.process_registry, core.runtime_daemon.watchdog, core.runtime_daemon.supervisor |  |
-| core/storage/event_store.py | DGM-Core-Backend | 5 | core.storage.database, core.storage.models, core.storage.init_db, shared.models.event, core.observability.logger |  |
 | scripts/runtime_smoke_test.py | DGM-MAT-Deploy or root tooling | 5 | core.bootstrap, core.runtime.runtime, core.observability.logger, shared.models.event, core.storage.storage_manager |  |
 | core/api/api_server.py | DGM-Core-Backend | 4 | shared.config.settings, core.realtime.websocket_manager, core.api.runtime_api, core.api.mobile_bridge |  |
 | core/autonomy/autonomous_loop.py | DGM-Core-Backend | 4 | core.observability.logger, core.autonomy.scheduler.scheduler_engine, core.repository_cognition.repo_scanner, core.autonomy.models |  |
@@ -61,7 +60,6 @@
 | core/repository_intelligence/intelligence_engine.py | DGM-Core-Backend | 4 | core.ecosystem.ecosystem_registry, core.ecosystem.ecosystem_models, core.observability.logger, core.repository_intelligence.external_repos |  |
 | core/repository_intelligence/repo_federation.py | DGM-Core-Backend | 4 | core.storage.storage_manager, core.observability.logger, core.ecosystem.ecosystem_registry, core.ecosystem.ecosystem_models |  |
 | core/repository_intelligence/scanner.py | DGM-Core-Backend | 4 | core.repository_intelligence.models, core.repository_intelligence.tech_detector, core.repository_intelligence.repo_classifier, core.observability.logger | C:/ProgramasGodMode |
-| core/runtime/safe_action_queue.py | DGM-Core-Backend | 4 | core.storage.database, core.storage.models, core.storage.init_db, core.observability.logger |  |
 | core/self_evolution/evolution_engine.py | DGM-Core-Backend | 4 | core.observability.logger, core.self_evolution.patch_candidate_generator, core.self_evolution.safety_validator, core.self_evolution.sandbox_runner |  |
 | core/workspace/workspace_engine.py | DGM-Core-Backend | 4 | core.observability.logger, core.workspace.workspace_graph, core.workspace.project_identity, core.workspace.semantic_project_mapper |  |
 | legacy/core/agents/memory_sync_agent.py | DGM-MAT root/review | 4 | core.agents.base, core.event_bus.bus, core.memory.engine, core.memory.sync |  |
@@ -94,6 +92,7 @@
 | core/knowledge/semantic_memory.py | DGM-Core-Backend | 3 | core.knowledge.knowledge_models, core.storage.storage_manager, core.observability.logger |  |
 | core/knowledge/semantic_search.py | DGM-Core-Backend | 3 | core.knowledge.knowledge_models, core.knowledge.memory_indexer, core.observability.logger |  |
 | core/knowledge_graph/memory_consolidator.py | DGM-Core-Backend | 3 | core.observability.logger, core.memory.consolidation_engine, core.knowledge_graph.graph_store |  |
+| core/observability/event_stream.py | DGM-Core-Backend | 3 | core.contracts.compat, shared.models.event, core.realtime.realtime_broadcast |  |
 | core/operator/autonomous_operator.py | DGM-Core-Backend | 3 | core.observability.logger, core.operator.autonomous_scheduler, core.operator.task_daemon |  |
 | core/operator/background_runtime.py | DGM-Core-Backend | 3 | core.operator.autonomous_operator, core.observability.logger, core.operator.task_daemon |  |
 | core/provider_memory/relationship_manager.py | DGM-Core-Backend | 3 | core.provider_memory.models, core.provider_memory.project_manager, core.observability.logger |  |
@@ -118,6 +117,10 @@
 | scripts/verify_mission_recovery.py | DGM-MAT-Deploy or root tooling | 3 | core.autonomy.mission_engine, core.autonomy.mission_models, core.observability.logger |  |
 | tests/autonomy/test_engines.py | tests follow destination | 3 | core.autonomy.task_generator, core.autonomy.priority_engine, core.autonomy.models |  |
 | tests/autonomy/test_mission_system.py | tests follow destination | 3 | core.autonomy.mission_engine, core.autonomy.mission_models, core.autonomy.active_runtime.objective_engine |  |
+| tests/contracts/test_compat.py | tests follow destination | 3 | core.autonomy.mission_models, core.contracts.compat, shared.models.event |  |
+| tests/contracts/test_cross_process_mission.py | tests follow destination | 3 | core.autonomy.mission_engine, core.storage.database, core.storage.models |  |
+| tests/contracts/test_event_boundary.py | tests follow destination | 3 | core.contracts.compat, core.storage.event_store, shared.models.event |  |
+| tests/contracts/test_event_bus_boundary.py | tests follow destination | 3 | core.event_bus.event_bus, core.storage.event_store, shared.models.event |  |
 | tests/ecosystem/test_reality_sync.py | tests follow destination | 3 | core.ecosystem.reality_sync_engine, core.ecosystem.ecosystem_registry, core.ecosystem.ecosystem_models |  |
 | tests/import_fabric/test_repo_import_validation.py | tests follow destination | 3 | core.workspace.workspace_graph, core.operator.capability_extractor, core.observability.logger |  |
 | tests/integration/test_knowledge_fabric.py | tests follow destination | 3 | shared.models.event, core.runtime.runtime, core.knowledge.knowledge_models |  |
@@ -132,11 +135,6 @@
 | core/agents/base_agent.py | DGM-MAT-Agents | 2 | shared.models.event, core.observability.logger |  |
 | core/agents/debug_agent.py | DGM-MAT-Agents | 2 | core.agents.base_agent, shared.models.event |  |
 | core/agents/devops_agent.py | DGM-MAT-Agents | 2 | core.agents.base_agent, shared.models.event |  |
-| core/agents/memory_agent.py | DGM-MAT-Agents | 2 | core.agents.base_agent, shared.models.event |  |
-| core/agents/refactor_agent.py | DGM-MAT-Agents | 2 | core.agents.base_agent, shared.models.event |  |
-| core/agents/repo_agent.py | DGM-MAT-Agents | 2 | core.agents.base_agent, shared.models.event |  |
-| core/agents/research_agent.py | DGM-MAT-Agents | 2 | core.agents.base_agent, shared.models.event |  |
-| core/agents/runtime_agent.py | DGM-MAT-Agents | 2 | core.agents.base_agent, shared.models.event |  |
 
 ## Critical boundary findings
 
@@ -151,5 +149,3 @@
 
 ## Migration rule
 Every row must receive explicit DESTINATION, REWRITE, OWNER/AUTHORITY and TEST before physical move. No source deletion is authorized by this report.
-
-[executed on device: PC-Vazao-Anjos (982eb058-a42c-4897-9732-547f04cb44f0)]

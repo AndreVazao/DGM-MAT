@@ -1,9 +1,9 @@
 {
   "generated": "2026-10-06",
   "root": "C:\\ProgramasGodMode\\DGM-MAT",
-  "python_files": 774,
-  "modules": 774,
-  "internal_import_edges": 1015,
+  "python_files": 784,
+  "modules": 784,
+  "internal_import_edges": 1037,
   "embedded_dgm_dirs": [
     "DGM-MAT-Agents",
     "DGM-MAT-Assets",
@@ -242,6 +242,14 @@
       "kind": "from_import",
       "resolved": [
         "cockpit/widgets/event_stream_widget.py"
+      ]
+    },
+    {
+      "from": "cockpit/main_window.py",
+      "to_module": "cockpit.widgets.execution_feed",
+      "kind": "from_import",
+      "resolved": [
+        "cockpit/widgets/execution_feed.py"
       ]
     },
     {
@@ -1289,6 +1297,14 @@
     },
     {
       "from": "core/api/runtime_api.py",
+      "to_module": "core.execution.approval_manager",
+      "kind": "from_import",
+      "resolved": [
+        "core/execution/approval_manager.py"
+      ]
+    },
+    {
+      "from": "core/api/runtime_api.py",
       "to_module": "core.provider_sync.provider_registry",
       "kind": "from_import",
       "resolved": [
@@ -1445,6 +1461,14 @@
       "kind": "from_import",
       "resolved": [
         "core/runtime/safe_action_queue.py"
+      ]
+    },
+    {
+      "from": "core/autonomy/mission_engine.py",
+      "to_module": "core.execution.approval_manager",
+      "kind": "from_import",
+      "resolved": [
+        "core/execution/approval_manager.py"
       ]
     },
     {
@@ -1976,6 +2000,14 @@
       ]
     },
     {
+      "from": "core/contracts/__init__.py",
+      "to_module": "core.contracts.compat",
+      "kind": "from_import",
+      "resolved": [
+        "core/contracts/compat.py"
+      ]
+    },
+    {
       "from": "core/development/architecture_validator.py",
       "to_module": "core.development.development_models",
       "kind": "from_import",
@@ -2365,6 +2397,14 @@
       "kind": "from_import",
       "resolved": [
         "core/observability/logger.py"
+      ]
+    },
+    {
+      "from": "core/execution/approval_manager.py",
+      "to_module": "core.runtime.safe_action_queue",
+      "kind": "from_import",
+      "resolved": [
+        "core/runtime/safe_action_queue.py"
       ]
     },
     {
@@ -3801,6 +3841,14 @@
     },
     {
       "from": "core/observability/event_stream.py",
+      "to_module": "core.contracts.compat",
+      "kind": "from_import",
+      "resolved": [
+        "core/contracts/compat.py"
+      ]
+    },
+    {
+      "from": "core/observability/event_stream.py",
       "to_module": "shared.models.event",
       "kind": "from_import",
       "resolved": [
@@ -5128,6 +5176,14 @@
       ]
     },
     {
+      "from": "core/runtime/safe_action_queue.py",
+      "to_module": "core.contracts.compat",
+      "kind": "from_import",
+      "resolved": [
+        "core/contracts/compat.py"
+      ]
+    },
+    {
       "from": "core/runtime_daemon/daemon.py",
       "to_module": "core.observability.logger",
       "kind": "from_import",
@@ -5493,6 +5549,14 @@
       "kind": "from_import",
       "resolved": [
         "core/storage/init_db.py"
+      ]
+    },
+    {
+      "from": "core/storage/event_store.py",
+      "to_module": "core.contracts.compat",
+      "kind": "from_import",
+      "resolved": [
+        "core/contracts/compat.py"
       ]
     },
     {
@@ -7039,6 +7103,118 @@
       ]
     },
     {
+      "from": "tests/contracts/test_compat.py",
+      "to_module": "core.autonomy.mission_models",
+      "kind": "from_import",
+      "resolved": [
+        "core/autonomy/mission_models.py"
+      ]
+    },
+    {
+      "from": "tests/contracts/test_compat.py",
+      "to_module": "core.contracts.compat",
+      "kind": "from_import",
+      "resolved": [
+        "core/contracts/compat.py"
+      ]
+    },
+    {
+      "from": "tests/contracts/test_compat.py",
+      "to_module": "shared.models.event",
+      "kind": "from_import",
+      "resolved": [
+        "shared/models/event.py"
+      ]
+    },
+    {
+      "from": "tests/contracts/test_cross_process_mission.py",
+      "to_module": "core.autonomy.mission_engine",
+      "kind": "from_import",
+      "resolved": [
+        "core/autonomy/mission_engine.py"
+      ]
+    },
+    {
+      "from": "tests/contracts/test_cross_process_mission.py",
+      "to_module": "core.storage.database",
+      "kind": "from_import",
+      "resolved": [
+        "core/storage/database.py"
+      ]
+    },
+    {
+      "from": "tests/contracts/test_cross_process_mission.py",
+      "to_module": "core.storage.models",
+      "kind": "from_import",
+      "resolved": [
+        "core/storage/models.py"
+      ]
+    },
+    {
+      "from": "tests/contracts/test_event_boundary.py",
+      "to_module": "core.contracts.compat",
+      "kind": "from_import",
+      "resolved": [
+        "core/contracts/compat.py"
+      ]
+    },
+    {
+      "from": "tests/contracts/test_event_boundary.py",
+      "to_module": "core.storage.event_store",
+      "kind": "from_import",
+      "resolved": [
+        "core/storage/event_store.py"
+      ]
+    },
+    {
+      "from": "tests/contracts/test_event_boundary.py",
+      "to_module": "shared.models.event",
+      "kind": "from_import",
+      "resolved": [
+        "shared/models/event.py"
+      ]
+    },
+    {
+      "from": "tests/contracts/test_event_bus_boundary.py",
+      "to_module": "core.event_bus.event_bus",
+      "kind": "from_import",
+      "resolved": [
+        "core/event_bus/event_bus.py"
+      ]
+    },
+    {
+      "from": "tests/contracts/test_event_bus_boundary.py",
+      "to_module": "core.storage.event_store",
+      "kind": "from_import",
+      "resolved": [
+        "core/storage/event_store.py"
+      ]
+    },
+    {
+      "from": "tests/contracts/test_event_bus_boundary.py",
+      "to_module": "shared.models.event",
+      "kind": "from_import",
+      "resolved": [
+        "shared/models/event.py"
+      ]
+    },
+    {
+      "from": "tests/contracts/test_mcp_tool_descriptor.py",
+      "to_module": "core.contracts.mcp",
+      "kind": "from_import",
+      "resolved": [
+        "core/contracts/mcp.py"
+      ]
+    },
+    {
+      "from": "tests/contracts/test_queue_boundary.py",
+      "to_module": "core.runtime.safe_action_queue",
+      "kind": "from_import",
+      "resolved": [
+        "core/runtime/safe_action_queue.py"
+      ]
+    },
+    {
       "from": "tests/daemon/test_daemon_persistence.py",
       "to_module": "core.runtime_daemon.daemon",
       "kind": "from_import",
@@ -7847,6 +8023,22 @@
       ]
     },
     {
+      "from": "tests/operational/test_operational_recovery.py",
+      "to_module": "core.autonomy.continuous_runtime.lifecycle_manager",
+      "kind": "from_import",
+      "resolved": [
+        "core/autonomy/continuous_runtime/lifecycle_manager.py"
+      ]
+    },
+    {
+      "from": "tests/operational/test_operational_recovery.py",
+      "to_module": "core.storage.storage_manager",
+      "kind": "from_import",
+      "resolved": [
+        "core/storage/storage_manager.py"
+      ]
+    },
+    {
       "from": "tests/operational/test_phase37_operational.py",
       "to_module": "core.node_runtime.node_identity",
       "kind": "from_import",
@@ -7860,22 +8052,6 @@
       "kind": "from_import",
       "resolved": [
         "core/telemetry/metrics_collector.py"
-      ]
-    },
-    {
-      "from": "tests/operational/test_recovery.py",
-      "to_module": "core.autonomy.continuous_runtime.lifecycle_manager",
-      "kind": "from_import",
-      "resolved": [
-        "core/autonomy/continuous_runtime/lifecycle_manager.py"
-      ]
-    },
-    {
-      "from": "tests/operational/test_recovery.py",
-      "to_module": "core.storage.storage_manager",
-      "kind": "from_import",
-      "resolved": [
-        "core/storage/storage_manager.py"
       ]
     },
     {
@@ -8309,6 +8485,9 @@
       "verify_widgets.py"
     ],
     "__future__": [
+      "core/contracts/compat.py",
+      "core/contracts/mcp.py",
+      "tools/audit_file_level.py",
       "tools/generate_dependency_map.py"
     ],
     "abc": [
@@ -8326,11 +8505,9 @@
       "core/migration/dependency_scanner.py",
       "core/migration/import_rewriter.py",
       "core/repository_cognition/repo_scanner.py",
+      "tools/audit_file_level.py",
       "tools/generate_dependency_map.py",
       "verify_architecture.py"
-    ],
-    "astor": [
-      "core/migration/import_rewriter.py"
     ],
     "asyncio": [
       "cockpit/app/websocket_client.py",
@@ -8362,6 +8539,7 @@
       "core/security/vault.py"
     ],
     "collections": [
+      "core/contracts/mcp.py",
       "core/event_bus/event_bus.py",
       "core/memory/project_families.py",
       "core/repository_intelligence/duplicate_detector.py",
@@ -8392,14 +8570,14 @@
       "core/repository_intelligence/models.py",
       "core/runtime/runtime_profile.py",
       "core/runtime/runtime_state_store.py",
-      "core/runtime_state/runtime_state.py"
+      "core/runtime_state/runtime_state.py",
+      "tests/contracts/test_mcp_tool_descriptor.py"
     ],
     "datetime": [
       "cockpit/widgets/command_console.py",
       "cockpit/widgets/execution_feed.py",
       "core/autonomy/active_runtime/autonomy_cycle.py",
       "core/autonomy/active_runtime/cognition_loop.py",
-      "core/autonomy/autonomous_loop.py",
       "core/autonomy/mission_engine.py",
       "core/autonomy/mission_models.py",
       "core/autonomy/models.py",
@@ -8414,6 +8592,7 @@
       "core/cognition/cognitive_analysis_engine.py",
       "core/cognition/pattern_extractor.py",
       "core/connectors/obsidian_connector.py",
+      "core/contracts/compat.py",
       "core/development/development_memory.py",
       "core/development/development_models.py",
       "core/development/development_snapshot.py",
@@ -8424,7 +8603,6 @@
       "core/event_bus/event_bus.py",
       "core/evolution/evolution_engine.py",
       "core/evolution/regeneration_models.py",
-      "core/execution/approval_manager.py",
       "core/execution/execution_models.py",
       "core/fabric/resource_models.py",
       "core/federation/federation_models.py",
@@ -8473,6 +8651,9 @@
       "scripts/fase_43_6_force_cognition_real.py",
       "scripts/phase_finalizer.py",
       "shared/models/event.py",
+      "tests/contracts/test_compat.py",
+      "tests/contracts/test_event_boundary.py",
+      "tests/contracts/test_event_bus_boundary.py",
       "tests/integration/test_ecosystem.py",
       "tests/unit/test_runtime.py",
       "tools/controlled_import.py",
@@ -8480,6 +8661,12 @@
     ],
     "dependency_scanner": [
       "core/migration/migration_engine.py"
+    ],
+    "dgm_contracts": [
+      "core/contracts/compat.py",
+      "core/contracts/mcp.py",
+      "core/storage/event_store.py",
+      "tests/contracts/test_queue_boundary.py"
     ],
     "difflib": [
       "core/cognition/fragmentation_detector.py",
@@ -8630,10 +8817,11 @@
       "tests/ecosystem/test_reality_sync.py",
       "tests/integration/test_ecosystem.py",
       "tests/migration/test_engine.py",
-      "tests/operational/test_recovery.py",
+      "tests/operational/test_operational_recovery.py",
       "tests/runtime_daemon/test_recovery.py",
       "tests/unit/test_provider_registry.py",
       "tests/unit/test_runtime.py",
+      "tools/audit_file_level.py",
       "tools/controlled_import.py",
       "tools/generate_dependency_map.py",
       "tools/repo_control_panel/repo_manager.py"
@@ -8740,6 +8928,7 @@
       "shared/config/settings.py",
       "tests/autonomous_dev/test_repository_extractor.py",
       "tests/bootstrap/test_bootstrap_logic.py",
+      "tests/contracts/test_cross_process_mission.py",
       "tests/daemon/test_daemon_persistence.py",
       "tests/ecosystem/test_reality_sync.py",
       "tests/integration/test_ecosystem.py",
@@ -8849,7 +9038,6 @@
       "scripts/verify_mission_recovery.py",
       "shared/config/settings.py",
       "tests/autonomous_dev/test_repository_extractor.py",
-      "tests/autonomy/test_loop.py",
       "tests/ecosystem/test_protection_rules.py",
       "tests/ecosystem/test_reality_sync.py",
       "tests/import_fabric/test_import_intelligence_v7.py",
@@ -8864,6 +9052,7 @@
       "tests/runtime_daemon/test_recovery.py",
       "tests/test_phase35_cognition.py",
       "tests/unit/test_persistent_paths.py",
+      "tools/audit_file_level.py",
       "tools/controlled_import.py",
       "tools/generate_dependency_map.py",
       "tools/import_engine.py",
@@ -8937,7 +9126,6 @@
       "tests/autonomy/test_continuous_runtime.py",
       "tests/autonomy/test_degraded_mode.py",
       "tests/autonomy/test_engines.py",
-      "tests/autonomy/test_loop.py",
       "tests/autonomy/test_mission_system.py",
       "tests/autonomy/test_phase37_logic.py",
       "tests/autonomy/test_scheduler.py",
@@ -8968,7 +9156,7 @@
       "tests/migration/test_scanner.py",
       "tests/operational/test_cockpit_mission_trace.py",
       "tests/operational/test_master_runtime.py",
-      "tests/operational/test_recovery.py",
+      "tests/operational/test_operational_recovery.py",
       "tests/operational/test_work_queue.py",
       "tests/platform/test_cognition_survival.py",
       "tests/platform/test_runtime_restoration.py",
@@ -9010,6 +9198,7 @@
       "core/connectors/obsidian_connector.py",
       "core/knowledge/concept_extractor.py",
       "scripts/validate_storage.py",
+      "tools/audit_file_level.py",
       "tools/generate_dependency_map.py",
       "verify_architecture.py"
     ],
@@ -9040,7 +9229,6 @@
       "tests/integration/test_storage_architecture.py"
     ],
     "signal": [
-      "core/autonomy/autonomous_loop.py",
       "core/autonomy/continuous_runtime/lifecycle_manager.py",
       "core/runtime_daemon/daemon.py",
       "core/sandbox/isolated_runtime.py"
@@ -9057,7 +9245,6 @@
     ],
     "sqlite3": [
       "core/autonomy/scheduler/task_queue.py",
-      "core/storage/event_store.py",
       "force_approve.py",
       "inspect_db.py"
     ],
@@ -9082,6 +9269,7 @@
       "scripts/executable_runtime_test.py",
       "scripts/validate_executable.py",
       "scripts/validate_storage.py",
+      "tests/contracts/test_cross_process_mission.py",
       "tests/runtime/test_smoke.py",
       "tools/controlled_import.py"
     ],
@@ -9110,6 +9298,7 @@
       "scripts/verify_mission_recovery.py",
       "test_pyside6.py",
       "tests/cockpit/test_realtime_integration.py",
+      "tests/contracts/test_cross_process_mission.py",
       "tests/import_fabric/test_repo_import_validation.py",
       "tests/integration/test_provider_sync.py",
       "tests/runtime/test_smoke.py",
@@ -9187,6 +9376,7 @@
       "core/providers/provider_runtime.py",
       "core/recovery/health_monitor.py",
       "core/recovery/recovery_engine.py",
+      "core/repository_cognition/repo_scanner.py",
       "core/repository_intelligence/repo_watchers.py",
       "core/runtime/reality_snapshot.py",
       "core/runtime/runtime.py",
@@ -9278,6 +9468,8 @@
       "core/cognition/risk_predictor.py",
       "core/cognition/topology_engine.py",
       "core/connectors/obsidian_connector.py",
+      "core/contracts/compat.py",
+      "core/contracts/mcp.py",
       "core/development/architecture_validator.py",
       "core/development/code_generation.py",
       "core/development/development_memory.py",
@@ -9505,7 +9697,10 @@
       "core/memory/context_snapshot.py",
       "core/node_runtime/node_identity.py",
       "core/providers/conversation_memory.py",
-      "shared/models/event.py"
+      "shared/models/event.py",
+      "tests/contracts/test_cross_process_mission.py",
+      "tests/contracts/test_event_boundary.py",
+      "tests/contracts/test_event_bus_boundary.py"
     ],
     "uvicorn": [
       "core/api/api_server.py",
@@ -9646,52 +9841,57 @@
       {
         "type": "ClassDef",
         "name": "MainWindow",
-        "line": 24
-      },
-      {
-        "type": "FunctionDef",
-        "name": "__init__",
         "line": 25
       },
       {
         "type": "FunctionDef",
+        "name": "__init__",
+        "line": 26
+      },
+      {
+        "type": "FunctionDef",
         "name": "_setup_ui",
-        "line": 43
+        "line": 44
       },
       {
         "type": "FunctionDef",
         "name": "_setup_connections",
-        "line": 106
+        "line": 108
       },
       {
         "type": "FunctionDef",
         "name": "_fetch_initial_state",
-        "line": 119
+        "line": 121
       },
       {
         "type": "FunctionDef",
         "name": "_on_connection_changed",
-        "line": 136
+        "line": 138
       },
       {
         "type": "FunctionDef",
         "name": "_handle_server_message",
-        "line": 148
+        "line": 150
+      },
+      {
+        "type": "FunctionDef",
+        "name": "dispatch_message",
+        "line": 183
       },
       {
         "type": "FunctionDef",
         "name": "_update_child_widgets",
-        "line": 179
+        "line": 199
       },
       {
         "type": "FunctionDef",
         "name": "_update_status_badge",
-        "line": 196
+        "line": 216
       },
       {
         "type": "FunctionDef",
         "name": "run_fetch",
-        "line": 124
+        "line": 126
       }
     ],
     "cockpit/realtime_client.py": [
@@ -9941,6 +10141,18 @@
         "line": 17
       }
     ],
+    "tools/audit_file_level.py": [
+      {
+        "type": "FunctionDef",
+        "name": "role",
+        "line": 8
+      },
+      {
+        "type": "FunctionDef",
+        "name": "imports",
+        "line": 16
+      }
+    ],
     "tools/controlled_import.py": [
       {
         "type": "ClassDef",
@@ -10061,6 +10273,13 @@
         "type": "FunctionDef",
         "name": "stop",
         "line": 26
+      }
+    ],
+    "cockpit/app/__init__.py": [
+      {
+        "type": "FunctionDef",
+        "name": "run_cockpit",
+        "line": 4
       }
     ],
     "cockpit/approvals/patch_review.py": [
@@ -11239,112 +11458,112 @@
       {
         "type": "ClassDef",
         "name": "MissionCreate",
-        "line": 20
+        "line": 21
       },
       {
         "type": "ClassDef",
         "name": "ApprovalDecision",
-        "line": 24
+        "line": 25
       },
       {
         "type": "AsyncFunctionDef",
         "name": "runtime_websocket_endpoint",
-        "line": 28
+        "line": 29
       },
       {
         "type": "FunctionDef",
         "name": "get_runtime_health",
-        "line": 38
+        "line": 39
       },
       {
         "type": "FunctionDef",
         "name": "get_runtime_status",
-        "line": 44
+        "line": 45
       },
       {
         "type": "FunctionDef",
         "name": "get_runtime_state",
-        "line": 59
+        "line": 60
       },
       {
         "type": "FunctionDef",
         "name": "get_runtime_truth",
-        "line": 64
+        "line": 65
       },
       {
         "type": "FunctionDef",
         "name": "get_runtime_reality",
-        "line": 69
+        "line": 70
       },
       {
         "type": "FunctionDef",
         "name": "get_runtime_degradation",
-        "line": 74
+        "line": 75
       },
       {
         "type": "FunctionDef",
         "name": "get_repo_scan",
-        "line": 83
+        "line": 84
       },
       {
         "type": "FunctionDef",
         "name": "get_memory_stats",
-        "line": 93
+        "line": 94
       },
       {
         "type": "FunctionDef",
         "name": "get_memory_status",
-        "line": 98
+        "line": 99
       },
       {
         "type": "FunctionDef",
         "name": "list_providers",
-        "line": 107
+        "line": 108
       },
       {
         "type": "FunctionDef",
         "name": "get_governance_status",
-        "line": 123
+        "line": 124
       },
       {
         "type": "FunctionDef",
         "name": "get_autonomy_status",
-        "line": 137
+        "line": 138
       },
       {
         "type": "FunctionDef",
         "name": "scan_workspace",
-        "line": 148
+        "line": 149
       },
       {
         "type": "FunctionDef",
         "name": "index_obsidian",
-        "line": 153
+        "line": 154
       },
       {
         "type": "FunctionDef",
         "name": "create_mission",
-        "line": 158
+        "line": 159
       },
       {
         "type": "FunctionDef",
         "name": "list_missions",
-        "line": 165
+        "line": 166
       },
       {
         "type": "FunctionDef",
         "name": "judge_approval",
-        "line": 183
+        "line": 184
       },
       {
         "type": "FunctionDef",
         "name": "list_approvals",
-        "line": 191
+        "line": 192
       },
       {
         "type": "FunctionDef",
         "name": "get_queue_status",
-        "line": 198
+        "line": 209
       }
     ],
     "core/autonomous_dev/architecture_optimizer.py": [
@@ -11480,22 +11699,22 @@
       {
         "type": "FunctionDef",
         "name": "detect_broken_imports",
-        "line": 114
+        "line": 116
       },
       {
         "type": "FunctionDef",
         "name": "_is_external_dependency",
-        "line": 156
+        "line": 158
       },
       {
         "type": "FunctionDef",
         "name": "_save_json",
-        "line": 165
+        "line": 167
       },
       {
         "type": "FunctionDef",
         "name": "is_internal",
-        "line": 119
+        "line": 121
       }
     ],
     "core/autonomous_dev/repo_refactor_loop.py": [
@@ -11572,169 +11791,169 @@
       {
         "type": "ClassDef",
         "name": "AutonomousLoop",
-        "line": 13
+        "line": 12
       },
       {
         "type": "FunctionDef",
         "name": "__init__",
-        "line": 14
+        "line": 15
       },
       {
         "type": "FunctionDef",
         "name": "_load_config",
-        "line": 20
+        "line": 21
       },
       {
         "type": "FunctionDef",
         "name": "start",
-        "line": 27
+        "line": 31
       },
       {
         "type": "FunctionDef",
         "name": "stop",
-        "line": 38
+        "line": 42
       },
       {
         "type": "FunctionDef",
         "name": "run_cycle",
-        "line": 40
+        "line": 45
       }
     ],
     "core/autonomy/mission_engine.py": [
       {
         "type": "ClassDef",
         "name": "MissionEngine",
-        "line": 16
+        "line": 17
       },
       {
         "type": "FunctionDef",
         "name": "__init__",
-        "line": 23
+        "line": 24
       },
       {
         "type": "FunctionDef",
         "name": "_load_missions",
-        "line": 33
+        "line": 34
       },
       {
         "type": "FunctionDef",
         "name": "create_mission",
-        "line": 55
+        "line": 56
       },
       {
         "type": "FunctionDef",
         "name": "_handle_queue_execution",
-        "line": 108
+        "line": 109
       },
       {
         "type": "FunctionDef",
         "name": "process_missions",
-        "line": 140
+        "line": 141
       },
       {
         "type": "FunctionDef",
         "name": "_handle_created",
-        "line": 165
+        "line": 166
       },
       {
         "type": "FunctionDef",
         "name": "_handle_approval_pending",
-        "line": 171
+        "line": 172
       },
       {
         "type": "FunctionDef",
         "name": "_handle_running",
-        "line": 189
+        "line": 192
       },
       {
         "type": "FunctionDef",
         "name": "_execute_list_repositories_mission",
-        "line": 209
+        "line": 212
       },
       {
         "type": "FunctionDef",
         "name": "_discover_workspace_repositories",
-        "line": 231
+        "line": 234
       },
       {
         "type": "FunctionDef",
         "name": "_inspect_git_repository",
-        "line": 278
+        "line": 281
       },
       {
         "type": "FunctionDef",
         "name": "_run_git",
-        "line": 311
+        "line": 314
       },
       {
         "type": "FunctionDef",
         "name": "_render_repository_output",
-        "line": 335
+        "line": 338
       },
       {
         "type": "FunctionDef",
         "name": "_mark_execution_started",
-        "line": 349
+        "line": 352
       },
       {
         "type": "FunctionDef",
         "name": "_mission_execution_timed_out",
-        "line": 355
+        "line": 358
       },
       {
         "type": "FunctionDef",
         "name": "_timeout_mission",
-        "line": 365
+        "line": 368
       },
       {
         "type": "FunctionDef",
         "name": "_finish_mission_success",
-        "line": 369
+        "line": 372
       },
       {
         "type": "FunctionDef",
         "name": "_finish_mission_failure",
-        "line": 377
+        "line": 380
       },
       {
         "type": "FunctionDef",
         "name": "_store_mission_result",
-        "line": 406
+        "line": 409
       },
       {
         "type": "FunctionDef",
         "name": "_emit_mission_result",
-        "line": 415
+        "line": 418
       },
       {
         "type": "FunctionDef",
         "name": "_update_status",
-        "line": 423
+        "line": 426
       },
       {
         "type": "FunctionDef",
         "name": "save_mission",
-        "line": 437
+        "line": 440
       },
       {
         "type": "FunctionDef",
         "name": "decompose_mission",
-        "line": 454
+        "line": 457
       },
       {
         "type": "FunctionDef",
         "name": "request_approval",
-        "line": 471
+        "line": 474
       },
       {
         "type": "FunctionDef",
         "name": "handle_approval_decision",
-        "line": 482
+        "line": 488
       },
       {
         "type": "FunctionDef",
         "name": "_sync_state",
-        "line": 495
+        "line": 508
       }
     ],
     "core/autonomy/mission_models.py": [
@@ -11951,8 +12170,13 @@
       },
       {
         "type": "FunctionDef",
-        "name": "create_task",
+        "name": "create_strategic_task",
         "line": 12
+      },
+      {
+        "type": "FunctionDef",
+        "name": "create_task",
+        "line": 28
       }
     ],
     "core/autonomy/task_planner.py": [
@@ -12559,6 +12783,55 @@
         "type": "FunctionDef",
         "name": "export_to_markdown",
         "line": 107
+      }
+    ],
+    "core/contracts/compat.py": [
+      {
+        "type": "FunctionDef",
+        "name": "_utc",
+        "line": 7
+      },
+      {
+        "type": "FunctionDef",
+        "name": "action_payload_to_execution_request",
+        "line": 15
+      },
+      {
+        "type": "FunctionDef",
+        "name": "approval_to_contract",
+        "line": 20
+      },
+      {
+        "type": "FunctionDef",
+        "name": "decision_to_contract",
+        "line": 29
+      },
+      {
+        "type": "FunctionDef",
+        "name": "event_to_contract",
+        "line": 36
+      },
+      {
+        "type": "FunctionDef",
+        "name": "mission_to_contract",
+        "line": 41
+      }
+    ],
+    "core/contracts/mcp.py": [
+      {
+        "type": "FunctionDef",
+        "name": "_read",
+        "line": 23
+      },
+      {
+        "type": "FunctionDef",
+        "name": "tool_definition_to_descriptor",
+        "line": 29
+      },
+      {
+        "type": "FunctionDef",
+        "name": "tool_definitions_to_descriptors",
+        "line": 66
       }
     ],
     "core/development/architecture_validator.py": [
@@ -13191,22 +13464,22 @@
       {
         "type": "FunctionDef",
         "name": "start",
-        "line": 108
+        "line": 112
       },
       {
         "type": "FunctionDef",
         "name": "_run",
-        "line": 114
+        "line": 118
       },
       {
         "type": "FunctionDef",
         "name": "process",
-        "line": 122
+        "line": 126
       },
       {
         "type": "FunctionDef",
         "name": "create_child_event",
-        "line": 137
+        "line": 141
       }
     ],
     "core/evolution/evolution_engine.py": [
@@ -13267,27 +13540,32 @@
       {
         "type": "FunctionDef",
         "name": "__init__",
-        "line": 13
+        "line": 15
+      },
+      {
+        "type": "FunctionDef",
+        "name": "approvals",
+        "line": 19
       },
       {
         "type": "FunctionDef",
         "name": "request_approval",
-        "line": 16
+        "line": 48
       },
       {
         "type": "FunctionDef",
         "name": "approve",
-        "line": 30
+        "line": 52
       },
       {
         "type": "FunctionDef",
         "name": "reject",
-        "line": 35
+        "line": 55
       },
       {
         "type": "FunctionDef",
         "name": "get_pending_approvals",
-        "line": 41
+        "line": 58
       }
     ],
     "core/execution/branch_manager.py": [
@@ -15678,22 +15956,22 @@
       {
         "type": "ClassDef",
         "name": "ImportRewriter",
-        "line": 5
+        "line": 4
       },
       {
         "type": "FunctionDef",
         "name": "__init__",
-        "line": 6
+        "line": 5
       },
       {
         "type": "FunctionDef",
         "name": "rewrite_content",
-        "line": 13
+        "line": 12
       },
       {
         "type": "FunctionDef",
         "name": "update_map",
-        "line": 42
+        "line": 41
       }
     ],
     "core/migration/migration_engine.py": [
@@ -16005,7 +16283,7 @@
       {
         "type": "FunctionDef",
         "name": "stream_event",
-        "line": 6
+        "line": 5
       }
     ],
     "core/observability/execution_journal.py": [
@@ -17325,37 +17603,37 @@
       {
         "type": "ClassDef",
         "name": "CognitiveRepoScanner",
-        "line": 7
-      },
-      {
-        "type": "FunctionDef",
-        "name": "__init__",
         "line": 8
       },
       {
         "type": "FunctionDef",
+        "name": "__init__",
+        "line": 9
+      },
+      {
+        "type": "FunctionDef",
         "name": "scan",
-        "line": 12
+        "line": 13
       },
       {
         "type": "FunctionDef",
         "name": "_analyze_python",
-        "line": 39
+        "line": 47
       },
       {
         "type": "FunctionDef",
         "name": "_analyze_js_ts",
-        "line": 55
+        "line": 63
       },
       {
         "type": "FunctionDef",
         "name": "_analyze_rust",
-        "line": 58
+        "line": 66
       },
       {
         "type": "FunctionDef",
         "name": "_analyze_go",
-        "line": 61
+        "line": 69
       }
     ],
     "core/repository_intelligence/duplicate_detector.py": [
@@ -17963,58 +18241,63 @@
       },
       {
         "type": "FunctionDef",
+        "name": "knowledge_engine",
+        "line": 88
+      },
+      {
+        "type": "FunctionDef",
         "name": "_load_and_init",
-        "line": 87
+        "line": 96
       },
       {
         "type": "FunctionDef",
         "name": "_init_advanced_engines",
-        "line": 100
+        "line": 109
       },
       {
         "type": "FunctionDef",
         "name": "_register",
-        "line": 114
+        "line": 123
       },
       {
         "type": "FunctionDef",
         "name": "_register_advanced_handlers",
-        "line": 127
-      },
-      {
-        "type": "FunctionDef",
-        "name": "_sync_reality",
         "line": 137
       },
       {
         "type": "FunctionDef",
+        "name": "_sync_reality",
+        "line": 147
+      },
+      {
+        "type": "FunctionDef",
         "name": "start_api",
-        "line": 182
+        "line": 192
       },
       {
         "type": "FunctionDef",
         "name": "bootstrap",
-        "line": 191
+        "line": 201
       },
       {
         "type": "FunctionDef",
         "name": "_publish_initial_events",
-        "line": 232
+        "line": 242
       },
       {
         "type": "FunctionDef",
         "name": "shutdown",
-        "line": 262
+        "line": 272
       },
       {
         "type": "FunctionDef",
         "name": "publish_event",
-        "line": 233
+        "line": 243
       },
       {
         "type": "FunctionDef",
         "name": "run",
-        "line": 238
+        "line": 248
       }
     ],
     "core/runtime/runtime_path_validator.py": [
@@ -18205,6 +18488,46 @@
         "type": "FunctionDef",
         "name": "_to_dict",
         "line": 241
+      },
+      {
+        "type": "FunctionDef",
+        "name": "get_execution_request",
+        "line": 255
+      },
+      {
+        "type": "FunctionDef",
+        "name": "record_execution_result",
+        "line": 265
+      },
+      {
+        "type": "FunctionDef",
+        "name": "request_approval",
+        "line": 280
+      },
+      {
+        "type": "FunctionDef",
+        "name": "list_pending_approvals",
+        "line": 289
+      },
+      {
+        "type": "FunctionDef",
+        "name": "approve_approval",
+        "line": 298
+      },
+      {
+        "type": "FunctionDef",
+        "name": "reject_approval",
+        "line": 316
+      },
+      {
+        "type": "FunctionDef",
+        "name": "get_approval",
+        "line": 332
+      },
+      {
+        "type": "FunctionDef",
+        "name": "approve_approval",
+        "line": 347
       }
     ],
     "core/runtime_daemon/daemon.py": [
@@ -18850,19 +19173,34 @@
       {
         "type": "ClassDef",
         "name": "EventStore",
-        "line": 9
+        "line": 10
       },
       {
         "type": "FunctionDef",
         "name": "persist",
-        "line": 11
+        "line": 12
+      },
+      {
+        "type": "FunctionDef",
+        "name": "replay",
+        "line": 37
+      },
+      {
+        "type": "FunctionDef",
+        "name": "get",
+        "line": 53
       }
     ],
     "core/storage/init_db.py": [
       {
         "type": "FunctionDef",
-        "name": "init_database",
+        "name": "_ensure_event_envelope_column",
         "line": 10
+      },
+      {
+        "type": "FunctionDef",
+        "name": "init_database",
+        "line": 20
       }
     ],
     "core/storage/models.py": [
@@ -18874,7 +19212,7 @@
       {
         "type": "ClassDef",
         "name": "ActionRecord",
-        "line": 38
+        "line": 18
       }
     ],
     "core/storage/storage_manager.py": [
@@ -18891,27 +19229,27 @@
       {
         "type": "FunctionDef",
         "name": "_ensure_structure",
-        "line": 38
+        "line": 36
       },
       {
         "type": "FunctionDef",
         "name": "get_path",
-        "line": 64
+        "line": 62
       },
       {
         "type": "FunctionDef",
         "name": "isolate_corrupted",
-        "line": 97
+        "line": 95
       },
       {
         "type": "FunctionDef",
         "name": "save_data",
-        "line": 110
+        "line": 108
       },
       {
         "type": "FunctionDef",
         "name": "read_data",
-        "line": 119
+        "line": 117
       }
     ],
     "core/strategy/architecture_forecaster.py": [
@@ -21306,7 +21644,7 @@
       {
         "type": "FunctionDef",
         "name": "test_loop_cycle",
-        "line": 5
+        "line": 4
       },
       {
         "type": "FunctionDef",
@@ -21436,6 +21774,93 @@
         "type": "FunctionDef",
         "name": "test_execution_feed_dispatch",
         "line": 21
+      }
+    ],
+    "tests/contracts/test_compat.py": [
+      {
+        "type": "FunctionDef",
+        "name": "test_action_payload_adapter",
+        "line": 6
+      },
+      {
+        "type": "FunctionDef",
+        "name": "test_approval_and_decision_adapters",
+        "line": 11
+      },
+      {
+        "type": "FunctionDef",
+        "name": "test_event_adapter",
+        "line": 17
+      },
+      {
+        "type": "FunctionDef",
+        "name": "test_mission_adapter",
+        "line": 23
+      }
+    ],
+    "tests/contracts/test_cross_process_mission.py": [
+      {
+        "type": "FunctionDef",
+        "name": "test_mission_created_in_one_process_is_executed_in_another",
+        "line": 10
+      }
+    ],
+    "tests/contracts/test_event_boundary.py": [
+      {
+        "type": "FunctionDef",
+        "name": "make_event",
+        "line": 7
+      },
+      {
+        "type": "FunctionDef",
+        "name": "test_event_maps_to_complete_public_envelope",
+        "line": 12
+      },
+      {
+        "type": "FunctionDef",
+        "name": "test_event_store_persists_and_replays_complete_envelope",
+        "line": 18
+      }
+    ],
+    "tests/contracts/test_event_bus_boundary.py": [
+      {
+        "type": "FunctionDef",
+        "name": "test_event_bus_persists_complete_envelope_before_dispatch",
+        "line": 7
+      }
+    ],
+    "tests/contracts/test_mcp_tool_descriptor.py": [
+      {
+        "type": "ClassDef",
+        "name": "FakeToolDefinition",
+        "line": 10
+      },
+      {
+        "type": "FunctionDef",
+        "name": "test_mcp_tool_definition_maps_to_public_descriptor_without_importing_mcp",
+        "line": 16
+      },
+      {
+        "type": "FunctionDef",
+        "name": "test_unknown_tool_gets_conservative_default_policy",
+        "line": 37
+      },
+      {
+        "type": "FunctionDef",
+        "name": "test_batch_conversion_preserves_order",
+        "line": 51
+      }
+    ],
+    "tests/contracts/test_queue_boundary.py": [
+      {
+        "type": "FunctionDef",
+        "name": "test_queue_exposes_execution_request_contract",
+        "line": 5
+      },
+      {
+        "type": "FunctionDef",
+        "name": "test_queue_persists_execution_result_contract",
+        "line": 14
       }
     ],
     "tests/daemon/test_daemon_persistence.py": [
@@ -21755,22 +22180,22 @@
       {
         "type": "FunctionDef",
         "name": "test_storage_manager_base_path_override",
-        "line": 29
+        "line": 28
       },
       {
         "type": "FunctionDef",
         "name": "test_path_normalization",
-        "line": 40
+        "line": 38
       },
       {
         "type": "FunctionDef",
         "name": "test_self_healing_isolation",
-        "line": 47
+        "line": 44
       },
       {
         "type": "FunctionDef",
         "name": "test_read_only_fallback",
-        "line": 68
+        "line": 59
       }
     ],
     "tests/integration/test_strategic_orchestration.py": [
@@ -21847,6 +22272,18 @@
         "line": 4
       }
     ],
+    "tests/operational/test_operational_recovery.py": [
+      {
+        "type": "FunctionDef",
+        "name": "test_cognition_persistence_and_restore",
+        "line": 6
+      },
+      {
+        "type": "FunctionDef",
+        "name": "test_interrupted_execution_recovery",
+        "line": 19
+      }
+    ],
     "tests/operational/test_phase37_operational.py": [
       {
         "type": "FunctionDef",
@@ -21857,18 +22294,6 @@
         "type": "FunctionDef",
         "name": "test_telemetry_collection",
         "line": 11
-      }
-    ],
-    "tests/operational/test_recovery.py": [
-      {
-        "type": "FunctionDef",
-        "name": "test_cognition_persistence_and_restore",
-        "line": 6
-      },
-      {
-        "type": "FunctionDef",
-        "name": "test_interrupted_execution_recovery",
-        "line": 19
       }
     ],
     "tests/operational/test_work_queue.py": [
@@ -22302,6 +22727,16 @@
       "value": "invalid non-printable character U+FEFF (<unknown>, line 1)"
     },
     {
+      "file": "tools/audit_file_level.py",
+      "kind": "path_literal",
+      "value": "C:\\ProgramasGodMode\\DGM-MAT')"
+    },
+    {
+      "file": "tools/audit_file_level.py",
+      "kind": "path_literal",
+      "value": "C:\\\\\\\\[A-Za-z0-9_ ._-]+',r'localhost:\\\\d+',r'ws://[^\\"
+    },
+    {
       "file": "tools/controlled_import.py",
       "kind": "path_literal",
       "value": "r:\\n    pass\\n')"
@@ -22317,11 +22752,6 @@
       "value": "T:\\n"
     },
     {
-      "file": "core/storage/storage_manager.py",
-      "kind": "path_literal",
-      "value": "C:\\\\DevopGodMode\\\\runtime"
-    },
-    {
       "file": "tests/ecosystem/test_protection_rules.py",
       "kind": "path_literal",
       "value": "s:\\n  - \\"
@@ -22330,6 +22760,11 @@
       "file": "tests/ecosystem/test_protection_rules.py",
       "kind": "path_literal",
       "value": "s:\\n  - \\"
+    },
+    {
+      "file": "tests/unit/test_persistent_paths.py",
+      "kind": "path_literal",
+      "value": "C:\\\\DevopGodMode location."
     }
   ]
 }

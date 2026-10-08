@@ -1,0 +1,184 @@
+# Runtime Entrypoints
+_Generated: 20260530T191704_
+
+
+## __main__ (46)
+- `core/ecosystem/ecosystem_materializer.py`
+- `core/ecosystem/ecosystem_validator.py`
+- `core/ecosystem/reality_sync_engine.py`
+- `core/migration/migration_engine.py`
+- `core/providers/provider_runtime.py`
+- `core/runtime_daemon/daemon.py`
+- `legacy/tests/test_drift.py`
+- `legacy/tests/test_phase6.py`
+- `legacy/tests/test_phase7.py`
+- `legacy/tests/test_system.py`
+- `main.py`
+- `scan.py`
+- `scripts/autonomous_dry_run.py`
+- `scripts/autostart/autonomous_loop.py`
+- `scripts/autostart/boot_runtime.py`
+- `scripts/autostart/recovery_monitor.py`
+- `scripts/autostart/restore_runtime.py`
+- `scripts/autostart/restore_sessions.py`
+- `scripts/autostart/start_cockpit.py`
+- `scripts/autostart/start_daemon.py`
+- `scripts/autostart/start_dgm_mat.py`
+- `scripts/autostart/start_runtime.py`
+- `scripts/autostart/worker_cluster.py`
+- `scripts/executable_runtime_test.py`
+- `scripts/extract_repo.py`
+- `scripts/generate_validation_reports.py`
+- `scripts/phase35_imports.py`
+- `scripts/phase_finalizer.py`
+- `scripts/repo_bootstrap_interactive.py`
+- `scripts/runtime_smoke_test.py`
+- `scripts/stress_test_memory.py`
+- `scripts/stress_test_providers.py`
+- `scripts/validate_dependencies.py`
+- `scripts/validate_executable.py`
+- `scripts/validate_storage.py`
+- `scripts/verify_cockpit_persistence.py`
+- `scripts/verify_mission_recovery.py`
+- `tests/cockpit/test_cockpit_boot.py`
+- `tests/import_fabric/test_repo_import_validation.py`
+- `tests/integration/test_provider_sync.py`
+- `tools/controlled_import.py`
+- `tools/import_engine.py`
+- `tools/repo_control_panel/app.py`
+- `verify_architecture.py`
+- `verify_cockpit.py`
+- `verify_widgets.py`
+
+## uvicorn (2)
+- `core/api/api_server.py`
+- `scan.py`
+
+## daemon_thread (22)
+- `cockpit/main_window.py`
+- `cockpit/realtime_client.py`
+- `cockpit/widgets/operational_dashboard.py`
+- `core/agents/isolated_runtime.py`
+- `core/agents/watchdog.py`
+- `core/autonomy/scheduler/execution_loop.py`
+- `core/distributed/node_heartbeat.py`
+- `core/event_bus/event_bus.py`
+- `core/governance/resource_monitor.py`
+- `core/knowledge/memory_indexer.py`
+- `core/operator/background_runtime.py`
+- `core/realtime/realtime_broadcast.py`
+- `core/recovery/health_monitor.py`
+- `core/repository_intelligence/repo_watchers.py`
+- `core/runtime/runtime.py`
+- `core/runtime/safe_action_queue.py`
+- `core/runtime_daemon/supervisor.py`
+- `core/runtime_daemon/watchdog.py`
+- `main.py`
+- `scan.py`
+- `scripts/fase_43_6_force_cognition.py`
+- `scripts/fase_43_6_force_cognition_real.py`
+
+## while_true (6)
+- `core/api/api_server.py`
+- `core/api/mobile_bridge.py`
+- `core/api/runtime_api.py`
+- `main.py`
+- `scan.py`
+- `scripts/autostart/recovery_monitor.py`
+
+## bootstrap (14)
+- `core/bootstrap/__init__.py`
+- `core/bootstrap/core/bootstrap_context.py`
+- `core/bootstrap/runtime/bootstrap_engine.py`
+- `core/bootstrap/runtime/bootstrap_sequence.py`
+- `core/lifecycle/bootstrap.py`
+- `core/runtime/health_score.py`
+- `main.py`
+- `scan.py`
+- `scripts/autostart/boot_runtime.py`
+- `scripts/bootstrap_tests/test_bootstrap_logic.py`
+- `scripts/runtime_smoke_test.py`
+- `tests/bootstrap/test_bootstrap_logic.py`
+- `tests/ecosystem/test_protection_rules.py`
+- `tests/unit/test_runtime.py`
+
+## All entrypoints
+- `cockpit/main_window.py` -> daemon_thread
+- `cockpit/realtime_client.py` -> daemon_thread
+- `cockpit/widgets/operational_dashboard.py` -> daemon_thread
+- `core/agents/isolated_runtime.py` -> daemon_thread
+- `core/agents/watchdog.py` -> daemon_thread
+- `core/api/api_server.py` -> uvicorn, while_true
+- `core/api/mobile_bridge.py` -> while_true
+- `core/api/runtime_api.py` -> while_true
+- `core/autonomy/scheduler/execution_loop.py` -> daemon_thread
+- `core/bootstrap/__init__.py` -> bootstrap
+- `core/bootstrap/core/bootstrap_context.py` -> bootstrap
+- `core/bootstrap/runtime/bootstrap_engine.py` -> bootstrap
+- `core/bootstrap/runtime/bootstrap_sequence.py` -> bootstrap
+- `core/distributed/node_heartbeat.py` -> daemon_thread
+- `core/ecosystem/ecosystem_materializer.py` -> __main__
+- `core/ecosystem/ecosystem_validator.py` -> __main__
+- `core/ecosystem/reality_sync_engine.py` -> __main__
+- `core/event_bus/event_bus.py` -> daemon_thread
+- `core/governance/resource_monitor.py` -> daemon_thread
+- `core/knowledge/memory_indexer.py` -> daemon_thread
+- `core/lifecycle/bootstrap.py` -> bootstrap
+- `core/migration/migration_engine.py` -> __main__
+- `core/operator/background_runtime.py` -> daemon_thread
+- `core/providers/provider_runtime.py` -> __main__
+- `core/realtime/realtime_broadcast.py` -> daemon_thread
+- `core/recovery/health_monitor.py` -> daemon_thread
+- `core/repository_intelligence/repo_watchers.py` -> daemon_thread
+- `core/runtime/health_score.py` -> bootstrap
+- `core/runtime/runtime.py` -> daemon_thread
+- `core/runtime/safe_action_queue.py` -> daemon_thread
+- `core/runtime_daemon/daemon.py` -> __main__
+- `core/runtime_daemon/supervisor.py` -> daemon_thread
+- `core/runtime_daemon/watchdog.py` -> daemon_thread
+- `legacy/tests/test_drift.py` -> __main__
+- `legacy/tests/test_phase6.py` -> __main__
+- `legacy/tests/test_phase7.py` -> __main__
+- `legacy/tests/test_system.py` -> __main__
+- `main.py` -> __main__, daemon_thread, while_true, bootstrap
+- `scan.py` -> __main__, uvicorn, daemon_thread, while_true, bootstrap
+- `scripts/autonomous_dry_run.py` -> __main__
+- `scripts/autostart/autonomous_loop.py` -> __main__
+- `scripts/autostart/boot_runtime.py` -> __main__, bootstrap
+- `scripts/autostart/recovery_monitor.py` -> __main__, while_true
+- `scripts/autostart/restore_runtime.py` -> __main__
+- `scripts/autostart/restore_sessions.py` -> __main__
+- `scripts/autostart/start_cockpit.py` -> __main__
+- `scripts/autostart/start_daemon.py` -> __main__
+- `scripts/autostart/start_dgm_mat.py` -> __main__
+- `scripts/autostart/start_runtime.py` -> __main__
+- `scripts/autostart/worker_cluster.py` -> __main__
+- `scripts/bootstrap_tests/test_bootstrap_logic.py` -> bootstrap
+- `scripts/executable_runtime_test.py` -> __main__
+- `scripts/extract_repo.py` -> __main__
+- `scripts/fase_43_6_force_cognition.py` -> daemon_thread
+- `scripts/fase_43_6_force_cognition_real.py` -> daemon_thread
+- `scripts/generate_validation_reports.py` -> __main__
+- `scripts/phase35_imports.py` -> __main__
+- `scripts/phase_finalizer.py` -> __main__
+- `scripts/repo_bootstrap_interactive.py` -> __main__
+- `scripts/runtime_smoke_test.py` -> __main__, bootstrap
+- `scripts/stress_test_memory.py` -> __main__
+- `scripts/stress_test_providers.py` -> __main__
+- `scripts/validate_dependencies.py` -> __main__
+- `scripts/validate_executable.py` -> __main__
+- `scripts/validate_storage.py` -> __main__
+- `scripts/verify_cockpit_persistence.py` -> __main__
+- `scripts/verify_mission_recovery.py` -> __main__
+- `tests/bootstrap/test_bootstrap_logic.py` -> bootstrap
+- `tests/cockpit/test_cockpit_boot.py` -> __main__
+- `tests/ecosystem/test_protection_rules.py` -> bootstrap
+- `tests/import_fabric/test_repo_import_validation.py` -> __main__
+- `tests/integration/test_provider_sync.py` -> __main__
+- `tests/unit/test_runtime.py` -> bootstrap
+- `tools/controlled_import.py` -> __main__
+- `tools/import_engine.py` -> __main__
+- `tools/repo_control_panel/app.py` -> __main__
+- `verify_architecture.py` -> __main__
+- `verify_cockpit.py` -> __main__
+- `verify_widgets.py` -> __main__

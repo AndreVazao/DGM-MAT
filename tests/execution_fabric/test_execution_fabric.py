@@ -9,7 +9,7 @@ def test_execution_state_machine():
     assert esm.history[0]["to"] == ExecutionStatus.VALIDATING
 
 def test_specialization_registry():
-    from core.agents.specialization.specialization_registry import SpecializationRegistry
+    from dgm_mat_agents.specialization.specialization_registry import SpecializationRegistry
     registry = SpecializationRegistry()
     assert "repository" in registry.registry
     assert "analysis" in registry.get_agents_by_role("repository")

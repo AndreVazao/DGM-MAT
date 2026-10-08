@@ -1,0 +1,6516 @@
+[
+  {
+    "file": "tests/import_fabric/test_phase15_16_17_import.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.execution.worktree_manager",
+      "core.execution.branch_manager",
+      "core.execution.execution_engine",
+      "core.execution.execution_context",
+      "core.execution.approval_manager",
+      "core.execution.repair_loop",
+      "core.execution.merge_guard",
+      "core.execution.rollback_engine",
+      "core.execution.execution_models",
+      "core.labs.lab_scanner",
+      "core.labs.pattern_extractor",
+      "core.labs.architecture_analyzer",
+      "core.labs.orchestration_detector",
+      "core.labs.lab_memory",
+      "core.distributed.node_registry",
+      "core.distributed.node_manager",
+      "core.distributed.node_identity",
+      "core.distributed.node_heartbeat",
+      "core.distributed.node_failover",
+      "core.distributed.node_sync",
+      "core.distributed.distributed_memory",
+      "core.distributed.node_state",
+      "core.distributed.node_capabilities",
+      "core.distributed.mesh_models",
+      "core.learning.learning_engine",
+      "core.learning.execution_learning",
+      "core.learning.provider_learning",
+      "core.learning.failure_learning",
+      "core.learning.learning_models",
+      "core.learning.learning_snapshot",
+      "core.learning.prompt_learning",
+      "core.learning.orchestration_learning",
+      "core.learning.specialization_engine",
+      "core.learning.pattern_memory",
+      "core.learning.adaptive_routing",
+      "core.learning.capability_evolution"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/governance_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "shared.models.event",
+      "shared.enums.event_priority",
+      "core.observability.logger",
+      "core.governance.runtime_limits",
+      "core.governance.event_governor",
+      "core.governance.loop_detector",
+      "core.governance.recursion_guard",
+      "core.governance.resource_monitor",
+      "core.governance.memory_controller",
+      "core.governance.execution_throttler",
+      "core.governance.queue_balancer",
+      "core.governance.deadlock_detector",
+      "core.governance.storm_protection",
+      "core.governance.provider_rate_control",
+      "core.governance.workload_scheduler",
+      "core.governance.degradation_controller",
+      "core.governance.self_modification_guard",
+      "core.runtime.runtime_profile"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/main_window.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [
+      "cockpit.widgets.dashboard_widget",
+      "cockpit.widgets.agent_widget",
+      "cockpit.widgets.mission_widget",
+      "cockpit.widgets.command_console",
+      "cockpit.widgets.runtime_health_widget",
+      "cockpit.widgets.event_stream_widget",
+      "cockpit.widgets.execution_feed",
+      "cockpit.widgets.imported_repos_widget",
+      "cockpit.widgets.autonomy_dashboard",
+      "cockpit.widgets.knowledge_graph_widget",
+      "cockpit.widgets.federation_widget",
+      "cockpit.widgets.governance_widget",
+      "cockpit.providers.management_widget",
+      "cockpit.app.websocket_client",
+      "core.observability.logger",
+      "shared.config.settings"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime/runtime.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "shared.models.event",
+      "core.event_bus.event_bus",
+      "core.overseer.overseer",
+      "core.agents.repo_agent",
+      "core.agents.provider_agent",
+      "core.agents.autonomy_agent",
+      "core.runtime.runtime_state_store",
+      "core.runtime.runtime_state_broadcast",
+      "core.runtime_state.runtime_state",
+      "core.observability.logger",
+      "core.runtime.reality_snapshot",
+      "core.runtime.health_score",
+      "core.runtime.safe_action_queue",
+      "core.runtime.runtime_profile",
+      "core.api.api_server"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge/knowledge_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "shared.models.event",
+      "core.knowledge.knowledge_models",
+      "core.knowledge.semantic_graph",
+      "core.knowledge.semantic_memory",
+      "core.knowledge.concept_extractor",
+      "core.knowledge.context_linker",
+      "core.knowledge.relationship_inference",
+      "core.knowledge.memory_indexer",
+      "core.knowledge.semantic_search",
+      "core.knowledge.knowledge_query",
+      "core.knowledge.temporal_memory",
+      "core.knowledge.operational_context",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/api/runtime_api.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.repository_cognition.repo_scanner",
+      "core.autonomy.mission_engine",
+      "core.workspace.workspace_manager",
+      "core.connectors.obsidian_connector",
+      "core.runtime.runtime_state_store",
+      "core.runtime.safe_action_queue",
+      "core.execution.approval_manager",
+      "core.provider_sync.provider_registry",
+      "core.runtime.reality_snapshot",
+      "core.realtime.websocket_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/active_runtime/cognition_loop.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.storage.storage_manager",
+      "core.autonomy.active_runtime.autonomy_cycle",
+      "core.autonomy.active_runtime.strategic_planner",
+      "core.autonomy.active_runtime.objective_engine",
+      "core.autonomy.active_runtime.execution_director",
+      "core.autonomy.active_runtime.learning_loop",
+      "core.autonomy.scheduler.scheduler_engine",
+      "core.repository_cognition.repo_scanner",
+      "core.realtime.realtime_broadcast",
+      "core.autonomy.mission_engine"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/ecosystem_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.cognition.topology_engine",
+      "core.cognition.dependency_mapper",
+      "core.cognition.fragmentation_detector",
+      "core.cognition.convergence_engine",
+      "core.cognition.risk_predictor",
+      "core.cognition.impact_analyzer",
+      "core.cognition.ecosystem_health",
+      "core.cognition.architecture_memory",
+      "core.cognition.cognition_snapshot",
+      "core.observability.logger",
+      "core.cognition.cognition_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/tests/test_phase6.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus",
+      "core.overseer.overseer",
+      "core.self_healing.engine",
+      "core.repository_intelligence.auto_repair",
+      "core.git_engine.git_manager",
+      "core.deployment.manager",
+      "core.health.calculator",
+      "core.cockpit.interface",
+      "core.ecosystem_state.manager",
+      "core.memory.sync"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/bootstrap/runtime/bootstrap_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.bootstrap.core.bootstrap_context",
+      "core.bootstrap.runtime.bootstrap_sequence",
+      "core.bootstrap.core.environment_detector",
+      "core.bootstrap.core.bootstrap_storage",
+      "core.bootstrap.core.dependency_loader",
+      "core.runtime.runtime_state_store",
+      "core.storage.storage_manager",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": [
+      "C:/DevopGodMode",
+      "C:/ProgramasGodMode",
+      "C:/ProgramasGodMode/andreos-memory"
+    ]
+  },
+  {
+    "file": "legacy/tests/test_phase7.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus",
+      "core.ecosystem_state.manager",
+      "core.gap_detection.detector",
+      "core.agents.prompt_intelligence_agent",
+      "core.agents.provider_connector_agent",
+      "core.knowledge_integration.processor",
+      "core.meta_reasoning.orchestrator",
+      "core.memory.engine",
+      "core.agents.base"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/recovery_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.recovery.health_monitor",
+      "core.recovery.crash_classifier",
+      "core.recovery.isolation_engine",
+      "core.recovery.runtime_recovery",
+      "core.recovery.provider_recovery",
+      "core.recovery.repair_chain",
+      "core.recovery.recovery_memory",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/mission_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.autonomy.mission_models",
+      "core.storage.storage_manager",
+      "core.observability.logger",
+      "core.runtime.runtime_state_store",
+      "core.runtime.safe_action_queue",
+      "core.execution.approval_manager",
+      "core.realtime.realtime_broadcast"
+    ],
+    "path_literals": [
+      "C:/DevopGodMode",
+      "C:/ProgramasGodMode"
+    ]
+  },
+  {
+    "file": "core/import_fabric/import_orchestrator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.import_fabric.repo_cloner",
+      "core.import_fabric.repo_classifier",
+      "core.import_fabric.repo_indexer",
+      "core.import_fabric.external_registry",
+      "core.import_fabric.repo_health",
+      "core.import_fabric.dependency_mapper",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/repo_importer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.ecosystem.ecosystem_registry",
+      "core.ecosystem.ecosystem_models",
+      "core.repository_intelligence.repo_classifier",
+      "core.repository_intelligence.tech_detector",
+      "core.repository_intelligence.github_client",
+      "core.execution.git_utils"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/bootstrap/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.bootstrap.core.bootstrap_context",
+      "core.bootstrap.core.bootstrap_storage",
+      "core.bootstrap.core.dependency_loader",
+      "core.bootstrap.core.environment_detector",
+      "core.bootstrap.runtime.bootstrap_engine",
+      "core.bootstrap.runtime.bootstrap_sequence"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/development_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.development.feature_planner",
+      "core.development.implementation_engine",
+      "core.development.validation_engine",
+      "core.development.execution_fabric",
+      "core.development.development_memory",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/event_bus/event_bus.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "shared.models.event",
+      "shared.enums.event_priority",
+      "core.validation.event_validator",
+      "core.observability.logger",
+      "core.storage.event_store",
+      "core.observability.event_stream"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime/reality_snapshot.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.ecosystem.ecosystem_registry",
+      "core.runtime.safe_action_queue",
+      "core.provider_sync.provider_registry",
+      "core.runtime.runtime_profile",
+      "core.runtime.runtime_path_validator"
+    ],
+    "path_literals": [
+      "C:/DevopGodMode",
+      "C:/ProgramasGodMode"
+    ]
+  },
+  {
+    "file": "core/storage/event_store.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.database",
+      "core.storage.models",
+      "core.storage.init_db",
+      "core.contracts.compat",
+      "shared.models.event",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/strategy_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.strategy.roadmap_engine",
+      "core.strategy.priority_engine",
+      "core.strategy.debt_predictor",
+      "core.strategy.sustainability_engine",
+      "core.strategy.strategy_snapshot",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/tests/test_system.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus",
+      "core.validation.engine",
+      "core.overseer.overseer",
+      "core.agents.base",
+      "core.observability.logger",
+      "core.validation.drift"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/integration/test_governance_sim.py",
+    "role": "tests follow destination",
+    "imports": [
+      "shared.models.event",
+      "core.runtime.runtime",
+      "core.governance.runtime_limits",
+      "core.storage.database",
+      "core.storage.models",
+      "shared.enums.event_priority"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/unit/test_runtime.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.runtime.runtime",
+      "shared.models.event",
+      "core.validation.event_validator",
+      "core.storage.event_store",
+      "core.storage.database",
+      "core.storage.models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tools/import_engine.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.repository_intelligence.repo_importer",
+      "core.repository_intelligence.intelligence_engine",
+      "core.strategy.goal_engine",
+      "core.kernel.live_kernel",
+      "core.observability.logger",
+      "core.repository_intelligence.external_repos"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/operational_dashboard.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [
+      "cockpit.widgets.mission_widget",
+      "cockpit.widgets.agent_widget",
+      "cockpit.widgets.knowledge_feed_widget",
+      "cockpit.approvals.queue_widget",
+      "shared.config.settings"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution_fabric/autonomous_executor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.execution_fabric.worktree_runtime",
+      "core.execution_fabric.execution_supervisor",
+      "core.execution_fabric.safe_patch_engine",
+      "core.execution.approval_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/federation_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.federation.ecosystem_registry",
+      "core.federation.federation_governance",
+      "core.federation.federation_routing",
+      "core.federation.federation_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/cognitive_kernel.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.kernel.kernel_models",
+      "core.kernel.execution_context",
+      "core.observability.logger",
+      "shared.models.event",
+      "core.federation.ecosystem_registry"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/live_kernel.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.repository_intelligence.repo_importer",
+      "core.repository_intelligence.intelligence_engine",
+      "core.strategy.goal_engine",
+      "core.observability.logger",
+      "core.operator.autonomous_operator"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/research_engine.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [
+      "core.research.experimentation_engine",
+      "core.research.sandbox_runtime",
+      "core.research.isolation_controller",
+      "core.research.research_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime/safe_action_queue.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.database",
+      "core.storage.models",
+      "core.storage.init_db",
+      "core.observability.logger",
+      "core.contracts.compat"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime_daemon/daemon.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.runtime_daemon.heartbeat",
+      "core.runtime_daemon.process_registry",
+      "core.runtime_daemon.watchdog",
+      "core.runtime_daemon.supervisor"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/runtime_smoke_test.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [
+      "core.bootstrap",
+      "core.runtime.runtime",
+      "core.observability.logger",
+      "shared.models.event",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/api/api_server.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "shared.config.settings",
+      "core.realtime.websocket_manager",
+      "core.api.runtime_api",
+      "core.api.mobile_bridge"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/autonomous_loop.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.autonomy.scheduler.scheduler_engine",
+      "core.repository_cognition.repo_scanner",
+      "core.autonomy.models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/repo_analysis_pipeline.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.autonomy.models",
+      "core.repository_intelligence.intelligence_engine",
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/architecture_graph.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.cognition.cognition_graph",
+      "core.cognition.cognition_models",
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/ecosystem/ecosystem_registry.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.ecosystem.ecosystem_models",
+      "core.storage.storage_manager",
+      "core.observability.logger",
+      "core.ecosystem.ecosystem_materializer"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/ecosystem/reality_sync_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.ecosystem.ecosystem_registry",
+      "core.ecosystem.ecosystem_models",
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": [
+      "C:/ProgramasGodMode"
+    ]
+  },
+  {
+    "file": "core/execution_fabric/execution_fabric.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.execution_fabric.task_dispatcher",
+      "core.execution_fabric.execution_supervisor",
+      "core.execution_fabric.execution_cycles",
+      "core.execution_fabric.execution_memory"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_mesh/provider_orchestrator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.provider_mesh.consensus_engine",
+      "core.provider_mesh.provider_ranker",
+      "core.provider_sync.provider_registry"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/intelligence_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.ecosystem.ecosystem_registry",
+      "core.ecosystem.ecosystem_models",
+      "core.observability.logger",
+      "core.repository_intelligence.external_repos"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/repo_federation.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger",
+      "core.ecosystem.ecosystem_registry",
+      "core.ecosystem.ecosystem_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/scanner.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.repository_intelligence.models",
+      "core.repository_intelligence.tech_detector",
+      "core.repository_intelligence.repo_classifier",
+      "core.observability.logger"
+    ],
+    "path_literals": [
+      "C:/ProgramasGodMode"
+    ]
+  },
+  {
+    "file": "core/self_evolution/evolution_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.self_evolution.patch_candidate_generator",
+      "core.self_evolution.safety_validator",
+      "core.self_evolution.sandbox_runner"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/workspace/workspace_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.workspace.workspace_graph",
+      "core.workspace.project_identity",
+      "core.workspace.semantic_project_mapper"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/agents/memory_sync_agent.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.agents.base",
+      "core.event_bus.bus",
+      "core.memory.engine",
+      "core.memory.sync"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/autostart/start_daemon.py",
+    "role": "DGM-MAT-Deploy / DGM-MAT-OS",
+    "imports": [
+      "core.autonomy.active_runtime.cognition_loop",
+      "core.runtime.safe_action_queue",
+      "core.observability.logger",
+      "core.observability.trace_utils"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/fase_43_6_force_cognition.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [
+      "core.observability.logger",
+      "core.autonomy.mission_engine",
+      "core.runtime.safe_action_queue",
+      "core.autonomy.active_runtime.cognition_loop"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/phase_finalizer.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.federation.ecosystem_registry",
+      "core.kernel.cognitive_kernel",
+      "core.strategy.strategic_memory"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/stress_test_providers.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [
+      "core.providers.performance.provider_routing_engine",
+      "core.providers.chatgpt.chatgpt_provider",
+      "core.providers.claude.claude_provider",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/autonomy/test_phase37_logic.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.autonomy.active_runtime.cognition_loop",
+      "core.planning.roadmap_engine",
+      "core.model_router.routing_engine",
+      "core.self_evolution.safety_validator"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/import_fabric/test_import_intelligence_v7.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.repository_intelligence.repo_importer",
+      "core.repository_intelligence.intelligence_engine",
+      "core.strategy.goal_engine",
+      "core.kernel.live_kernel"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/import_fabric/test_repo_importer.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.repository_intelligence.repo_importer",
+      "core.ecosystem.ecosystem_registry",
+      "core.ecosystem.ecosystem_models",
+      "core.repository_intelligence.repo_classifier"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/integration/test_ecosystem.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.ecosystem.ecosystem_models",
+      "core.ecosystem.ecosystem_registry",
+      "core.ecosystem.ecosystem_lifecycle",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/integration/test_ecosystem_materializer.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.ecosystem.ecosystem_registry",
+      "core.ecosystem.ecosystem_validator",
+      "core.ecosystem.ecosystem_materializer",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/integration/test_repository_intelligence.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.repository_intelligence.tech_detector",
+      "core.repository_intelligence.repo_classifier",
+      "core.repository_intelligence.models",
+      "core.repository_intelligence.duplicate_detector"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/operational/test_cockpit_mission_trace.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.api.api_server",
+      "core.runtime.runtime_state_store",
+      "core.autonomy.mission_engine",
+      "core.runtime.safe_action_queue"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/test_phase35_autonomy.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.autonomy.self_improvement_planner",
+      "core.autonomy.task_generator",
+      "core.autonomy.priority_engine",
+      "core.autonomy.models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tools/controlled_import.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.observability.logger",
+      "core.ecosystem.ecosystem_registry",
+      "core.ecosystem.ecosystem_models",
+      "core.repository_intelligence.tech_detector"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/providers/management_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [
+      "core.provider_sync.provider_registry",
+      "core.security.vault",
+      "shared.config.settings"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/runtime_health_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [
+      "core.runtime.reality_snapshot",
+      "core.runtime.health_score",
+      "core.runtime.safe_action_queue"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/autonomy_agent.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "shared.models.event",
+      "core.agents.base_agent",
+      "core.autonomy.task_engine"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/provider_agent.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "shared.models.event",
+      "core.agents.base_agent",
+      "core.providers.provider_runtime"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomous_dev/autonomous_dev_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.autonomous_dev.task_generator",
+      "core.autonomous_dev.roadmap_executor"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/scheduler/execution_loop.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.autonomy.scheduler.task_queue",
+      "core.autonomy.scheduler.retry_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/self_improvement_planner.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger",
+      "core.cognition.cognitive_analysis_engine"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/task_planner.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.autonomy.models",
+      "core.autonomy.priority_engine",
+      "core.autonomy.worker_allocator"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/cognitive_analysis_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger",
+      "core.repository_intelligence.repo_federation"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/ecosystem/ecosystem_lifecycle.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.ecosystem.ecosystem_models",
+      "core.ecosystem.ecosystem_registry",
+      "core.ecosystem.ecosystem_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/ecosystem/ecosystem_materializer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.ecosystem.ecosystem_registry",
+      "core.ecosystem.ecosystem_validator"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/ecosystem/safe_import_system.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.ecosystem.ecosystem_registry",
+      "core.ecosystem.ecosystem_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/event_governor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "shared.models.event",
+      "core.observability.logger",
+      "core.governance.runtime_limits"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge/semantic_memory.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.knowledge.knowledge_models",
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge/semantic_search.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.knowledge.knowledge_models",
+      "core.knowledge.memory_indexer",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge_graph/memory_consolidator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.memory.consolidation_engine",
+      "core.knowledge_graph.graph_store"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/observability/event_stream.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.contracts.compat",
+      "shared.models.event",
+      "core.realtime.realtime_broadcast"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/autonomous_operator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.operator.autonomous_scheduler",
+      "core.operator.task_daemon"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/background_runtime.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.operator.autonomous_operator",
+      "core.observability.logger",
+      "core.operator.task_daemon"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_memory/relationship_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.provider_memory.models",
+      "core.provider_memory.project_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_sync/provider_memory_sync.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.operator.provider_sync",
+      "core.provider_sync.provider_health"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_sync/provider_registry.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger",
+      "core.providers.base.provider_base"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/browser/recovery_connectors.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.browser.browser_manager",
+      "core.observability.logger",
+      "core.security.vault"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/chatgpt/chatgpt_provider.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.providers.browser.browser_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/conversation_memory.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.memory.memory_store",
+      "core.memory.models",
+      "core.providers.models.conversation"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/knowledge_normalizer.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger",
+      "core.providers.models.conversation"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/performance/health_monitor.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.provider_sync.provider_registry",
+      "core.observability.logger",
+      "core.realtime.realtime_broadcast"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/performance/provider_routing_engine.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger",
+      "core.providers.performance.provider_capability_matrix"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/operational_feed.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.autonomy.models",
+      "core.realtime.realtime_broadcast",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/sandbox/isolated_runtime.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.execution_fabric.worktree_runtime",
+      "core.sandbox.execution_limits"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/storage/init_db.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.database",
+      "core.storage.models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/goal_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.ecosystem.ecosystem_models",
+      "core.repository_intelligence.repo_importer",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/agents/prompt_intelligence_agent.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.agents.base",
+      "core.event_bus.bus",
+      "core.prompt_intelligence.generator"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/tests/test_drift.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus",
+      "core.validation.drift",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/autostart/restore_sessions.py",
+    "role": "DGM-MAT-Deploy / DGM-MAT-OS",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger",
+      "core.autonomy.mission_engine"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/bootstrap_tests/test_bootstrap_logic.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [
+      "core.bootstrap",
+      "core.bootstrap",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/fase_43_6_force_cognition_real.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [
+      "core.autonomy.active_runtime.cognition_loop",
+      "core.autonomy.mission_engine",
+      "core.runtime.safe_action_queue"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/stress_test_memory.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [
+      "core.memory.memory_engine",
+      "core.memory.consolidation_engine",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/verify_mission_recovery.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [
+      "core.autonomy.mission_engine",
+      "core.autonomy.mission_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/autonomy/test_engines.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.autonomy.task_generator",
+      "core.autonomy.priority_engine",
+      "core.autonomy.models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/autonomy/test_mission_system.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.autonomy.mission_engine",
+      "core.autonomy.mission_models",
+      "core.autonomy.active_runtime.objective_engine"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/contracts/test_compat.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.autonomy.mission_models",
+      "core.contracts.compat",
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/contracts/test_cross_process_mission.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.autonomy.mission_engine",
+      "core.storage.database",
+      "core.storage.models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/contracts/test_event_boundary.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.contracts.compat",
+      "core.storage.event_store",
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/contracts/test_event_bus_boundary.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.event_bus.event_bus",
+      "core.storage.event_store",
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/ecosystem/test_reality_sync.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.ecosystem.reality_sync_engine",
+      "core.ecosystem.ecosystem_registry",
+      "core.ecosystem.ecosystem_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/import_fabric/test_repo_import_validation.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.workspace.workspace_graph",
+      "core.operator.capability_extractor",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/integration/test_knowledge_fabric.py",
+    "role": "tests follow destination",
+    "imports": [
+      "shared.models.event",
+      "core.runtime.runtime",
+      "core.knowledge.knowledge_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/integration/test_research_layer.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.research.research_engine",
+      "core.research.research_models",
+      "core.research.isolation_controller"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/integration/test_strategic_orchestration.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.strategy.strategy_engine",
+      "core.strategy.roadmap_models",
+      "core.strategy.debt_predictor"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/provider_mesh/test_mesh_orchestration.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.provider_mesh.consensus_engine",
+      "core.provider_mesh.provider_ranker",
+      "core.provider_sync.provider_registry"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/test_phase35_cognition.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.cognition.cognitive_analysis_engine",
+      "core.cognition.architecture_graph",
+      "core.cognition.pattern_extractor"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/unit/test_provider_orchestration_new.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.provider_sync.provider_registry",
+      "core.provider_mesh.provider_orchestrator",
+      "core.provider_mesh.capability_router"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/app/app_foundation.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/app/websocket_client.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [
+      "core.observability.logger",
+      "cockpit.streaming.realtime_client"
+    ],
+    "path_literals": [
+      "ws://localhost:8181/ws"
+    ]
+  },
+  {
+    "file": "core/agents/architect_agent.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.agents.base_agent",
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/base_agent.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "shared.models.event",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/debug_agent.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.agents.base_agent",
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/devops_agent.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.agents.base_agent",
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/memory_agent.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.agents.base_agent",
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/refactor_agent.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.agents.base_agent",
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/repo_agent.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.agents.base_agent",
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/research_agent.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.agents.base_agent",
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/runtime_agent.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.agents.base_agent",
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/security_agent.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.agents.base_agent",
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/self_improvement_agent.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.agents.base_agent",
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/ui_agent.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.agents.base_agent",
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/watchdog.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.observability.logger",
+      "core.agents.isolated_runtime"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/api/mobile_bridge.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.realtime.websocket_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/active_runtime/objective_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.autonomy.mission_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/active_runtime/strategic_planner.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.repository_cognition.repo_scanner"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/continuous_runtime/evolution_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.self_evolution.evolution_engine"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/continuous_runtime/lifecycle_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/continuous_runtime/observation_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.repository_cognition.repo_scanner"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/continuous_runtime/runtime_core.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.autonomy.continuous_runtime.lifecycle_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/priority_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.autonomy.models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/scheduler/scheduler_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.autonomy.models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/scheduler/task_queue.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/task_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.autonomy.task_queue",
+      "core.autonomy.task_planner"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/bootstrap/core/bootstrap_storage.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.storage.init_db"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cockpit_runtime/telemetry_stream.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.cockpit_runtime.websocket_runtime"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/architecture_memory.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.cognition.cognition_snapshot",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/cognition_graph.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.cognition.cognition_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/pattern_extractor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/risk_predictor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.cognition.cognition_models",
+      "core.cognition.cognition_graph"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/topology_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.cognition.cognition_models",
+      "core.cognition.cognition_graph"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/implementation_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.development.development_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/ecosystem/ecosystem_validator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.ecosystem.ecosystem_registry",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/evolution_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.evolution.regeneration_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution/execution_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.execution.worktree_manager",
+      "core.execution.branch_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution/worktree_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.execution.git_utils",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution_fabric/branch_orchestrator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.execution.git_utils"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution_fabric/execution_cycles.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.execution_fabric.autonomous_executor"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution_fabric/execution_supervisor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.execution.approval_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution_fabric/task_dispatcher.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.execution_fabric.autonomous_executor"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/fabric/resource_fabric.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.fabric.resource_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/node_registry.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.federation.node_identity",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/degradation_controller.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.governance.governance_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/execution_governor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/execution_throttler.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "shared.enums.event_priority",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/loop_detector.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "shared.models.event",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/memory_controller.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.governance.governance_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/queue_balancer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "shared.models.event",
+      "shared.enums.event_priority"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/resource_monitor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.governance.governance_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/workload_scheduler.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "shared.models.event",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/import_fabric/repo_classifier.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.repository_intelligence.repo_classifier",
+      "core.repository_intelligence.tech_detector"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/import_fabric/repo_cloner.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.execution.git_utils"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/execution_context.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.kernel.kernel_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge/context_linker.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.knowledge.knowledge_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge/knowledge_query.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.knowledge.semantic_graph",
+      "core.knowledge.knowledge_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge/memory_indexer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.knowledge.knowledge_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge/operational_context.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.knowledge.knowledge_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge/relationship_inference.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.knowledge.knowledge_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge/semantic_graph.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.knowledge.knowledge_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/lifecycle/bootstrap.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.storage.init_db"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/memory/code_evolution_memory.py",
+    "role": "DGM-MAT-Memory",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/memory/consolidation_engine.py",
+    "role": "DGM-MAT-Memory",
+    "imports": [
+      "core.observability.logger",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/memory/context_snapshot.py",
+    "role": "DGM-MAT-Memory",
+    "imports": [
+      "core.memory.models",
+      "core.memory.memory_store"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/memory/memory_engine.py",
+    "role": "DGM-MAT-Memory",
+    "imports": [
+      "core.observability.logger",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/memory/memory_manager.py",
+    "role": "DGM-MAT-Memory",
+    "imports": [
+      "core.memory.memory_engine",
+      "core.memory.memory_store"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/memory/memory_store.py",
+    "role": "DGM-MAT-Memory",
+    "imports": [
+      "core.memory.models",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/memory/project_families.py",
+    "role": "DGM-MAT-Memory",
+    "imports": [
+      "core.repository_intelligence.models",
+      "core.memory.repo_similarity"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/model_router/routing_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.model_router.model_registry"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/observability/execution_journal.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/observability/runtime_metrics.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/self_improvement_loop.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.autonomous_dev.technical_debt_engine"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/task_daemon.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.autonomy.task_queue",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/overseer/overseer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "shared.models.event",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/planning/milestone_tracker.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.planning.roadmap_engine"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/planning/roadmap_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/planning/strategic_memory.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_memory/project_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_mesh/capability_router.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.provider_mesh.provider_ranker"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_mesh/provider_ranker.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.provider_sync.provider_registry"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_sync/sync_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/base/provider_base.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.realtime.realtime_broadcast",
+      "core.security.vault"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/claude/claude_provider.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/conversation_sync/ingestion_engine.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.observability.logger",
+      "core.autonomy.task_generator"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/custom/custom_provider.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/deepseek/deepseek_provider.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/gemini/gemini_provider.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/grok/grok_provider.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/ollama/ollama_provider.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/openai/openai_provider.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/openrouter/openrouter_provider.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/openwebui/openwebui_provider.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/poisongpt/poisongpt_provider.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/provider_runtime.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.provider_sync.provider_registry",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/proxima/proxima_bridge.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/qwen/qwen_provider.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/z/z_provider.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.base.provider_base",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/realtime/realtime_broadcast.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.realtime.websocket_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/health_monitor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.recovery.recovery_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/sandbox_runtime.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [
+      "core.research.research_models",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime/runtime_state_broadcast.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.runtime.runtime_state_store",
+      "core.realtime.realtime_broadcast"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime_daemon/heartbeat.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.runtime.runtime_state_store"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime_daemon/watchdog.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.runtime_daemon.heartbeat"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/search/internal_search_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/security/vault.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_evolution/evolution_memory.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/ecosystem_planner.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.federation.ecosystem_registry",
+      "core.federation.federation_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/telemetry/metrics_collector.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/agents/overseer_agent.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.agents.base",
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/agents/provider_connector_agent.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.agents.base",
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/agents/repo_intelligence_agent.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.agents.base",
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/agents/validation_agent.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.agents.base",
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/knowledge_integration/processor.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus",
+      "core.memory.engine"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/observability/logger.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus",
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/repository_intelligence/auto_repair.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus",
+      "core.git_engine.git_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/autonomous_dry_run.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [
+      "core.autonomy.active_runtime.cognition_loop",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/autostart/boot_runtime.py",
+    "role": "DGM-MAT-Deploy / DGM-MAT-OS",
+    "imports": [
+      "core.lifecycle.bootstrap_engine",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/autostart/start_cockpit.py",
+    "role": "DGM-MAT-Deploy / DGM-MAT-OS",
+    "imports": [
+      "cockpit.app",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/autostart/start_runtime.py",
+    "role": "DGM-MAT-Deploy / DGM-MAT-OS",
+    "imports": [
+      "core.observability.logger",
+      "core.observability.trace_utils"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/autostart/worker_cluster.py",
+    "role": "DGM-MAT-Deploy / DGM-MAT-OS",
+    "imports": [
+      "core.agents.base_agent",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/phase35_imports.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [
+      "core.repository_intelligence.repo_importer",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/verify_cockpit_persistence.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [
+      "cockpit.app.app_foundation",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/autonomy/test_continuous_runtime.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.autonomy.continuous_runtime.runtime_core",
+      "core.autonomy.continuous_runtime.cognition_scheduler"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/bootstrap/test_bootstrap_logic.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.bootstrap",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/execution_fabric/test_execution_fabric.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.execution_fabric.execution_state_machine",
+      "core.agents.specialization.specialization_registry"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/execution_fabric/test_execution_logic.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.execution.branch_manager",
+      "core.execution.merge_guard"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/integration/test_federation_layer.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.federation.federation_engine",
+      "core.federation.federation_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/integration/test_provider_sync.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.operator.provider_sync",
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/integration/test_runtime_truth.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.api.api_server",
+      "core.runtime.runtime_state_store"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/knowledge_graph/test_consolidation.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.knowledge_graph.graph_store",
+      "core.knowledge_graph.memory_consolidator"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/operational/test_operational_recovery.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.autonomy.continuous_runtime.lifecycle_manager",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/operational/test_phase37_operational.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.node_runtime.node_identity",
+      "core.telemetry.metrics_collector"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/runtime_daemon/test_daemon.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.runtime_daemon.heartbeat",
+      "core.runtime_daemon.process_registry"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/runtime_daemon/test_recovery.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.runtime_daemon.heartbeat",
+      "core.runtime_daemon.process_registry"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/sandbox/test_sandbox_security.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.sandbox.isolated_runtime",
+      "core.sandbox.execution_limits"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/self_evolution/test_self_analysis.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.self_evolution.self_analysis_engine",
+      "core.self_evolution.architecture_optimizer"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/unit/test_operational_stability.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.knowledge.memory_indexer",
+      "core.repository_cognition.repo_scanner"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/unit/test_provider_registry.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.provider_sync.provider_registry",
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/app/main.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [
+      "cockpit.main_window"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/streaming/realtime_client.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": [
+      "ws://localhost:8181/ws"
+    ]
+  },
+  {
+    "file": "cockpit/widgets/command_console.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/federation_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [
+      "core.federation.ecosystem_registry"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/mission_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/isolated_runtime.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/specialization/adaptive_specialization.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/specialization/agent_profiler.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/specialization/capability_allocator.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/specialization/provider_affinity.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/specialization/runtime_affinity.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/specialization/skill_distribution.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/specialization/specialization_registry.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/specialization/workload_optimizer.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomous_dev/cleanup_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomous_dev/issue_detector.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomous_dev/merge_planner.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomous_dev/roadmap_executor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomous_dev/technical_debt_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/active_runtime/execution_director.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/active_runtime/learning_loop.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/continuous_runtime/adaptive_router.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/continuous_runtime/autonomous_director.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/continuous_runtime/cognition_scheduler.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/continuous_runtime/execution_coordinator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/continuous_runtime/planning_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/continuous_runtime/reflection_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/safe_autonomous_executor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/task_generator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.autonomy.models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/task_queue.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.autonomy.scheduler.task_queue"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/work_queue.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.autonomy.scheduler.task_queue"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/bootstrap/core/dependency_loader.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/bootstrap/core/environment_detector.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cockpit_runtime/cognition_visualizer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.cockpit_runtime.websocket_runtime"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cockpit_runtime/execution_dashboard.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.autonomy.scheduler.task_queue"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cockpit_runtime/live_task_feed.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.cockpit_runtime.websocket_runtime"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cockpit_runtime/realtime_runtime_api.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cockpit_runtime/websocket_runtime.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/cognition_snapshot.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.cognition.cognition_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/dependency_mapper.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.cognition.cognition_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/ecosystem_health.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.cognition.cognition_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/fragmentation_detector.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.cognition.cognition_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/impact_analyzer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.cognition.cognition_graph"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/connectors/obsidian_connector.py",
+    "role": "DGM-MAT-Connectors",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": [
+      "C:/ProgramasGodMode/obsidian-vault"
+    ]
+  },
+  {
+    "file": "core/contracts/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.contracts.compat"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/architecture_validator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.development.development_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/branch_execution.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/code_generation.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.development.development_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/development_memory.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/development_snapshot.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.development.development_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/execution_fabric.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/feature_planner.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.development.development_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/integration_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/merge_preparation.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.development.development_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/refactor_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.development.development_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/repair_execution.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/test_orchestrator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/validation_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.development.development_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/distributed/node_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.distributed.node_registry"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution/approval_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.runtime.safe_action_queue"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution/git_utils.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution_fabric/execution_memory.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution_fabric/execution_recovery.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution_fabric/safe_patch_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution_fabric/validation_pipeline.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution_fabric/worktree_runtime.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/convergence_analyzer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/ecosystem_registry.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.federation.federation_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/federation_governance.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.federation.federation_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/federation_memory.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/federation_routing.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.federation.federation_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/federation_snapshot.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.federation.federation_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/deadlock_detector.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/provider_rate_control.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/recursion_guard.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/resource_governor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/self_modification_guard.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/storm_protection.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/import_fabric/adapter_generator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/import_fabric/dependency_mapper.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.repository_intelligence.tech_detector"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/import_fabric/duplication_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.repository_intelligence.duplicate_detector"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/import_fabric/upstream_tracker.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.execution.git_utils"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/kernel_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.federation.federation_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge/concept_extractor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge/temporal_memory.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.knowledge.knowledge_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge_graph/graph_store.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge_graph/semantic_linker.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/local_runtime/local_executor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/local_runtime/local_task_queue.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.autonomy.scheduler.task_queue"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/local_runtime/process_supervisor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/local_runtime/runtime_watchdog.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.runtime_daemon.watchdog"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/memory/relationship_engine.py",
+    "role": "DGM-MAT-Memory",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/model_router/fallback_router.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/model_router/inference_dispatcher.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/model_router/local_provider_adapter.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/model_router/model_health.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/model_router/model_registry.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/autonomous_scheduler.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/capability_extractor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/conversation_indexer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.provider_sync.conversation_indexer"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/execution_supervisor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/project_classifier.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.repository_intelligence.repo_classifier"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/provider_sync.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.provider_sync.provider_memory_sync"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/repo_consolidator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/planning/capability_gap_detector.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/planning/dependency_planner.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_mesh/consensus_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_mesh/disagreement_detector.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_mesh/latency_router.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_mesh/synthesis_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/conversation_classifier.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.providers.models.conversation"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/local_ai_fabric/ollama_adapter.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/local_ai_fabric/provider_factory.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/model_router.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/performance/provider_affinity_engine.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/performance/provider_benchmark.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/performance/provider_cost_optimizer.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/performance/provider_scoring.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/provider_registry.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.provider_sync.provider_registry"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/session/session_manager.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/crash_classifier.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.recovery.recovery_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/degradation_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/isolation_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/memory_recovery.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/node_recovery.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/orchestration_recovery.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/provider_recovery.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/recovery_memory.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/recovery_snapshot.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.recovery.recovery_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/repair_chain.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/rollback_recovery.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/runtime_recovery.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/service_restarter.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/state_rebuilder.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_cognition/architecture_mapper.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_cognition/repo_scanner.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_cognition/repository_civilizer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/duplicate_detector.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.repository_intelligence.models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/repo_graph.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.repository_intelligence.models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/repo_watchers.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/experiment_memory.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/experiment_snapshot.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [
+      "core.research.research_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/experimentation_engine.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [
+      "core.research.research_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/isolation_controller.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/provider_benchmarking.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [
+      "core.research.benchmark_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime/health_score.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": [
+      "C:/DevopGodMode"
+    ]
+  },
+  {
+    "file": "core/runtime/runtime_path_validator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": [
+      "C:/DevopGodMode/config",
+      "C:/DevopGodMode/runtime",
+      "C:/DevopGodMode/storage",
+      "C:/ProgramasGodMode/andreos-memory"
+    ]
+  },
+  {
+    "file": "core/runtime/runtime_profile.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime/runtime_state_store.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime_daemon/process_registry.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime_daemon/supervisor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/sandbox/execution_journal.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/sandbox/execution_limits.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/sandbox/rollback_runtime.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/sandbox/runtime_replay.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/sandbox/snapshot_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_evolution/architecture_optimizer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_evolution/autonomous_refactorer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_evolution/benchmark_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_evolution/capability_expander.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_evolution/evolution_guardrails.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_evolution/patch_generator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_evolution/promotion_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_evolution/regression_guard.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_evolution/rollback_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_evolution/safety_validator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_evolution/sandbox_runner.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_evolution/self_analysis_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_healing/degraded_mode_router.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/storage/database.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "shared.config.settings"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/storage/models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.database"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/storage/storage_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/debt_predictor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.strategy.roadmap_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/priority_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.strategy.roadmap_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/roadmap_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.strategy.roadmap_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/strategic_memory.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/strategy_snapshot.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.strategy.roadmap_models"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/telemetry/anomaly_metrics.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/telemetry/runtime_profiler.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/update/update_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/validation/event_validator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "shared.models.event"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/workspace/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.workspace.workspace_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "core/workspace/cognitive_filesystem.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": [
+      "C:/ProgramasGodMode"
+    ]
+  },
+  {
+    "file": "core/workspace/workspace_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": [
+      "C:/ProgramasGodMode"
+    ]
+  },
+  {
+    "file": "legacy/core/agents/base.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/cockpit/interface.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/deployment/manager.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/ecosystem_state/manager.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/gap_detection/detector.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/git_engine/git_manager.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/health/calculator.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/memory/sync.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/meta_reasoning/orchestrator.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/observability/metrics.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/overseer/overseer.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/prompt_library/genome.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.memory.engine"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/self_healing/engine.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/validation/drift.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/validation/engine.py",
+    "role": "DGM-MAT root/review",
+    "imports": [
+      "core.event_bus.bus"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/autostart/recovery_monitor.py",
+    "role": "DGM-MAT-Deploy / DGM-MAT-OS",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/autostart/start_dgm_mat.py",
+    "role": "DGM-MAT-Deploy / DGM-MAT-OS",
+    "imports": [
+      "core.observability.trace_utils"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/executable_runtime_test.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/extract_repo.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [
+      "core.autonomous_dev.repository_extractor"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/validate_executable.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [
+      "core.observability.logger"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "shared/config/settings.py",
+    "role": "DGM-Contracts",
+    "imports": [
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "shared/models/event.py",
+    "role": "DGM-Contracts",
+    "imports": [
+      "shared.enums.event_priority"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/autonomous_dev/test_repository_extractor.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.autonomous_dev.repository_extractor"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/autonomy/test_analysis.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.autonomy.repo_analysis_pipeline"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/autonomy/test_degraded_mode.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.self_healing.degraded_mode_router"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/autonomy/test_loop.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.autonomy.autonomous_loop"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/autonomy/test_scheduler.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.autonomy.scheduler.task_queue"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/cockpit/test_cockpit_boot.py",
+    "role": "tests follow destination",
+    "imports": [
+      "cockpit.app"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/cockpit/test_cockpit_sync.py",
+    "role": "tests follow destination",
+    "imports": [
+      "cockpit.app.app_foundation"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/cockpit/test_realtime_integration.py",
+    "role": "tests follow destination",
+    "imports": [
+      "cockpit.main_window"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/contracts/test_mcp_tool_descriptor.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.contracts.mcp"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/contracts/test_queue_boundary.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.runtime.safe_action_queue"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/daemon/test_daemon_persistence.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.runtime_daemon.daemon"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/ecosystem/test_protection_rules.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.workspace.workspace_manager"
+    ],
+    "path_literals": [
+      "C:/ProgramasGodMode/manual_clones/some_repo"
+    ]
+  },
+  {
+    "file": "tests/integration/test_api_endpoints.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.api.api_server"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/integration/test_storage_architecture.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.storage.storage_manager"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/migration/test_engine.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.migration.migration_engine"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/migration/test_rewriter.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.migration.import_rewriter"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/migration/test_scanner.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.migration.dependency_scanner"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/operational/test_master_runtime.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.runtime.runtime"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/operational/test_work_queue.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.autonomy.work_queue"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/platform/test_cognition_survival.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.cognition.cognitive_analysis_engine"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/platform/test_runtime_restoration.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.runtime.runtime"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/provider_sync/test_sync.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.provider_sync.provider_memory_sync"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/repository_cognition/test_civilization.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.repository_cognition.repository_civilizer"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/repository_cognition/test_indexing.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.repository_cognition.architecture_mapper"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/runtime/test_health_breakdown.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.runtime.health_score"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/runtime/test_health_score.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.runtime.health_score"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/runtime/test_reality_diff.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.runtime.reality_diff"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/runtime/test_reality_snapshot.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.runtime.reality_snapshot"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/runtime/test_safe_action_queue.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.runtime.safe_action_queue"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/system/test_repo_scanning.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.repository_cognition.repo_scanner"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/system/test_worktree_execution.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.execution_fabric.worktree_runtime"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/test_phase35_governance.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.governance.execution_governor"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "tests/unit/test_persistent_paths.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.storage.storage_manager"
+    ],
+    "path_literals": [
+      "C:\\\\DevopGodMode location."
+    ]
+  },
+  {
+    "file": "tests/unit/test_vault_security.py",
+    "role": "tests follow destination",
+    "imports": [
+      "core.security.vault"
+    ],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/__init__.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/app/__init__.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/approvals/patch_review.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/approvals/patch_review_ui.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/approvals/queue_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/autonomy/monitor_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/memory/inspector_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/providers/login_form.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/realtime_client.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": [
+      "ws://127.0.0.1:8181/ws"
+    ]
+  },
+  {
+    "file": "cockpit/widgets/activity_stream_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/agent_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/architecture_graph_view.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/autonomous_tasks_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/autonomy_dashboard.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/cognitive_dashboard.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/dashboard_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/duplicate_detection_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/ecosystem_graph_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/event_stream_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/execution_feed.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/execution_queue_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/governance_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/health_graph.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/imported_repos_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/knowledge_feed_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/knowledge_graph_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/learning_dashboard_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/local_execution_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/logs_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/mesh_monitor_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/operational_search_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/project_families_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/provider_conversations_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/research_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/self_improvement_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/strategy_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/tech_debt_dashboard.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/technical_debt_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/widgets/workspace_graph_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/workspace/chat_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/workspace/cognition_graph.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/workspace/execution_timeline_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/workspace/memory_graph.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "cockpit/workspace/task_feed_widget.py",
+    "role": "DGM-Cockpit-Frontend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/specialization/__init__.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/agents/specialization/execution_roles.py",
+    "role": "DGM-MAT-Agents",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomous_dev/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomous_dev/architecture_optimizer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomous_dev/dead_code_detector.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomous_dev/dependency_fixer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomous_dev/repo_refactor_loop.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomous_dev/repository_extractor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomous_dev/self_patch_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomous_dev/task_generator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/active_runtime/autonomy_cycle.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/mission_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/repair_suggester.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/scheduler/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/scheduler/priority_router.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/scheduler/retry_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/autonomy/worker_allocator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/bootstrap/core/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/bootstrap/core/bootstrap_context.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/bootstrap/federation/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/bootstrap/providers/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/bootstrap/runtime/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/bootstrap/runtime/bootstrap_sequence.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/bootstrap/ui/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/cockpit_runtime/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/cockpit_runtime/autonomy_status_api.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/cockpit_runtime/runtime_metrics.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/cognition_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/cognition/convergence_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/connectors/adapters/AIClient2API_adapter.py",
+    "role": "DGM-MAT-Connectors",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/connectors/adapters/gpt4free_adapter.py",
+    "role": "DGM-MAT-Connectors",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/contracts/compat.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/contracts/mcp.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/development/development_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/distributed/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/distributed/distributed_memory.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/distributed/mesh_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/distributed/node_capabilities.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/distributed/node_failover.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/distributed/node_heartbeat.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/distributed/node_identity.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/distributed/node_registry.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/distributed/node_state.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/distributed/node_sync.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/ecosystem/ecosystem_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/abstraction_optimizer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/adaptive_patterns.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/architecture_mutation.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/convergence_optimizer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/degradation_analyzer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/evolution_memory.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/evolution_snapshot.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/mutation_simulator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/orchestration_optimizer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/regeneration_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/regeneration_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/runtime_regenerator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/semantic_refactor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/evolution/structural_forecaster.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution/branch_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution/execution_context.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution/execution_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution/merge_guard.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution/repair_loop.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution/rollback_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution_fabric/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/execution_fabric/execution_state_machine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/fabric/cluster_scheduler.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/fabric/cognition_cluster.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/fabric/distributed_storage.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/fabric/execution_mesh.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/fabric/fabric_governance.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/fabric/fabric_snapshot.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/fabric/federation_resources.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/fabric/node_allocator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/fabric/resource_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/fabric/runtime_sharding.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/fabric/storage_replication.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/fabric/workload_router.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/collaboration_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/ecosystem_bridge.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/ecosystem_identity.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/ecosystem_policy.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/federation_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/federation_scheduler.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/federation_security.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/node_identity.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/shared_knowledge.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/federation/trust_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/governance_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/governance/runtime_limits.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/import_fabric/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/import_fabric/external_registry.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/import_fabric/merge_analyzer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/import_fabric/repo_health.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/import_fabric/repo_indexer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/import_fabric/skill_generator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/adaptive_scheduler.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/cognition_pipeline.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/cognition_router.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/context_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/kernel_governance.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/kernel_memory.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/kernel_orchestrator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/kernel_snapshot.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/kernel_state_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/orchestration_context.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/runtime_awareness.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/kernel/semantic_executor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge/knowledge_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/knowledge_graph/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/labs/__init__.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/labs/architecture_analyzer.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/labs/lab_memory.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/labs/lab_scanner.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/labs/orchestration_detector.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/labs/pattern_extractor.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/learning/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/learning/adaptive_routing.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/learning/capability_evolution.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/learning/execution_learning.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/learning/failure_learning.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/learning/learning_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/learning/learning_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/learning/learning_snapshot.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/learning/orchestration_learning.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/learning/pattern_memory.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/learning/prompt_learning.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/learning/provider_learning.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/learning/specialization_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/local_runtime/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/local_runtime/local_agent_runtime.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/local_runtime/runtime_persistence.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/local_runtime/sandbox_runner.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/local_runtime/terminal_bridge.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/memory/__init__.py",
+    "role": "DGM-MAT-Memory",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/memory/models.py",
+    "role": "DGM-MAT-Memory",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/memory/repo_similarity.py",
+    "role": "DGM-MAT-Memory",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/migration/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/migration/dependency_scanner.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/migration/import_rewriter.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/migration/migration_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/migration/migration_manifest.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/migration/module_classifier.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/migration/module_exporter.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/node_runtime/capability_advertiser.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/node_runtime/node_health.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/node_runtime/node_identity.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/node_runtime/node_registry.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/node_runtime/remote_task_schema.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/observability/logger.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/observability/trace_utils.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/attachment_router.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/env_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/operator/workspace_mapper.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_memory/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_memory/models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_sync/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_sync/conversation_indexer.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/provider_sync/provider_health.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/browser/browser_manager.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/claude/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/conversation_sync/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/custom/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/deepseek/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/gemini/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/grok/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/local_ai_fabric/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/local_ai_fabric/open_webui_adapter.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/models/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/models/conversation.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/ollama/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/openai/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/openrouter/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/performance/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/performance/provider_capability_matrix.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/performance/provider_memory_profiles.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/poisongpt/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/qwen/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/providers/z/__init__.py",
+    "role": "DGM-MAT-Providers",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/realtime/websocket_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/recovery/recovery_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_cognition/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/external_repos.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/github_client.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/repo_classifier.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/tech_detector.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/repository_intelligence/tree_generator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/architecture_lab.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/benchmark_models.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/comparative_analysis.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/experiment_scheduler.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/prototype_engine.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/research_context.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/research_models.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/research/technology_evaluator.py",
+    "role": "DGM-MAT-Labs",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime/reality_diff.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime_daemon/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/runtime_state/runtime_state.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/security/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_evolution/patch_candidate_generator.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_healing/__init__.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/self_healing/runtime_recovery.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/architecture_forecaster.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/convergence_planning.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/execution_strategy.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/milestone_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/objective_tracker.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/planning_context.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/roadmap_models.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/strategic_simulation.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/strategy/sustainability_engine.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/telemetry/execution_analytics.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/telemetry/resource_monitor.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/update/artifact_downloader.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/update/release_checker.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/update/rollback_manager.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/update/safe_updater.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/update/version_registry.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/workspace/attachment_classifier.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/workspace/conversation_linker.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/workspace/duplicate_projects.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/workspace/file_lineage.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/workspace/project_families.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/workspace/project_health.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/workspace/project_identity.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/workspace/repository_relationships.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/workspace/semantic_project_mapper.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/workspace/workspace_context.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "core/workspace/workspace_graph.py",
+    "role": "DGM-Core-Backend",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/agents/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/ecosystem_state/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/event_bus/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/event_bus/bus.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/gap_detection/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/knowledge_integration/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/memory/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/memory/engine.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/meta_reasoning/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/observability/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/overseer/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/prompt_intelligence/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/prompt_intelligence/generator.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/prompt_library/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/providers/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/providers/isolated_session.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/repository_intelligence/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/repository_intelligence/analyzer.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "legacy/core/validation/__init__.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/autostart/__init__.py",
+    "role": "DGM-MAT-Deploy / DGM-MAT-OS",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/autostart/autonomous_loop.py",
+    "role": "DGM-MAT-Deploy / DGM-MAT-OS",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/autostart/restore_runtime.py",
+    "role": "DGM-MAT-Deploy / DGM-MAT-OS",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/generate_validation_reports.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/repo_bootstrap_interactive.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/validate_dependencies.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "scripts/validate_storage.py",
+    "role": "DGM-MAT-Deploy or root tooling",
+    "imports": [],
+    "path_literals": [
+      "C:/..."
+    ]
+  },
+  {
+    "file": "shared/enums/event_priority.py",
+    "role": "DGM-Contracts",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "shared/models/__init__.py",
+    "role": "DGM-Contracts",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "tests/__init__.py",
+    "role": "tests follow destination",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "tests/bootstrap/__init__.py",
+    "role": "tests follow destination",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "tests/execution_fabric/__init__.py",
+    "role": "tests follow destination",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "tests/import_fabric/__init__.py",
+    "role": "tests follow destination",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "tests/integration/__init__.py",
+    "role": "tests follow destination",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "tests/runtime/test_smoke.py",
+    "role": "tests follow destination",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "tests/security/__init__.py",
+    "role": "tests follow destination",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "tests/unit/__init__.py",
+    "role": "tests follow destination",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "tests/unit/test_dependency_integrity.py",
+    "role": "tests follow destination",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "tools/audit_file_level.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": [
+      "ws://[^\\"
+    ]
+  },
+  {
+    "file": "tools/generate_dependency_map.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "tools/repo_control_panel/app.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "tools/repo_control_panel/github_client.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  },
+  {
+    "file": "tools/repo_control_panel/repo_manager.py",
+    "role": "DGM-MAT root/review",
+    "imports": [],
+    "path_literals": []
+  }
+]

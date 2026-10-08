@@ -5,9 +5,9 @@ Gerado automaticamente a partir do código atual.
 ## Estado analisado
 Este é o mapa factual ANTES de qualquer migração física. Não é a arquitetura desejada.
 
-- Ficheiros Python analisados: **774**
-- Módulos detectados: **774**
-- Ligações internas de import: **1015**
+- Ficheiros Python analisados: **784**
+- Módulos detectados: **784**
+- Ligações internas de import: **1037**
 - Diretórios DGM-* embutidos: **15**
 
 ## Topologia por diretório
@@ -69,6 +69,7 @@ Este é o mapa factual ANTES de qualquer migração física. Não é a arquitetu
 - cockpit/main_window.py -> cockpit.widgets.command_console (from_import)
 - cockpit/main_window.py -> cockpit.widgets.dashboard_widget (from_import)
 - cockpit/main_window.py -> cockpit.widgets.event_stream_widget (from_import)
+- cockpit/main_window.py -> cockpit.widgets.execution_feed (from_import)
 - cockpit/main_window.py -> cockpit.widgets.federation_widget (from_import)
 - cockpit/main_window.py -> cockpit.widgets.governance_widget (from_import)
 - cockpit/main_window.py -> cockpit.widgets.imported_repos_widget (from_import)
@@ -141,6 +142,7 @@ Este é o mapa factual ANTES de qualquer migração física. Não é a arquitetu
 - core/api/mobile_bridge.py -> core.realtime.websocket_manager (from_import)
 - core/api/runtime_api.py -> core.autonomy.mission_engine (from_import)
 - core/api/runtime_api.py -> core.connectors.obsidian_connector (from_import)
+- core/api/runtime_api.py -> core.execution.approval_manager (from_import)
 - core/api/runtime_api.py -> core.provider_sync.provider_registry (from_import)
 - core/api/runtime_api.py -> core.realtime.websocket_manager (from_import)
 - core/api/runtime_api.py -> core.repository_cognition.repo_scanner (from_import)
@@ -193,6 +195,7 @@ Este é o mapa factual ANTES de qualquer migração física. Não é a arquitetu
 - core/autonomy/continuous_runtime/runtime_core.py -> core.autonomy.continuous_runtime.lifecycle_manager (from_import)
 - core/autonomy/continuous_runtime/runtime_core.py -> core.observability.logger (from_import)
 - core/autonomy/mission_engine.py -> core.autonomy.mission_models (from_import)
+- core/autonomy/mission_engine.py -> core.execution.approval_manager (from_import)
 - core/autonomy/mission_engine.py -> core.observability.logger (from_import)
 - core/autonomy/mission_engine.py -> core.realtime.realtime_broadcast (from_import)
 - core/autonomy/mission_engine.py -> core.runtime.runtime_state_store (from_import)
@@ -283,6 +286,7 @@ Este é o mapa factual ANTES de qualquer migração física. Não é a arquitetu
 - core/cognition/topology_engine.py -> core.cognition.cognition_graph (from_import)
 - core/cognition/topology_engine.py -> core.cognition.cognition_models (from_import)
 - core/connectors/obsidian_connector.py -> core.observability.logger (from_import)
+- core/contracts/__init__.py -> core.contracts.compat (from_import)
 - core/development/architecture_validator.py -> core.development.development_models (from_import)
 - core/development/branch_execution.py -> core.observability.logger (from_import)
 - core/development/code_generation.py -> core.development.development_models (from_import)
@@ -332,6 +336,7 @@ Este é o mapa factual ANTES de qualquer migração física. Não é a arquitetu
 - core/event_bus/event_bus.py -> shared.models.event (from_import)
 - core/evolution/evolution_engine.py -> core.evolution.regeneration_models (from_import)
 - core/evolution/evolution_engine.py -> core.observability.logger (from_import)
+- core/execution/approval_manager.py -> core.runtime.safe_action_queue (from_import)
 - core/execution/execution_engine.py -> core.execution.branch_manager (from_import)
 - core/execution/execution_engine.py -> core.execution.worktree_manager (from_import)
 - core/execution/git_utils.py -> core.observability.logger (from_import)
@@ -511,6 +516,7 @@ Este é o mapa factual ANTES de qualquer migração física. Não é a arquitetu
 - core/model_router/model_registry.py -> core.observability.logger (from_import)
 - core/model_router/routing_engine.py -> core.model_router.model_registry (from_import)
 - core/model_router/routing_engine.py -> core.observability.logger (from_import)
+- core/observability/event_stream.py -> core.contracts.compat (from_import)
 - core/observability/event_stream.py -> core.realtime.realtime_broadcast (from_import)
 - core/observability/event_stream.py -> shared.models.event (from_import)
 - core/observability/execution_journal.py -> core.observability.logger (from_import)
@@ -722,6 +728,7 @@ Este é o mapa factual ANTES de qualquer migração física. Não é a arquitetu
 - core/runtime/runtime_state_broadcast.py -> core.realtime.realtime_broadcast (from_import)
 - core/runtime/runtime_state_broadcast.py -> core.runtime.runtime_state_store (from_import)
 - core/runtime/runtime_state_store.py -> core.observability.logger (from_import)
+- core/runtime/safe_action_queue.py -> core.contracts.compat (from_import)
 - core/runtime/safe_action_queue.py -> core.observability.logger (from_import)
 - core/runtime/safe_action_queue.py -> core.storage.database (from_import)
 - core/runtime/safe_action_queue.py -> core.storage.init_db (from_import)
@@ -769,6 +776,7 @@ Este é o mapa factual ANTES de qualquer migração física. Não é a arquitetu
 - core/self_evolution/self_analysis_engine.py -> core.observability.logger (from_import)
 - core/self_healing/degraded_mode_router.py -> core.observability.logger (from_import)
 - core/storage/database.py -> shared.config.settings (from_import)
+- core/storage/event_store.py -> core.contracts.compat (from_import)
 - core/storage/event_store.py -> core.observability.logger (from_import)
 - core/storage/event_store.py -> core.storage.database (from_import)
 - core/storage/event_store.py -> core.storage.init_db (from_import)
@@ -893,6 +901,20 @@ Este é o mapa factual ANTES de qualquer migração física. Não é a arquitetu
 - tests/cockpit/test_cockpit_boot.py -> cockpit.app (from_import)
 - tests/cockpit/test_cockpit_sync.py -> cockpit.app.app_foundation (from_import)
 - tests/cockpit/test_realtime_integration.py -> cockpit.main_window (from_import)
+- tests/contracts/test_compat.py -> core.autonomy.mission_models (from_import)
+- tests/contracts/test_compat.py -> core.contracts.compat (from_import)
+- tests/contracts/test_compat.py -> shared.models.event (from_import)
+- tests/contracts/test_cross_process_mission.py -> core.autonomy.mission_engine (from_import)
+- tests/contracts/test_cross_process_mission.py -> core.storage.database (from_import)
+- tests/contracts/test_cross_process_mission.py -> core.storage.models (from_import)
+- tests/contracts/test_event_boundary.py -> core.contracts.compat (from_import)
+- tests/contracts/test_event_boundary.py -> core.storage.event_store (from_import)
+- tests/contracts/test_event_boundary.py -> shared.models.event (from_import)
+- tests/contracts/test_event_bus_boundary.py -> core.event_bus.event_bus (from_import)
+- tests/contracts/test_event_bus_boundary.py -> core.storage.event_store (from_import)
+- tests/contracts/test_event_bus_boundary.py -> shared.models.event (from_import)
+- tests/contracts/test_mcp_tool_descriptor.py -> core.contracts.mcp (from_import)
+- tests/contracts/test_queue_boundary.py -> core.runtime.safe_action_queue (from_import)
 - tests/daemon/test_daemon_persistence.py -> core.runtime_daemon.daemon (from_import)
 - tests/ecosystem/test_protection_rules.py -> core.workspace.workspace_manager (from_import)
 - tests/ecosystem/test_reality_sync.py -> core.ecosystem.ecosystem_models (from_import)
@@ -994,10 +1016,10 @@ Este é o mapa factual ANTES de qualquer migração física. Não é a arquitetu
 - tests/operational/test_cockpit_mission_trace.py -> core.runtime.runtime_state_store (from_import)
 - tests/operational/test_cockpit_mission_trace.py -> core.runtime.safe_action_queue (from_import)
 - tests/operational/test_master_runtime.py -> core.runtime.runtime (from_import)
+- tests/operational/test_operational_recovery.py -> core.autonomy.continuous_runtime.lifecycle_manager (from_import)
+- tests/operational/test_operational_recovery.py -> core.storage.storage_manager (from_import)
 - tests/operational/test_phase37_operational.py -> core.node_runtime.node_identity (from_import)
 - tests/operational/test_phase37_operational.py -> core.telemetry.metrics_collector (from_import)
-- tests/operational/test_recovery.py -> core.autonomy.continuous_runtime.lifecycle_manager (from_import)
-- tests/operational/test_recovery.py -> core.storage.storage_manager (from_import)
 - tests/operational/test_work_queue.py -> core.autonomy.work_queue (from_import)
 - tests/platform/test_cognition_survival.py -> core.cognition.cognitive_analysis_engine (from_import)
 - tests/platform/test_runtime_restoration.py -> core.runtime.runtime (from_import)
@@ -1075,21 +1097,21 @@ Este é o mapa factual ANTES de qualquer migração física. Não é a arquitetu
 ## Dependências externas
 
 - PySide6 — 54 ficheiros
-- __future__ — 1 ficheiros
+- __future__ — 4 ficheiros
 - abc — 1 ficheiros
 - argparse — 4 ficheiros
-- ast — 7 ficheiros
-- astor — 1 ficheiros
+- ast — 8 ficheiros
 - asyncio — 24 ficheiros
 - base64 — 1 ficheiros
-- collections — 4 ficheiros
+- collections — 5 ficheiros
 - concurrent — 2 ficheiros
 - contextlib — 1 ficheiros
 - core — 1 ficheiros
 - cryptography — 1 ficheiros
-- dataclasses — 12 ficheiros
-- datetime — 82 ficheiros
+- dataclasses — 13 ficheiros
+- datetime — 84 ficheiros
 - dependency_scanner — 1 ficheiros
+- dgm_contracts — 4 ficheiros
 - difflib — 2 ficheiros
 - enum — 20 ficheiros
 - fastapi — 8 ficheiros
@@ -1099,7 +1121,7 @@ Este é o mapa factual ANTES de qualquer migração física. Não é a arquitetu
 - importlib — 6 ficheiros
 - ingestion_engine — 1 ficheiros
 - inspect — 1 ficheiros
-- json — 94 ficheiros
+- json — 95 ficheiros
 - logging — 1 ficheiros
 - loguru — 1 ficheiros
 - migration_manifest — 4 ficheiros
@@ -1108,32 +1130,32 @@ Este é o mapa factual ANTES de qualquer migração física. Não é a arquitetu
 - networkx — 6 ficheiros
 - ollama_adapter — 1 ficheiros
 - open_webui_adapter — 1 ficheiros
-- os — 87 ficheiros
+- os — 88 ficheiros
 - pathlib — 109 ficheiros
 - platform — 2 ficheiros
 - playwright — 2 ficheiros
 - psutil — 13 ficheiros
 - pydantic — 35 ficheiros
-- pytest — 66 ficheiros
+- pytest — 65 ficheiros
 - queue — 3 ficheiros
 - random — 1 ficheiros
-- re — 5 ficheiros
+- re — 6 ficheiros
 - requests — 9 ficheiros
 - shlex — 2 ficheiros
 - shutil — 9 ficheiros
-- signal — 4 ficheiros
+- signal — 3 ficheiros
 - socket — 3 ficheiros
 - sqlalchemy — 3 ficheiros
-- sqlite3 — 4 ficheiros
-- subprocess — 22 ficheiros
-- sys — 32 ficheiros
+- sqlite3 — 3 ficheiros
+- subprocess — 23 ficheiros
+- sys — 33 ficheiros
 - tempfile — 2 ficheiros
 - threading — 27 ficheiros
-- time — 58 ficheiros
+- time — 59 ficheiros
 - traceback — 4 ficheiros
-- typing — 269 ficheiros
+- typing — 271 ficheiros
 - urllib — 3 ficheiros
-- uuid — 11 ficheiros
+- uuid — 14 ficheiros
 - uvicorn — 2 ficheiros
 - websocket — 1 ficheiros
 - websockets — 1 ficheiros
