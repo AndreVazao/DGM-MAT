@@ -172,3 +172,13 @@ The mobile UX must not change when the underlying PC becomes stronger.
 - Context travels with code.
 - Vercel discovers; Tailscale transports; DGM-MAT executes.
 - Local LLM is optional capability, not a single point of failure.
+
+## Governed execution bridge
+
+Operational intents detected by the mobile conversation layer can now become DGM-MAT missions when they are non-destructive and do not require approval.
+
+Flow:
+
+message -> intent -> governed mission -> SafeActionQueue -> orchestrator
+
+Deployment, destructive and other approval-bound intents are not auto-approved by the mobile layer.
