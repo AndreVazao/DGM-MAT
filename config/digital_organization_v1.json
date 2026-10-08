@@ -1,0 +1,81 @@
+{
+  "identity": {
+    "name": "DGM-MAT",
+    "expansion": "DevOps God Mode Multi-Agent Tool",
+    "operating_model": "Digital Engineering Organization"
+  },
+  "principles": [
+    "stability_over_features",
+    "reality_over_assumptions",
+    "manual_control_over_destructive_automation",
+    "context_travels_with_code",
+    "evidence_before_consequence"
+  ],
+  "departments": [
+    {
+      "id": "hq",
+      "name": "DGM-MAT HQ",
+      "mission": "Orchestration, governance, mission control and integration"
+    },
+    {
+      "id": "engineering",
+      "name": "Engineering",
+      "mission": "Software architecture and implementation",
+      "specialties": ["python", "javascript", "typescript", "backend", "frontend", "database", "architecture"]
+    },
+    {
+      "id": "qa",
+      "name": "Quality Assurance",
+      "mission": "Independent verification and regression prevention"
+    },
+    {
+      "id": "bug-hunters",
+      "name": "Bug Hunters",
+      "mission": "Independent failure discovery and diagnosis"
+    },
+    {
+      "id": "devops",
+      "name": "DevOps",
+      "mission": "Build, CI/CD, deployment, release and rollback"
+    },
+    {
+      "id": "research",
+      "name": "Research",
+      "mission": "Evidence-based technical research and feasibility"
+    },
+    {
+      "id": "conversation-intelligence",
+      "name": "Conversation Intelligence",
+      "mission": "Recover, contextualize and relate AI conversations and code"
+    },
+    {
+      "id": "ai-liaison",
+      "name": "AI Provider Liaison",
+      "mission": "Provider-specific interaction behind normalized contracts",
+      "providers": ["chatgpt", "claude", "gemini", "grok", "deepseek"]
+    }
+  ],
+  "pilot_agents": [
+    "agent:hq-orchestrator",
+    "agent:python-engineer",
+    "agent:qa",
+    "agent:bug-hunter",
+    "agent:conversation-intelligence",
+    "agent:devops"
+  ],
+  "human_authority": {
+    "owner_role": "director",
+    "approval_required_for": [
+      "secrets_and_credentials",
+      "irreversible_deletion",
+      "destructive_migrations",
+      "production_release_when_policy_requires",
+      "financial_commitments",
+      "consequential_unresolved_ambiguity"
+    ]
+  },
+  "memory": {
+    "source_of_truth": "AndreOS/andreos-memory",
+    "scopes": ["institutional", "project", "agent"]
+  }
+}
