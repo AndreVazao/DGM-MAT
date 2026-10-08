@@ -10,6 +10,7 @@ from .capability_models import (
     RecruitmentStatus,
 )
 from .capability_registry import CapabilityRegistry
+from .capability_scout import CapabilityScout
 from .ecosystem_discovery import (
     DiscoveryMatch,
     DiscoveryReport,
@@ -38,11 +39,11 @@ from .workspace import OrganizationWorkspace
 __all__ = [
     "AgentProfile", "AgentRegistry", "AgentStatus", "bootstrap_registry",
     "CapabilityCandidate", "CapabilityRegistry", "CapabilityRequest",
-    "CapabilitySource", "CapabilityStatus", "Department", "DiscoveryMatch",
-    "DiscoveryReport", "EcosystemDiscovery", "Evidence", "EvolutionProposal",
-    "ForgeResult", "InternalMessageBus", "LocalSourceDiscovery",
-    "Message", "MessagePriority", "OrganizationTaskManager",
-    "OrganizationWorkspace", "OverlapCluster", "RecruitmentDecision",
-    "RecruitmentEngine", "RecruitmentOrder", "RecruitmentStatus", "SkillForge",
-    "Task", "TaskStatus",
+    "CapabilityScout", "CapabilitySource", "CapabilityStatus", "Department",
+    "DiscoveryMatch", "DiscoveryReport", "EcosystemDiscovery", "Evidence",
+    "EvolutionProposal", "ForgeResult", "InternalMessageBus",
+    "LocalSourceDiscovery", "Message", "MessagePriority",
+    "OrganizationTaskManager", "OrganizationWorkspace", "OverlapCluster",
+    "RecruitmentDecision", "RecruitmentEngine", "RecruitmentOrder",
+    "RecruitmentStatus", "SkillForge", "Task", "TaskStatus",
 ]

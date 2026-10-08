@@ -1,3 +1,5 @@
+[Reading 144 lines from start (total: 144 lines, 0 remaining)]
+
 # Path: C:\ProgramasGodMode\DGM-MAT\core\api\mobile_bridge.py
 from __future__ import annotations
 
@@ -10,10 +12,12 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.mobile_runtime import MobileConversationService
+from core.organization import CapabilityScout
 
 
 router = APIRouter(prefix="/mobile", tags=["mobile"])
 service = MobileConversationService()
+capability_scout = CapabilityScout()
 
 
 class ThreadCreateRequest(BaseModel):
@@ -28,6 +32,13 @@ class MessageRequest(BaseModel):
 
 class RenameRequest(BaseModel):
     title: str
+
+
+class CapabilityScoutRequest(BaseModel):
+    capability: str
+    reason: str
+    mission_id: str = "mission:mobile-capability-scout"
+    required_skills: list[str] = []
 
 
 def _tailscale_identity() -> dict:
@@ -142,3 +153,18 @@ def mobile_capabilities():
         "execution_authority": "dgm-mat-pc",
         "cloud_role": "rendezvous-only",
     }
+
+[executed on device: PC-Vazao-Anjos (982eb058-a42c-4897-9732-547f04cb44f0)]
+
+@router.post("/capability-scout")
+def capability_scout_discover(request: CapabilityScoutRequest):
+    capability = request.capability.strip()
+    reason = request.reason.strip()
+    if not capability or not reason:
+        raise HTTPException(status_code=400, detail="Capability and reason are required")
+    return capability_scout.discover(
+        capability,
+        reason,
+        mission_id=request.mission_id,
+        required_skills=request.required_skills,
+    )
