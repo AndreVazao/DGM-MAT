@@ -44,3 +44,30 @@ Implement a pop-up or dedicated tab for "Human-in-the-loop" approval of:
 - **Short-term**: Unified sidebar, interactive agent controls.
 - **Mid-term**: Real-time graph rendering for Knowledge/Ecosystem.
 - **Long-term**: Operational search integration and AI-driven UI suggestions.
+
+## Current State Update — 2026-10-08
+
+The mobile cockpit is now a real DGM-MAT-owned interface in addition to the existing PySide6 desktop cockpit.
+
+### Mobile conversation surface
+
+- DGM-MAT-Mobile provides the PWA.
+- DGM-MAT provides the durable conversation runtime.
+- The UX is continuous conversation rather than isolated command cards.
+- Threads can be created and renamed.
+- First messages can become automatic thread titles.
+- Intent is classified before any governed execution path.
+- Offline messages are queued locally and replayed after reconnect.
+
+### Node transport
+
+- Vercel provides public discovery metadata.
+- Tailscale is the intended private HTTPS transport.
+- DGM-MAT remains the execution authority.
+- The rendezvous heartbeat refreshes every 60 seconds with a 180-second TTL.
+
+### Resource policy
+
+The mobile UI must not depend on local LLM availability. The current PC has ~3 GB RAM, so Ollama is optional and resource-gated.
+
+This supersedes the older cockpit audit that described the UI as only a PySide6 multi-tab surface. PySide6 remains the desktop cockpit; the PWA is the remote/mobile conversation cockpit.

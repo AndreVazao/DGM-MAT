@@ -130,3 +130,19 @@ The normative procedure is defined in docs/DGM-MAT_CONVERSATION_RECOVERY_AND_PRO
 17. RESUME safely from the last idempotent checkpoint after interruption.
 
 **Invariant: context travels with code.** A recovered script without its originating reasoning, provenance, project relationship and later corrections is incomplete engineering evidence.
+
+## Mobile Cockpit Implementation Update — 2026-10-08
+
+The mobile cockpit requirement is now implemented as a DGM-MAT-owned conversation surface.
+
+- UI repository: AndreVazao/DGM-MAT-Mobile
+- Vercel UI project: dgm-mat-mobile
+- Runtime API: DGM-MAT /mobile/*
+- Private transport: Tailscale
+- Discovery: dgm-mat-rendezvous
+- Durable thread state: DGM-MAT runtime storage
+- Persistent engineering memory: AndreOS/andreos-memory
+
+The Vercel mobile shell discovers the current PC endpoint through the minimal public discovery path. Normal conversation content travels directly to the authorized DGM-MAT PC once the Tailscale HTTPS bridge is enabled.
+
+The user experience must remain continuous across mobile and PC: same thread, same context, same intent and same execution authority.
