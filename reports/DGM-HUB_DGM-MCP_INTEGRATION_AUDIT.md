@@ -1,4 +1,3 @@
-[Reading 50 lines from start (total: 50 lines, 0 remaining)]
 
 # DGM-HUB / DGM-MCP INTEGRATION AUDIT
 ## 2026-10-06

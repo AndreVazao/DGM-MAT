@@ -109,7 +109,6 @@ class Runtime:
         subsystems = [
             ("core.cognition.ecosystem_engine", "EcosystemEngine", "ecosystem_engine", "Cognition"),
             ("core.recovery.recovery_engine", "RecoveryEngine", "recovery_engine", "Recovery"),
-            ("core.development.development_engine", "DevelopmentEngine", "development_engine", "Development"),
             ("core.strategy.strategy_engine", "StrategyEngine", "strategy_engine", "Strategy"),
             ("core.research.research_engine", "ResearchEngine", "research_engine", "Research"),
             ("core.federation.federation_engine", "FederationEngine", "federation_engine", "Federation")
@@ -140,8 +139,6 @@ class Runtime:
             ))
         if hasattr(self, 'recovery_engine') and self.recovery_engine:
             self.event_bus.subscribe("recovery.handle", lambda e: self.recovery_engine.handle_crash(e.payload))
-        if hasattr(self, 'development_engine') and self.development_engine:
-            self.event_bus.subscribe("development.request", lambda e: self.development_engine.process_request(e.payload.get("request", "")))
 
     def _sync_reality(self):
         """Captures observed reality and updates Truth State."""
