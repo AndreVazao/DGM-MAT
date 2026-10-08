@@ -182,3 +182,21 @@ Flow:
 message -> intent -> governed mission -> SafeActionQueue -> orchestrator
 
 Deployment, destructive and other approval-bound intents are not auto-approved by the mobile layer.
+
+## Windows startup
+
+The DGM-MAT headless runtime was verified through the real main.py --headless path.
+
+Bootstrap completed, low-memory profile activated correctly, SafeActionQueue started, Uvicorn exposed localhost:8181 and the runtime entered its main loop.
+
+A Windows Startup shortcut was installed:
+
+%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\DGM-MAT Headless.lnk
+
+It launches Python 3.12 pythonw.exe with:
+
+C:\ProgramasGodMode\DGM-MAT\main.py --headless
+
+This ensures that after Windows login the DGM-MAT runtime starts without a visible terminal window.
+
+This does not change BIOS/firmware power-loss behavior: the PC itself still needs to be powered on after an outage unless its firmware is configured for automatic power-on after AC restoration.
