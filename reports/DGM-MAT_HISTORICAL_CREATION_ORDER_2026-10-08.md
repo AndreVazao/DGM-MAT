@@ -223,3 +223,24 @@ A component must be understood in both dimensions before deletion or promotion.
 5. MissionEngine/SafeActionQueue/approval lineage.
 6. Conversation Intelligence and memory lineage.
 7. October 2026 contract consolidation lineage.
+
+## ExecutionFabric / sandbox audit result
+
+The October 2026 structural audit completed the ExecutionFabric -> WorktreeRuntime -> sandbox lineage review.
+
+`core/execution_fabric` had no production callers in the current canonical runtime. Its internal graph was self-contained and its top-level loop was not owned by Runtime, MissionEngine or SafeActionQueue. Several methods were placeholder or internally inconsistent; most notably `AutonomousExecutor` called `create_sandbox()` and `cleanup_sandbox()` on `WorktreeRuntime`, while that class exposes `create_worktree()` / `remove_worktree()` instead.
+
+`core/sandbox` also had no production callers. Its only canonical import dependency was `IsolatedRuntime -> core.execution_fabric.worktree_runtime`. Its tests therefore exercised an obsolete execution generation rather than a live boundary.
+
+The entire unproven execution/sandbox tree and its dedicated tests were quarantined in `DGM-MAT-OS/archive/DGM-MAT-unproven-execution-sandbox-2026-10-08/`. The historical tracked state is preserved from Git, with a recovery payload and README. `FULL-MIRROR` was not touched.
+
+After removing the obsolete test dependency, the canonical regression suite returned green: **178 tests passed, 0 failures** (warnings only).
+
+## Next historical passes
+
+1. ProviderBase health semantics and registry contract.
+2. Runtime/bootstrap lineage.
+3. MissionEngine/SafeActionQueue/approval lineage.
+4. Storage/Event/EventBus lineage.
+5. Conversation Intelligence and memory lineage.
+6. October 2026 contract consolidation lineage.
