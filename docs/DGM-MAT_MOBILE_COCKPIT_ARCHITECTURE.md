@@ -136,6 +136,10 @@ The tailnet currently reports Serve as disabled and provides a one-time administ
 
 The existing dgm-mat-rendezvous service remains the control plane.
 
+The DGM-MAT API now refreshes its rendezvous registration every 60 seconds with a 180-second TTL, so the mobile PWA can discover a live PC without manual IP entry.
+
+The DGM-MAT-Mobile PWA is also linked to a dedicated Vercel project named dgm-mat-mobile with automatic GitHub main deployments. Vercel SSO protection is disabled for this public mobile shell.
+
 A minimal public discovery mode was added for the PWA. It exposes only:
 
 - node identity;
