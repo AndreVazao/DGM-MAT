@@ -4,7 +4,8 @@ from core.contracts.compat import event_to_contract
 from core.storage.event_store import EventStore
 from shared.models.event import Event
 
-def make_event(kind="EVENT_REPLAY_TEST"):
+def make_event(kind=None):
+    kind = kind or f"EVENT_REPLAY_TEST_{uuid4()}"
     return Event(id=str(uuid4()),timestamp=datetime.now(timezone.utc),source="test",target="core",
         event_type=kind,payload={"value":42},ttl=321,ecosystem="test",
         trace_id=str(uuid4()),parent_trace_id="parent-1",depth=2)
