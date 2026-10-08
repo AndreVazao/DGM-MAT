@@ -133,6 +133,26 @@ class BootstrapEngine:
     def _prepare_federation(self):
         self._trace(f"TRACE_IMPORT:core.federation.federation_engine")
         DependencyLoader.validate_dependency("core.federation.federation_engine")
+        try:
+            from core.federation.node_identity import local_node
+            from core.federation.rendezvous_client import RendezvousClient
+            import subprocess
+            endpoint = None
+            try:
+                endpoint = "http://" + subprocess.check_output(["tailscale", "ip", "-4"], text=True, timeout=3).strip() + ":8181"
+            except Exception:
+                pass
+            RendezvousClient().register(
+                node_id=local_node.node_id,
+                node_type=self.context.node_role or "worker",
+                name=local_node.hostname,
+                endpoint=endpoint,
+                capabilities=["api", "cockpit", "filesystem", "git", "conversation-intelligence", "telescope"],
+                version="phase-44",
+            )
+            self._trace("RENDEZVOUS_REGISTERED")
+        except Exception as exc:
+            dgm_logger.warning(f"BootstrapEngine: rendezvous registration unavailable: {exc}")
 
     def _prepare_kernel(self):
         self._trace(f"TRACE_IMPORT:core.kernel.cognitive_kernel")

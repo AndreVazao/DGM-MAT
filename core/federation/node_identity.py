@@ -1,31 +1,44 @@
-import uuid
-import socket
+import json
 import os
+import socket
+import uuid
 from dataclasses import dataclass, field
-from typing import Dict, Any
+from pathlib import Path
+from typing import Any, Dict
+
+IDENTITY_FILE = Path("C:/ProgramasGodMode/DGM-MAT/config/node_identity.json")
+
+
+def _load_or_create_id() -> str:
+    configured = os.getenv("DGM_NODE_ID")
+    if configured:
+        return configured
+    try:
+        if IDENTITY_FILE.exists():
+            data = json.loads(IDENTITY_FILE.read_text(encoding="utf-8"))
+            if data.get("node_id"):
+                return str(data["node_id"])
+    except Exception:
+        pass
+    node_id = str(uuid.uuid4())
+    try:
+        IDENTITY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        IDENTITY_FILE.write_text(json.dumps({"node_id": node_id}, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+    return node_id
+
 
 @dataclass
 class NodeIdentity:
-    """
-    Unique identity for a DGM-MAT node in a federation.
-    Phase 42.3-LITE - Federation Preparation.
-    """
-    node_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    node_id: str = field(default_factory=_load_or_create_id)
     hostname: str = field(default_factory=socket.gethostname)
-    role: str = "worker" # controller, worker, observer
+    role: str = "worker"
     capabilities: Dict[str, Any] = field(default_factory=dict)
     joined_at: float = field(default_factory=lambda: 0.0)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            "node_id": self.node_id,
-            "hostname": self.hostname,
-            "role": self.role,
-            "capabilities": self.capabilities
-        }
+        return {"node_id": self.node_id, "hostname": self.hostname, "role": self.role, "capabilities": self.capabilities}
 
-# Local node identity
-local_node = NodeIdentity(
-    node_id=os.getenv("DGM_NODE_ID", str(uuid.uuid4())),
-    role=os.getenv("DGM_NODE_ROLE", "worker")
-)
+
+local_node = NodeIdentity(role=os.getenv("DGM_NODE_ROLE", "worker"))

@@ -1,0 +1,36 @@
+{
+  "pipeline": [
+    "REQUEST",
+    "DISCOVER",
+    "ASSESS",
+    "SNAPSHOT",
+    "SANDBOX",
+    "ADAPT",
+    "TEST",
+    "REVIEW",
+    "PROMOTE",
+    "REGISTER",
+    "ACTIVATE"
+  ],
+  "source_classes": [
+    "local_project",
+    "dgm_lab",
+    "github_repository",
+    "external_skill",
+    "installed_tool"
+  ],
+  "rules": {
+    "labs_are_reuse_sources_not_runtime_dependencies": true,
+    "never_direct_import_unvalidated_source": true,
+    "preserve_provenance": true,
+    "sandbox_before_execution": true,
+    "human_approval_for_high_risk": true,
+    "human_approval_for_credentials": true,
+    "human_approval_for_destructive_changes": true
+  },
+  "preferred_local_roots": [
+    "C:/ProgramasGodMode/DGM-MAT-Labs",
+    "C:/ProgramasGodMode/godmode-*-skills-lab",
+    "C:/ProgramasGodMode/*-lab"
+  ]
+}
