@@ -11,6 +11,7 @@ from typing import Any
 from .intent import IntentInterpreter
 from .models import IntentResult
 from .store import ConversationStore
+from core.autonomy.mission_engine import mission_engine
 
 
 class MobileConversationService:
@@ -57,9 +58,24 @@ class MobileConversationService:
                 repository=result.repository_hint,
             )
 
+        mission_id = None
+        if result.execution_candidate and not result.requires_approval:
+            mission = mission_engine.create_mission(
+                goal=content,
+                description=result.summary,
+            )
+            mission_id = mission.mission_id
+
         response_text = self._generate_response(thread_id, result)
+        if mission_id:
+            response_text = (
+                f"Percebi. Registei isto como missão {mission_id} e mantive a execução "
+                "dentro da fila governada do DGM-MAT.\n\n"
+                + response_text
+            )
         assistant_metadata = {
             "intent": result.to_dict(),
+            "mission_id": mission_id,
             "source": "dgm-mat-mobile-runtime",
         }
         self.store.append_message(
@@ -72,6 +88,7 @@ class MobileConversationService:
         return {
             "thread": updated.to_dict() if updated else None,
             "intent": result.to_dict(),
+            "mission_id": mission_id,
             "message": response_text,
         }
 

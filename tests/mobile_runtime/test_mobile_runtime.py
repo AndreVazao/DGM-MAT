@@ -1,5 +1,6 @@
 # Path: C:\ProgramasGodMode\DGM-MAT\tests\mobile_runtime\test_mobile_runtime.py
 from pathlib import Path
+from unittest.mock import patch
 
 from core.mobile_runtime.intent import IntentInterpreter
 from core.mobile_runtime.store import ConversationStore
@@ -36,6 +37,9 @@ def test_service_keeps_continuous_conversation(tmp_path: Path):
     store = ConversationStore(tmp_path / "conversations.json")
     service = MobileConversationService(store)
     thread = service.create_thread("Teste")
-    response = service.append_user_message(thread["id"], "Sincroniza a memória")
+    with patch("core.mobile_runtime.service.mission_engine.create_mission") as create_mission:
+        create_mission.return_value.mission_id = "mission_test"
+        response = service.append_user_message(thread["id"], "Sincroniza a memória")
     assert response["intent"]["intent"] == "sync"
+    assert response["mission_id"] == "mission_test"
     assert len(response["thread"]["messages"]) == 2
