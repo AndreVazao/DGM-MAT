@@ -1,5 +1,3 @@
-[Reading 144 lines from start (total: 144 lines, 0 remaining)]
-
 # Path: C:\ProgramasGodMode\DGM-MAT\core\api\mobile_bridge.py
 from __future__ import annotations
 
@@ -153,8 +151,6 @@ def mobile_capabilities():
         "execution_authority": "dgm-mat-pc",
         "cloud_role": "rendezvous-only",
     }
-
-[executed on device: PC-Vazao-Anjos (982eb058-a42c-4897-9732-547f04cb44f0)]
 
 @router.post("/capability-scout")
 def capability_scout_discover(request: CapabilityScoutRequest):
