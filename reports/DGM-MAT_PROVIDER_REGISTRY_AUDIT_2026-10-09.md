@@ -242,3 +242,11 @@ The previous freshness correction normalized /runtime/providers, but /runtime/tr
 - Exact pre-change runtime_api.py and runtime_state_store.py were SHA-256 verified in DGM-MAT-OS archive commit 57a5791; hashes are recorded in the archive README.
 
 This fixes state-export consistency; it does not prove any provider is connected or healthy. Provider registration remains safe-off. No adapter or credential was activated or accessed.
+
+
+### Follow-on read-only call-site audit — 2026-10-09
+
+- ProviderRateControl is constructed by GovernanceEngine, but a source search across core, tests, and scripts found no call site for allow_request(). It is therefore not currently an enforced provider-request rate limit. Do not advertise it as active protection; do not wire it into a request path until the governed provider-service boundary exists.
+- The benchmark/scoring/cost/affinity/memory-profile classes still contain fixed outputs or narrow heuristics. No productive canonical consumers were found for those classes in core/tests/scripts. The capability matrix is imported by ProviderRoutingEngine, but the routing engine's only call site found is the standalone scripts/stress_test_providers.py, which the prior audit found incompatible with current provider interfaces.
+- No files were quarantined or deleted. Existing change-control/security gate remains respected; exact originals are already preserved in DGM-MAT-OS.
+- Provider registration remains safe-off. No live provider request path or credential-bearing adapter was activated.
