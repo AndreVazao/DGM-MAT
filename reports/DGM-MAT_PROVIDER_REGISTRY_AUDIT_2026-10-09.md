@@ -226,3 +226,19 @@ Detailed evidence: `C:\ProgramasGodMode\DGM-MAT-Agent-Reports\2026-10-09-provide
 - PARTIAL: OmniRoute 3.8.51 and Ruflo 3.55.0 report versions/help. OmniRoute warns that its `.env` is inside the installed npm package and may be replaced by an update; the file was not read or changed.
 - NOT YET VALIDATED: longer read-only Claude Code plan-mode/source-review attempts failed to produce a useful final report within their turn/time budgets; no repository files were changed. Treat NIM as a verified short-inference path, but do not yet trust Claude Code as a file-reading/coding subagent. Diagnose tool-use/turn behavior before granting edit permissions.
 - Safety: no credentials displayed or changed; no provider adapters activated; no DGM-MAT source files changed during this retest.
+
+
+### P1 — Stale provider health could leak through general truth/reality exports — FIXED
+
+The previous freshness correction normalized /runtime/providers, but /runtime/truth, /runtime/state, websocket state_update messages, and /runtime/reality could still serialize stale provider health.
+
+**Fix:** DGM-MAT commit f1062e2 (fix: enforce provider freshness across runtime exports), pushed to AndreVazao/DGM-MAT.
+
+- Added core/runtime/provider_freshness.py as the shared freshness contract, retaining the 300-second health-observation threshold.
+- RuntimeStateStore.to_dict() applies freshness to both the top-level provider dictionary and nested reality.providers list. This covers /runtime/truth, /runtime/state, and websocket state broadcasts.
+- /runtime/reality now returns the same freshness-aware serialized reality snapshot.
+- Stale records report effective available=false, healthy=false, status=stale. Unobserved records cannot retain unverified ok/active/degraded status. Original values remain in reported_status, reported_healthy, and reported_available for audit transparency.
+- Focused provider/reality/API/integration tests exited 0. The full pytest suite reached 100% and exited 0 after the final code changes. git diff --check passed; only normal Windows LF/CRLF conversion warnings appeared.
+- Exact pre-change runtime_api.py and runtime_state_store.py were SHA-256 verified in DGM-MAT-OS archive commit 57a5791; hashes are recorded in the archive README.
+
+This fixes state-export consistency; it does not prove any provider is connected or healthy. Provider registration remains safe-off. No adapter or credential was activated or accessed.
