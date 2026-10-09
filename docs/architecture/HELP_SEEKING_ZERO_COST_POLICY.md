@@ -2,7 +2,7 @@
 # DGM-MAT — Help-Seeking and Zero-Cost-by-Default Policy
 
 Date: 2026-10-09
-Status: first deterministic policy primitive implemented and unit-tested; not yet wired into Mission Engine/provider execution.
+Status: deterministic policy primitive implemented; MissionEngine failure-path integration is tested. Global provider/spending enforcement is not yet implemented.
 
 ## Core invariant
 
@@ -53,4 +53,6 @@ Approval to spend is not itself approval to execute an unrelated action. Credent
 
 ## Current limitation / next gate
 
-This is a policy primitive, not yet a global enforcement boundary. It does not call providers, send messages, or alter Mission Engine status. Next work must integrate it into Mission Engine and provider routing, persist decisions and evidence, enforce bounded retries/quarantine, and add end-to-end tests proving that a paid path is never invoked without the explicit cost-specific gate. Do not claim the DGM-MAT as a whole is already protected by this policy until that integration is completed and verified.
+MissionEngine's failure handler now records a persisted `RECOMMENDATION_ONLY` help-seeking record in mission metadata: action, reason, next step, evidence-rich request and `spending_allowed=false`. It preserves the mission's honest `FAILED` state and does not dispatch a message, retry, invoke a provider or spend money. Focused integration tests and the full repository suite passed after this change.
+
+This is not yet a global enforcement boundary. Provider adapters are not all gated by this policy, recommendations are not yet routed to live specialist workers, and there is no end-to-end guarantee across every spend-capable code path. Next work: route recommendations to durable task/help queues; integrate cost/approval preflight at the provider execution boundary; persist attempts and evidence; enforce retry limits/quarantine; and test that paid adapters are never invoked without explicit approval, verified cost and an approved limit. Do not claim platform-wide protection until those gates are implemented and verified.

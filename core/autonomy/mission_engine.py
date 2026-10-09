@@ -14,6 +14,7 @@ from core.runtime.safe_action_queue import SafeActionQueue, ActionStatus
 from core.execution.approval_manager import ApprovalManager
 from core.realtime.realtime_broadcast import safe_broadcast
 from core.organization import CapabilityScout, InternalMessageBus, Message, MessagePriority
+from core.organization.help_seeking import HelpContext, HelpSeekingPolicy
 
 class MissionEngine:
     REPO_SCAN_ROOTS = [Path("C:/ProgramasGodMode"), Path("C:/DevopGodMode")]
@@ -452,6 +453,27 @@ class MissionEngine:
 
     def _finish_mission_failure(self, mission: Mission, exc: Exception) -> Dict[str, Any]:
         output = f"Mission execution failed: {exc}"
+        # Record a truthful, zero-cost next-step recommendation. This is advisory:
+        # no retry, provider call, message dispatch, or spending occurs here.
+        help_context = HelpContext(
+            goal=mission.goal,
+            unknowns=(f"{type(exc).__name__}: {exc}",),
+            attempted_steps=tuple(mission.logs[-5:]),
+            evidence=(f"mission_id={mission.mission_id}", f"exception_type={type(exc).__name__}"),
+            max_attempts_reached=bool(mission.metadata.get("max_attempts_reached", False)),
+        )
+        help_decision = HelpSeekingPolicy.decide(help_context)
+        mission.metadata["help_seeking"] = {
+            "status": "RECOMMENDATION_ONLY",
+            "action": help_decision.action.value,
+            "reason": help_decision.reason,
+            "next_step": help_decision.next_step,
+            "help_request": help_decision.help_request,
+            "spending_allowed": False,
+        }
+        mission.logs.append(
+            f"Help-seeking recommendation recorded ({help_decision.action.value}); no automatic external call or spending performed."
+        )
         started_at = mission.metadata.get("execution_started_at")
         execution_duration = 0.0
         if started_at:
