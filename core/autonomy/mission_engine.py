@@ -15,6 +15,7 @@ from core.execution.approval_manager import ApprovalManager
 from core.realtime.realtime_broadcast import safe_broadcast
 from core.organization import CapabilityScout, InternalMessageBus, Message, MessagePriority
 from core.organization.help_seeking import HelpContext, HelpSeekingPolicy
+from core.organization.specialist_collaboration import SpecialistCollaborationStore
 
 class MissionEngine:
     REPO_SCAN_ROOTS = [Path("C:/ProgramasGodMode"), Path("C:/DevopGodMode")]
@@ -30,6 +31,9 @@ class MissionEngine:
         self.approval_manager = ApprovalManager()
         self.capability_scout = CapabilityScout()
         self.organization_bus = InternalMessageBus()
+        self.collaboration_store = SpecialistCollaborationStore(
+            storage_manager.get_path("tasks") / "specialist_collaborations"
+        )
         self.action_queue = SafeActionQueue()
         self.action_queue.register_handler("MISSION_EXECUTION", self._handle_queue_execution)
         self.timeout_threshold = timedelta(seconds=self.MISSION_EXECUTION_TIMEOUT_SECONDS)
@@ -451,6 +455,73 @@ class MissionEngine:
         dgm_logger.info(f"MISSION_FORCE_COMPLETE: {mission.mission_id}")
         dgm_logger.info(f"MISSION_COMPLETED: {mission.mission_id}")
 
+    def prepare_specialist_collaboration(
+        self,
+        mission_id: str,
+        *,
+        collaborator: str = "Claude Code Free",
+        department: str = "ai-liaison",
+        specialist_role: str = "external specialist reviewer",
+        context: str = "",
+        acceptance_criteria: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Prepare and persist a free-only handoff; never launches an external tool.
+
+        The returned packet can be handed to a legitimate free browser session.
+        Creating it is not provider authorization and performs no network call.
+        """
+        mission = self.active_missions.get(mission_id)
+        if mission is None:
+            raise KeyError(f"Mission not found: {mission_id}")
+
+        help_record = mission.metadata.get("help_seeking", {})
+        safe_context_parts = [mission.description.strip()]
+        if context.strip():
+            safe_context_parts.append(context.strip())
+        if isinstance(help_record, dict) and help_record.get("help_request"):
+            safe_context_parts.append("Existing help request:\n" + str(help_record["help_request"]))
+        packet = self.collaboration_store.create_packet(
+            goal=mission.goal,
+            project=str(mission.metadata.get("project_id", "DGM-MAT")),
+            department=department,
+            specialist_role=specialist_role,
+            collaborator=collaborator,
+            context="\n\n".join(part for part in safe_context_parts if part),
+            known_facts=mission.metadata.get("known_facts", []),
+            attempted_steps=mission.logs[-10:],
+            evidence=[
+                f"mission_id={mission.mission_id}",
+                f"mission_status={mission.status.value}",
+                *( [f"mission_error={mission.error}"] if mission.error else [] ),
+            ],
+            constraints=[
+                "FREE-ONLY; no paid API, subscription, upgrade, or credit spend",
+                "If free capacity is exhausted, stop and wait; never use a paid fallback",
+                "Do not include credentials, cookies, tokens, or private authentication data",
+                "Do not modify DGM-MAT-FULL-MIRROR",
+                "Changes require backup, tests, and independent review before promotion",
+                "Do not expose the backend remotely before global HTTP/WebSocket security is complete",
+            ],
+            acceptance_criteria=acceptance_criteria or [
+                "Return evidence-backed findings and a concrete next step",
+                "Separate facts, assumptions, and unknowns",
+                "Provide tests or a verification plan; do not claim tests that were not run",
+                "Record reusable lessons only after independent validation",
+            ],
+        )
+        mission.metadata["specialist_collaboration"] = {
+            "collaboration_id": packet["collaboration_id"],
+            "status": "PACKET_PREPARED_NO_EXTERNAL_CALL",
+            "collaborator": collaborator,
+            "free_only": True,
+        }
+        mission.logs.append(
+            f"Specialist handoff packet prepared ({packet['collaboration_id']}); no external call or spending performed."
+        )
+        self.save_mission(mission)
+        self._sync_state(mission)
+        return packet
+
     def _finish_mission_failure(self, mission: Mission, exc: Exception) -> Dict[str, Any]:
         output = f"Mission execution failed: {exc}"
         # Record a truthful, zero-cost next-step recommendation. This is advisory:
@@ -471,6 +542,25 @@ class MissionEngine:
             "help_request": help_decision.help_request,
             "spending_allowed": False,
         }
+        # If the mission needs free investigation, prepare a reusable handoff packet.
+        # This is local persistence only: no browser, provider call, or spending occurs.
+        if (
+            help_decision.action.value == "INVESTIGATE_FREE"
+            and "specialist_collaboration" not in mission.metadata
+        ):
+            try:
+                self.active_missions[mission.mission_id] = mission
+                self.prepare_specialist_collaboration(mission.mission_id)
+            except Exception as collaboration_error:
+                # Fail closed without copying potentially sensitive exception text to logs.
+                mission.metadata["specialist_collaboration"] = {
+                    "status": "PACKET_PREPARATION_BLOCKED",
+                    "reason": type(collaboration_error).__name__,
+                    "free_only": True,
+                }
+                mission.logs.append(
+                    "Specialist handoff preparation was blocked; no external call or spending performed."
+                )
         mission.logs.append(
             f"Help-seeking recommendation recorded ({help_decision.action.value}); no automatic external call or spending performed."
         )

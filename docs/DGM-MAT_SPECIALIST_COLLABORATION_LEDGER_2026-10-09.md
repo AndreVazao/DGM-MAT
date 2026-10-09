@@ -46,3 +46,21 @@ Covers persistence/reload, free-quota waiting, untrusted result state, required 
 6. Implement controlled self-improvement workflow: verified backup + SHA-256, isolated branch/sandbox, tests, independent QA/security review and promotion.
 
 Zero-cost policy remains FREE-ONLY / PAID-DENY by default. Never touch `C:\\ProgramasGodMode\\DGM-MAT-FULL-MIRROR`.
+
+
+## MissionEngine handoff integration — 2026-10-09
+
+`MissionEngine.prepare_specialist_collaboration(mission_id, ...)` now creates a packet from a known mission, includes existing help-seeking context and recent mission logs, stores the collaboration ID/status in mission metadata, persists the mission, and returns the free-only packet for an authorized collaborator session. It defaults to Claude Code Free as the suggested external specialist but does not open a browser or make an external call. The mission metadata explicitly states `PACKET_PREPARED_NO_EXTERNAL_CALL`.
+
+Focused integration tests passed. This is now connected to MissionEngine as an explicit callable operation, but is not yet automatically triggered by every failed mission, and no live browser automation/session adapter has been implemented.
+
+
+Verification update: after MissionEngine integration, the focused handoff tests passed and the complete `python -m pytest -q` suite completed with exit code 0 in 60.01 seconds. Existing FastAPI/Starlette deprecation warnings remain unrelated to this change.
+
+
+## Automatic help-seeking handoff — 2026-10-09
+
+When `MissionEngine._finish_mission_failure` records an `INVESTIGATE_FREE` decision and no handoff already exists, it now attempts to prepare a bounded free-only specialist packet automatically. The packet is persisted and its ID/status is attached to mission metadata. If packet preparation fails (including secret-safety rejection or storage problems), the mission records `PACKET_PREPARATION_BLOCKED` without exposing the exception text and without calling any external tool. This remains preparation only: no browser session is opened and no external provider is invoked. Focused tests pass; the complete suite is being rerun after this change.
+
+
+Verification update: after automatic failure handoff was added, the focused tests passed and the complete `python -m pytest -q` suite finished with exit code 0 in 60.65 seconds. `compileall` and `git diff --check` passed for the changed code/tests. Existing FastAPI/Starlette deprecation warnings remain.
