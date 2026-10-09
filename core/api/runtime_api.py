@@ -1,3 +1,5 @@
+# Path: C:\ProgramasGodMode\DGM-MAT\core\api\runtime_api.py
+
 import json
 import os
 import psutil
@@ -108,13 +110,17 @@ def get_memory_status():
 
 def _provider_subsystem_summary(registered: List[str], providers: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Describe registry state without confusing API success with provider health."""
+    observed_providers = [
+        provider for provider in providers
+        if provider.get("availability_observed") is True
+    ]
     reported_available_count = sum(
-        1 for provider in providers if provider.get("available") is True
+        1 for provider in observed_providers if provider.get("available") is True
     )
 
     if not registered:
         state = "empty_registry"
-    elif reported_available_count:
+    elif observed_providers:
         state = "availability_reported"
     else:
         state = "registered_no_availability_reported"
@@ -123,8 +129,9 @@ def _provider_subsystem_summary(registered: List[str], providers: List[Dict[str,
         "state": state,
         "registered_count": len(registered),
         "registered_names": list(registered),
+        "availability_observation_count": len(observed_providers),
         "reported_available_count": reported_available_count,
-        "availability_reported": reported_available_count > 0,
+        "availability_reported": bool(observed_providers),
         "source": "state_store_or_reality_snapshot",
     }
 

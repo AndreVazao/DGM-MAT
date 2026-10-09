@@ -1,3 +1,5 @@
+# Path: C:\ProgramasGodMode\DGM-MAT\core\runtime\reality_snapshot.py
+
 import os
 import psutil
 import time
@@ -116,6 +118,7 @@ class RealitySnapshotService:
             status = "unknown"
             healthy = False
             available = False
+            availability_observed = False
             latency = 0
 
             if provider:
@@ -123,9 +126,14 @@ class RealitySnapshotService:
                     status = "deferred"
                 else:
                     health_data = provider.check_health()
-                    status = health_data.get("status", "unknown")
-                    healthy = status == "ok"
-                    available = provider.is_available()
+                    reported_status = health_data.get("status", "unknown")
+                    last_observation = provider.health_metrics.get("last_check", 0)
+                    availability_observed = bool(last_observation) and reported_status in {
+                        "ok", "degraded", "error"
+                    }
+                    status = reported_status if availability_observed else "unknown"
+                    healthy = availability_observed and status == "ok"
+                    available = availability_observed and provider.is_available()
                     latency = provider.get_avg_latency()
 
             providers_status.append({
@@ -134,6 +142,7 @@ class RealitySnapshotService:
                 "loaded": is_loaded,
                 "healthy": healthy,
                 "available": available,
+                "availability_observed": availability_observed,
                 "status": status,
                 "latency": latency
             })
