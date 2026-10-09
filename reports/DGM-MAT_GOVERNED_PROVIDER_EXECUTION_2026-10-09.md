@@ -1,6 +1,6 @@
 # DGM-MAT Governed Provider Execution Service — 2026-10-09
 
-## Implemented locally — validation passed; publication pending
+## Implemented, tested, and published
 
 - Added `core/provider_sync/governed_provider_service.py`: bounded asynchronous chat-only execution, message/input bounds, timeout, no retries, generic exception codes, response type/size checks, and common credential-pattern redaction.
 - Added `core/provider_sync/durable_provider_approval_store.py`: durable provider approval request helper and conditional database update to claim an approval once.
@@ -17,4 +17,5 @@
 - Rate limiting remains in-memory and process-local.
 - SQLite integration tests cover single-use claims and mismatched fingerprints; configured production database behavior still needs environment-specific validation before high-impact use.
 - Timeout does not guarantee remote provider-side cancellation; no retry is performed to avoid duplicate calls.
-- Focused service and SQLite approval-store tests passed (exit code 0). Full pytest suite passed after final code changes (exit code 0). `git diff --check` and `py_compile` passed. Commit/push and repository synchronization remain pending.
+- Focused service and SQLite approval-store tests passed (exit code 0). Full pytest suite passed after final code changes (exit code 0). `git diff --check` and `py_compile` passed.
+- Published to `AndreVazao/DGM-MAT`, branch `main`, commit `086ca1f8781d66594ffd4d0e20d99ef43c23b017`. Local HEAD matched `origin/main`; working tree was clean immediately after the push.
