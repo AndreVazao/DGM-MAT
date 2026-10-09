@@ -18,6 +18,7 @@ from core.api.runtime_api import router as runtime_router
 from core.api.mobile_bridge import router as mobile_router
 from core.api.governance_api import router as governance_router
 from core.api.provider_execution_api import router as provider_execution_router
+from core.api.local_auth_api import router as local_auth_router
 from core.federation.node_identity import local_node
 from core.federation.rendezvous_client import RendezvousClient
 
@@ -36,6 +37,7 @@ app.include_router(runtime_router)
 app.include_router(mobile_router)
 app.include_router(governance_router)
 app.include_router(provider_execution_router)
+app.include_router(local_auth_router)
 
 
 @app.get("/health")

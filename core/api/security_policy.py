@@ -36,6 +36,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("WS",), "/ws", SecurityScope.LOCAL_CLIENT, "Realtime stream; currently unauthenticated."),
     RouteClassification(("WS",), "/runtime/ws", SecurityScope.LOCAL_CLIENT, "Compatibility realtime stream; currently unauthenticated."),
     RouteClassification(("GET",), "/health", SecurityScope.PUBLIC_HEALTH, "Minimal process health check."),
+    RouteClassification(("POST",), "/auth/session", SecurityScope.OPERATOR, "Loopback-only bootstrap exchange; issues short-lived local session."),
     RouteClassification(("GET",), "/runtime/health", SecurityScope.LOCAL_CLIENT, "Runtime health."),
     RouteClassification(("GET",), "/runtime/status", SecurityScope.LOCAL_CLIENT, "Runtime status and telemetry."),
     RouteClassification(("GET",), "/runtime/state", SecurityScope.LOCAL_CLIENT, "Runtime state snapshot."),
