@@ -15,15 +15,28 @@ class ResourceMonitor:
         self.running = False
         self.snapshot = None
         self.history: List[ResourceSnapshot] = []
-        self.max_history = 300 # 10 minutes at 2s interval
+        self.max_history = 300  # 10 minutes at 2s interval
+        self._stop_event = threading.Event()
+        self._lifecycle_lock = threading.Lock()
+        self.thread = None
 
     def start(self, callback=None):
-        self.running = True
-        self.thread = threading.Thread(target=self._monitor_loop, args=(callback,), daemon=True)
-        self.thread.start()
+        """Start at most one monitor thread; repeated starts are idempotent."""
+        with self._lifecycle_lock:
+            if self.thread is not None and self.thread.is_alive():
+                return
+            self._stop_event.clear()
+            self.running = True
+            self.thread = threading.Thread(
+                target=self._monitor_loop,
+                args=(callback,),
+                name="dgm-resource-monitor",
+                daemon=True,
+            )
+            self.thread.start()
 
     def _monitor_loop(self, callback):
-        while self.running:
+        while self.running and not self._stop_event.is_set():
             try:
                 cpu = psutil.cpu_percent() if psutil else 0.0
                 mem = psutil.virtual_memory().percent if psutil else 0.0
@@ -48,9 +61,11 @@ class ResourceMonitor:
                     callback(self.snapshot)
 
             except Exception as exc:
-                dgm_logger.error(f"ResourceMonitor: Failed to capture metrics: {exc}")
+                if not self._stop_event.is_set():
+                    dgm_logger.error(f"ResourceMonitor: Failed to capture metrics: {exc}")
 
-            time.sleep(self.interval)
+            if self._stop_event.wait(max(0.05, float(self.interval))):
+                break
 
     def _analyze_trends(self, snapshot: ResourceSnapshot):
         """Hardening: Trend analysis (Requirement 6)."""
@@ -76,5 +91,14 @@ class ResourceMonitor:
         if snapshot.active_browsers > 10:
             dgm_logger.warning(f"ResourceMonitor: BROWSER CONTEXT EXPLOSION DETECTED! ({snapshot.active_browsers})")
 
-    def stop(self):
-        self.running = False
+    def stop(self, timeout: float | None = None) -> bool:
+        """Request shutdown and wait for the worker to exit cleanly."""
+        with self._lifecycle_lock:
+            self.running = False
+            self._stop_event.set()
+            thread = self.thread
+        if thread is None or thread is threading.current_thread():
+            return True
+        wait_seconds = timeout if timeout is not None else max(1.0, float(self.interval) + 1.0)
+        thread.join(timeout=max(0.0, wait_seconds))
+        return not thread.is_alive()

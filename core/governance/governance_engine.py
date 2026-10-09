@@ -120,5 +120,9 @@ class GovernanceEngine:
             dgm_logger.error(f"GovernanceEngine: Resource update failure: {exc}")
 
     def shutdown(self):
+        """Stop monitoring before closing logging/runtime resources."""
         self.is_running = False
-        self.executor.shutdown(wait=False)
+        monitor_stopped = self.resource_monitor.stop()
+        if not monitor_stopped:
+            dgm_logger.warning("GovernanceEngine: Resource monitor did not stop within its shutdown timeout.")
+        self.executor.shutdown(wait=True, cancel_futures=True)

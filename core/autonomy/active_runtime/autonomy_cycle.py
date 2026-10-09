@@ -15,8 +15,10 @@ class AutonomyCycle:
         self.metadata = {}
 
     def complete(self):
+        """Close the cycle without erasing a previously recorded failure/blocker."""
         self.end_time = datetime.now()
-        self.status = "COMPLETED"
+        if self.status not in {"FAILED", "PARTIAL", "BLOCKED"}:
+            self.status = "COMPLETED"
 
     def to_dict(self) -> Dict[str, Any]:
         return {

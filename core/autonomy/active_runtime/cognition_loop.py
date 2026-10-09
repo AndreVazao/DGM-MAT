@@ -114,6 +114,16 @@ class CognitionLoop:
             self._broadcast_stage(cid, 6, "VALIDATE")
             validation_results = self.director.validate_execution(task_ids)
             cycle.metadata["validation"] = validation_results
+            cycle.results = [
+                {"task_id": task_id, "status": validation_results.get(task_id, "UNKNOWN")}
+                for task_id in task_ids
+            ]
+            if any(status == "NOT_EXECUTED" for status in validation_results.values()):
+                cycle.status = "PARTIAL"
+                cycle.metadata["execution_boundary"] = (
+                    "Objectives were planned, but no task execution adapter is connected. "
+                    "No objective is reported as completed or validated."
+                )
 
             # 7. REFLECT
             self._broadcast_stage(cid, 7, "REFLECT")
@@ -130,8 +140,14 @@ class CognitionLoop:
             cycle.metadata["self_improvement"] = adjustments
 
             # 10. REPEAT
-            self._broadcast_stage(cid, 10, "COMPLETE")
-            dgm_logger.info(f"CognitionLoop: Cycle {cid} completed successfully.")
+            if cycle.status == "PARTIAL":
+                self._broadcast_stage(cid, 10, "PLANNED — EXECUTION NOT WIRED")
+                dgm_logger.warning(
+                    "CognitionLoop: Cycle %s finished planning only; execution remains pending.", cid
+                )
+            else:
+                self._broadcast_stage(cid, 10, "COMPLETE")
+                dgm_logger.info(f"CognitionLoop: Cycle {cid} completed successfully.")
 
         except Exception as e:
             dgm_logger.error(f"CognitionLoop: Cycle failed during execution: {e}")
