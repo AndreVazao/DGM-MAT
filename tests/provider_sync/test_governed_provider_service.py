@@ -14,9 +14,21 @@ class FakeProvider(ProviderBase):
         super().__init__(name)
         self.health_metrics["last_check"] = 1
         self.health_metrics["status"] = "ok"
+        self.health_metrics["quota_used"] = 0
+        self.health_metrics["quota_limit"] = 10
+        self.capabilities["cost_profile"] = "free"
+        self.config.update({"billing_mode": "free_tier", "cost_verified": True})
         self.calls = 0
         self.response = response
         self.delay = delay
+
+    def reserve_free_quota(self):
+        used = self.health_metrics["quota_used"]
+        limit = self.health_metrics["quota_limit"]
+        if used >= limit:
+            return False
+        self.health_metrics["quota_used"] = used + 1
+        return True
 
     async def chat(self, messages, **kwargs):
         self.calls += 1
@@ -233,3 +245,36 @@ def test_service_never_calls_adapter_for_unavailable_provider():
     assert result.code == "provider_unavailable"
     assert provider.calls == 0
     assert rate.calls == []
+
+@pytest.mark.parametrize(
+    ("mutate", "expected_code"),
+    [
+        (lambda provider: provider.config.update({"billing_mode": "paid_api"}), "paid_or_unverified_provider_blocked"),
+        (lambda provider: provider.config.update({"cost_verified": False}), "paid_or_unverified_provider_blocked"),
+        (lambda provider: provider.health_metrics.update({"quota_limit": None}), "cost_or_quota_unknown"),
+        (lambda provider: provider.health_metrics.update({"quota_used": 10}), "free_quota_exhausted"),
+    ],
+)
+def test_service_never_calls_provider_when_free_cost_or_quota_is_not_verified(mutate, expected_code):
+    provider = FakeProvider()
+    mutate(provider)
+    service, rate, _ = setup(provider)
+
+    result = call(service)
+
+    assert result.success is False
+    assert result.code == expected_code
+    assert provider.calls == 0
+    assert rate.calls == []
+
+
+def test_service_blocks_provider_without_atomic_free_quota_reservation():
+    provider = FakeProvider()
+    provider.reserve_free_quota = None
+    service, rate, _ = setup(provider)
+
+    result = call(service)
+
+    assert result.code == "free_quota_reservation_unavailable"
+    assert provider.calls == 0
+    assert rate.calls == ["provider-a"]

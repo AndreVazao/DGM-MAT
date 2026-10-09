@@ -88,12 +88,47 @@ class ProviderRequestPolicy:
         if available is not True:
             return deny("provider_unavailable", "provider has no currently accepted availability observation")
 
+        # External provider calls are allowed only when the adapter's trusted
+        # registration explicitly verifies free-tier billing and a known quota.
+        # Unknown pricing/quota is not interpreted as free.
+        capabilities = getattr(provider, "capabilities", None)
+        config = getattr(provider, "config", None)
+        health = getattr(provider, "health_metrics", None)
+        if not isinstance(capabilities, dict) or not isinstance(config, dict) or not isinstance(health, dict):
+            return deny("cost_or_quota_unknown", "provider cost and quota metadata are unavailable")
+        cost_profile = capabilities.get("cost_profile")
+        billing_mode = config.get("billing_mode")
+        cost_verified = config.get("cost_verified")
+        if cost_profile != "free" or billing_mode != "free_tier" or cost_verified is not True:
+            return deny("paid_or_unverified_provider_blocked", "only explicitly verified free-tier providers are allowed")
+        quota_used = health.get("quota_used")
+        quota_limit = health.get("quota_limit")
+        if (
+            isinstance(quota_used, bool) or not isinstance(quota_used, int) or quota_used < 0
+            or isinstance(quota_limit, bool) or not isinstance(quota_limit, int) or quota_limit <= 0
+        ):
+            return deny("cost_or_quota_unknown", "free-tier quota must have known non-negative usage and a positive limit")
+        if quota_used >= quota_limit:
+            return deny("free_quota_exhausted", "free-tier quota is exhausted; wait for reset or choose another verified free route")
+
         try:
             within_limit = self._rate_control.allow_request(provider_id)
         except Exception:
             return deny("rate_control_error", "provider rate-control check failed closed")
         if within_limit is not True:
             return deny("rate_limited", "provider request limit has been reached")
+
+        # Require an adapter-owned local quota reservation so concurrent requests
+        # cannot all pass the same stale free-tier usage observation.
+        reserve_quota = getattr(provider, "reserve_free_quota", None)
+        if not callable(reserve_quota):
+            return deny("free_quota_reservation_unavailable", "provider cannot reserve free-tier quota safely")
+        try:
+            reserved = reserve_quota()
+        except Exception:
+            return deny("free_quota_reservation_failed", "free-tier quota reservation failed closed")
+        if reserved is not True:
+            return deny("free_quota_exhausted", "free-tier quota could not be reserved; wait for reset")
 
         return ProviderRequestDecision(
             allowed=True,

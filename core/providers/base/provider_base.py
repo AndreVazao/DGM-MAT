@@ -19,7 +19,7 @@ class ProviderBase:
             "reasoning": 0.0,
             "speed": 0.0,
             "context_size": 0,
-            "cost_profile": "medium"
+            "cost_profile": "unknown"
         }
         self.health_metrics = {
             "latency": [],

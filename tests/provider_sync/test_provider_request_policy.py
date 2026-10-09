@@ -14,9 +14,21 @@ class ObservedProvider(ProviderBase):
         self._available = available
         self.health_metrics["last_check"] = 1
         self.health_metrics["status"] = "ok"
+        self.health_metrics["quota_used"] = 0
+        self.health_metrics["quota_limit"] = 10
+        self.capabilities["cost_profile"] = "free"
+        self.config.update({"billing_mode": "free_tier", "cost_verified": True})
 
     def is_available(self):
         return self._available
+
+    def reserve_free_quota(self):
+        used = self.health_metrics["quota_used"]
+        limit = self.health_metrics["quota_limit"]
+        if used >= limit:
+            return False
+        self.health_metrics["quota_used"] = used + 1
+        return True
 
 
 class RecordingRateControl:
@@ -188,3 +200,36 @@ def test_policy_rejects_non_boolean_approval_flags(flag_value):
     assert decision.allowed is False
     assert decision.code == "invalid_request"
     assert rate.calls == []
+
+@pytest.mark.parametrize(
+    ("mutate", "expected_code"),
+    [
+        (lambda provider: provider.config.update({"billing_mode": "paid_api"}), "paid_or_unverified_provider_blocked"),
+        (lambda provider: provider.config.update({"cost_verified": False}), "paid_or_unverified_provider_blocked"),
+        (lambda provider: provider.health_metrics.update({"quota_limit": None}), "cost_or_quota_unknown"),
+        (lambda provider: provider.health_metrics.update({"quota_used": 10}), "free_quota_exhausted"),
+    ],
+)
+def test_policy_blocks_paid_unknown_or_exhausted_free_tier_before_rate_limit(mutate, expected_code):
+    provider = ObservedProvider()
+    mutate(provider)
+    policy, rate = make_policy(provider)
+
+    decision = evaluate(policy)
+
+    assert decision.allowed is False
+    assert decision.code == expected_code
+    assert rate.calls == []
+
+
+def test_policy_requires_adapter_quota_reservation():
+    provider = ObservedProvider()
+    provider.reserve_free_quota = None
+    policy, rate = make_policy(provider)
+
+    decision = evaluate(policy)
+
+    assert decision.allowed is False
+    assert decision.code == "free_quota_reservation_unavailable"
+    # Rate-limit accounting happens before reservation; no provider call is possible.
+    assert rate.calls == ["provider-a"]

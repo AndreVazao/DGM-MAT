@@ -15,7 +15,19 @@ class FakeProvider(ProviderBase):
         super().__init__("api-test-provider")
         self.health_metrics["last_check"] = 1
         self.health_metrics["status"] = "ok"
+        self.health_metrics["quota_used"] = 0
+        self.health_metrics["quota_limit"] = 10
+        self.capabilities["cost_profile"] = "free"
+        self.config.update({"billing_mode": "free_tier", "cost_verified": True})
         self.calls = 0
+
+    def reserve_free_quota(self):
+        used = self.health_metrics["quota_used"]
+        limit = self.health_metrics["quota_limit"]
+        if used >= limit:
+            return False
+        self.health_metrics["quota_used"] = used + 1
+        return True
 
     async def chat(self, messages, **kwargs):
         self.calls += 1
