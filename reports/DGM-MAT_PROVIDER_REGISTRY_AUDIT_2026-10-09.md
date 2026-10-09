@@ -4,7 +4,7 @@
 
 ## Scope and method
 
-Read-only audit of the canonical repository after commit `f102ca7`, using local file inspection, directory inventory, source-reference searches, existing tests, runtime process inventory, API reachability, and runtime logs. No application code was changed. The immutable `DGM-MAT-FULL-MIRROR` was not accessed or modified.
+The initial discovery pass audited the canonical repository after commit `f102ca7` using local file inspection, directory inventory, source-reference searches, existing tests, runtime process inventory, API reachability, and runtime logs. A subsequent narrow recovery-truth remediation is documented below. The immutable `DGM-MAT-FULL-MIRROR` was not accessed or modified.
 
 ## Canonical state observed
 
@@ -17,11 +17,11 @@ Read-only audit of the canonical repository after commit `f102ca7`, using local 
 
 ## Confirmed findings
 
-### P1 — Provider recovery can report success without recovery
+### P1 — Provider recovery could report success without recovery (fixed)
 
-`core/recovery/recovery_engine.py::_execute_chain` adds `ProviderRecovery.recover_provider("default")` to the chain for a provider crash. `core/recovery/provider_recovery.py` only logs an intention to restore a session and unconditionally returns `True`; it does not refresh credentials, reopen a browser, check a session, or verify recovery. `RepairChain.execute()` treats a truthy return as success. Consequently, a provider/auth error can be recorded as successfully recovered without any recovery action.
+At discovery time, `core/recovery/recovery_engine.py::_execute_chain` added `ProviderRecovery.recover_provider("default")` for a provider crash. The original method only logged an intention and returned `True`; it did not refresh credentials, reopen a browser, check a session, or verify recovery. The original `RepairChain.execute()` also returned `True` for an empty chain and allowed exceptions from steps to escape.
 
-**Recommendation:** make the result truthful (unavailable/failed until a real recovery action is implemented), and add a regression test proving that an unimplemented recovery cannot report success. Do not silently preserve the current false-positive behavior.
+**Fix shipped in `dfdf058`:** provider and runtime recovery now return `False` until real actions and verification exist. Empty repair chains, failed steps, and exceptions now return `False`. Seven regression tests cover the false-success paths. The exact original files are preserved in `DGM-MAT-OS` commit `b473985`.
 
 ### P1 — No productive registration path for providers was found
 
@@ -82,26 +82,40 @@ These should not be described as real benchmarking, measured capability, cost op
 - Registering the same key silently overwrites the previous instance.
 - The priority list retains legacy names, including `poisongpt`, despite the adapter stack being quarantined.
 - `load_configs()` only applies settings to already registered adapters; it silently ignores config entries for unregistered names. No `provider_configs.json` was found under the canonical repository during the file search; runtime overrides were not independently inspected.
-- Current contract tests cover unknown status, expired cooldown, no auto-discovery, and explicit registration, but not the API empty-state semantics, recovery false-success, timestamp semantics, registry-name mismatch, or the legacy sync failures.
+- Current contract tests cover unknown status, expired cooldown, no auto-discovery, and explicit registration. The new recovery-truth tests cover false-success paths; API empty-state semantics, timestamp semantics, registry-name mismatch, and legacy sync failures remain untested.
 
 ## Test and runtime evidence
 
 - Previously recorded focused tests: `tests/provider_sync` plus `tests/contracts/test_agent_boundary.py`: **8 passed**.
-- Full regression status remains **not verified** in this audit. A new full-suite execution was blocked by tool security checks; no bypass was attempted.
-- Runtime endpoint check: connection refused on `127.0.0.1:8181`; process inventory showed no Python runtime process.
+- During follow-up remediation, focused tests for recovery truth, provider contracts, and runtime snapshot passed: **13 passed**.
+- Full suite rerun after remediation completed with exit code 0 and progress at 100%; **184 tests passed, 0 failures** (counted from the three pytest progress groups: 72 + 72 + 40).
+- Runtime endpoint check at audit time: connection refused on `127.0.0.1:8181`; process inventory showed no Python runtime process. Runtime was not started by this audit.
 - Runtime log search found historical provider registrations and provider-mesh/ChatGPT activity from 2026-10-07. This is historical evidence only and must not be treated as proof that the quarantined adapters are present or operational now.
 - Credential material under `storage/runtime/governance` was not read.
 
-## Recommended order of work
+## Remediation performed — 2026-10-09
 
-1. Add a focused test for the false-success provider recovery path; change recovery to report failure/unavailable until a real action can be verified.
-2. Define truthful provider state semantics: empty/disabled, registered, loaded, health observed, available.
-3. Add tests for `/runtime/providers` and `RealitySnapshotService` empty and registered states.
-4. Correct `ProviderBase.last_check` semantics without promoting unknown providers.
-5. Quarantine or clearly mark the uncalled fake routing/performance and incompatible sync artefacts, preserving their exact history in `DGM-MAT-OS` before any removal.
-6. Repair or retire the cockpit's inactive controls and direct registry/vault fallback only after defining the public provider-service contract.
-7. Update the 2026-10-07 provider architecture report as historical, linking this post-`f102ca7` audit.
+The first high-priority recovery-truth defect has now been corrected in canonical source:
+
+- `ProviderRecovery.recover_provider()` returns `False` until a real recovery action and verification exist.
+- `RuntimeRecovery.recover()` returns `False` until a real restart and verification exist; the prior implementation was another false-success stub.
+- `RepairChain.execute()` returns `False` for an empty chain, a failed step, or a step that raises, instead of letting empty or exceptional paths look successful.
+- Added `tests/unit/test_recovery_truth_contract.py` with seven deterministic tests covering these cases and failed recovery recording.
+- Exact pre-change copies of the three edited recovery files were SHA-256 checked and preserved in `DGM-MAT-OS/archive/DGM-MAT-unverified-recovery-stubs-2026-10-09/`.
+
+Commits:
+- Canonical DGM-MAT recovery correction: `dfdf058` — `fix: make recovery outcomes reflect verified actions`, pushed to `origin/main`.
+- Archive preservation: `DGM-MAT-OS` commit `b473985`, pushed to `origin/main`.
+
+## Remaining recommended order of work
+
+1. Define truthful provider state semantics: empty/disabled, registered, loaded, health observed, available.
+2. Add tests for `/runtime/providers` and `RealitySnapshotService` empty and registered states.
+3. Correct `ProviderBase.last_check` semantics without promoting unknown providers.
+4. Quarantine or clearly mark the uncalled fake routing/performance and incompatible sync artefacts, preserving their exact history in `DGM-MAT-OS` before any removal.
+5. Repair or retire the cockpit's inactive controls and direct registry/vault fallback only after defining the public provider-service contract.
+6. Update the 2026-10-07 provider architecture report as historical, linking this post-`f102ca7` audit.
 
 ## Change control
 
-No application code was modified during this audit. No adapter was installed or registered. No credentials were read. No destructive cleanup, adapter promotion, or workflow was triggered. This report records findings only; `DGM-MAT-FULL-MIRROR` remains untouched.
+The initial discovery pass was read-only. A subsequent, narrowly scoped recovery-truth fix changed only `core/recovery/provider_recovery.py`, `core/recovery/runtime_recovery.py`, and `core/recovery/repair_chain.py`, with seven regression tests added. Original versions were preserved and hash-verified in `DGM-MAT-OS`. No adapter was installed or registered. No credentials were read. No destructive cleanup, adapter promotion, or workflow was triggered. `DGM-MAT-FULL-MIRROR` remains untouched.
