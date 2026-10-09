@@ -43,16 +43,18 @@ def test_unregistered_provider_source_does_not_report_availability(monkeypatch):
 
     providers = service._get_providers_status()
 
-    assert providers == [{
-        "name": "source-only",
-        "installed": True,
-        "loaded": False,
-        "healthy": False,
-        "available": False,
-        "availability_observed": False,
-        "status": "unknown",
-        "latency": 0,
-    }]
+    assert len(providers) == 1
+    provider_status = providers[0]
+    assert provider_status["name"] == "source-only"
+    assert provider_status["installed"] is True
+    assert provider_status["loaded"] is False
+    assert provider_status["healthy"] is False
+    assert provider_status["available"] is False
+    assert provider_status["availability_observed"] is False
+    assert provider_status["status"] == "unknown"
+    assert provider_status["latency"] == 0
+    assert provider_status["health_observed_at"] is None
+    assert provider_status["snapshot_observed_at"] > 0
 
 
 def test_provider_health_exception_is_reported_as_observed_error(monkeypatch):

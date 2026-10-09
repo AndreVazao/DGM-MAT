@@ -8,6 +8,7 @@ from core.observability.logger import dgm_logger
 
 class StateEvents(Enum):
     PROVIDER_UPDATED = "provider_updated"
+    PROVIDERS_RECONCILED = "providers_reconciled"
     MISSION_UPDATED = "mission_updated"
     AGENT_STATUS_CHANGED = "agent_status_changed"
     FEDERATION_SYNC = "federation_sync"
@@ -85,6 +86,18 @@ class StateReducer:
             provider_name = payload.get("name")
             if provider_name:
                 new_state.providers[provider_name] = payload
+
+        elif event_type == StateEvents.PROVIDERS_RECONCILED:
+            provider_records = payload.get("providers", [])
+            new_state.providers = {
+                record["name"]: record
+                for record in provider_records
+                if isinstance(record, dict)
+                and isinstance(record.get("name"), str)
+                and record["name"].strip()
+            }
+            new_state.reality["providers_observed_at"] = payload.get("observed_at", time.time())
+            new_state.reality["providers_observation_count"] = len(new_state.providers)
 
         elif event_type == StateEvents.MISSION_UPDATED:
             mission_id = payload.get("id")

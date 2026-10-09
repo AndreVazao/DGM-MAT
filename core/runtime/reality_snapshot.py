@@ -49,6 +49,7 @@ class RealitySnapshotService:
         try:
             snapshot_data = {
                 "timestamp": datetime.now().isoformat(),
+                "providers_observed_at_epoch": now,
                 "machine": platform.node(),
                 "runtime": self._get_runtime_folders(),
                 "providers": self._get_providers_status(),
@@ -150,6 +151,11 @@ class RealitySnapshotService:
                         latency = provider.get_avg_latency()
 
             providers_status.append({
+                "snapshot_observed_at": time.time(),
+                "health_observed_at": (
+                    provider.health_metrics.get("last_check", 0)
+                    if provider and availability_observed else None
+                ),
                 "name": name,
                 "installed": is_installed,
                 "loaded": is_loaded,

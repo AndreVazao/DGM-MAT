@@ -178,9 +178,17 @@ class Runtime:
             }
             self.state_store.dispatch(StateEvents.DEGRADATION_UPDATED, degradation_payload)
 
-            # Sync provider truth explicitly
-            for p_status in snapshot.get("providers", []):
-                self.state_store.dispatch(StateEvents.PROVIDER_UPDATED, p_status)
+            # Replace the provider set atomically so records absent from this
+            # snapshot cannot survive as stale cache entries.
+            if isinstance(snapshot, dict) and isinstance(snapshot.get("providers"), list):
+                self.state_store.dispatch(StateEvents.PROVIDERS_RECONCILED, {
+                    "providers": snapshot["providers"],
+                    "observed_at": snapshot.get("providers_observed_at_epoch", time.time()),
+                })
+            else:
+                dgm_logger.warning(
+                    "Runtime: provider state was not reconciled because the reality snapshot was invalid."
+                )
 
         except Exception as e:
             dgm_logger.error(f"Runtime: Reality sync failed: {e}")
