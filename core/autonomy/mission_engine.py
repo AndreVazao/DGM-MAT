@@ -16,6 +16,7 @@ from core.realtime.realtime_broadcast import safe_broadcast
 from core.organization import CapabilityScout, InternalMessageBus, Message, MessagePriority
 from core.organization.help_seeking import HelpContext, HelpSeekingPolicy
 from core.organization.specialist_collaboration import SpecialistCollaborationStore
+from core.organization.validated_learning import ValidatedLessonStore
 
 class MissionEngine:
     REPO_SCAN_ROOTS = [Path("C:/ProgramasGodMode"), Path("C:/DevopGodMode")]
@@ -33,6 +34,9 @@ class MissionEngine:
         self.organization_bus = InternalMessageBus()
         self.collaboration_store = SpecialistCollaborationStore(
             storage_manager.get_path("tasks") / "specialist_collaborations"
+        )
+        self.validated_lesson_store = ValidatedLessonStore(
+            storage_manager.get_path("evolution_memory") / "validated_specialist_lessons"
         )
         self.action_queue = SafeActionQueue()
         self.action_queue.register_handler("MISSION_EXECUTION", self._handle_queue_execution)
@@ -521,6 +525,196 @@ class MissionEngine:
         self.save_mission(mission)
         self._sync_state(mission)
         return packet
+
+    def list_specialist_collaborations(self) -> List[Dict[str, Any]]:
+        """Return a compact local status view; never contacts external providers."""
+        return [
+            {
+                "collaboration_id": packet.collaboration_id,
+                "goal": packet.goal,
+                "project": packet.project,
+                "department": packet.department,
+                "specialist_role": packet.specialist_role,
+                "collaborator": packet.collaborator,
+                "status": packet.status.value,
+                "updated_at": packet.updated_at,
+                "blocked_reason": packet.blocked_reason,
+            }
+            for packet in self.collaboration_store.list_packets()
+        ]
+
+    def _mission_for_collaboration(self, collaboration_id: str) -> Optional[Mission]:
+        for mission in self.active_missions.values():
+            handoff = mission.metadata.get("specialist_collaboration", {})
+            if isinstance(handoff, dict) and handoff.get("collaboration_id") == collaboration_id:
+                return mission
+        return None
+
+    def pause_specialist_collaboration(self, collaboration_id: str, *, reason: str) -> Dict[str, Any]:
+        """Persist a free-capacity pause without retrying, upgrading, or spending."""
+        packet = self.collaboration_store.mark_waiting_for_free_capacity(
+            collaboration_id, reason=reason
+        )
+        mission = self._mission_for_collaboration(collaboration_id)
+        if mission:
+            mission.metadata["specialist_collaboration"]["status"] = packet.status.value
+            mission.metadata["specialist_collaboration"]["blocked_reason"] = packet.blocked_reason
+            mission.logs.append(
+                f"Specialist collaboration paused for free capacity ({collaboration_id}); no paid fallback."
+            )
+            self.save_mission(mission)
+            self._sync_state(mission)
+        return {
+            "collaboration_id": packet.collaboration_id,
+            "status": packet.status.value,
+            "blocked_reason": packet.blocked_reason,
+            "paid_fallback": False,
+        }
+
+    def record_specialist_result(
+        self,
+        collaboration_id: str,
+        *,
+        result: str,
+        provenance: str,
+    ) -> Dict[str, Any]:
+        """Record collaborator output as untrusted and request independent QA review."""
+        packet = self.collaboration_store.record_result(
+            collaboration_id, result=result, provenance=provenance
+        )
+        mission = self._mission_for_collaboration(collaboration_id)
+        if mission:
+            mission.metadata["specialist_collaboration"]["status"] = packet.status.value
+            mission.metadata["specialist_collaboration"]["review_required"] = True
+            mission.logs.append(
+                f"Specialist result received for {collaboration_id}; independent review required."
+            )
+            self.save_mission(mission)
+            self._sync_state(mission)
+        self.organization_bus.send(
+            Message(
+                sender_id="agent:hq-orchestrator",
+                recipient_id="agent:bug-hunter",
+                subject=f"Independent review required: {collaboration_id}",
+                body=(
+                    "A specialist collaboration result is stored as untrusted. Review the saved "
+                    "record, inspect evidence, run appropriate local tests, and report findings. "
+                    "Do not treat the result as accepted or promote a lesson before verification."
+                ),
+                mission_id=mission.mission_id if mission else None,
+                priority=MessagePriority.HIGH,
+                requires_response=True,
+                correlation_id=collaboration_id,
+            )
+        )
+        return {
+            "collaboration_id": packet.collaboration_id,
+            "status": packet.status.value,
+            "review_required": True,
+            "external_call_performed": False,
+            "spending_performed": False,
+        }
+
+    def reject_specialist_result(
+        self, collaboration_id: str, *, reviewer: str, reason: str
+    ) -> Dict[str, Any]:
+        packet = self.collaboration_store.reject_result(
+            collaboration_id, reviewer=reviewer, reason=reason
+        )
+        mission = self._mission_for_collaboration(collaboration_id)
+        if mission:
+            mission.metadata["specialist_collaboration"]["status"] = packet.status.value
+            mission.metadata["specialist_collaboration"]["review_required"] = False
+            mission.logs.append(f"Specialist result rejected by independent review ({collaboration_id}).")
+            self.save_mission(mission)
+            self._sync_state(mission)
+        return {
+            "collaboration_id": packet.collaboration_id,
+            "status": packet.status.value,
+            "lesson_promoted": False,
+        }
+
+    def validate_specialist_result(
+        self,
+        collaboration_id: str,
+        *,
+        reviewer: str,
+        review_notes: str,
+        evidence: List[str],
+        tests_passed: bool,
+        reusable_lesson: str,
+    ) -> Dict[str, Any]:
+        """Validate reviewed output and persist a project-scoped lesson.
+
+        The caller must run local verification and provide its real evidence.
+        This method records that evidence; it does not execute arbitrary commands.
+        """
+        packet = self.collaboration_store.validate_result(
+            collaboration_id,
+            reviewer=reviewer,
+            review_notes=review_notes,
+            evidence=evidence,
+            tests_passed=tests_passed,
+            reusable_lesson=reusable_lesson,
+        )
+        lesson_status = "PERSISTED"
+        lesson_id = None
+        lesson_error = None
+        try:
+            lesson = self.validated_lesson_store.record(packet)
+            lesson_id = lesson["lesson_id"]
+        except Exception as exc:
+            # The collaboration remains VALIDATED, but memory promotion is explicit and retryable.
+            lesson_status = "PERSISTENCE_FAILED"
+            lesson_error = type(exc).__name__
+        mission = self._mission_for_collaboration(collaboration_id)
+        if mission:
+            mission.metadata["specialist_collaboration"]["status"] = packet.status.value
+            mission.metadata["specialist_collaboration"]["review_required"] = False
+            mission.metadata["specialist_collaboration"]["lesson_status"] = lesson_status
+            if lesson_id:
+                mission.metadata["specialist_collaboration"]["lesson_id"] = lesson_id
+            if lesson_error:
+                mission.metadata["specialist_collaboration"]["lesson_persistence_error"] = lesson_error
+            mission.logs.append(
+                f"Specialist result independently validated ({collaboration_id}); lesson persistence={lesson_status}."
+            )
+            self.save_mission(mission)
+            self._sync_state(mission)
+        return {
+            "collaboration_id": packet.collaboration_id,
+            "status": packet.status.value,
+            "lesson_status": lesson_status,
+            "lesson_id": lesson_id,
+            "lesson_persistence_error": lesson_error,
+            "external_call_performed": False,
+            "spending_performed": False,
+        }
+
+    def retry_validated_lesson_persistence(self, collaboration_id: str) -> Dict[str, Any]:
+        """Retry memory promotion after a prior storage failure, without revalidating."""
+        packet = self.collaboration_store.get(collaboration_id)
+        if packet.status.value != "VALIDATED":
+            raise ValueError("Only a VALIDATED collaboration can retry lesson persistence")
+        lesson = self.validated_lesson_store.record(packet)
+        mission = self._mission_for_collaboration(collaboration_id)
+        if mission:
+            mission.metadata["specialist_collaboration"]["lesson_status"] = "PERSISTED"
+            mission.metadata["specialist_collaboration"]["lesson_id"] = lesson["lesson_id"]
+            mission.metadata["specialist_collaboration"].pop("lesson_persistence_error", None)
+            mission.logs.append(f"Validated lesson persistence recovered ({collaboration_id}).")
+            self.save_mission(mission)
+            self._sync_state(mission)
+        return {
+            "collaboration_id": collaboration_id,
+            "status": packet.status.value,
+            "lesson_status": "PERSISTED",
+            "lesson_id": lesson["lesson_id"],
+        }
+
+    def list_validated_specialist_lessons(self, *, project: str | None = None) -> List[Dict[str, Any]]:
+        """Read only validated lessons from the local institutional learning ledger."""
+        return self.validated_lesson_store.list_lessons(project=project)
 
     def _finish_mission_failure(self, mission: Mission, exc: Exception) -> Dict[str, Any]:
         output = f"Mission execution failed: {exc}"

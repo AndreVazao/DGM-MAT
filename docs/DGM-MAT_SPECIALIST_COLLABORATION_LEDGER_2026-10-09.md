@@ -64,3 +64,32 @@ When `MissionEngine._finish_mission_failure` records an `INVESTIGATE_FREE` decis
 
 
 Verification update: after automatic failure handoff was added, the focused tests passed and the complete `python -m pytest -q` suite finished with exit code 0 in 60.65 seconds. `compileall` and `git diff --check` passed for the changed code/tests. Existing FastAPI/Starlette deprecation warnings remain.
+
+
+## Result intake, independent review queue, and validated learning — 2026-10-09
+
+The MissionEngine now exposes local lifecycle operations:
+- `list_specialist_collaborations()`: compact status inventory of persisted handoffs.
+- `pause_specialist_collaboration(id, reason=...)`: records exhausted free capacity and explicitly returns `paid_fallback=false`.
+- `record_specialist_result(id, result=..., provenance=...)`: stores the result as untrusted, marks review required, and sends a high-priority internal review request to `agent:bug-hunter` through the current in-process message bus.
+- `reject_specialist_result(...)`: records an independent rejection and does not promote a lesson.
+- `validate_specialist_result(...)`: requires the collaboration store's independent-review/test-evidence gate and then persists the lesson through `ValidatedLessonStore`.
+- `list_validated_specialist_lessons(project=...)`: reads only lessons whose stored status is `VALIDATED`.
+
+New module: `core/organization/validated_learning.py`. It stores project-scoped lessons as atomic local JSON records with collaborator provenance, reviewer notes, acceptance criteria and timestamp. It refuses non-VALIDATED packets. Runtime path: `storage/evolution_memory/validated_specialist_lessons` under the configured DGM-MAT storage root.
+
+Important boundaries:
+- The QA request is currently an in-process message; the bus itself is not durable and does not prove an independent worker actually ran. A human/worker must inspect the stored collaboration and run the listed checks before validation.
+- `tests_passed=True` is an attestation with evidence, not an automatic test runner. MissionEngine deliberately does not execute arbitrary commands from a returned result.
+- Browser/Claude Code session automation, a durable cross-process department dispatcher, and automatic execution by an independent Bug Hunter are still not implemented. No external call or spending is made by these lifecycle methods.
+- If collaboration validation succeeds but lesson-file persistence fails, the response explicitly returns `lesson_status=PERSISTENCE_FAILED`; the collaboration remains validated and the missing memory promotion must be retried/reconciled.
+
+Focused tests: `tests/autonomy/test_mission_specialist_lifecycle.py` covers result intake, internal QA message, validation-to-lesson persistence, refusal of failed tests/self-review, and free-capacity pause. Full suite verification is recorded after it completes.
+
+
+### Recovery from validated-lesson storage failure
+
+Added `MissionEngine.retry_validated_lesson_persistence(collaboration_id)`. It only accepts a collaboration already marked `VALIDATED`, then retries the atomic lesson write without asking the collaborator again or repeating the validation transition. A regression test simulates a storage failure, confirms the lesson is not listed, restores storage, and verifies the existing validated lesson can be promoted successfully. This is a recovery mechanism, not an automatic retry loop.
+
+
+Final verification — 2026-10-09: focused lifecycle/help-seeking/collaboration tests passed (13 tests). After the retry-recovery refinement, the complete local `python -m pytest -q` suite completed with exit code 0 in 63.28 seconds. `compileall` and `git diff --check` passed for the changed modules/tests. Existing FastAPI/Starlette deprecation warnings remain.
