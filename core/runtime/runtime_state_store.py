@@ -5,6 +5,7 @@ from typing import Dict, List, Any, Optional, Callable
 from enum import Enum
 from datetime import datetime
 from core.observability.logger import dgm_logger
+from core.runtime.provider_freshness import runtime_payload_freshness
 
 class StateEvents(Enum):
     PROVIDER_UPDATED = "provider_updated"
@@ -208,8 +209,8 @@ class RuntimeStateStore:
             return self.state
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serializes the state for API/Websocket export."""
-        return asdict(self.get_snapshot())
+        """Serialize state with provider freshness enforced for API and websocket consumers."""
+        return runtime_payload_freshness(asdict(self.get_snapshot()))
 
 # Global singleton
 state_store = RuntimeStateStore()

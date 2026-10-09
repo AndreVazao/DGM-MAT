@@ -69,6 +69,8 @@ def test_provider_freshness_keeps_recent_observed_availability():
     record = runtime_api._provider_freshness(
         {
             "name": "fresh-provider",
+            "status": "ok",
+            "healthy": True,
             "available": True,
             "availability_observed": True,
             "health_observed_at": 970.0,
@@ -82,12 +84,17 @@ def test_provider_freshness_keeps_recent_observed_availability():
     assert record["provider_record_age_seconds"] == 25
     assert record["reported_available"] is True
     assert record["available"] is True
+    assert record["status"] == "ok"
+    assert record["healthy"] is True
+    assert record["reported_status"] == "ok"
 
 
 def test_provider_freshness_marks_old_observation_stale_and_blocks_current_availability():
     record = runtime_api._provider_freshness(
         {
             "name": "stale-provider",
+            "status": "ok",
+            "healthy": True,
             "available": True,
             "availability_observed": True,
             "health_observed_at": 600.0,
@@ -100,12 +107,18 @@ def test_provider_freshness_marks_old_observation_stale_and_blocks_current_avail
     assert record["health_observation_age_seconds"] == 400
     assert record["reported_available"] is True
     assert record["available"] is False
+    assert record["reported_healthy"] is True
+    assert record["healthy"] is False
+    assert record["reported_status"] == "ok"
+    assert record["status"] == "stale"
 
 
 def test_provider_freshness_does_not_promote_unobserved_available_flag():
     record = runtime_api._provider_freshness(
         {
             "name": "unobserved-provider",
+            "status": "ok",
+            "healthy": True,
             "available": True,
             "availability_observed": False,
             "health_observed_at": None,
@@ -117,6 +130,9 @@ def test_provider_freshness_does_not_promote_unobserved_available_flag():
     assert record["freshness_status"] == "unobserved"
     assert record["health_observation_age_seconds"] is None
     assert record["available"] is False
+    assert record["healthy"] is False
+    assert record["reported_status"] == "ok"
+    assert record["status"] == "unknown"
 
 
 def test_provider_summary_counts_stale_observations_but_not_as_available():
@@ -169,3 +185,58 @@ def test_providers_endpoint_exposes_stale_cached_health_as_unavailable(monkeypat
     assert provider["available"] is False
     assert result["provider_subsystem"]["state"] == "stale_availability_observations"
     assert result["provider_subsystem"]["reported_available_count"] == 0
+
+
+def test_runtime_state_serialization_applies_freshness_to_all_provider_exports(monkeypatch):
+    from core.runtime import provider_freshness
+
+    monkeypatch.setattr(provider_freshness.time, "time", lambda: 1000.0)
+    stale_record = {
+        "name": "stale-provider",
+        "available": True,
+        "availability_observed": True,
+        "health_observed_at": 600.0,
+        "snapshot_observed_at": 950.0,
+    }
+    state = RuntimeTruthState(
+        timestamp=1.0,
+        providers={"stale-provider": dict(stale_record)},
+        reality={"providers": [dict(stale_record)], "providers_observed_at": 950.0},
+    )
+    monkeypatch.setattr(runtime_api.state_store, "get_snapshot", lambda: state)
+
+    payload = runtime_api.state_store.to_dict()
+
+    state_record = payload["providers"]["stale-provider"]
+    reality_record = payload["reality"]["providers"][0]
+    for record in (state_record, reality_record):
+        assert record["freshness_status"] == "stale"
+        assert record["reported_available"] is True
+        assert record["available"] is False
+
+
+def test_runtime_reality_endpoint_returns_freshness_aware_serialized_state(monkeypatch):
+    monkeypatch.setattr(
+        runtime_api.state_store,
+        "to_dict",
+        lambda: {
+            "reality": {
+                "providers": [{
+                    "name": "stale-provider",
+                    "available": False,
+                    "reported_available": True,
+                    "freshness_status": "stale",
+                    "availability_observed": True,
+                    "health_observed_at": 600.0,
+                    "snapshot_observed_at": 950.0,
+                }]
+            }
+        },
+    )
+
+    reality = runtime_api.get_runtime_reality()
+    provider = reality["providers"][0]
+
+    assert provider["freshness_status"] == "stale"
+    assert provider["reported_available"] is True
+    assert provider["available"] is False

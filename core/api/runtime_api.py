@@ -17,12 +17,13 @@ from core.runtime.safe_action_queue import SafeActionQueue
 from core.execution.approval_manager import ApprovalManager
 from core.provider_sync.provider_registry import provider_registry
 from core.runtime.reality_snapshot import RealitySnapshotService
+from core.runtime.provider_freshness import (
+    PROVIDER_OBSERVATION_STALE_AFTER_SECONDS,
+    provider_freshness as _shared_provider_freshness,
+)
 from core.realtime.websocket_manager import manager
 
 router = APIRouter(prefix="/runtime", tags=["runtime"])
-
-# Health observations older than this are historical evidence, not current availability.
-PROVIDER_OBSERVATION_STALE_AFTER_SECONDS = 300
 connectors = create_runtime_connectors()
 obsidian_connector = connectors["obsidian"]
 
@@ -76,8 +77,8 @@ def get_runtime_truth():
 
 @router.get("/reality")
 def get_runtime_reality():
-    """Requirement 2: Expose observed reality."""
-    return state_store.get_snapshot().reality
+    """Expose observed reality with provider freshness applied at serialization time."""
+    return state_store.to_dict().get("reality", {})
 
 @router.get("/degradation")
 def get_runtime_degradation():
@@ -113,38 +114,8 @@ def get_memory_status():
     }
 
 def _provider_freshness(provider: Dict[str, Any], now: Optional[float] = None) -> Dict[str, Any]:
-    """Annotate a provider record without promoting missing/stale evidence to availability."""
-    current_time = time.time() if now is None else now
-    record = dict(provider)
-    record_age = None
-    snapshot_observed_at = record.get("snapshot_observed_at")
-    if isinstance(snapshot_observed_at, (int, float)) and snapshot_observed_at > 0:
-        record_age = max(0, int(current_time - snapshot_observed_at))
-
-    health_observed_at = record.get("health_observed_at")
-    reported_available = record.get("reported_available", record.get("available")) is True
-    health_age = None
-    if (
-        record.get("availability_observed") is True
-        and isinstance(health_observed_at, (int, float))
-        and health_observed_at > 0
-    ):
-        health_age = max(0, int(current_time - health_observed_at))
-        freshness_status = (
-            "stale"
-            if health_age > PROVIDER_OBSERVATION_STALE_AFTER_SECONDS
-            else "fresh"
-        )
-    else:
-        freshness_status = "unobserved"
-
-    record["reported_available"] = reported_available
-    record["available"] = reported_available and freshness_status == "fresh"
-    record["freshness_status"] = freshness_status
-    record["health_observation_age_seconds"] = health_age
-    record["provider_record_age_seconds"] = record_age
-    record["freshness_threshold_seconds"] = PROVIDER_OBSERVATION_STALE_AFTER_SECONDS
-    return record
+    """Compatibility wrapper for the shared provider-freshness contract."""
+    return _shared_provider_freshness(provider, now=now)
 
 
 def _provider_subsystem_summary(registered: List[str], providers: List[Dict[str, Any]]) -> Dict[str, Any]:
