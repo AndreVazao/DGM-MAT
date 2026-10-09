@@ -1,6 +1,7 @@
-import pytest
-from core.provider_sync.provider_memory_sync import ProviderMemorySync
+# Path: C:\ProgramasGodMode\DGM-MAT\tests\provider_sync\test_sync.py
 
-def test_provider_sync():
-    sync = ProviderMemorySync()
-    assert sync is not None
+from core.operator.provider_sync import ProviderSync
+
+
+def test_legacy_provider_sync_fails_closed_without_verified_implementation():
+    assert ProviderSync().sync_providers() is False
