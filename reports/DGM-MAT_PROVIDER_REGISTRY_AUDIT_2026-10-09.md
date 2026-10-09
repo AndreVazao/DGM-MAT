@@ -4,7 +4,7 @@
 
 ## Scope and safety
 
-This audit began from canonical commit `f102ca7` and continued through the narrowly scoped provider-truth fixes listed below. Canonical repository: `C:\ProgramasGodMode\DGM-MAT`; branch: `main`; latest published code commit for this audit: `518c1d1`. Earlier baseline findings are retained where they remain valid; fixed findings are explicitly marked as fixed.
+This audit began from canonical commit `f102ca7` and continued through the narrowly scoped provider-truth fixes listed below. Canonical repository: `C:\ProgramasGodMode\DGM-MAT`; branch: `main`; latest published code commit for this audit: `c036c4c`. Earlier baseline findings are retained where they remain valid; fixed findings are explicitly marked as fixed.
 
 The historical source for each modified provider/recovery contract was preserved in `C:\ProgramasGodMode\DGM-MAT-OS\archive` before canonical edits. `C:\ProgramasGodMode\DGM-MAT-FULL-MIRROR` was not accessed or modified. Credential material was not read.
 
@@ -12,18 +12,20 @@ The historical source for each modified provider/recovery contract was preserved
 
 - Recovery success is no longer reported unless an action succeeds and the repair chain is non-empty and exception-safe.
 - Provider API now distinguishes endpoint success from registry state and only treats availability as reported when the snapshot marks it as an actual observation (`availability_observed`), not merely because an `available` boolean exists.
-- The base provider health check no longer pretends that an invocation is a real health observation.
+- The base provider health check no longer pretends that an invocation is a real health observation, and `is_available()` now requires a recorded observation before returning true.
+- A provider health-check exception is recorded as an observed `error` and no longer collapses the entire provider snapshot.
 - Provider registration now rejects mismatched names and silent replacement of an existing adapter.
 - The legacy provider-sync facade now fails closed (`False`) instead of importing the unverified sync implementation; the old implementation and related artefacts are preserved in DGM-MAT-OS, but the other legacy source files have not been removed from canonical yet.
 - Provider integrations remain in safe-off posture: the registry is explicit-registration-only, and no productive registration call was found in the audited canonical source. No provider was installed or activated by this work.
-- Full pytest suite after the availability-observation correction completed with **196 collected tests, 196 progress dots, and exit code 0**. The focused suite after that correction completed with **18 passed, 0 failed**.
+- Full pytest suite after the latest health-availability and exception-handling fixes completed with **199 progress dots and exit code 0**.
+- Focused snapshot/API/provider contract suite after those fixes: **21 passed, 0 failed**.
 
 ## Canonical state and runtime evidence
 
 - Repository: `C:\ProgramasGodMode\DGM-MAT`
 - Branch: `main`
 - Initial audit baseline: `f102ca7` — `refactor: make provider health and discovery reality based`
-- Latest audit code commit: `518c1d1` — `fix: fail closed for legacy provider sync`
+- Latest audit code commit: `c036c4c` — `fix: require observed health before availability`
 - The initial runtime check found `http://127.0.0.1:8181/runtime/providers` refused the connection and no Python runtime process was present. The runtime was not started by the audit. This is historical evidence from the initial check, not a claim about its present state.
 - Historical provider registrations and provider-mesh activity in logs dated 2026-10-07 are not proof that the currently quarantined adapters exist or work.
 
@@ -70,6 +72,18 @@ The first API truth correction still treated `available: false` as equivalent to
 - The API counts observation records independently from the number currently reported available, so an observed unavailable/error state is still a real report.
 - Added regression tests for source-only providers, base checks without observations, and reported-but-unavailable providers.
 - Exact pre-change files preserved in DGM-MAT-OS archive commits `4d5c3ee` and `eca0f9f` (archive README finalized in `afeecee`).
+
+### P1 — Availability status could be trusted without an observation — FIXED
+
+A runtime probe reproduced a false-positive path: manually setting `ProviderBase.health_metrics["status"] = "ok"` while `last_check = 0` made `is_available()` return `True`. This undermined the explicit observed-health contract and could affect any caller of `is_available()`, even though the current snapshot guarded its own call path.
+
+**Fix:** commit `c036c4c` (`fix: require observed health before availability`). `is_available()` now requires a nonzero `last_check` before accepting `ok` or `degraded`. Two regression tests cover an unobserved `ok` state and an observed healthy state. Exact pre-change `ProviderBase` preserved with matching SHA-256 in DGM-MAT-OS commit `0020bc9`.
+
+### P1/P2 — A provider health-check exception could invalidate the whole snapshot — FIXED
+
+`RealitySnapshotService._get_providers_status()` called `provider.check_health()` without a per-provider exception boundary. A broken adapter could therefore cause the outer snapshot to return `{}`, and the `/runtime/providers` endpoint calls this collector directly when its state-store provider cache is empty.
+
+**Fix:** commit `c036c4c`. A raised health check now produces an explicit observed `error`, forces `healthy=False` and `available=False`, records the observation timestamp, and allows collection to continue. Regression test: `test_provider_health_exception_is_reported_as_observed_error`. Exact pre-change snapshot and test files preserved in DGM-MAT-OS commit `e289c5e` with SHA-256 verification.
 
 ### P1 — No productive provider registration path found — OPEN / SAFE-OFF
 
@@ -118,6 +132,12 @@ The following modules contain fixed, heuristic, incomplete, or incompatible beha
 
 These items require individual call-site and test review before any quarantine or retirement. Preserve exact source in DGM-MAT-OS before removing canonical files.
 
+### P2 — Provider state-store cache has no full reconciliation/freshness contract — OPEN
+
+`Runtime._sync_reality()` dispatches `PROVIDER_UPDATED` for each provider present in the latest snapshot, and `StateReducer` updates the provider dictionary by name without removing entries absent from a later snapshot. The `/runtime/providers` API prefers cached provider records whenever the cache is non-empty and the summary does not expose observation age. If a provider disappears, an old entry can remain; if runtime updates stop, an old observation may be shown without a freshness qualifier.
+
+This is a source-level stale-state risk, not proof of a currently failing live runtime. Recommended next step is to define an atomic provider-snapshot replacement/reconciliation event plus an `observed_at`/stale contract, then add tests for removed providers and expired observations before implementing it.
+
 ### P2 — Cockpit provider controls remain partially inactive
 
 The provider management widget is instantiated, but the audit found “Test Fallback” and “Browser Recovery” controls without connected handlers. The widget also falls back to direct registry/vault access, coupling UI to internal authority. Do not connect these controls until a public provider-service/API contract and approval behavior are defined.
@@ -132,8 +152,9 @@ The provider management widget is instantiated, but the audit found “Test Fall
 - Recovery-focused run after the recovery correction — 13 passed.
 - Provider/API/recovery/snapshot run before the availability-observation correction — 26 passed, 0 failed.
 - Focused run after the availability-observation correction — **18 passed, 0 failed**, process exit code 0.
-- Full `python -m pytest -q --disable-warnings` run after the availability-observation correction completed with **196 collected, 196 progress dots, exit code 0**.
-- After the legacy sync facade was changed to fail closed, the full suite was rerun: **196 progress dots, exit code 0**. Focused sync/provider/API/reality-snapshot suite: **19 passed, 0 failed**.
+- Full `python -m pytest -q --disable-warnings` after the availability-observation correction completed with **196 progress dots, exit code 0**.
+- After the legacy sync facade was changed to fail closed, the full suite completed with **196 progress dots, exit code 0**. Focused sync/provider/API/reality-snapshot suite: **19 passed, 0 failed**.
+- After the availability guard and provider-exception isolation fixes, the full suite completed with **199 progress dots, exit code 0**; focused provider/API/snapshot suite: **21 passed, 0 failed**.
 - Tests can emit expected warning/error logs while verifying negative paths; those log lines are assertions of failure handling, not failed pytest tests.
 - The live runtime endpoint was not available during the initial audit. No credentials were read and no provider adapters were activated.
 
@@ -147,6 +168,7 @@ The provider management widget is instantiated, but the audit found “Test Fall
 | DGM-MAT | `d7c9b59` | Enforce provider registry contract |
 | DGM-MAT | `dcbedfb` | Report availability only when observed |
 | DGM-MAT | `518c1d1` | Fail closed for legacy provider sync |
+| DGM-MAT | `c036c4c` | Require observed health; isolate provider health exceptions |
 | DGM-MAT-OS | `b473985` | Preserve original recovery stubs |
 | DGM-MAT-OS | `60e91da` | Preserve original provider base health contract |
 | DGM-MAT-OS | `c528d45` | Preserve original provider registry |
@@ -154,6 +176,8 @@ The provider management widget is instantiated, but the audit found “Test Fall
 | DGM-MAT-OS | `eca0f9f` | Preserve pre-change snapshot tests |
 | DGM-MAT-OS | `afeecee` | Finalize availability archive note |
 | DGM-MAT-OS | `ac163bc` | Preserve unverified provider routing and sync files |
+| DGM-MAT-OS | `0020bc9` | Preserve pre-guard ProviderBase availability behavior |
+| DGM-MAT-OS | `e289c5e` | Preserve pre-exception-isolation snapshot/tests |
 
 The archive commits were pushed to `AndreVazao/DGM-MAT-OS`; canonical code commits were pushed to `AndreVazao/DGM-MAT`.
 
@@ -167,4 +191,4 @@ The archive commits were pushed to `AndreVazao/DGM-MAT-OS`; canonical code commi
 
 ## Change control
 
-All code changes were narrowly scoped to recovery truth, provider API truth, base health timestamps, registry registration invariants, and explicit availability-observation semantics. Regression tests were added for each behavior. Exact original source for edited files was preserved before changes. No adapter was installed or registered, no credential material was read, no destructive cleanup was performed, and no workflow was triggered. `DGM-MAT-FULL-MIRROR` remains untouched.
+All code changes were narrowly scoped to recovery truth, provider API truth, base health timestamps and availability, registry registration invariants, provider exception isolation, and explicit availability-observation semantics. Regression tests were added for each behavior. Exact pre-change runtime source modules were preserved and hash-verified before changes; test files were extended in place under Git version control. No adapter was installed or registered, no credential material was read, no destructive cleanup was performed, and no workflow was triggered. `DGM-MAT-FULL-MIRROR` remains untouched.
