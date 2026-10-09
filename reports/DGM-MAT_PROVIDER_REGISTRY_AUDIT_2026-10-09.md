@@ -250,3 +250,33 @@ This fixes state-export consistency; it does not prove any provider is connected
 - The benchmark/scoring/cost/affinity/memory-profile classes still contain fixed outputs or narrow heuristics. No productive canonical consumers were found for those classes in core/tests/scripts. The capability matrix is imported by ProviderRoutingEngine, but the routing engine's only call site found is the standalone scripts/stress_test_providers.py, which the prior audit found incompatible with current provider interfaces.
 - No files were quarantined or deleted. Existing change-control/security gate remains respected; exact originals are already preserved in DGM-MAT-OS.
 - Provider registration remains safe-off. No live provider request path or credential-bearing adapter was activated.
+
+
+### P1 — Governed provider request preflight and rate-control hardening — IMPLEMENTED, NOT ACTIVATED
+
+Date: 2026-10-09
+
+**Contract added:** `docs/architecture/GOVERNED_PROVIDER_REQUEST_CONTRACT.md`
+
+**Preflight policy added:** `core/provider_sync/provider_request_policy.py`
+
+- The policy is decision-only: it never calls adapters, executes tools, or retrieves credentials.
+- Fail-closed order: validate request identifiers and operation allowlist; require approval for `tool`, `browser`, `execute`, and `write` (plus any operation marked approval-required by the trusted service); require explicit provider registration; require an accepted availability observation; enforce provider-specific rate control.
+- Unknown operations, malformed approval flags, registry/health/rate-control exceptions, missing provider registration, unavailable provider, missing approval, and exhausted limit all deny.
+- Rate budget is not consumed for requests denied by earlier checks.
+- This is deliberately not wired to API/orchestrator/adapter call sites. No live provider can be activated by this policy alone. Durable approval provenance and risk classification must come from the trusted service layer.
+
+**Rate limiter hardened:** `core/governance/provider_rate_control.py`
+
+- Uses a lock for concurrent requests, monotonic time for the 60-second sliding window, positive-integer validation for configured limits, and provider-ID validation/normalization.
+- Original source archived before modification with matching SHA-256 `4BBBF1511D9E5CA91165A7282F0EE08268BBC140E7FAFE89AC2D7AB96E966F87` in DGM-MAT-OS commit `fc0661c`.
+- It remains in-memory/process-local and is not effective protection until called by a governed execution service.
+
+**Tests added:**
+- `tests/provider_sync/test_provider_request_policy.py`: validates allow/deny decisions, explicit approval floor, invalid flags, unsupported operations, unavailable/unregistered providers, exception fail-closed behavior, and that early denials do not consume rate budget.
+- `tests/provider_sync/test_provider_rate_control.py`: validates invalid limits/IDs, independent provider windows, window expiry, normalization, and concurrency (20 competing calls with a limit of 5 yielded exactly 5 allowed reservations).
+- Focused suite after final edits: 45 tests passed, exit code 0.
+- Full `python -m pytest -q --disable-warnings` after final edits completed with exit code 0.
+- `git diff --check` passed; only standard Windows LF/CRLF warning for the edited rate-control source.
+
+**Remaining gates before any activation:** implement a trusted execution service that fetches durable approval state, classifies operation risk, calls an adapter only after preflight, enforces timeout/retry/response limits and redaction, and proves with integration tests that denied requests never call adapters and approved requests call exactly once. Provider registration remains safe-off.
