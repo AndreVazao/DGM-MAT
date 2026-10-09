@@ -203,3 +203,8 @@ The provenance is the history.
 
 The human approval boundary remains the final authority for consequential
 actions.
+
+
+## Binding clarification — recruitment and self-development (2026-10-09)
+
+This department is a permanent core capability, not a one-off feature: identify missing skills, reuse internal assets, discover free external tools/agents, sandbox, adapt, test, independently review, promote and register a specialist employee when justified. It also owns the controlled path for creating or improving DGM-MAT's own agents/modules. No source or new agent is trusted merely because it exists; no paid API/subscription/credits may be activated by recruitment. See `docs/DGM-MAT_ENTERPRISE_AUTONOMY_AND_ZERO_COST_CHARTER_2026-10-09.md`.

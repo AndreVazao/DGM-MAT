@@ -91,3 +91,8 @@ The first complete pass is now validated:
 - Final inventory (excluding its own output directory to avoid self-reference): 1,597 files, 220 directories, 118 skipped; see `reports/repository_inventory/DGM-MAT_INVENTORY_FINAL_VERIFIED_2026-10-09.json` and `reports/repository_inventory/DGM-MAT_TREE_FINAL_VERIFIED_2026-10-09.txt`.
 
 Still not complete: specialist profiles are registered definitions, not separate live AI processes; delegation is not yet wired to actual task execution or durable state. Existing HTTP/WebSocket routes still need scoped auth and PC client migration before remote pairing.
+
+
+## Binding clarification — external specialist collaborators and real agent status (2026-10-09)
+
+Claude Code Free, ChatGPT and other free AI tools should be represented as external specialist collaborators/temporary employees, assigned a bounded task by HQ and reviewed on return. The persistent DGM-MAT specialist agents remain the internal workforce. A roster record alone must never be reported as a live, independent agent: activation requires an execution path, permissions, memory, health and test evidence. The company model includes a permanent Capability Acquisition/Recruitment and Self-Improvement function. Paid tools may be registered for a future authorized mode, but are denied by default. See the enterprise autonomy charter.

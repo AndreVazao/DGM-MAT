@@ -47,3 +47,8 @@ The route order is a design requirement; it must not be reported as fully operat
 ## Safety boundary
 
 This policy does not authorize remote API exposure. Existing HTTP/WebSocket authentication and session enforcement work remains a separate blocker before any remote cockpit pairing.
+
+
+## Enterprise architecture clarification (2026-10-09)
+
+This financial policy applies regardless of organizational maturity: external AIs may be temporary specialist collaborators, while DGM-MAT remains the orchestrator and must retain validated lessons in its own memory. The internal-first order is local code/tools/memory/models, then legitimate free browser sessions, then another verified free route, then wait/ask for help. Paid adapters may be available for future configuration, but FREE-ONLY / PAID-DENY remains the default and requires specific explicit user authorization to change. Full organizational, recruitment and self-improvement requirements are in `docs/DGM-MAT_ENTERPRISE_AUTONOMY_AND_ZERO_COST_CHARTER_2026-10-09.md`.

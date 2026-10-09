@@ -146,3 +146,8 @@ The mobile cockpit requirement is now implemented as a DGM-MAT-owned conversatio
 The Vercel mobile shell discovers the current PC endpoint through the minimal public discovery path. Normal conversation content travels directly to the authorized DGM-MAT PC once the Tailscale HTTPS bridge is enabled.
 
 The user experience must remain continuous across mobile and PC: same thread, same context, same intent and same execution authority.
+
+
+## Binding clarification — company model, free collaborators and self-improvement (2026-10-09)
+
+See normative charter: `docs/DGM-MAT_ENTERPRISE_AUTONOMY_AND_ZERO_COST_CHARTER_2026-10-09.md`. DGM-MAT is a digital company with HQ, departments and owned specialist roles, not a single external chatbot. Local/internal capability comes first. Claude Code Free, ChatGPT and other legitimate free browser tools can act as temporary specialist collaborators; their useful output must be independently reviewed and converted into persistent reusable lessons. Capability Acquisition/Recruitment must be able to discover, sandbox, test and promote free tools or create justified internal agents. Self-improvement is required but governed by verified backups, isolated changes, tests, independent review and controlled promotion. Paid adapters may exist for future use, but execution remains FREE-ONLY / PAID-DENY unless the user specifically authorizes a financial action. Browser AI, independent active agents and the full self-improvement loop must not be claimed complete until verified end-to-end.
