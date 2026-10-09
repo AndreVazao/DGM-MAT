@@ -1,3 +1,5 @@
+# Path: C:\ProgramasGodMode\DGM-MAT\core\providers\base\provider_base.py
+
 import json
 import time
 from typing import Dict, Any, Optional, List
@@ -61,6 +63,11 @@ class ProviderBase:
             if time.time() > self.health_metrics["cooldown_until"]:
                 self.health_metrics["status"] = "unknown"
             return False
+
+        # A status label alone is not evidence: require a recorded health observation.
+        if not self.health_metrics.get("last_check"):
+            return False
+
         return status in ["ok", "degraded"]
 
     def broadcast_health(self):

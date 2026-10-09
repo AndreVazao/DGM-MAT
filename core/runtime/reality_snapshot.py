@@ -125,16 +125,29 @@ class RealitySnapshotService:
                 if self.profile.lazy_provider_health:
                     status = "deferred"
                 else:
-                    health_data = provider.check_health()
-                    reported_status = health_data.get("status", "unknown")
-                    last_observation = provider.health_metrics.get("last_check", 0)
-                    availability_observed = bool(last_observation) and reported_status in {
-                        "ok", "degraded", "error"
-                    }
-                    status = reported_status if availability_observed else "unknown"
-                    healthy = availability_observed and status == "ok"
-                    available = availability_observed and provider.is_available()
-                    latency = provider.get_avg_latency()
+                    try:
+                        health_data = provider.check_health()
+                        reported_status = health_data.get("status", "unknown")
+                        last_observation = provider.health_metrics.get("last_check", 0)
+                        availability_observed = bool(last_observation) and reported_status in {
+                            "ok", "degraded", "error"
+                        }
+                        status = reported_status if availability_observed else "unknown"
+                        healthy = availability_observed and status == "ok"
+                        available = availability_observed and provider.is_available()
+                        latency = provider.get_avg_latency()
+                    except Exception as exc:
+                        # A failed check is an observed error, not a reason to lose the entire snapshot.
+                        dgm_logger.warning(
+                            f"Provider health check failed for '{name}': {exc}"
+                        )
+                        provider.health_metrics["last_check"] = time.time()
+                        provider.health_metrics["status"] = "error"
+                        status = "error"
+                        healthy = False
+                        available = False
+                        availability_observed = True
+                        latency = provider.get_avg_latency()
 
             providers_status.append({
                 "name": name,

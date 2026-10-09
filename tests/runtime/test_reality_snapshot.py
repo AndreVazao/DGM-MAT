@@ -55,6 +55,37 @@ def test_unregistered_provider_source_does_not_report_availability(monkeypatch):
     }]
 
 
+def test_provider_health_exception_is_reported_as_observed_error(monkeypatch):
+    service = RealitySnapshotService(workspace_root="/tmp")
+    provider = ProviderBase("broken-provider")
+
+    def broken_check_health():
+        raise RuntimeError("synthetic health-check failure")
+
+    monkeypatch.setattr(provider, "check_health", broken_check_health)
+    service.profile = SimpleNamespace(lazy_provider_health=False)
+    monkeypatch.setattr(service, "_scan_installed_providers", lambda: [])
+    monkeypatch.setattr(
+        reality_snapshot_module.provider_registry,
+        "list_providers",
+        lambda: ["broken-provider"],
+    )
+    monkeypatch.setattr(
+        reality_snapshot_module.provider_registry,
+        "get_provider",
+        lambda name: provider,
+    )
+
+    providers = service._get_providers_status()
+
+    assert providers[0]["status"] == "error"
+    assert providers[0]["healthy"] is False
+    assert providers[0]["available"] is False
+    assert providers[0]["availability_observed"] is True
+    assert provider.health_metrics["status"] == "error"
+    assert provider.health_metrics["last_check"] > 0
+
+
 def test_base_provider_check_does_not_become_observed_availability(monkeypatch):
     service = RealitySnapshotService(workspace_root="/tmp")
     provider = ProviderBase("registered-unknown")
