@@ -1,3 +1,5 @@
+import pytest
+
 from core.providers.base.provider_base import ProviderBase
 from core.provider_sync.provider_registry import ProviderRegistry
 
@@ -56,3 +58,36 @@ def test_registry_accepts_explicit_provider_registration():
     registry.register(provider.name, provider)
     assert registry.list_providers() == ["trusted-provider"]
     assert registry.get_provider("trusted-provider") is provider
+
+
+def test_registry_rejects_name_that_does_not_match_adapter():
+    registry = ProviderRegistry()
+    provider = HealthyProvider("actual-name")
+
+    with pytest.raises(ValueError, match="does not match adapter.name"):
+        registry.register("different-name", provider)
+
+    assert registry.list_providers() == []
+
+
+def test_registry_rejects_silent_adapter_replacement():
+    registry = ProviderRegistry()
+    original = HealthyProvider("trusted-provider")
+    replacement = HealthyProvider("trusted-provider")
+    registry.register(original.name, original)
+
+    with pytest.raises(ValueError, match="already registered"):
+        registry.register(replacement.name, replacement)
+
+    assert registry.get_provider("trusted-provider") is original
+
+
+def test_registry_allows_idempotent_registration_of_same_instance():
+    registry = ProviderRegistry()
+    provider = HealthyProvider("trusted-provider")
+
+    registry.register(provider.name, provider)
+    registry.register(provider.name, provider)
+
+    assert registry.get_provider("trusted-provider") is provider
+    assert registry.list_providers() == ["trusted-provider"]

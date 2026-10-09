@@ -23,6 +23,15 @@ class ProviderRegistry:
     def register(self, name: str, adapter: ProviderBase):
         if not name or not isinstance(adapter, ProviderBase):
             raise TypeError("Provider registration requires a name and ProviderBase instance")
+        if name != adapter.name:
+            raise ValueError(
+                f"Provider registration name '{name}' does not match adapter.name '{adapter.name}'"
+            )
+
+        existing = self._providers.get(name)
+        if existing is not None and existing is not adapter:
+            raise ValueError(f"Provider '{name}' is already registered with a different adapter")
+
         self._providers[name] = adapter
         dgm_logger.info(f"ProviderRegistry: Registered provider '{name}'")
 
