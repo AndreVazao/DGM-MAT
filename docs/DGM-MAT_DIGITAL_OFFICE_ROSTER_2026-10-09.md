@@ -71,9 +71,9 @@ Tasks can specify `metadata.required_skills`, `metadata.required_permissions` an
 8. Only after backend reliability is proven, develop PC cockpit; Android mobile cockpit follows and remains the main daily user interface.
 9. Evaluate success rate, regression escape rate, evidence quality, time, resource use and human correction rate before promoting new agent versions.
 
-## Cloud Free — future integration only
+## Claude Code Free / FCC — future capability, not an automatic integration
 
-The user reports that the Cloud Free project has undergone substantial structural changes. Treat its current layout and interfaces as changed/unknown until re-inventoried. Keep its future use as a possible specialized agent/provider within DGM-MAT open, as previously discussed. Do not integrate, overwrite, deploy, rename, or assume compatibility as part of the current DGM-MAT backend work. Revisit only after the user explicitly prioritizes it and its current repository/state has been inspected read-only.
+Correction dated 2026-10-09: the user meant **Claude Code Free**, not “Cloud Free”. Earlier wording was a transcription/labeling error and must not be treated as a separate project or repository. Preserve the Claude Code/FCC context as a possible development/help resource, but do not wire it into DGM-MAT automatically. Before any use, distinguish the actual route (Claude Code CLI, FCC with NVIDIA NIM, Ollama, or another provider), verify its permissions, quotas, pricing and applicable limits, and do not infer that a working inference is free. The dashboard previously recorded a CLI-reported cost of `$0.100344` without confirmation that it was actually billed. No paid usage without explicit, informed authorization. Keep DGM-MAT as the main priority and providers safe-off until governed execution and cost gates are proven.
 
 ## Current next gate
 
