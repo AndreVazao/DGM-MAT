@@ -96,3 +96,17 @@ Still not complete: specialist profiles are registered definitions, not separate
 ## Binding clarification — external specialist collaborators and real agent status (2026-10-09)
 
 Claude Code Free, ChatGPT and other free AI tools should be represented as external specialist collaborators/temporary employees, assigned a bounded task by HQ and reviewed on return. The persistent DGM-MAT specialist agents remain the internal workforce. A roster record alone must never be reported as a live, independent agent: activation requires an execution path, permissions, memory, health and test evidence. The company model includes a permanent Capability Acquisition/Recruitment and Self-Improvement function. Paid tools may be registered for a future authorized mode, but are denied by default. See the enterprise autonomy charter.
+
+
+## Expanded specialist departments — 2026-10-09
+
+The full office registry now declares four additional departments and specialist roles:
+- Browser Automation — `agent:free-browser-operator`
+- Cost & Quota Governance — `agent:cost-guardian`
+- Self-Improvement Engineering — `agent:self-improvement-engineer`
+- Local Runtime & Models — `agent:local-runtime-engineer`
+
+These four roles are deliberately registered as `OFFLINE` with `execution_maturity=ROLE_DEFINED_ONLY` until the compliant browser adapter, live cost-gate audit worker, controlled self-improvement pipeline, and resource-aware local runtime are implemented and tested. This prevents a roster entry from being mistaken for an active independent worker. Existing office delegation remains deterministic assignment only; it does not itself execute agent work.
+
+
+Verification update: office/foundation focused tests passed and the full `python -m pytest -q` suite completed with exit code 0 in 59.95 seconds after the roster expansion. The role-only agents remain offline pending real execution adapters.

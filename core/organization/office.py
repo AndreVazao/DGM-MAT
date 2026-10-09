@@ -7,7 +7,7 @@ Execution remains behind the governed delegation/runtime boundary.
 from __future__ import annotations
 
 from .bootstrap import bootstrap_registry
-from .models import AgentProfile, Department
+from .models import AgentProfile, AgentStatus, Department
 from .registry import AgentRegistry
 
 
@@ -20,6 +20,10 @@ OFFICE_DEPARTMENTS = (
     Department("memory-governance", "Memory & Documentation", "Persistent memory, decision records, project docs and provenance", ["memory", "documentation", "provenance"], ["repo:read", "docs:write", "memory:propose"]),
     Department("back-office", "Back Office Operations", "Task administration, evidence records, schedules and cross-project coordination", ["operations", "coordination", "records"], ["repo:read", "reports:write", "tasks:manage"]),
     Department("front-office", "Front Office & Product", "User intent, requirements clarification, acceptance criteria and cockpit workflows", ["requirements", "product", "acceptance"], ["repo:read", "tasks:propose"]),
+    Department("browser-automation", "Browser Automation", "Operate only authorized browser sessions within legitimate free-tier terms", ["browser", "free-tier", "session-safety"], ["tasks:read", "reports:write"]),
+    Department("cost-governance", "Cost & Quota Governance", "Enforce FREE-ONLY defaults, quota checks and paid-deny controls", ["cost-control", "quota", "policy"], ["repo:read", "tests:run", "reports:write"]),
+    Department("self-improvement", "Self-Improvement Engineering", "Improve DGM-MAT through reversible changes, tests and independent review", ["self-improvement", "refactoring", "regression"], ["repo:read", "repo:write:sandbox", "tests:run"]),
+    Department("local-runtime", "Local Runtime & Models", "Monitor local model capacity, memory, runtime health and resource limits", ["ollama", "runtime", "resource-monitoring"], ["repo:read", "tests:run", "reports:write"]),
 )
 
 OFFICE_AGENTS = (
@@ -32,6 +36,10 @@ OFFICE_AGENTS = (
     AgentProfile("agent:memory-steward", "Memory & Documentation Steward", "memory-governance", "memory-steward", ["markdown", "decision-records", "provenance", "andreos-memory"], ["Record verified state and next actions in persistent memory"], ["repo:read", "docs:write", "memory:propose"], supervisor_id="agent:hq-orchestrator", memory_scope="institutional"),
     AgentProfile("agent:back-office-coordinator", "Back Office Coordinator", "back-office", "operations-coordinator", ["task-lifecycle", "scheduling", "evidence", "cross-project"], ["Maintain task ownership, checkpoints and evidence records"], ["repo:read", "reports:write", "tasks:manage"], supervisor_id="agent:hq-orchestrator", memory_scope="institutional"),
     AgentProfile("agent:front-office-analyst", "Front Office Requirements Analyst", "front-office", "requirements-analyst", ["requirements", "acceptance-criteria", "user-intent", "workflow-analysis"], ["Translate user intent into testable requirements", "Flag ambiguity before risky changes"], ["repo:read", "tasks:propose"], supervisor_id="agent:hq-orchestrator", memory_scope="project"),
+    AgentProfile("agent:free-browser-operator", "Free Browser Collaboration Operator", "browser-automation", "free-browser-collaborator", ["browser-sessions", "free-tier-policy", "handoff-packets", "session-safety"], ["Prepare and operate only authorized free-mode AI sessions when a compliant adapter is implemented", "Stop on quota limits and never upgrade or spend"], ["tasks:read", "reports:write"], status=AgentStatus.OFFLINE, supervisor_id="agent:hq-orchestrator", memory_scope="project", metadata={"execution_maturity": "ROLE_DEFINED_ONLY", "activation_blocker": "No verified compliant browser-session adapter is integrated."}),
+    AgentProfile("agent:cost-guardian", "Cost and Quota Guardian", "cost-governance", "cost-guardian", ["zero-cost-policy", "quota-verification", "billing-safety", "negative-tests"], ["Block unknown, paid, or exhausted routes before invocation", "Audit provider and credit consumption boundaries"], ["repo:read", "tests:run", "reports:write"], status=AgentStatus.OFFLINE, supervisor_id="agent:hq-orchestrator", memory_scope="institutional", metadata={"execution_maturity": "ROLE_DEFINED_ONLY", "activation_blocker": "Must be connected to the governed execution gate and independently tested."}),
+    AgentProfile("agent:self-improvement-engineer", "Self-Improvement Engineer", "self-improvement", "self-improvement", ["sandboxed-refactoring", "backup-sha256", "test-driven-changes", "independent-review"], ["Propose and test reversible DGM-MAT improvements", "Never bypass approvals or modify protected mirrors"], ["repo:read", "repo:write:sandbox", "tests:run"], status=AgentStatus.OFFLINE, supervisor_id="agent:hq-orchestrator", memory_scope="project", metadata={"execution_maturity": "ROLE_DEFINED_ONLY", "activation_blocker": "Controlled self-improvement execution pipeline is not yet integrated end-to-end."}),
+    AgentProfile("agent:local-runtime-engineer", "Local Runtime and Model Engineer", "local-runtime", "local-runtime", ["ollama", "memory-pressure", "health-checks", "resource-aware-routing"], ["Prefer local resources when hardware health allows", "Prevent model selection that exceeds available memory"], ["repo:read", "tests:run", "reports:write"], status=AgentStatus.OFFLINE, supervisor_id="agent:hq-orchestrator", memory_scope="project", metadata={"execution_maturity": "ROLE_DEFINED_ONLY", "activation_blocker": "Needs a verified resource-aware execution adapter and runtime health signals."}),
 )
 
 

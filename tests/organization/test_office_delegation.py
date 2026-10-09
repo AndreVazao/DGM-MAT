@@ -19,6 +19,26 @@ def test_full_office_bootstrap_is_idempotent_and_includes_specialists():
         assert registry.get_agent(agent_id) is not None
 
 
+def test_company_roster_declares_zero_cost_browser_and_self_improvement_roles_as_offline_until_verified():
+    registry = bootstrap_full_office(AgentRegistry())
+    expected = {
+        "agent:free-browser-operator": "browser-automation",
+        "agent:cost-guardian": "cost-governance",
+        "agent:self-improvement-engineer": "self-improvement",
+        "agent:local-runtime-engineer": "local-runtime",
+    }
+    for agent_id, department_id in expected.items():
+        agent = registry.get_agent(agent_id)
+        assert agent is not None
+        assert agent.department_id == department_id
+        assert agent.status == AgentStatus.OFFLINE
+        assert agent.metadata["execution_maturity"] == "ROLE_DEFINED_ONLY"
+    assert registry.get_department("browser-automation") is not None
+    assert registry.get_department("cost-governance") is not None
+    assert registry.get_department("self-improvement") is not None
+    assert registry.get_department("local-runtime") is not None
+
+
 def test_delegation_selects_exact_skill_match_and_assigns_task():
     registry = bootstrap_full_office(AgentRegistry())
     tasks = OrganizationTaskManager()
