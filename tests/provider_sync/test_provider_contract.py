@@ -16,6 +16,26 @@ def test_base_provider_does_not_claim_health_without_observation():
     assert provider.is_available() is False
 
 
+def test_base_health_attempt_does_not_forge_observation_timestamp():
+    provider = ProviderBase("unknown-provider")
+
+    result = provider.check_health()
+
+    assert result["status"] == "unknown"
+    assert provider.health_metrics["last_check_attempt"] > 0
+    assert provider.health_metrics["last_check"] == 0
+
+
+def test_base_health_check_downgrades_unverified_manual_status():
+    provider = ProviderBase("unknown-provider")
+    provider.health_metrics["status"] = "ok"
+
+    result = provider.check_health()
+
+    assert result["status"] == "unknown"
+    assert provider.is_available() is False
+
+
 def test_cooldown_never_auto_promotes_to_healthy():
     provider = ProviderBase("unknown-provider")
     provider.set_cooldown(-1)

@@ -21,7 +21,10 @@ class ProviderBase:
         }
         self.health_metrics = {
             "latency": [],
+            # Timestamp of an actual health observation; base implementation leaves it unchanged.
             "last_check": 0,
+            # Timestamp of the latest attempt to check health, including unverified base calls.
+            "last_check_attempt": 0,
             "status": "unknown",
             "error_count": 0,
             "quota_used": 0,
@@ -77,12 +80,21 @@ class ProviderBase:
     def check_health(self) -> Dict[str, Any]:
         """
         Base implementation cannot prove remote health.
-        Concrete adapters must override this with an observed check.
+
+        last_check_attempt records that this method was invoked.
+        last_check is reserved for a concrete, observed health result.
+        Concrete adapters must override this method to establish health.
         """
-        self.health_metrics["last_check"] = time.time()
+        now = time.time()
+        self.health_metrics["last_check_attempt"] = now
+
         if self.health_metrics["status"] == "cooldown":
-            if time.time() > self.health_metrics["cooldown_until"]:
+            if now > self.health_metrics["cooldown_until"]:
                 self.health_metrics["status"] = "unknown"
+        else:
+            # Never trust a prior/manual status without a concrete health observation.
+            self.health_metrics["status"] = "unknown"
+
         return {
             "status": self.health_metrics["status"],
             "latency": self.get_avg_latency()
