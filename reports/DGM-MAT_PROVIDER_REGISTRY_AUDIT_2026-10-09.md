@@ -4,7 +4,7 @@
 
 ## Scope and safety
 
-This audit began from canonical commit `f102ca7` and continued through the narrowly scoped provider-truth fixes listed below. Canonical repository: `C:\ProgramasGodMode\DGM-MAT`; branch: `main`; latest published code commit for this audit: `dcbedfb`. Earlier baseline findings are retained where they remain valid; fixed findings are explicitly marked as fixed.
+This audit began from canonical commit `f102ca7` and continued through the narrowly scoped provider-truth fixes listed below. Canonical repository: `C:\ProgramasGodMode\DGM-MAT`; branch: `main`; latest published code commit for this audit: `518c1d1`. Earlier baseline findings are retained where they remain valid; fixed findings are explicitly marked as fixed.
 
 The historical source for each modified provider/recovery contract was preserved in `C:\ProgramasGodMode\DGM-MAT-OS\archive` before canonical edits. `C:\ProgramasGodMode\DGM-MAT-FULL-MIRROR` was not accessed or modified. Credential material was not read.
 
@@ -14,6 +14,7 @@ The historical source for each modified provider/recovery contract was preserved
 - Provider API now distinguishes endpoint success from registry state and only treats availability as reported when the snapshot marks it as an actual observation (`availability_observed`), not merely because an `available` boolean exists.
 - The base provider health check no longer pretends that an invocation is a real health observation.
 - Provider registration now rejects mismatched names and silent replacement of an existing adapter.
+- The legacy provider-sync facade now fails closed (`False`) instead of importing the unverified sync implementation; the old implementation and related artefacts are preserved in DGM-MAT-OS, but the other legacy source files have not been removed from canonical yet.
 - Provider integrations remain in safe-off posture: the registry is explicit-registration-only, and no productive registration call was found in the audited canonical source. No provider was installed or activated by this work.
 - Full pytest suite after the availability-observation correction completed with **196 collected tests, 196 progress dots, and exit code 0**. The focused suite after that correction completed with **18 passed, 0 failed**.
 
@@ -22,7 +23,7 @@ The historical source for each modified provider/recovery contract was preserved
 - Repository: `C:\ProgramasGodMode\DGM-MAT`
 - Branch: `main`
 - Initial audit baseline: `f102ca7` — `refactor: make provider health and discovery reality based`
-- Latest audit code commit: `dcbedfb` — `fix: report provider availability only when observed`
+- Latest audit code commit: `518c1d1` — `fix: fail closed for legacy provider sync`
 - The initial runtime check found `http://127.0.0.1:8181/runtime/providers` refused the connection and no Python runtime process was present. The runtime was not started by the audit. This is historical evidence from the initial check, not a claim about its present state.
 - Historical provider registrations and provider-mesh activity in logs dated 2026-10-07 are not proof that the currently quarantined adapters exist or work.
 
@@ -90,7 +91,13 @@ The previous `register(name, adapter)` allowed a registry key different from `ad
 
 Still worth reviewing separately: the priority list retains legacy names such as `poisongpt`; `load_configs()` applies config only to already registered providers and silently ignores unknown names. Neither issue justifies auto-loading provider code.
 
-### P1/P2 — Legacy routing, benchmark, and sync artefacts remain unproven
+### P1/P2 — Legacy routing, benchmark, and sync artefacts remain unproven; archive preserved, canonical quarantine pending
+
+Call-site search found no productive canonical consumers for the fixed/heuristic benchmark, scoring, cost, affinity, capability-matrix, or routing classes. The only external source reference to the routing engine was the incompatible stress script. The old provider-sync facade had no productive callers; its implementation called a missing method. Exact originals of 16 source/test files were preserved and hash-verified in DGM-MAT-OS archive commit `ac163bc`.
+
+**Safe-off fix:** commit `518c1d1` changes the compatibility facade to return `False` with a warning until verified synchronization exists. Its replacement regression test passes. The archived legacy performance/routing/sync files themselves remain present in canonical because quarantine/removal has not yet been completed; do not claim they have been deleted.
+
+
 
 The following modules contain fixed, heuristic, incomplete, or incompatible behavior and must not be represented as measured production capabilities:
 
@@ -125,7 +132,8 @@ The provider management widget is instantiated, but the audit found “Test Fall
 - Recovery-focused run after the recovery correction — 13 passed.
 - Provider/API/recovery/snapshot run before the availability-observation correction — 26 passed, 0 failed.
 - Focused run after the availability-observation correction — **18 passed, 0 failed**, process exit code 0.
-- Full `python -m pytest -q --disable-warnings` run after the availability-observation code/tests completed with **196 collected, 196 progress dots, exit code 0**. A separate collect-only run reported 196 tests.
+- Full `python -m pytest -q --disable-warnings` run after the availability-observation correction completed with **196 collected, 196 progress dots, exit code 0**.
+- After the legacy sync facade was changed to fail closed, the full suite was rerun: **196 progress dots, exit code 0**. Focused sync/provider/API/reality-snapshot suite: **19 passed, 0 failed**.
 - Tests can emit expected warning/error logs while verifying negative paths; those log lines are assertions of failure handling, not failed pytest tests.
 - The live runtime endpoint was not available during the initial audit. No credentials were read and no provider adapters were activated.
 
@@ -138,19 +146,21 @@ The provider management widget is instantiated, but the audit found “Test Fall
 | DGM-MAT | `cb3359d` | Separate health attempts from observations |
 | DGM-MAT | `d7c9b59` | Enforce provider registry contract |
 | DGM-MAT | `dcbedfb` | Report availability only when observed |
+| DGM-MAT | `518c1d1` | Fail closed for legacy provider sync |
 | DGM-MAT-OS | `b473985` | Preserve original recovery stubs |
 | DGM-MAT-OS | `60e91da` | Preserve original provider base health contract |
 | DGM-MAT-OS | `c528d45` | Preserve original provider registry |
 | DGM-MAT-OS | `4d5c3ee` | Preserve pre-change availability API/snapshot/tests |
 | DGM-MAT-OS | `eca0f9f` | Preserve pre-change snapshot tests |
 | DGM-MAT-OS | `afeecee` | Finalize availability archive note |
+| DGM-MAT-OS | `ac163bc` | Preserve unverified provider routing and sync files |
 
 The archive commits were pushed to `AndreVazao/DGM-MAT-OS`; canonical code commits were pushed to `AndreVazao/DGM-MAT`.
 
 ## Remaining recommended order
 
 1. Verify canonical and archive working trees are clean and both branches are synchronized with their remotes.
-2. Map actual call sites for legacy routing, benchmark, stress-test, and sync modules; archive exact originals in DGM-MAT-OS before any removal.
+2. Complete canonical quarantine/removal of the archived legacy performance/routing/sync files only after the remaining security gate permits the operation; exact originals are already preserved in DGM-MAT-OS.
 3. Define the public provider-service/API contract before repairing cockpit controls or adding adapters.
 4. Audit the legacy `core/provider_sync/provider_health.py` status cache and confirm whether it has any real callers before changing or retiring it.
 5. Only then decide whether to implement a verified provider registration/health path or leave the provider subsystem explicitly disabled.
