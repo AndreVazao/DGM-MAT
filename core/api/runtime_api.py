@@ -106,6 +106,29 @@ def get_memory_status():
         "stats": memory_stats,
     }
 
+def _provider_subsystem_summary(registered: List[str], providers: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Describe registry state without confusing API success with provider health."""
+    reported_available_count = sum(
+        1 for provider in providers if provider.get("available") is True
+    )
+
+    if not registered:
+        state = "empty_registry"
+    elif reported_available_count:
+        state = "availability_reported"
+    else:
+        state = "registered_no_availability_reported"
+
+    return {
+        "state": state,
+        "registered_count": len(registered),
+        "registered_names": list(registered),
+        "reported_available_count": reported_available_count,
+        "availability_reported": reported_available_count > 0,
+        "source": "state_store_or_reality_snapshot",
+    }
+
+
 @router.get("/providers")
 def list_providers():
     snapshot = state_store.get_snapshot()
@@ -116,10 +139,12 @@ def list_providers():
         for provider in providers:
             state_store.dispatch(StateEvents.PROVIDER_UPDATED, provider)
 
+    registered = provider_registry.list_providers()
     return {
         "status": "success",
         "providers": providers,
-        "registered": provider_registry.list_providers(),
+        "registered": registered,
+        "provider_subsystem": _provider_subsystem_summary(registered, providers),
     }
 
 @router.get("/governance")
