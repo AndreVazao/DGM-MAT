@@ -2,7 +2,9 @@
 <!-- Path: C:\ProgramasGodMode\DGM-MAT\reports\DGM-MAT_PROVIDER_API_APPROVAL_INTEGRATION_2026-10-09.md -->
 
 Date: 2026-10-09
-Status: IMPLEMENTED LOCALLY; VALIDATION IN PROGRESS; PROVIDERS REMAIN SAFE-OFF.
+Status: IMPLEMENTED, VALIDATED, COMMITTED, AND PUSHED; PROVIDERS REMAIN SAFE-OFF.
+Main commit: 8498e688e09bbad6a475da80143b2ab765415301
+Original-source archive commit: 2c17436e72413803aa492f5522ffdb980cb46ec9
 
 ## Implemented
 
@@ -37,7 +39,8 @@ Do not commit tokens or add them to URLs, request bodies, logs, or source files.
 - Existing deprecation warnings come from the installed Starlette TestClient/httpx integration and the existing API startup event; no Pydantic model warnings remain.
 - Full repository suite passed: python -m pytest -q --disable-warnings (exit code 0). Pytest emitted progress dots without a numeric test summary.
 - Production-database smoke tests were intentionally not run against the active runtime database; approval-store behavior is covered by isolated SQLite tests.
-- Commits/pushes remain pending.
+- Main implementation commit pushed to https://github.com/AndreVazao/DGM-MAT/commit/8498e688e09bbad6a475da80143b2ab765415301.
+- Original-source archive committed and pushed to https://github.com/AndreVazao/DGM-MAT-OS/commit/2c17436e72413803aa492f5522ffdb980cb46ec9.
 
 ## Boundaries / known risks
 
