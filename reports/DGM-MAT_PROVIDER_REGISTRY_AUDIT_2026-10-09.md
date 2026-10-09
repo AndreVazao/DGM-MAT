@@ -212,3 +212,17 @@ The archive commits were pushed to `AndreVazao/DGM-MAT-OS`; canonical code commi
 ## Change control
 
 All code changes were narrowly scoped to recovery truth, provider API truth, base health timestamps and availability, registry registration invariants, provider exception isolation, explicit availability-observation semantics, and provider-state reconciliation/freshness. Regression tests were added for each behavior. Exact pre-change runtime source modules were preserved and hash-verified before changes; test files were extended in place under Git version control. No adapter was installed or registered, no credential material was read, no destructive cleanup was performed, and no workflow was triggered. `DGM-MAT-FULL-MIRROR` remains untouched.
+
+
+## Claude Code / FCC / NVIDIA NIM operational retest — 2026-10-09
+
+Detailed evidence: `C:\ProgramasGodMode\DGM-MAT-Agent-Reports\2026-10-09-provider-audit\CLAUDE-CODE-NIM-RETEST.md`.
+
+- PASS: Node-compatible Claude Code 2.1.112 responds to `claude --version` and the primary `ClaudeCode.cmd --version` launcher; both return exit code 0.
+- PASS: FCC 6.10.4 is running on local port 8082; the admin page returns HTTP 200; status reports NVIDIA NIM configured/running with `nvidia_nim/nvidia/nemotron-3-super-120b-a12b`; model catalog count is 80.
+- PASS: one real short inference through `fcc-claude` returned exactly `NIM_OK`, exit code 0. This confirms one successful request/response only; it does not establish free-tier guarantees or sustained reliability.
+- PASS: five matching desktop shortcuts have existing targets and working directories. Portable ZIP listing contains 30 entries and the expected CLI/package manifest; SHA-256 is `C85C4C9F276996B28824652C00D588670979569BE7E7C3A7996841A6302D1068`. Only entry names were screened for obvious secret filenames; the archive was not extracted on a second PC.
+- NOT READY: Ollama API at 127.0.0.1:11434 is unavailable.
+- PARTIAL: OmniRoute 3.8.51 and Ruflo 3.55.0 report versions/help. OmniRoute warns that its `.env` is inside the installed npm package and may be replaced by an update; the file was not read or changed.
+- NOT YET VALIDATED: longer read-only Claude Code plan-mode/source-review attempts failed to produce a useful final report within their turn/time budgets; no repository files were changed. Treat NIM as a verified short-inference path, but do not yet trust Claude Code as a file-reading/coding subagent. Diagnose tool-use/turn behavior before granting edit permissions.
+- Safety: no credentials displayed or changed; no provider adapters activated; no DGM-MAT source files changed during this retest.
