@@ -12,5 +12,10 @@
 ## Important limitation
 These classifications are an inventory contract, not enforcement. Existing desktop/mobile clients still lack the new DGM-MAT session credential. Provider execution retains its separate API/operator credentials. Do not expose the API outside loopback and do not claim the API is secured by this module.
 
+## Validation
+- Focused security + API compatibility tests: **11 passed**, exit code 0.
+- Full repository suite: `python -m pytest -q --disable-warnings` completed with exit code 0 in **55.44 seconds**.
+- `git diff --check` passed.
+
 ## Next
 Implement PC-local session bootstrap, migrate desktop HTTP and WebSocket clients, then enforce authentication on sensitive HTTP and WebSocket routes with negative and compatibility tests. Mobile pairing remains blocked until TLS and revocation are verified.
