@@ -1,5 +1,7 @@
 # DGM-MAT Providers Architecture Audit — 2026-10-07
 
+> **Historical snapshot — superseded for current runtime/provider-state facts by [DGM-MAT Provider Registry and Runtime Audit — 2026-10-09](DGM-MAT_PROVIDER_REGISTRY_AUDIT_2026-10-09.md).** This document records the topology observed on 2026-10-07; its provider implementation inventory and dynamic-discovery description are not a statement of the current canonical tree. Subsequent safety work quarantined unproven adapters, made discovery observation-only, and kept provider registration explicitly governed. As of the 2026-10-09 audit, no productive provider registration path was found and provider operation must not be inferred from endpoint success or historical logs.
+
 ## Decision
 
 **DO NOT physically extract `core/providers` yet.**

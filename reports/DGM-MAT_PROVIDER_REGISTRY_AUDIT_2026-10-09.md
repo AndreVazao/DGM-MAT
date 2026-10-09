@@ -2,120 +2,143 @@
 
 # DGM-MAT Provider Registry and Runtime Audit — 2026-10-09
 
-## Scope and method
+## Scope and safety
 
-The initial discovery pass audited the canonical repository after commit `f102ca7` using local file inspection, directory inventory, source-reference searches, existing tests, runtime process inventory, API reachability, and runtime logs. A subsequent narrow recovery-truth remediation is documented below. The immutable `DGM-MAT-FULL-MIRROR` was not accessed or modified.
+This audit began from canonical commit `f102ca7` and continued through the narrowly scoped provider-truth fixes listed below. Canonical repository: `C:\ProgramasGodMode\DGM-MAT`; branch: `main`; latest published code commit for this audit: `d7c9b59`. Earlier baseline findings are retained where they remain valid; fixed findings are explicitly marked as fixed.
 
-## Canonical state observed
+The historical source for each modified provider/recovery contract was preserved in `C:\ProgramasGodMode\DGM-MAT-OS\archive` before canonical edits. `C:\ProgramasGodMode\DGM-MAT-FULL-MIRROR` was not accessed or modified. Credential material was not read.
+
+## Executive status
+
+- Recovery success is no longer reported unless an action succeeds and the repair chain is non-empty and exception-safe.
+- Provider API now distinguishes successful endpoint execution from the provider subsystem's registration/availability reporting state.
+- The base provider health check no longer pretends that an invocation is a real health observation.
+- Provider registration now rejects mismatched names and silent replacement of an existing adapter.
+- Provider integrations remain in safe-off posture: the registry is explicit-registration-only, and no productive registration call was found in the audited canonical source. No provider was installed or activated by this work.
+- Full pytest suite after the registry change completed with exit code 0. The focused provider/API/recovery/snapshot suite completed with **26 passed, 0 failed**.
+
+## Canonical state and runtime evidence
 
 - Repository: `C:\ProgramasGodMode\DGM-MAT`
 - Branch: `main`
-- HEAD and `origin/main`: `f102ca7` — `refactor: make provider health and discovery reality based`
-- Working tree was clean when checked.
-- `ProviderBase` and the governed registry remain canonical; unproven concrete provider adapters are absent from the current `core/providers` source tree.
-- Current runtime is not live-verifiable: `http://127.0.0.1:8181/runtime/providers` refused the connection, and the PC process inventory showed no Python runtime process. No attempt was made to start or alter the runtime.
+- Initial audit baseline: `f102ca7` — `refactor: make provider health and discovery reality based`
+- Latest audit code commit: `d7c9b59` — `fix: enforce explicit provider registry contract`
+- The initial runtime check found `http://127.0.0.1:8181/runtime/providers` refused the connection and no Python runtime process was present. The runtime was not started by the audit. This is historical evidence from the initial check, not a claim about its present state.
+- Historical provider registrations and provider-mesh activity in logs dated 2026-10-07 are not proof that the currently quarantined adapters exist or work.
 
-## Confirmed findings
+## Findings and remediation
 
-### P1 — Provider recovery could report success without recovery (fixed)
+### P1 — Recovery previously reported success without doing recovery — FIXED
 
-At discovery time, `core/recovery/recovery_engine.py::_execute_chain` added `ProviderRecovery.recover_provider("default")` for a provider crash. The original method only logged an intention and returned `True`; it did not refresh credentials, reopen a browser, check a session, or verify recovery. The original `RepairChain.execute()` also returned `True` for an empty chain and allowed exceptions from steps to escape.
+The original `ProviderRecovery.recover_provider()` only logged an intention and returned `True`. The original `RuntimeRecovery.recover()` similarly reported success without a verified restart. `RepairChain.execute()` also treated an empty chain as success and did not safely convert exceptions into failure.
 
-**Fix shipped in `dfdf058`:** provider and runtime recovery now return `False` until real actions and verification exist. Empty repair chains, failed steps, and exceptions now return `False`. Seven regression tests cover the false-success paths. The exact original files are preserved in `DGM-MAT-OS` commit `b473985`.
+**Fix:** commit `dfdf058` (`fix: make recovery outcomes reflect verified actions`).
+- Provider and runtime recovery now return `False` until real recovery actions and verification exist.
+- Empty repair chains, failed steps, and exceptions return `False`.
+- Seven deterministic regression tests cover these false-success paths.
+- Exact original files preserved in DGM-MAT-OS commit `b473985`.
 
-### P1 — No productive registration path for providers was found
+### P1 — Provider API conflated endpoint success with provider operation — FIXED
 
-The registry's explicit-registration rule is safer than importing arbitrary source from disk. However, a repository-wide Python source search found no productive call to `provider_registry.register(...)`; the only confirmed registration is in a contract test. `bootstrap_engine._prepare_providers()` validates that the registry module can be imported but does not register adapters. The startup `ProviderAgent -> CoreProviderServiceAdapter -> ProviderRuntime` path therefore iterates an empty registry in the current source state.
+Previously, `/runtime/providers` returned `status: success` even when no providers were registered, which could be misread as operational health.
 
-This is an intentional safe-off posture after quarantining unproven adapters, but it means external model-provider functionality is currently not wired into the canonical runtime.
+**Fix:** commit `3d6d782` (`fix: expose truthful provider subsystem state`).
+- The response retains existing fields for compatibility.
+- It adds `provider_subsystem` state, registered count/names, reported-availability count, and an explicit `availability_reported` flag.
+- States distinguish an empty registry, registered providers with no availability report, and reported availability.
+- The API's own success is not evidence that a provider is healthy or reachable.
 
-### P1 — Provider status endpoint can imply more than it proves
+### P2 — Base health-check timestamp was misleading — FIXED
 
-`core/api/runtime_api.py::list_providers` returns `{"status": "success", ...}` when the endpoint succeeds, including when both `providers` and `registered` are empty. `RealitySnapshotService._get_providers_status()` emits no entries when there are no registered adapters and no files matching its narrow adapter-file convention. The endpoint does not distinguish “endpoint worked” from “provider subsystem operational/empty/disabled”.
+The base `ProviderBase.check_health()` cannot prove remote health, but previously updated `last_check` whenever called.
 
-**Recommendation:** expose explicit registry/subsystem state and a count, while preserving HTTP/endpoint success as a separate field. Do not label the overall runtime healthy solely because the API request succeeded.
+**Fix:** commit `cb3359d` (`fix: separate provider health attempts from observations`).
+- `last_check_attempt` records invocation of the base health check.
+- `last_check` is reserved for an actual health observation.
+- The base implementation retains `unknown` status and cannot promote an unverified provider to available.
+- Exact pre-change file preserved in DGM-MAT-OS commit `60e91da`.
 
-### P2 — Health observation timestamp is misleading
+### P1 — No productive provider registration path found — OPEN / SAFE-OFF
 
-`ProviderBase.check_health()` updates `health_metrics["last_check"]` even though the base implementation explicitly cannot prove remote health. Status remains `unknown`, which is correct, but the timestamp can be mistaken for the time of a real health observation.
+The registry remains explicit-registration-only. The audited source search found no productive `provider_registry.register(...)` call; bootstrap verifies imports but does not register concrete adapters. The agent/runtime path can therefore iterate an empty registry in the current source state.
 
-**Recommendation:** distinguish last check attempt from last successful/observed health result; only advance the latter when a concrete adapter performs a real check.
+This is deliberate safe-off behavior after unproven adapters were quarantined. It also means external model-provider functionality is not currently proven to be wired into the canonical runtime. Do not install, import, or auto-promote adapters without a separately governed provider-service contract.
 
-### P1/P2 — Remaining routing/performance modules are not operational evidence
+### P2 — Registry contract gaps — FIXED
 
-The following canonical modules are placeholders or contain ungrounded fixed outputs, and repository searches found no productive callers outside their own definitions and the obsolete stress script:
+The previous `register(name, adapter)` allowed a registry key different from `adapter.name` and silently replaced a different adapter at the same key.
 
-- `core/providers/performance/provider_benchmark.py`: fixed latency/throughput/success-rate values.
-- `core/providers/performance/provider_scoring.py`: always returns `95.0`.
-- `core/providers/performance/provider_cost_optimizer.py`: returns fixed model names by task priority.
-- `core/providers/performance/provider_affinity_engine.py`: always returns a fixed Claude model.
+**Fix:** commit `d7c9b59` (`fix: enforce explicit provider registry contract`).
+- Missing name / non-`ProviderBase` still raises `TypeError`.
+- A key that differs from `adapter.name` raises `ValueError`.
+- Replacing a registered provider with a different instance raises `ValueError`.
+- Registering the same instance under the same name remains idempotent.
+- Added three regression tests.
+- Exact pre-change registry file preserved in DGM-MAT-OS commit `c528d45`.
+
+Still worth reviewing separately: the priority list retains legacy names such as `poisongpt`; `load_configs()` applies config only to already registered providers and silently ignores unknown names. Neither issue justifies auto-loading provider code.
+
+### P1/P2 — Legacy routing, benchmark, and sync artefacts remain unproven
+
+The following modules contain fixed, heuristic, incomplete, or incompatible behavior and must not be represented as measured production capabilities:
+
+- `core/providers/performance/provider_benchmark.py`: fixed latency/throughput/success values.
+- `core/providers/performance/provider_scoring.py`: constant score.
+- `core/providers/performance/provider_cost_optimizer.py`: fixed model choice by task priority.
+- `core/providers/performance/provider_affinity_engine.py`: fixed model choice.
 - `core/providers/performance/provider_memory_profiles.py`: static name-prefix heuristic.
 - `core/providers/performance/provider_capability_matrix.py`: hard-coded capability scores without measurements.
-- `core/providers/performance/provider_routing_engine.py`: no productive consumers found; relies on the ungrounded matrix and an adapter contract that is no longer present in the canonical provider tree.
+- `core/providers/performance/provider_routing_engine.py`: no productive consumer found in the audit; depends on ungrounded capability data.
 - `core/research/provider_benchmarking.py`: method body is `pass`.
+- `scripts/stress_test_providers.py`: imports adapters absent from canonical source and expects obsolete interface fields/method signatures.
+- `core/provider_sync/provider_memory_sync.py`: calls missing `ProviderSync._sync_provider()`.
+- `tests/integration/test_provider_sync.py`: manual validation script expects methods/attributes absent from current `ProviderSync`.
+- `core/provider_sync/sync_engine.py`: expects conversation methods/identifiers absent from `ProviderBase`.
+- `core/providers/performance/health_monitor.py`: acknowledges that a real ping is needed, calls health checks twice per cycle, and had no productive caller found.
+- `ProviderRateControl.allow_request()` is defined/constructed but no enforcement call was found in the audit.
 
-These should not be described as real benchmarking, measured capability, cost optimization, or production routing.
+These items require individual call-site and test review before any quarantine or retirement. Preserve exact source in DGM-MAT-OS before removing canonical files.
 
-### P1 — Historical provider stress script is incompatible with current source
+### P2 — Cockpit provider controls remain partially inactive
 
-`scripts/stress_test_providers.py` imports `core.providers.chatgpt.chatgpt_provider` and `core.providers.claude.claude_provider`, which are absent from the current canonical source tree. It calls `handle_failover` with one argument although the current method requires two, and expects `provider_id` although `ProviderBase` exposes `name`. The script cannot serve as current failover evidence.
-
-### P1/P2 — Legacy provider sync contracts are broken or unverified
-
-- `core/provider_sync/provider_memory_sync.py` calls `ProviderSync._sync_provider()`; that method is absent from the current `core/operator/provider_sync.py`. Exceptions are caught per provider, so `sync_all()` can finish while all sync attempts fail.
-- `tests/integration/test_provider_sync.py` expects `track_prompt_lineage`, `prompt_lineage`, `map_identity`, and `identity_map` on `ProviderSync`; the current class exposes none of them. It is a manual `validate()` script, not a pytest-style test.
-- `core/provider_sync/sync_engine.py` expects `provider_id`, `list_conversations()`, and `sync_conversation()`, none of which are part of `ProviderBase`. No productive callers were found.
-- `core/providers/performance/health_monitor.py` explicitly comments that a real ping would be needed, calls `check_health()` twice per cycle via `broadcast_health()`, and has no productive caller found in source searches.
-- `ProviderRateControl.allow_request()` is defined and instantiated by GovernanceEngine, but source searches found no call to `allow_request()`; therefore the provider-specific limiter is not currently enforcing provider requests.
-
-### P2 — Cockpit provider panel is present but only partially functional
-
-`ProviderManagementWidget` is instantiated in `cockpit/main_window.py`. It first calls the runtime API, then falls back to direct Core registry/vault access, coupling UI and authority. The “Test Fallback” and “Browser Recovery” buttons have no connected handlers. With an empty registry and no installed adapters found by the current file-name heuristic, the panel cannot register or operate a provider.
+The provider management widget is instantiated, but the audit found “Test Fallback” and “Browser Recovery” controls without connected handlers. The widget also falls back to direct registry/vault access, coupling UI to internal authority. Do not connect these controls until a public provider-service/API contract and approval behavior are defined.
 
 ### P2 — Installed-provider detection is a narrow file heuristic
 
-`RealitySnapshotService._scan_installed_providers()` only recognizes immediate child directories containing `<directory-name>_provider.py`. This is not proof that a provider is installed, importable, authenticated, or operational; it can also miss adapters using another valid package layout. The field should represent source presence under an explicit definition, not operational health.
+`RealitySnapshotService._scan_installed_providers()` recognizes a narrow directory/file naming convention. Source presence does not prove importability, credentials, remote reachability, or health; other valid package layouts may be missed. Any future field should explicitly describe what it observes, rather than claim operational status.
 
-### P2 — Registry contract gaps
+## Test evidence
 
-- `register(name, adapter)` does not validate that `name == adapter.name`.
-- Registering the same key silently overwrites the previous instance.
-- The priority list retains legacy names, including `poisongpt`, despite the adapter stack being quarantined.
-- `load_configs()` only applies settings to already registered adapters; it silently ignores config entries for unregistered names. No `provider_configs.json` was found under the canonical repository during the file search; runtime overrides were not independently inspected.
-- Current contract tests cover unknown status, expired cooldown, no auto-discovery, and explicit registration. The new recovery-truth tests cover false-success paths; API empty-state semantics, timestamp semantics, registry-name mismatch, and legacy sync failures remain untested.
+- Earlier focused baseline: provider sync plus agent boundary — 8 passed.
+- Recovery-focused run after the recovery correction — 13 passed.
+- Provider/API/recovery/snapshot run after all four audit code changes — **26 passed, 0 failed**, process exit code 0.
+- Full `python -m pytest -q --disable-warnings -rA` run after the registry change completed with **exit code 0**. Pytest emitted the full pass list and no failure report.
+- Tests can emit expected warning/error logs while verifying negative paths; those log lines are assertions of failure handling, not failed pytest tests.
+- The live runtime endpoint was not available during the initial audit. No credentials were read and no provider adapters were activated.
 
-## Test and runtime evidence
+## Commits and preservation
 
-- Previously recorded focused tests: `tests/provider_sync` plus `tests/contracts/test_agent_boundary.py`: **8 passed**.
-- During follow-up remediation, focused tests for recovery truth, provider contracts, and runtime snapshot passed: **13 passed**.
-- Full suite rerun after remediation completed with exit code 0 and progress at 100%; **184 tests passed, 0 failures** (counted from the three pytest progress groups: 72 + 72 + 40).
-- Runtime endpoint check at audit time: connection refused on `127.0.0.1:8181`; process inventory showed no Python runtime process. Runtime was not started by this audit.
-- Runtime log search found historical provider registrations and provider-mesh/ChatGPT activity from 2026-10-07. This is historical evidence only and must not be treated as proof that the quarantined adapters are present or operational now.
-- Credential material under `storage/runtime/governance` was not read.
+| Repository | Commit | Purpose |
+|---|---|---|
+| DGM-MAT | `dfdf058` | Recovery results reflect verified actions |
+| DGM-MAT | `3d6d782` | Truthful provider subsystem API state |
+| DGM-MAT | `cb3359d` | Separate health attempts from observations |
+| DGM-MAT | `d7c9b59` | Enforce provider registry contract |
+| DGM-MAT-OS | `b473985` | Preserve original recovery stubs |
+| DGM-MAT-OS | `60e91da` | Preserve original provider base health contract |
+| DGM-MAT-OS | `c528d45` | Preserve original provider registry |
 
-## Remediation performed — 2026-10-09
+The archive commits were pushed to `AndreVazao/DGM-MAT-OS`; canonical code commits were pushed to `AndreVazao/DGM-MAT`.
 
-The first high-priority recovery-truth defect has now been corrected in canonical source:
+## Remaining recommended order
 
-- `ProviderRecovery.recover_provider()` returns `False` until a real recovery action and verification exist.
-- `RuntimeRecovery.recover()` returns `False` until a real restart and verification exist; the prior implementation was another false-success stub.
-- `RepairChain.execute()` returns `False` for an empty chain, a failed step, or a step that raises, instead of letting empty or exceptional paths look successful.
-- Added `tests/unit/test_recovery_truth_contract.py` with seven deterministic tests covering these cases and failed recovery recording.
-- Exact pre-change copies of the three edited recovery files were SHA-256 checked and preserved in `DGM-MAT-OS/archive/DGM-MAT-unverified-recovery-stubs-2026-10-09/`.
-
-Commits:
-- Canonical DGM-MAT recovery correction: `dfdf058` — `fix: make recovery outcomes reflect verified actions`, pushed to `origin/main`.
-- Archive preservation: `DGM-MAT-OS` commit `b473985`, pushed to `origin/main`.
-
-## Remaining recommended order of work
-
-1. Define truthful provider state semantics: empty/disabled, registered, loaded, health observed, available.
-2. Add tests for `/runtime/providers` and `RealitySnapshotService` empty and registered states.
-3. Correct `ProviderBase.last_check` semantics without promoting unknown providers.
-4. Quarantine or clearly mark the uncalled fake routing/performance and incompatible sync artefacts, preserving their exact history in `DGM-MAT-OS` before any removal.
-5. Repair or retire the cockpit's inactive controls and direct registry/vault fallback only after defining the public provider-service contract.
-6. Update the 2026-10-07 provider architecture report as historical, linking this post-`f102ca7` audit.
+1. Verify canonical and archive working trees are clean and both branches are synchronized with their remotes.
+2. Update the older 2026-10-07 provider architecture report to label it historical and link this audit.
+3. Review `RealitySnapshotService` and all health/availability fields end-to-end so every state has a clear source and meaning.
+4. Map actual call sites for legacy routing, benchmark, stress-test, and sync modules; archive exact originals in DGM-MAT-OS before any removal.
+5. Define the public provider-service/API contract before repairing cockpit controls or adding adapters.
+6. Only then decide whether to implement a verified provider registration/health path or leave the provider subsystem explicitly disabled.
 
 ## Change control
 
-The initial discovery pass was read-only. A subsequent, narrowly scoped recovery-truth fix changed only `core/recovery/provider_recovery.py`, `core/recovery/runtime_recovery.py`, and `core/recovery/repair_chain.py`, with seven regression tests added. Original versions were preserved and hash-verified in `DGM-MAT-OS`. No adapter was installed or registered. No credentials were read. No destructive cleanup, adapter promotion, or workflow was triggered. `DGM-MAT-FULL-MIRROR` remains untouched.
+All code changes were narrowly scoped to recovery truth, provider API truth, base health timestamps, and registry registration invariants. Regression tests were added for each behavior. Exact original source for edited files was preserved before changes. No adapter was installed or registered, no credential material was read, no destructive cleanup was performed, and no workflow was triggered. `DGM-MAT-FULL-MIRROR` remains untouched.
