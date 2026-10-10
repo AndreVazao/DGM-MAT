@@ -84,6 +84,16 @@ class ConversationKnowledgeStore:
                     resolved_at TEXT,
                     UNIQUE(item_type, item_id, reason, status)
                 );
+                CREATE TABLE IF NOT EXISTS knowledge_history (
+                    event_no INTEGER PRIMARY KEY AUTOINCREMENT,
+                    entity_type TEXT NOT NULL CHECK(entity_type IN ('intent','proposal','decision','relation','review_task')),
+                    entity_id TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS ix_knowledge_history_entity
+                    ON knowledge_history(entity_type, entity_id, event_no);
                 CREATE INDEX IF NOT EXISTS ix_intents_status ON user_intents(status, reviewed_by_user);
                 CREATE INDEX IF NOT EXISTS ix_decisions_status ON user_decisions(status, confirmed_by_user);
                 CREATE INDEX IF NOT EXISTS ix_relations_source ON conversation_relations(source_conversation_id);
@@ -120,6 +130,23 @@ class ConversationKnowledgeStore:
             value["accepted"] = bool(value["accepted"])
         return value
 
+    def _record_history(self, db: sqlite3.Connection, entity_type: str, entity_id: str, event_type: str, payload: dict) -> None:
+        db.execute(
+            "INSERT INTO knowledge_history (entity_type, entity_id, event_type, payload_json, created_at) VALUES (?, ?, ?, ?, ?)",
+            (entity_type, entity_id, event_type, self._json(payload), self._now()),
+        )
+
+    def history(self, entity_type: str, entity_id: str) -> list[dict]:
+        with self._connect() as db:
+            rows = db.execute(
+                "SELECT event_no, entity_type, entity_id, event_type, payload_json, created_at FROM knowledge_history WHERE entity_type=? AND entity_id=? ORDER BY event_no",
+                (entity_type, entity_id),
+            ).fetchall()
+        return [
+            {**dict(row), "payload": json.loads(row["payload_json"])}
+            for row in rows
+        ]
+
     def save_intent(self, intent: UserIntent) -> None:
         if not intent.intent_id.strip() or not intent.statement.strip():
             raise ValueError("intent_id and statement are required")
@@ -153,6 +180,13 @@ class ConversationKnowledgeStore:
                 self._json(intent.evidence), intent.confidence, int(intent.reviewed_by_user),
                 now, now, self.SCHEMA_VERSION,
             ))
+            self._record_history(db, "intent", intent.intent_id, "saved", {
+                "statement": intent.statement, "status": intent.status,
+                "source_conversation_id": intent.source_conversation_id,
+                "source_message_id": intent.source_message_id, "observed_at": intent.observed_at,
+                "supersedes": intent.supersedes, "evidence": intent.evidence,
+                "confidence": intent.confidence, "reviewed_by_user": intent.reviewed_by_user,
+            })
 
     def get_intent(self, intent_id: str) -> dict | None:
         with self._connect() as db:
@@ -195,6 +229,11 @@ class ConversationKnowledgeStore:
                 proposal.proposal_id, proposal.statement, proposal.source_conversation_id,
                 proposal.source_message_id, accepted, proposal.decision_id, now, now, self.SCHEMA_VERSION,
             ))
+            self._record_history(db, "proposal", proposal.proposal_id, "saved", {
+                "statement": proposal.statement, "source_conversation_id": proposal.source_conversation_id,
+                "source_message_id": proposal.source_message_id, "accepted": proposal.accepted,
+                "decision_id": proposal.decision_id,
+            })
 
     def save_decision(self, decision: UserDecision) -> None:
         if not decision.decision_id.strip() or not decision.statement.strip():
@@ -226,6 +265,13 @@ class ConversationKnowledgeStore:
                 decision.source_message_id, decision.decided_at, self._json(decision.supersedes),
                 self._json(decision.evidence), int(decision.confirmed_by_user), now, now, self.SCHEMA_VERSION,
             ))
+            self._record_history(db, "decision", decision.decision_id, "saved", {
+                "statement": decision.statement, "status": decision.status,
+                "source_conversation_id": decision.source_conversation_id,
+                "source_message_id": decision.source_message_id, "decided_at": decision.decided_at,
+                "supersedes": decision.supersedes, "evidence": decision.evidence,
+                "confirmed_by_user": decision.confirmed_by_user,
+            })
 
     def get_decision(self, decision_id: str) -> dict | None:
         with self._connect() as db:
@@ -273,6 +319,12 @@ class ConversationKnowledgeStore:
                 relation.relation_type, self._json(relation.evidence), relation.confidence,
                 int(relation.reviewed_by_user), now, now, self.SCHEMA_VERSION,
             ))
+            self._record_history(db, "relation", relation.relation_id, "saved", {
+                "source_conversation_id": relation.source_conversation_id,
+                "target_conversation_id": relation.target_conversation_id,
+                "relation_type": relation.relation_type, "evidence": relation.evidence,
+                "confidence": relation.confidence, "reviewed_by_user": relation.reviewed_by_user,
+            })
 
     def list_relations(self, conversation_id: str | None = None) -> list[dict]:
         query = "SELECT * FROM conversation_relations"
@@ -302,6 +354,8 @@ class ConversationKnowledgeStore:
                 ON CONFLICT(task_id) DO NOTHING
             """, (task_id, item_type, item_id, reason, self._json(evidence or []), now))
             row = db.execute("SELECT * FROM review_tasks WHERE task_id=?", (task_id,)).fetchone()
+            if row is not None:
+                self._record_history(db, "review_task", task_id, "created", dict(row))
         return self._row(row) or {}
 
     def resolve_review_task(self, task_id: str, *, resolution: str, evidence: list[str]) -> bool:
@@ -312,6 +366,9 @@ class ConversationKnowledgeStore:
                 UPDATE review_tasks SET status='resolved', resolution=?, evidence_json=?, resolved_at=?
                 WHERE task_id=? AND status='open'
             """, (resolution, self._json(evidence), self._now(), task_id))
+            if updated.rowcount == 1:
+                row = db.execute("SELECT * FROM review_tasks WHERE task_id=?", (task_id,)).fetchone()
+                self._record_history(db, "review_task", task_id, "resolved", dict(row))
             return updated.rowcount == 1
 
     def list_open_review_tasks(self) -> list[dict]:
