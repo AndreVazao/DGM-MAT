@@ -379,5 +379,3 @@ def test_confirmed_decision_supersession_requires_confirmed_successor_and_eviden
             "decision-old", superseded_by_decision_id="decision-pending", evidence=[]
         )
     assert store.get_decision("decision-old")["status"] == "confirmed"
-
-[executed on device: PC-Vazao-Anjos (982eb058-a42c-4897-9732-547f04cb44f0)]
