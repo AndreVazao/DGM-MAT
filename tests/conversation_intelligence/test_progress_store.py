@@ -180,3 +180,39 @@ def test_saved_audits_can_be_loaded_without_source_export(tmp_path):
     assert restored[0].conversation.conversation_id == "history-saved"
     assert restored[0].conversation.content == ""
     assert pipeline.summarize()["projects"] == ["DGM-MAT"]
+
+
+
+def test_legacy_counter_only_snapshot_is_rebuilt_once(tmp_path):
+    import json
+
+    from core.conversation_intelligence.models import ConversationAudit
+    from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
+
+    export_path = tmp_path / "legacy.json"
+    progress_path = tmp_path / "progress.sqlite3"
+    export_path.write_text(json.dumps({"conversations": [{
+        "id": "legacy-history", "title": "Old ledger item", "content": "Rebuild this result"
+    }]}), encoding="utf-8")
+    pipeline = ConversationIntelligencePipeline(progress_store_path=progress_path)
+    conversation = pipeline.ingestor.load_file(export_path, "chatgpt")[0]
+    fingerprint = pipeline.progress_store.fingerprint(json.dumps({
+        "title": conversation.title,
+        "content": conversation.content,
+        "url": conversation.url,
+        "messages": [],
+    }, ensure_ascii=False, sort_keys=True))
+    pipeline.progress_store.record_conversation(
+        conversation.provider, conversation.conversation_id, fingerprint,
+        conversation.title, status="complete",
+        result={"artifact_count": 0, "finding_count": 0, "artifact_fingerprints": []},
+    )
+    calls = []
+    pipeline.auditor.audit = lambda conversation, artifacts: (
+        calls.append(conversation.conversation_id) or ConversationAudit(conversation=conversation, artifacts=artifacts)
+    )
+
+    first = pipeline.ingest_file(export_path, "chatgpt")
+    second = pipeline.ingest_file(export_path, "chatgpt")
+    assert calls == ["legacy-history"]
+    assert len(first) == len(second) == 1
