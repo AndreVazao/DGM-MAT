@@ -53,7 +53,7 @@ A fila e o checkpoint têm de ser persistentes antes de notificar. A entrega pod
 
 ## Maturidade e próximo passo
 
-Esta capacidade está **ESPECIFICADA**, não implementada end-to-end. O pop-up móvel, sincronização estável, canal seguro de intervenção, fila durável e retoma automática ainda não foram verificados. A integração atual de browser permanece interna ao MissionEngine; não está exposta pela API/cockpit.
+Esta capacidade está **ESPECIFICADA**, não implementada end-to-end. O pop-up móvel, sincronização estável, canal seguro de intervenção e retoma automática ainda não foram verificados. A integração atual de browser permanece interna ao MissionEngine; não está exposta pela API/cockpit.
 
 Próxima sequência: auditar bootstrap de sessão e todos os clientes HTTP/WebSocket; desenhar autenticação global e emparelhamento; implementar fila e máquina de estados com testes; só depois integrar o pop-up móvel e o mecanismo de retoma. Não expor controlo remoto do browser antes dos pré-requisitos.
 
@@ -61,7 +61,10 @@ Próxima sequência: auditar bootstrap de sessão e todos os clientes HTTP/WebSo
 
 A experiência pretendida é permitir que o utilizador conclua o passo no telefone enquanto a missão original e a sessão do browser no PC ficam à espera. Quando for seguro e tecnicamente possível, o cockpit deve apresentar uma vista controlada da sessão ativa e encaminhar a ação deliberada do utilizador para o separador/campo autorizado, usando um canal dedicado protegido e temporário. A ação tem de ficar ligada ao utilizador, dispositivo emparelhado, sessão do browser, origem, missão, passo e pedido de uso único. Dados sensíveis não passam pelo modelo de IA, payload genérico, message bus comum ou logs e são descartados imediatamente após a entrega. CAPTCHA/MFA continua a ser resolvido manualmente pelo utilizador; o sistema apenas transporta a interação humana e nunca resolve nem contorna o desafio. Se não for possível assegurar esta interação, explicar a limitação, pedir conclusão na sessão legítima e verificar o resultado antes de retomar.
 
-
 ## Princípio de continuidade do cérebro e delegações paralelas (2026-10-10)
 
 O PC é o cérebro e a fonte de verdade; o telefone é apenas o cockpit de comunicação/intervenção. A indisponibilidade do telefone não pode parar o runtime nem o scheduler. Quando uma delegação aguarda uma resposta humana, apenas a tarefa dependente fica pendente: o orquestrador deve procurar e executar trabalho independente e seguro noutras delegações, libertando workers desnecessariamente presos. Se não houver trabalho elegível, espera honestamente sem simular progresso. O estado e os pedidos ficam persistidos no PC para reconciliação após reconexão/reinício. Ver `PC_BRAIN_MOBILE_COCKPIT_PARALLEL_DELEGATIONS.md` para o contrato operacional completo.
+
+## Atualização de implementação — 2026-10-10
+
+Foi criado o componente local durável `core/organization/human_intervention_queue.py`, com testes dedicados em `tests/organization/test_human_intervention_queue.py`. O componente implementa persistência SQLite/WAL, unicidade por missão/passo ativo, decisões de uso único vinculadas ao passo, expiração e passagem explícita por `VERIFYING` antes do encerramento. Os 7 testes dedicados e a bateria focada de 15 testes passaram após a revisão final de gestão de ligações SQLite. A integração com MissionEngine, notificação no cockpit, autenticação global HTTP/WebSocket, libertação de workers e retoma automática continuam pendentes. Ver `HUMAN_INTERVENTION_QUEUE_IMPLEMENTATION.md`; não expor remotamente nesta fase.
