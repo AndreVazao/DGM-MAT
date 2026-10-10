@@ -1,64 +1,65 @@
 # Conversation intelligence — evidence-aware model v1
 
 Date: 2026-10-10
-Status: implementation on branch `feat/conversation-turn-semantics-v1`; not yet merged and not yet verified by a local test run.
+Status: feature branch `feat/conversation-turn-semantics-v1`; validation not confirmed in this environment; do not merge yet.
 
-## What changed
+## Purpose and operating rule
 
-- Added explicit `ConversationMessage` records with message ID, role, text, order, timestamp, source path and source metadata.
-- JSON ingestion preserves explicit `messages` arrays and the common OpenAI-style `mapping` shape. Unknown roles stay `unknown`; the importer does not guess the speaker.
-- Added structured records for `UserIntent`, `AIProposal`, `UserDecision`, `ConversationRelation`, `ImportCoverage` and `ArtifactProvenance`.
-- New intent/decision records default to `unverified`; only explicit reviewed/confirmed fields can indicate user validation.
-- Import coverage validates counts and rejects a `complete` label when discovered and imported counts differ.
-- Extracted code artifacts now carry conversation-level provenance: provider, URL, source path and code fingerprint.
+The archive is institutional memory, not an endless task queue. Process new conversations incrementally. Do not re-audit an unchanged, successfully processed conversation. Revisit old material only when the fingerprint changes, processing was incomplete/failed, relevant new evidence appears, or the user explicitly requests a review. A review task must not force rereading the whole conversation when its imported evidence is already available.
 
-## Boundaries that remain
+The system must separate:
+1. actual user instructions and later changes;
+2. assistant proposals;
+3. decisions explicitly confirmed by the user;
+4. facts verified against repository, tests or runtime.
 
-This is a compatibility-preserving data-model and ingestion step, not the complete recovery system. It does **not** yet:
-- import authenticated histories from provider web apps;
-- infer and automatically confirm intent, proposals or decisions;
-- persist the intent/decision timeline or conversation-relation graph to a database;
-- connect the ledger to authenticated provider sessions or execute real browser imports;
-- rename, move or regroup conversations in external AI services;
-- prove that all historical messages have been loaded.
+## Evidence-aware ingestion
 
-Existing aggregate `ConversationRecord.content` remains available for existing pipeline callers. HTML/text imports still have no reliable per-message speaker structure and therefore do not invent messages.
+- `ConversationMessage` retains message ID, normalized role, content, sequence, timestamp, source path and source metadata.
+- JSON ingestion preserves explicit message arrays and the common OpenAI-style `mapping` shape. Unknown roles stay `unknown`; no speaker attribution is guessed.
+- Typed models separate `UserIntent`, `AIProposal`, `UserDecision`, `ConversationRelation`, `ImportCoverage` and `ArtifactProvenance`.
+- Intent/decision defaults remain unverified. AI proposals are not user decisions.
+- Coverage validation rejects impossible counts and a false `complete` label.
+- Extracted code artifacts carry conversation/provider/URL/path/fingerprint provenance.
 
-## Tests added
+## Incremental progress ledger
 
-`tests/conversation_intelligence/test_evidence_aware_models.py` covers distinct ordered user/assistant turns, unknown role preservation, OpenAI-style mapping extraction, unverified defaults and import-coverage validation.
+`core/conversation_intelligence/progress_store.py` uses SQLite/WAL to persist conversation fingerprints/status and source coverage/checkpoints. Database creation is opt-in through an explicit path.
 
-**Verification state:** tests are committed to this feature branch but have not been executed in this environment. Do not interpret branch presence or GitHub commit success as a passing test run.
+`core/conversation_intelligence/pipeline.py`:
+- skips unchanged conversations only when a reusable audit snapshot exists;
+- rebuilds legacy counter-only ledger entries once, instead of treating them as complete knowledge;
+- stores reusable audit snapshots including derived findings, project suggestion, artifacts/code and provenance, without storing the full transcript in the snapshot;
+- returns cached audits to callers and supports archive-wide `load_saved_audits()`, `summarize()` and `consolidate()`;
+- records source failure if an audit raises, retaining a checkpoint/count for completed items.
 
+The source ledger and audit snapshot are derived processing state. Full raw history needs its own private archive and access/retention policy.
 
-## Incremental progress ledger — added after v1 review
+## Temporal knowledge persistence
 
-The feature branch now includes `core/conversation_intelligence/progress_store.py`, a SQLite/WAL ledger, and optional pipeline integration through `ConversationIntelligencePipeline(progress_store_path=...)`.
+`core/conversation_intelligence/knowledge_store.py` adds a SQLite/WAL current projection and append-only event history for intents, AI proposals, decisions and conversation relations. Each event may carry evidence references such as conversation ID and message ID. Identical evidence events are idempotent. A confirmed/accepted item cannot be silently downgraded; an explicit transition is required and the previous state remains in history.
 
-- No database is created unless a local progress-store path is explicitly supplied.
-- Each conversation is fingerprinted from its current normalized content and message turns.
-- A matching conversation with status `complete` is skipped on later runs.
-- Changed content or an incomplete/failed status makes that conversation eligible for processing again.
-- Source-file progress records status, counts, fingerprint and checkpoint; invalid count combinations and false `complete` states are rejected.
-- The ledger stores reusable derived audit snapshots (artifact code, findings, project classification and provenance) so downstream delegations can reuse prior results without reopening the transcript. It deliberately omits the full raw conversation body/messages from the snapshot.
-- `ingest_file()` returns cached audit results for unchanged conversations, so summaries and consolidation remain useful instead of returning an empty delta. `load_saved_audits()`, `summarize()` and `consolidate()` can use the durable ledger without rereading the original export.
-- `record_source()` marks a source `failed` if an audit throws, preserving the last completed checkpoint/count.
-- Database is local at the caller-selected path; do not place it in a public repository or unprotected shared folder.
+This is a persistence primitive, not an automated semantic extractor or human-review task queue. Relation candidates still require evidence and review; no relation graph is inferred automatically by this store. It currently does not implement a separate review-task lifecycle.
 
-Additional tests cover no-repeat behavior, changed content, persistence across reopening the database, blocked login checkpoints and coverage invariants.
+## Important limitations
 
-**Verification state (2026-10-10):** the focused `tests/conversation_intelligence` suite passed locally (17 tests). The broader regression run across `tests/conversation_intelligence`, `tests/contracts`, `tests/organization`, `tests/autonomy`, `tests/security` and `tests/cockpit` also completed with exit code 0. The broader run exposed an existing clock-injection bug in `HumanInterventionQueue.create_request`; this branch fixes the initial read to use the supplied creation timestamp, and the regression suite now passes. GitHub returned no PR-triggered workflow runs for the latest checked commit, so local tests are confirmed but CI remains absent. Keep the PR in draft until review/compatibility checks are complete.
+- No authenticated provider history has been imported by this code.
+- No login, CAPTCHA/MFA bypass, rate-limit bypass, external rename/group operation, automatic script execution, network exposure or live Core restart is performed.
+- Lexical project suggestions are suggestions, not verified project facts.
+- HTML/text sources without reliable message structure do not get invented speaker roles.
+- Local data-store primitives are not yet connected to the office cockpit or authenticated provider session manager.
+- Feature branch commits and test files do not prove tests pass. No successful current CI run has been verified. Run the focused tests and broader regression suite in a controlled checkout before changing this status.
 
+## Test coverage authored in this branch
 
-## Durable knowledge and review ledger — implementation in progress
+- `tests/conversation_intelligence/test_evidence_aware_models.py`: message roles/order, unknown role preservation, mapping extraction, unverified defaults and coverage invariants.
+- `tests/conversation_intelligence/test_progress_store.py`: idempotent reuse, changed-content reprocessing, source checkpoints, cache round-trip, archive-wide summaries/consolidation and legacy snapshot rebuild.
+- `tests/conversation_intelligence/test_knowledge_store.py`: separate intent/proposal types, confirmed decision transitions, idempotent evidence and persistence across reopening.
 
-Added `core/conversation_intelligence/knowledge_store.py`, a separate SQLite/WAL store for evidence-linked user intents, AI proposals, user decisions, conversation relations and explicit review tasks.
+## Gate before merge
 
-- AI proposals remain distinct from user decisions; an AI proposal is never automatically treated as accepted. Once acceptance/rejection is explicit, the proposal statement and decision cannot be silently rewritten.
-- New intents and decisions remain `unverified` by default. A reviewed intent or user-confirmed decision cannot be silently rewritten by a later unreviewed record.
-- Relations carry evidence, confidence and a user-review flag; self-relations and invalid confidence are rejected.
-- Review tasks have their own open/resolved/cancelled lifecycle. Resolving a review task does not force re-importing or rereading the source conversation.
-- The store persists statements and evidence references, not full raw conversation transcripts.
-- This is a persistence foundation, not an automatic intent-mining engine, a UI workflow, or a claim that external provider histories have already been imported.
-
-**Verification update (2026-10-10):** the focused `tests/conversation_intelligence` suite passed (24 tests) after the knowledge store and immutable proposal guard were added. The broader regression run across `tests/conversation_intelligence`, `tests/contracts`, `tests/organization`, `tests/autonomy`, `tests/security` and `tests/cockpit` also completed with exit code 0 after the knowledge-store addition. GitHub returned no PR-triggered workflow runs for the latest checked head; local tests are confirmed but CI remains absent.
+1. Run the focused suite and full relevant regression suite; record exact command and exit code.
+2. Inspect PR diff and workflow results.
+3. Test snapshot serialization for representative imported formats and legacy rows.
+4. Confirm database location/ACLs and ensure raw transcripts/secrets never enter Git.
+5. Keep the PR draft until these checks pass. Do not merge based on successful file commits alone.
