@@ -2,79 +2,56 @@
 Date: 2026-10-10
 
 ## Scope and safety
-Continues PR #71 on `feat/conversation-turn-semantics-v1`. This is work in progress; do not merge prematurely or restart the live Core. No source history was modified remotely, no recovered script was executed, and no credentials were recorded.
+Continues PR #71 on `feat/conversation-turn-semantics-v1`. Work remains in progress; do not merge prematurely or restart the live Core. No source history was modified remotely, no recovered script was executed, and no credentials were recorded.
 
-## Repository state at start of this checkpoint
-- Local repository: `C:\\ProgramasGodMode\\DGM-MAT`.
-- Branch: `feat/conversation-turn-semantics-v1`.
-- Pre-change HEAD: `b6968f06a8da6b8b1f1fa184e937b41be9dcd1f2`.
-- The previous knowledge-store provenance hardening, regression test and checkpoint had been published to the feature branch via the GitHub integration.
-- PR #71 remains open.
-- GitHub returned no PR-triggered workflow runs and no combined status checks for the checked SHA. Absence of runs is not a passing CI result.
+## Repository and PR
+- DGM-MAT local repository: `C:\\ProgramasGodMode\\DGM-MAT`.
+- Feature branch: `feat/conversation-turn-semantics-v1`.
+- Last synchronized DGM-MAT commit before this increment: `23b804281ae3d66f4fd3cca24944ff1c673a7b15`.
+- PR #71 remains open: https://github.com/AndreVazao/DGM-MAT/pull/71.
+- GitHub API returned no PR-triggered workflow runs and no combined status checks for the checked SHA. This is **unverified CI**, not a passing CI result.
 
-## Changes in this checkpoint
+## Implemented changes
 
 ### 1. Preserve accepted proposal provenance
-In `core/conversation_intelligence/knowledge_store.py`, `save_proposal` now rejects changes to `source_message_id` and `decision_id` after a proposal has an explicit accepted/rejected state, in addition to protecting its state, statement and source conversation. Exact repeats remain idempotent.
+In `core/conversation_intelligence/knowledge_store.py`, explicitly accepted/rejected proposals protect `source_message_id` and `decision_id` as well as decision state, statement and source conversation.
+- Regression: `test_accepted_proposal_preserves_message_and_decision_provenance`.
 
-Regression test:
-- `test_accepted_proposal_preserves_message_and_decision_provenance`
+### 2. Reuse unchanged completed export snapshots
+In `core/conversation_intelligence/progress_store.py` and `pipeline.py`:
+- Additive SQLite table `source_conversations` stores source fingerprint and ordered conversation membership.
+- The pipeline checks a completed source and its fingerprint before parsing.
+- If membership count and all cached snapshots are valid, it returns saved audit snapshots without reparsing the export or re-auditing conversations.
+- Changed sources, missing/legacy membership and invalid snapshots fall back to the normal parser and processing path.
+- Membership is written before the source is marked complete.
+- The source bytes are still read for SHA-256 content detection; this deliberately avoids trusting file timestamps alone.
 
-### 2. Avoid reparsing an unchanged completed export
-Previously, `ingest_file` called the parser on every invocation before consulting the per-conversation ledger. The per-conversation audit was skipped when fingerprints matched, but the export was still parsed repeatedly.
+Regression:
+- `test_unchanged_completed_source_reuses_cached_audits_without_parsing_export`.
 
-Added to `ConversationProgressStore`:
-- Additive SQLite table `source_conversations`, storing ordered source membership and the source fingerprint.
-- `set_source_conversations(...)` to persist the source-to-conversation index after successful processing.
-- `list_source_conversations(...)` to restore the original membership order.
+### 3. Recover from missing/interrupted source membership
+Added `test_missing_source_snapshot_index_falls_back_to_parser_and_repairs_ledger`. It removes the source membership index while leaving a previously completed source record, then verifies that the pipeline reparses, restores the index, returns the cached audit and leaves the source complete. This confirms that a missing index does not produce an empty cached result.
 
-Added to `ConversationIntelligencePipeline.ingest_file`:
-- Hash the current source bytes and inspect the durable source ledger before parsing.
-- If the source fingerprint is unchanged, source status is complete, membership count matches, and every linked conversation has a valid completed snapshot, return the cached audits without calling the export parser.
-- If the source changed, the membership index is missing/legacy, or any snapshot is incomplete, fall back to the normal parser and processing path.
-- Write source membership before marking the source complete, so an interrupted update cannot advertise a completed source with a stale membership index.
+## Validation actually executed
+- `python -m pytest -q tests\conversation_intelligence`: passed after the source-cache change (30 tests) and passed again after adding the interrupted-index recovery regression (31 tests).
+- The broader selected suite had previously passed: `tests\conversation_intelligence tests\contracts tests\organization tests\autonomy tests\security tests\cockpit`, exit code 0.
+- `git diff --check`: exit code 0 after the recovery regression.
+- Earlier broad run emitted deprecation warnings for Starlette TestClient/httpx integration and FastAPI `on_event`; these remain technical debt.
+- GitHub Actions for the latest commit remains unverified because the checked API response contains no runs/statuses.
 
-The source bytes are still read to calculate a content fingerprint. This avoids reparsing/revisiting the conversation structure, while retaining content-based change detection instead of trusting file timestamps alone.
+## Live Core safety gate
+- `GET http://127.0.0.1:8181/health` previously returned HTTP 200 with healthy status.
+- Unauthenticated read-only requests to `/runtime/status`, `/runtime/missions`, and `/runtime/queue` returned HTTP 401. Active missions therefore could not be verified.
+- No Core restart, mission mutation or network exposure change was made.
 
-Regression test:
-- `test_unchanged_completed_source_reuses_cached_audits_without_parsing_export`
-
-Files changed in this increment:
-- `core/conversation_intelligence/pipeline.py`
-- `core/conversation_intelligence/progress_store.py`
-- `tests/conversation_intelligence/test_progress_store.py`
-
-## Tests actually executed
-
-Focused conversation-intelligence suite:
-```powershell
-python -m pytest -q tests\conversation_intelligence
-```
-Result: passed, exit code 0, after both regression tests were added.
-
-Broader regression command:
-```powershell
-python -m pytest -q tests\conversation_intelligence tests\contracts tests\organization tests\autonomy tests\security tests\cockpit
-```
-Result: passed, exit code 0. Pytest emitted deprecation warnings for Starlette TestClient/httpx integration and FastAPI `on_event` startup handlers. These warnings are not test failures and remain technical debt.
-
-`git diff --check`: exit code 0.
-
-## Live Core observation
-- `GET http://127.0.0.1:8181/health` returned HTTP 200 with `{"status":"healthy","service":"dgm-mat"}`.
-- Unauthenticated read-only requests to `/runtime/status`, `/runtime/missions`, and `/runtime/queue` returned HTTP 401. The active mission count could not be verified through these unauthenticated routes.
-- The Core was not restarted, missions were not created/modified, and network exposure was not changed.
-- HTTP 401 proves only that these unauthenticated requests were denied; it does not establish that every production authentication path is correct.
-
-## Still unverified
-- GitHub CI for the latest source-cache change.
-- Runtime integration of this pipeline/store in the live Core.
-- Complete provider history recovery; this remains an import pipeline, not proof of complete history coverage.
-- Full repository-wide tests outside the six selected suites.
-- The source fingerprint currently requires reading the source bytes; a future metadata-based shortcut would need a safe fallback to content hashing to avoid missing same-size or timestamp-preserving edits.
+## Local/GitHub synchronization status
+- DGM-MAT feature branch was synchronized to remote commit `23b8042` before this new recovery test was added.
+- This checkpoint and regression test must be published to the feature branch and then the local feature branch must be fetched and compared with GitHub.
+- AndreOS memory repository: the local branch reports three commits ahead of its cached `origin/main`. A direct `git fetch origin` failed because Windows Git Credential Manager could not persist credentials and Git could not prompt. The checkpoint file content had previously been compared against GitHub, but Git history/refs are not synchronized. Do not claim full Git synchronization until remote fetch/push succeeds or refs are reconciled safely.
 
 ## Next safe actions
-1. Publish this source-level cache improvement and its tests to `feat/conversation-turn-semantics-v1` only.
-2. Verify the new remote head and actual PR checks; keep PR #71 open and unmerged until review and compatibility checks are complete.
-3. Continue validating failure recovery and source membership consistency.
-4. Keep the live Core untouched until active missions can be verified through an authorized read path or controlled maintenance is explicitly approved.
+1. Publish the recovery regression test and this checkpoint to `feat/conversation-turn-semantics-v1`.
+2. Fetch the new remote head locally and verify clean worktree and matching commit.
+3. Continue failure recovery/partial-import tests and review the knowledge-store state-transition tests.
+4. Recheck PR workflows/status; keep PR #71 open until required gates are satisfied.
+5. Keep the live Core untouched until active missions can be verified through an authorized read path or controlled maintenance is explicitly approved.
