@@ -216,3 +216,37 @@ def test_legacy_counter_only_snapshot_is_rebuilt_once(tmp_path):
     second = pipeline.ingest_file(export_path, "chatgpt")
     assert calls == ["legacy-history"]
     assert len(first) == len(second) == 1
+
+
+def test_delegation_context_reuses_cached_archive_and_open_review_tasks(tmp_path):
+    import json
+
+    from core.conversation_intelligence.models import ConversationAudit
+    from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
+
+    export_path = tmp_path / "delegation-context.json"
+    progress_path = tmp_path / "progress.sqlite3"
+    knowledge_path = tmp_path / "knowledge.sqlite3"
+    export_path.write_text(json.dumps({"conversations": [{
+        "id": "delegation-history", "title": "Prior project context", "content": "DGM-MAT archive"
+    }]}), encoding="utf-8")
+
+    pipeline = ConversationIntelligencePipeline(progress_path, knowledge_path)
+    pipeline.auditor.audit = lambda conversation, artifacts: ConversationAudit(
+        conversation=conversation, artifacts=artifacts, suggested_project="DGM-MAT"
+    )
+    pipeline.ingest_file(export_path, "chatgpt")
+    pipeline.knowledge_store.create_review_task(
+        task_id="review-delegation-1",
+        item_type="decision",
+        item_id="decision-legacy",
+        reason="Confirm whether newer instruction supersedes an old approach",
+        evidence=["delegation-history#message-4"],
+    )
+    export_path.unlink()
+
+    context = pipeline.build_delegation_context()
+    assert context["archive_summary"]["conversation_count"] == 1
+    assert context["conversations"][0]["conversation_id"] == "delegation-history"
+    assert context["open_review_tasks"][0]["task_id"] == "review-delegation-1"
+    assert context["knowledge"]["summary"]["review_tasks_open"] == 1
