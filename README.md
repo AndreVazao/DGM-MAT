@@ -7,3 +7,12 @@ DGM-MAT is intended to operate as the user's autonomous engineering counterpart:
 Conversation intelligence is implemented under `core/conversation_intelligence/` and exposed through `POST /governance/conversations/analyze`.
 
 Microsoft Project Telescope is installed locally as an observability source for AI coding agents and MCP activity. Vercel project `dgm-mat-rendezvous` provides node discovery so the home PC and mobile cockpit can find each other without manually entering IP addresses.
+
+
+## Diretiva primária vigente — 2026-10-10
+
+A prioridade operacional atual é **recuperar e reorganizar primeiro a memória das conversas e a documentação**, antes de novo trabalho de engenharia não urgente. DGM-MAT deve separar sempre pedidos do utilizador, respostas/propostas das IAs, decisões vigentes e realidade verificada. Reconstrói a evolução temporal, atualiza o contexto quando pedidos posteriores substituem soluções antigas, preserva a razão e a proveniência e impede que conteúdo LEGACY/SUPERSEDED volte a orientar o trabalho.
+
+Norma completa: [DGM-MAT_PRIMARY_MISSION_AND_EVOLVING_TRUTH_2026-10-10.md](docs/DGM-MAT_PRIMARY_MISSION_AND_EVOLVING_TRUTH_2026-10-10.md).
+
+Não apagar documentação histórica em lote: inventariar, classificar, ligar sucessores e criar backup antes de qualquer remoção definitiva. A prioridade antiga de engenharia continua válida apenas quando compatível com esta diretiva.
