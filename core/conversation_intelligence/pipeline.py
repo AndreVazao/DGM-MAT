@@ -24,7 +24,14 @@ class ConversationIntelligencePipeline:
         conversations = self.ingestor.load_file(source_path, provider)
         audits: list[ConversationAudit] = []
         source_provider = self.ingestor.normalize_provider(provider or source_path.stem)
-        imported_count = 0
+        source_key = str(source_path.resolve())
+        source_fingerprint = self.progress_store.fingerprint(source_path.read_bytes()) if self.progress_store else None
+        if self.progress_store:
+            self.progress_store.record_source(
+                source_provider, source_key, source_fingerprint or "", "partial",
+                discovered_count=len(conversations), imported_count=0,
+                checkpoint=None,
+            )
 
         for conversation in conversations:
             if self.progress_store:
@@ -54,7 +61,6 @@ class ConversationIntelligencePipeline:
             try:
                 audit = self.auditor.audit(conversation, self.extractor.extract(conversation))
                 audits.append(audit)
-                imported_count += 1
                 if self.progress_store:
                     self.progress_store.record_conversation(
                         conversation.provider, conversation.conversation_id, fingerprint,
@@ -74,21 +80,11 @@ class ConversationIntelligencePipeline:
                 raise
 
         if self.progress_store:
-            raw = source_path.read_bytes()
-            source_fingerprint = self.progress_store.fingerprint(raw)
-            # For file exports, complete means every conversation found in this
-            # file has a durable completed ledger entry, including those skipped
-            # because their fingerprint was already processed.
-            with self.progress_store._connect() as db:
-                rows = db.execute(
-                    "SELECT COUNT(*) AS count FROM conversation_progress WHERE provider=? AND status='complete'",
-                    (source_provider,),
-                ).fetchone()
-            completed_count = int(rows["count"]) if rows else 0
+            # Reaching this point means every item in this file was audited now
+            # or already had a completed matching fingerprint in the ledger.
             self.progress_store.record_source(
-                source_provider, str(source_path.resolve()), source_fingerprint,
-                "complete" if completed_count >= len(conversations) else "partial",
-                discovered_count=len(conversations), imported_count=len(conversations) if completed_count >= len(conversations) else min(imported_count, len(conversations)),
+                source_provider, source_key, source_fingerprint or "", "complete",
+                discovered_count=len(conversations), imported_count=len(conversations),
                 checkpoint=conversations[-1].conversation_id if conversations else None,
             )
         return audits
