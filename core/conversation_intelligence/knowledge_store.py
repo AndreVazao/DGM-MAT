@@ -69,8 +69,8 @@ class ConversationKnowledgeStore:
                     reviewed_by_user INTEGER NOT NULL CHECK(reviewed_by_user IN (0,1)),
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
-                    UNIQUE(source_conversation_id, target_conversation_id, relation_type),
-                    schema_version INTEGER NOT NULL DEFAULT 1
+                    schema_version INTEGER NOT NULL DEFAULT 1,
+                    UNIQUE(source_conversation_id, target_conversation_id, relation_type)
                 );
                 CREATE TABLE IF NOT EXISTS review_tasks (
                     task_id TEXT PRIMARY KEY,
