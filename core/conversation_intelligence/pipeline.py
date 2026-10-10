@@ -101,17 +101,23 @@ class ConversationIntelligencePipeline:
             source_state = self.progress_store.get_source(source_provider, source_key)
             if (source_state and source_state.get("status") == "complete"
                     and source_state.get("source_fingerprint") == source_fingerprint):
-                cached_ids = self.progress_store.list_source_conversations(
+                cached_members = self.progress_store.list_source_conversation_members(
                     source_provider, source_key, source_fingerprint
                 )
-                if len(cached_ids) == source_state.get("discovered_count"):
+                if len(cached_members) == source_state.get("discovered_count"):
                     cached_audits: list[ConversationAudit] = []
-                    for conversation_id in cached_ids:
+                    for member in cached_members:
+                        conversation_id = member["conversation_id"]
                         saved = self.progress_store.get_conversation(source_provider, conversation_id)
                         snapshot = saved.get("result") if saved and saved.get("status") == "complete" else None
-                        if not (isinstance(snapshot, dict)
-                                and isinstance(snapshot.get("conversation"), dict)
-                                and isinstance(snapshot.get("artifacts"), list)):
+                        # A provider may export the same conversation ID in more than one
+                        # source file. Never return a global snapshot from a different version.
+                        if (not member.get("conversation_fingerprint")
+                                or not saved
+                                or saved.get("source_fingerprint") != member["conversation_fingerprint"]
+                                or not (isinstance(snapshot, dict)
+                                        and isinstance(snapshot.get("conversation"), dict)
+                                        and isinstance(snapshot.get("artifacts"), list))):
                             break
                         cached_audits.append(self._snapshot_to_audit(snapshot))
                     else:
@@ -126,6 +132,7 @@ class ConversationIntelligencePipeline:
             )
 
         processed_count = 0
+        conversation_fingerprints: list[str] = []
         try:
             for conversation in conversations:
                 fingerprint = None
@@ -146,6 +153,7 @@ class ConversationIntelligencePipeline:
                         ],
                     }, ensure_ascii=False, sort_keys=True)
                     fingerprint = self.progress_store.fingerprint(stable_content)
+                    conversation_fingerprints.append(fingerprint)
                     if not self.progress_store.should_process(conversation.provider, conversation.conversation_id, fingerprint):
                         saved = self.progress_store.get_conversation(conversation.provider, conversation.conversation_id)
                         snapshot = saved.get("result") if saved else None
@@ -182,6 +190,7 @@ class ConversationIntelligencePipeline:
                 self.progress_store.set_source_conversations(
                     source_provider, source_key, source_fingerprint or "",
                     [conversation.conversation_id for conversation in conversations],
+                    conversation_fingerprints,
                 )
                 self.progress_store.record_source(
                     source_provider, source_key, source_fingerprint or "", "complete",
