@@ -7,7 +7,7 @@ Continues PR #71 on `feat/conversation-turn-semantics-v1`. Work remains in progr
 ## Repository and PR
 - DGM-MAT local repository: `C:\\ProgramasGodMode\\DGM-MAT`.
 - Feature branch: `feat/conversation-turn-semantics-v1`.
-- Latest synchronized local/remote commit: `0ee862320f9968f7e42335941fdc4fd0e9e62930`.
+- Latest synchronized local/remote commit: `c42d160aa0477b4cd3cf306e7df0ae2d9dd8c918`.
 - PR #71 remains open: https://github.com/AndreVazao/DGM-MAT/pull/71.
 - GitHub returned no PR workflow runs and no combined status checks for the latest checked commit. Remote CI is **unverified**, not passed.
 
@@ -46,7 +46,7 @@ Reviewed intents, user-confirmed decisions and reviewed relations now reject eve
 - Warnings remain for Starlette TestClient/httpx integration and FastAPI `on_event` deprecation.
 
 ## Local/GitHub synchronization
-- DGM-MAT: feature branch fetched from GitHub; blob hashes for the changed implementation, tests and checkpoint matched the remote tree; local branch reset to that exact remote commit after comparison. Worktree is clean at `0ee862320f9968f7e42335941fdc4fd0e9e62930`.
+- DGM-MAT: local feature branch and GitHub are synchronized at `c42d160aa0477b4cd3cf306e7df0ae2d9dd8c918`; implementation, tests and architecture checkpoint were compared against GitHub, then the local branch was aligned to the fetched remote head. Worktree is clean.
 - AndreOS memory: checkpoint file content hash matches GitHub main (`e7abcedfd9fa44b6323e668910a4a1e1faf7a7fa)). Git branch references/history are **not** synchronized: local branch still reports four commits ahead of cached `origin/main`, and `git fetch` fails because Windows Git Credential Manager cannot persist credentials or prompt. No reset, force-push or destructive history rewrite was attempted.
 
 ## Live Core safety gate
@@ -89,6 +89,6 @@ Regression coverage:
 - `test_confirmed_decision_can_only_be_superseded_explicitly_with_provenance`
 - `test_confirmed_decision_supersession_requires_confirmed_successor_and_evidence`
 
-Validation after this addition: the selected regression suite (`conversation_intelligence`, `contracts`, `organization`, `autonomy`, `security`, `cockpit`) passed with exit code 0; `git diff --check` passed. Local Git push failed because Windows Git Credential Manager cannot persist credentials or prompt. The exact local code and test contents were therefore published sequentially through the authorized GitHub contents interface; local branch ref reconciliation remains pending until the remote head and all changed blobs are compared.
+Validation after this addition: the selected regression suite (`conversation_intelligence`, `contracts`, `organization`, `autonomy`, `security`, `cockpit`) passed with exit code 0; `git diff --check` passed. The standard Git push initially failed because Windows Git Credential Manager could not persist credentials or prompt. The exact local implementation, tests and docs were published through the authorized GitHub contents interface, then the public feature branch was fetched anonymously, compared and aligned locally at `c42d160aa0477b4cd3cf306e7df0ae2d9dd8c918`. Local DGM-MAT worktree is clean and matches GitHub. Remote CI remains unverified.
 
 [executed on device: PC-Vazao-Anjos (982eb058-a42c-4897-9732-547f04cb44f0)]
