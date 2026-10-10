@@ -501,5 +501,3 @@ class ConversationKnowledgeStore:
             open_tasks = db.execute("SELECT COUNT(*) AS n FROM review_tasks WHERE status='open'").fetchone()
             result["review_tasks_open"] = int(open_tasks["n"])
             return result
-
-[executed on device: PC-Vazao-Anjos (982eb058-a42c-4897-9732-547f04cb44f0)]
