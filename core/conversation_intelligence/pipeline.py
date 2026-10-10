@@ -91,11 +91,34 @@ class ConversationIntelligencePipeline:
 
     def ingest_file(self, path: str | Path, provider: str | None = None) -> list[ConversationAudit]:
         source_path = Path(path)
-        conversations = self.ingestor.load_file(source_path, provider)
-        audits: list[ConversationAudit] = []
         source_provider = self.ingestor.normalize_provider(provider or source_path.stem)
         source_key = str(source_path.resolve())
         source_fingerprint = self.progress_store.fingerprint(source_path.read_bytes()) if self.progress_store else None
+
+        # Fast path: a byte-identical, previously completed source can return its
+        # saved audit snapshots without reparsing the export or revisiting turns.
+        if self.progress_store and source_fingerprint is not None:
+            source_state = self.progress_store.get_source(source_provider, source_key)
+            if (source_state and source_state.get("status") == "complete"
+                    and source_state.get("source_fingerprint") == source_fingerprint):
+                cached_ids = self.progress_store.list_source_conversations(
+                    source_provider, source_key, source_fingerprint
+                )
+                if len(cached_ids) == source_state.get("discovered_count"):
+                    cached_audits: list[ConversationAudit] = []
+                    for conversation_id in cached_ids:
+                        saved = self.progress_store.get_conversation(source_provider, conversation_id)
+                        snapshot = saved.get("result") if saved and saved.get("status") == "complete" else None
+                        if not (isinstance(snapshot, dict)
+                                and isinstance(snapshot.get("conversation"), dict)
+                                and isinstance(snapshot.get("artifacts"), list)):
+                            break
+                        cached_audits.append(self._snapshot_to_audit(snapshot))
+                    else:
+                        return cached_audits
+
+        conversations = self.ingestor.load_file(source_path, provider)
+        audits: list[ConversationAudit] = []
         if self.progress_store:
             self.progress_store.record_source(
                 source_provider, source_key, source_fingerprint or "", "partial",
@@ -156,6 +179,10 @@ class ConversationIntelligencePipeline:
                     raise
 
             if self.progress_store:
+                self.progress_store.set_source_conversations(
+                    source_provider, source_key, source_fingerprint or "",
+                    [conversation.conversation_id for conversation in conversations],
+                )
                 self.progress_store.record_source(
                     source_provider, source_key, source_fingerprint or "", "complete",
                     discovered_count=len(conversations), imported_count=processed_count,
