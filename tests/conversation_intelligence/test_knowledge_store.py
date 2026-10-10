@@ -225,3 +225,41 @@ def test_review_task_history_is_incremental_and_does_not_duplicate_creation(tmp_
     history = store.history("review_task", "review-evolution")
     assert [entry["event_type"] for entry in history] == ["created", "resolved"]
     assert history[1]["payload"]["status"] == "resolved"
+
+
+
+def test_accepted_proposal_preserves_message_and_decision_provenance(tmp_path):
+    store = ConversationKnowledgeStore(tmp_path / "knowledge.sqlite3")
+    accepted = AIProposal(
+        proposal_id="proposal-provenance",
+        statement="Use the evidence-aware pipeline",
+        source_conversation_id="conv-source",
+        source_message_id="msg-original",
+        accepted=True,
+        decision_id="decision-original",
+    )
+    store.save_proposal(accepted)
+
+    with pytest.raises(ValueError, match="cannot be silently rewritten"):
+        store.save_proposal(AIProposal(
+            proposal_id="proposal-provenance",
+            statement="Use the evidence-aware pipeline",
+            source_conversation_id="conv-source",
+            source_message_id="msg-substituted",
+            accepted=True,
+            decision_id="decision-original",
+        ))
+
+    with pytest.raises(ValueError, match="cannot be silently rewritten"):
+        store.save_proposal(AIProposal(
+            proposal_id="proposal-provenance",
+            statement="Use the evidence-aware pipeline",
+            source_conversation_id="conv-source",
+            source_message_id="msg-original",
+            accepted=True,
+            decision_id="decision-substituted",
+        ))
+
+    saved = store.list_proposals(accepted=True)[0]
+    assert saved["source_message_id"] == "msg-original"
+    assert saved["decision_id"] == "decision-original"
