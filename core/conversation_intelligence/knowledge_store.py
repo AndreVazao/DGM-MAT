@@ -176,8 +176,11 @@ class ConversationKnowledgeStore:
         accepted = None if proposal.accepted is None else int(proposal.accepted)
         with self._connect() as db:
             existing = db.execute("SELECT * FROM ai_proposals WHERE proposal_id=?", (proposal.proposal_id,)).fetchone()
-            if existing and existing["accepted"] is not None and existing["accepted"] != accepted:
-                raise ValueError("A proposal's explicit acceptance decision cannot be silently overwritten")
+            if existing and existing["accepted"] is not None:
+                if (existing["accepted"] != accepted
+                        or existing["statement"] != proposal.statement
+                        or existing["source_conversation_id"] != proposal.source_conversation_id):
+                    raise ValueError("An explicitly accepted/rejected proposal cannot be silently rewritten")
             db.execute("""
                 INSERT INTO ai_proposals (
                     proposal_id, statement, source_conversation_id, source_message_id,
