@@ -1,5 +1,7 @@
 import json
+import os
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -14,6 +16,7 @@ from core.runtime.safe_action_queue import SafeActionQueue, ActionStatus
 from core.execution.approval_manager import ApprovalManager
 from core.realtime.realtime_broadcast import safe_broadcast
 from core.organization import CapabilityScout, InternalMessageBus, Message, MessagePriority
+from core.organization.human_intervention_queue import HumanInterventionQueue
 from core.organization.worker_runtime import WorkerRuntime
 from core.organization.qa_intake_worker import QAIntakeWorker
 from core.organization.qa_review_queue import QAReviewQueue
@@ -40,6 +43,9 @@ class MissionEngine:
             storage_manager.get_path("tasks") / "organization_messages.sqlite3"
         )
         self.worker_runtime = WorkerRuntime(self.organization_bus)
+        self.human_intervention_queue = HumanInterventionQueue(
+            storage_manager.get_path("tasks") / "human_intervention_queue.sqlite3"
+        )
         self.qa_review_queue = QAReviewQueue(
             storage_manager.get_path("tasks") / "qa_review_queue.sqlite3"
         )
@@ -168,12 +174,74 @@ class MissionEngine:
                         created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat())),
                         progress=data.get("progress", 0.0),
                         logs=data.get("logs", []),
-                        error=data.get("error")
+                        error=data.get("error"),
+                        subtasks=[
+                            SubTask(
+                                subtask_id=item["subtask_id"],
+                                title=item["title"],
+                                description=item["description"],
+                                status=item.get("status", "pending"),
+                                assigned_agent=item.get("assigned_agent"),
+                                task_id=item.get("task_id"),
+                                created_at=datetime.fromisoformat(item["created_at"]) if item.get("created_at") else datetime.now(),
+                                completed_at=datetime.fromisoformat(item["completed_at"]) if item.get("completed_at") else None,
+                            )
+                            for item in data.get("subtasks", [])
+                            if isinstance(item, dict) and item.get("subtask_id") and item.get("title") and item.get("description")
+                        ]
                     )
                     self.active_missions[mission.mission_id] = mission
                     self._sync_state(mission)
             except Exception as e:
                 dgm_logger.error(f"MissionEngine: Failed to load mission {mission_file}: {e}")
+
+        # Finish a verified resume that was interrupted between the two durable stores.
+        for mission in list(self.active_missions.values()):
+            handoff = mission.metadata.get("human_intervention", {})
+            if mission.status != MissionStatus.WAITING_FOR_USER or handoff.get("status") != "RESUME_VERIFIED_PENDING_FINALIZE":
+                continue
+            try:
+                request = self.human_intervention_queue.get_request(handoff.get("request_id", ""))
+                if request and request["status"] == "VERIFYING":
+                    self.human_intervention_queue.finalize(request["request_id"], outcome="RESUMED")
+                    request = self.human_intervention_queue.get_request(request["request_id"])
+                if request and request["status"] == "RESUMED":
+                    resumed_at = handoff.get("resume_verified_at") or datetime.now().isoformat()
+                    handoff["status"] = "RESUMED"
+                    handoff["recovered_after_restart"] = True
+                    mission.metadata["execution_started_at"] = resumed_at
+                    mission.logs.append("Recovered a previously verified mission resume after restart.")
+                    self._update_status(mission, MissionStatus.RUNNING)
+            except Exception as exc:
+                dgm_logger.error(f"MissionEngine: Verified resume recovery failed: {type(exc).__name__}")
+
+        # Reconcile the two durable stores after a crash between SQLite handoff
+        # creation and atomic mission-checkpoint replacement.
+        try:
+            for request in self.human_intervention_queue.list_pending(limit=500):
+                mission = self.active_missions.get(request["mission_id"])
+                if mission is None or mission.status in {
+                    MissionStatus.COMPLETED, MissionStatus.CANCELLED, MissionStatus.FAILED,
+                }:
+                    continue
+                existing = mission.metadata.get("human_intervention", {})
+                if existing.get("request_id") == request["request_id"]:
+                    if request["status"] == "VERIFYING" and existing.get("status") != "RESUME_VERIFIED_PENDING_FINALIZE":
+                        # The process may have died before persisting the verified checkpoint.
+                        # Re-open the response; a trusted verifier must check the external state again.
+                        self.human_intervention_queue.recover_verification_claim(request["request_id"])
+                    continue
+                mission.metadata["human_intervention"] = {
+                    "request_id": request["request_id"],
+                    "step_id": request["step_id"],
+                    "status": "WAITING_FOR_USER",
+                    "checkpoint_created_at": request["created_at"],
+                    "recovered_after_restart": True,
+                }
+                mission.logs.append("Recovered active human handoff while reconciling persisted mission state.")
+                self._update_status(mission, MissionStatus.WAITING_FOR_USER)
+        except Exception as exc:
+            dgm_logger.error(f"MissionEngine: Human handoff reconciliation failed: {type(exc).__name__}")
 
     def create_mission(self, goal: str, description: str) -> Mission:
         mission_id = f"mission_{uuid4().hex[:8]}"
@@ -330,14 +398,155 @@ class MissionEngine:
                 result = self._finish_mission_failure(mission, exc)
                 raise RuntimeError(result["output"]) from exc
 
+    def request_human_intervention(
+        self,
+        mission_id: str,
+        *,
+        step_id: str,
+        reason: str,
+        instructions: str,
+        risk: str = "MEDIUM",
+        ttl_seconds: int = 900,
+    ) -> Dict[str, Any]:
+        """Persist a mission checkpoint and pause only this mission for a human."""
+        mission = self.active_missions.get(mission_id)
+        if mission is None:
+            raise KeyError(f"Unknown mission: {mission_id}")
+        if mission.status in {MissionStatus.COMPLETED, MissionStatus.CANCELLED, MissionStatus.FAILED}:
+            raise ValueError("A terminal mission cannot request human intervention")
+        existing = mission.metadata.get("human_intervention", {})
+        if mission.status == MissionStatus.WAITING_FOR_USER and existing.get("request_id"):
+            current = self.human_intervention_queue.get_request(existing["request_id"])
+            if current and current["status"] in {
+                "PENDING", "NOTIFIED", "WAITING_FOR_DEVICE", "WAITING_FOR_USER",
+                "RESPONSE_RECEIVED", "VERIFYING",
+            }:
+                return current
+        request = self.human_intervention_queue.create_request(
+            mission_id=mission_id,
+            step_id=step_id,
+            reason=reason,
+            instructions=instructions,
+            risk=risk,
+            ttl_seconds=ttl_seconds,
+        )
+        mission.metadata["human_intervention"] = {
+            "request_id": request["request_id"],
+            "step_id": step_id,
+            "status": "WAITING_FOR_USER",
+            "checkpoint_created_at": request["created_at"],
+        }
+        mission.logs.append(f"Mission paused for human intervention at step {step_id}.")
+        self._update_status(mission, MissionStatus.WAITING_FOR_USER)
+        return request
+
+    def resolve_human_intervention(
+        self,
+        mission_id: str,
+        request_id: str,
+        *,
+        verified: bool,
+        verification_evidence: str = "",
+        actor_id: str = "local-operator",
+        followup_instructions: str = "",
+    ) -> Dict[str, Any]:
+        """Resolve a handoff only after an independent caller verifies real state.
+
+        This method does not inspect or control a browser. verified=True must only
+        be supplied by a trusted local verifier after checking the actual external state.
+        """
+        mission = self.active_missions.get(mission_id)
+        if mission is None:
+            raise KeyError(f"Unknown mission: {mission_id}")
+        handoff = mission.metadata.get("human_intervention", {})
+        if mission.status != MissionStatus.WAITING_FOR_USER or handoff.get("request_id") != request_id:
+            raise ValueError("The request is not the active handoff for this waiting mission")
+        request = self.human_intervention_queue.get_request(request_id)
+        if request is None or request["mission_id"] != mission_id or request["step_id"] != handoff.get("step_id"):
+            raise ValueError("Handoff identity does not match the mission checkpoint")
+        if request["status"] != "RESPONSE_RECEIVED":
+            raise ValueError("No accepted, unconsumed human decision is available")
+        if request.get("decided_by") != actor_id:
+            raise ValueError("Human decision actor does not match the resolving operator")
+        decision = request.get("decision")
+        if decision == "NEED_CONTEXT":
+            if not followup_instructions.strip():
+                raise ValueError("followup_instructions is required for NEED_CONTEXT")
+            if not self.human_intervention_queue.mark_verifying(request_id):
+                raise ValueError("Could not claim handoff for follow-up")
+            if not self.human_intervention_queue.finalize(request_id, outcome="BLOCKED"):
+                raise RuntimeError("Could not close the previous handoff")
+            next_request = self.human_intervention_queue.create_request(
+                mission_id=mission_id,
+                step_id=handoff["step_id"],
+                reason="Additional operator context is required",
+                instructions=followup_instructions,
+                risk=request["risk"],
+            )
+            mission.metadata["human_intervention"] = {
+                "request_id": next_request["request_id"],
+                "step_id": handoff["step_id"],
+                "status": "WAITING_FOR_USER",
+                "checkpoint_created_at": next_request["created_at"],
+            }
+            mission.logs.append("Human intervention requested additional context; mission remains paused.")
+            self.save_mission(mission)
+            self._sync_state(mission)
+            return {"status": "WAITING_FOR_USER", "request_id": next_request["request_id"]}
+        if decision in {"REJECT", "CANCEL"}:
+            if not self.human_intervention_queue.mark_verifying(request_id):
+                raise ValueError("Could not claim handoff for finalization")
+            if not self.human_intervention_queue.finalize(request_id, outcome="CANCELLED"):
+                raise RuntimeError("Could not finalize cancelled handoff")
+            mission.metadata["human_intervention"]["status"] = "CANCELLED"
+            mission.metadata["human_intervention"]["resolved_at"] = datetime.now().isoformat()
+            self._update_status(mission, MissionStatus.CANCELLED)
+            return {"status": MissionStatus.CANCELLED.value, "mission_id": mission_id}
+        if decision != "APPROVE":
+            raise ValueError("Unsupported decision for mission resume")
+        if verified is not True:
+            raise ValueError("Mission cannot resume until the real external state is verified")
+        evidence = verification_evidence.strip()
+        if not evidence or len(evidence) > 500:
+            raise ValueError("Short, non-sensitive verification_evidence is required")
+        if not self.human_intervention_queue.mark_verifying(request_id):
+            raise ValueError("Could not claim handoff for verification")
+        now = datetime.now()
+        # Persist the verified intent before finalizing SQLite so a restart can
+        # deterministically complete the transition without replaying the action.
+        mission.metadata["human_intervention"].update({
+            "status": "RESUME_VERIFIED_PENDING_FINALIZE",
+            "resume_verified_at": now.isoformat(),
+            "verification_evidence": evidence,
+        })
+        self.save_mission(mission)
+        self._sync_state(mission)
+        if not self.human_intervention_queue.finalize(request_id, outcome="RESUMED"):
+            raise RuntimeError("Could not finalize verified handoff; recovery checkpoint persisted")
+        mission.metadata["human_intervention"]["status"] = "RESUMED"
+        mission.metadata["human_intervention"]["resolved_at"] = now.isoformat()
+        mission.metadata["execution_started_at"] = now.isoformat()
+        mission.logs.append("Human intervention outcome verified; mission resumed from persisted checkpoint.")
+        self._update_status(mission, MissionStatus.RUNNING)
+        return {"status": MissionStatus.RUNNING.value, "mission_id": mission_id, "verified": True}
+
     def process_missions(self):
         """Consumer loop called by CognitionLoop."""
         for mission_id, mission in list(self.active_missions.items()):
-            if mission.status == MissionStatus.COMPLETED or mission.status == MissionStatus.FAILED:
+            if mission.status in {MissionStatus.COMPLETED, MissionStatus.CANCELLED, MissionStatus.FAILED}:
+                continue
+            if mission.status == MissionStatus.WAITING_FOR_USER:
+                # Human waits persist on disk and never occupy the scheduler or time out.
                 continue
 
-            # 1. Timeout Check
-            if datetime.now() - mission.created_at > self.timeout_threshold:
+            # Measure running work from its execution checkpoint, not creation time.
+            timeout_origin = mission.created_at
+            if mission.status == MissionStatus.RUNNING and mission.metadata.get("execution_started_at"):
+                try:
+                    timeout_origin = datetime.fromisoformat(mission.metadata["execution_started_at"])
+                except (TypeError, ValueError):
+                    timeout_origin = mission.created_at
+            if datetime.now() - timeout_origin > self.timeout_threshold:
                 self._timeout_mission(mission, "Mission timed out before execution completed.")
                 continue
 
@@ -938,10 +1147,38 @@ class MissionEngine:
             "updated_at": mission.updated_at.isoformat(),
             "progress": mission.progress,
             "logs": mission.logs,
-            "error": mission.error
+            "error": mission.error,
+            "subtasks": [
+                {
+                    "subtask_id": item.subtask_id,
+                    "title": item.title,
+                    "description": item.description,
+                    "status": item.status,
+                    "assigned_agent": item.assigned_agent,
+                    "task_id": item.task_id,
+                    "created_at": item.created_at.isoformat(),
+                    "completed_at": item.completed_at.isoformat() if item.completed_at else None,
+                }
+                for item in mission.subtasks
+            ]
         }
-        with open(file_path, "w") as f:
-            json.dump(data, f, indent=4)
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=self.missions_path,
+                prefix=f".{mission.mission_id}.", suffix=".tmp", delete=False,
+            ) as handle:
+                temp_path = Path(handle.name)
+                json.dump(data, handle, indent=4, ensure_ascii=False)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temp_path, file_path)
+        finally:
+            if temp_path is not None and temp_path.exists():
+                try:
+                    temp_path.unlink()
+                except OSError:
+                    pass
 
     def decompose_mission(self, mission_id: str) -> List[SubTask]:
         mission = self.active_missions.get(mission_id)

@@ -265,6 +265,17 @@ class HumanInterventionQueue:
             connection.commit()
             return True
 
+    def recover_verification_claim(self, request_id: str) -> bool:
+        """Reopen a verification claim after restart; callers must verify again before resume."""
+        with closing(self._connect()) as connection:
+            updated = connection.execute(
+                """UPDATE human_intervention_requests
+                SET status='RESPONSE_RECEIVED', version=version+1
+                WHERE request_id=? AND status='VERIFYING'""",
+                (request_id,),
+            )
+            return updated.rowcount == 1
+
     def finalize(self, request_id: str, *, outcome: str) -> bool:
         """Close a verifying handoff after the caller independently checked real state."""
         if outcome not in {"RESUMED", "CANCELLED", "BLOCKED"}:
