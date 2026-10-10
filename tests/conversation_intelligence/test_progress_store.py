@@ -480,6 +480,7 @@ def test_existing_source_membership_schema_is_migrated_without_losing_rows(tmp_p
             "INSERT INTO source_conversations VALUES (?, ?, ?, ?, ?)",
             ("chatgpt", "old-export.json", "source-fp", "old-conversation", 0),
         )
+    db.close()
 
     store = ConversationProgressStore(database)
     members = store.list_source_conversation_members("chatgpt", "old-export.json", "source-fp")
