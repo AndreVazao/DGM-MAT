@@ -43,6 +43,16 @@ class ConversationProgressStore:
                     last_error TEXT,
                     PRIMARY KEY (provider, source_key)
                 );
+                CREATE TABLE IF NOT EXISTS source_conversations (
+                    provider TEXT NOT NULL,
+                    source_key TEXT NOT NULL,
+                    source_fingerprint TEXT NOT NULL,
+                    conversation_id TEXT NOT NULL,
+                    ordinal INTEGER NOT NULL,
+                    PRIMARY KEY (provider, source_key, ordinal)
+                );
+                CREATE INDEX IF NOT EXISTS ix_source_conversations_lookup
+                    ON source_conversations(provider, source_key, source_fingerprint, ordinal);
             """)
 
     def _connect(self) -> sqlite3.Connection:
@@ -174,6 +184,37 @@ class ConversationProgressStore:
                 (provider, source_key),
             ).fetchone()
         return dict(row) if row else None
+
+    def set_source_conversations(
+        self, provider: str, source_key: str, source_fingerprint: str, conversation_ids: list[str]
+    ) -> None:
+        """Persist ordered source membership so unchanged exports can reuse snapshots without parsing."""
+        with self._connect() as db:
+            db.execute(
+                "DELETE FROM source_conversations WHERE provider=? AND source_key=?",
+                (provider, source_key),
+            )
+            db.executemany(
+                """INSERT INTO source_conversations
+                    (provider, source_key, source_fingerprint, conversation_id, ordinal)
+                    VALUES (?, ?, ?, ?, ?)""",
+                [
+                    (provider, source_key, source_fingerprint, conversation_id, ordinal)
+                    for ordinal, conversation_id in enumerate(conversation_ids)
+                ],
+            )
+
+    def list_source_conversations(
+        self, provider: str, source_key: str, source_fingerprint: str
+    ) -> list[str]:
+        with self._connect() as db:
+            rows = db.execute(
+                """SELECT conversation_id FROM source_conversations
+                   WHERE provider=? AND source_key=? AND source_fingerprint=?
+                   ORDER BY ordinal""",
+                (provider, source_key, source_fingerprint),
+            ).fetchall()
+        return [row["conversation_id"] for row in rows]
 
     def pending_conversations(self, provider: str | None = None) -> list[dict]:
         query = "SELECT * FROM conversation_progress WHERE status != 'complete'"
