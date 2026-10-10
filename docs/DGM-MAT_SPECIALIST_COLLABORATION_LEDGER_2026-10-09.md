@@ -2,7 +2,7 @@
 
 # DGM-MAT Specialist Collaboration Ledger
 Date: 2026-10-09
-Status: implemented and focused-tested; not yet connected to live browser automation or the mission dispatcher
+Status: implemented and locally verified; durable internal message dispatch is connected to MissionEngine; live browser automation and autonomous AI workers remain unimplemented
 
 ## Purpose
 
@@ -71,7 +71,7 @@ Verification update: after automatic failure handoff was added, the focused test
 The MissionEngine now exposes local lifecycle operations:
 - `list_specialist_collaborations()`: compact status inventory of persisted handoffs.
 - `pause_specialist_collaboration(id, reason=...)`: records exhausted free capacity and explicitly returns `paid_fallback=false`.
-- `record_specialist_result(id, result=..., provenance=...)`: stores the result as untrusted, marks review required, and sends a high-priority internal review request to `agent:bug-hunter` through the current in-process message bus.
+- `record_specialist_result(id, result=..., provenance=...)`: stores the result as untrusted, marks review required, and sends a high-priority internal review request to `agent:bug-hunter` through the durable SQLite-backed internal message bus.
 - `reject_specialist_result(...)`: records an independent rejection and does not promote a lesson.
 - `validate_specialist_result(...)`: requires the collaboration store's independent-review/test-evidence gate and then persists the lesson through `ValidatedLessonStore`.
 - `list_validated_specialist_lessons(project=...)`: reads only lessons whose stored status is `VALIDATED`.
@@ -79,9 +79,9 @@ The MissionEngine now exposes local lifecycle operations:
 New module: `core/organization/validated_learning.py`. It stores project-scoped lessons as atomic local JSON records with collaborator provenance, reviewer notes, acceptance criteria and timestamp. It refuses non-VALIDATED packets. Runtime path: `storage/evolution_memory/validated_specialist_lessons` under the configured DGM-MAT storage root.
 
 Important boundaries:
-- The QA request is currently an in-process message; the bus itself is not durable and does not prove an independent worker actually ran. A human/worker must inspect the stored collaboration and run the listed checks before validation.
+- The QA request is now persisted in SQLite and survives restart, but durable delivery does not prove an independent worker actually ran. A human or explicitly registered handler must inspect the stored collaboration and run the listed checks before validation.
 - `tests_passed=True` is an attestation with evidence, not an automatic test runner. MissionEngine deliberately does not execute arbitrary commands from a returned result.
-- Browser/Claude Code session automation, a durable cross-process department dispatcher, and automatic execution by an independent Bug Hunter are still not implemented. No external call or spending is made by these lifecycle methods.
+- Browser/Claude Code session automation and automatic execution by an independent Bug Hunter are still not implemented. The generic durable message transport and explicit handler dispatcher exist, but no department-specific AI worker is automatically registered. No external call or spending is made by these lifecycle methods.
 - If collaboration validation succeeds but lesson-file persistence fails, the response explicitly returns `lesson_status=PERSISTENCE_FAILED`; the collaboration remains validated and the missing memory promotion must be retried/reconciled.
 
 Focused tests: `tests/autonomy/test_mission_specialist_lifecycle.py` covers result intake, internal QA message, validation-to-lesson persistence, refusal of failed tests/self-review, and free-capacity pause. Full suite verification is recorded after it completes.
@@ -93,3 +93,21 @@ Added `MissionEngine.retry_validated_lesson_persistence(collaboration_id)`. It o
 
 
 Final verification — 2026-10-09: focused lifecycle/help-seeking/collaboration tests passed (13 tests). After the retry-recovery refinement, the complete local `python -m pytest -q` suite completed with exit code 0 in 63.28 seconds. `compileall` and `git diff --check` passed for the changed modules/tests. Existing FastAPI/Starlette deprecation warnings remain.
+
+
+## Durable internal message transport and explicit worker dispatch — 2026-10-10
+
+Implemented locally:
+
+- `core/organization/message_bus.py` now uses SQLite and supports a durable database path. Production `MissionEngine` stores messages at `storage/tasks/organization_messages.sqlite3` under the configured runtime storage root. Inbox/outbox content and read state survive a new bus instance and process restart.
+- `core/organization/worker_runtime.py` dispatches one unread message to an explicitly registered local Python handler. It never evaluates message bodies as code or shell commands. Successful handler execution marks the message read; handler exceptions return an explicit failure and leave the message unread for inspection/retry.
+- `MissionEngine.register_organization_worker(...)` and `MissionEngine.dispatch_organization_message(...)` expose the integration point.
+- Message delivery is **at-least-once**, not exactly-once. A crash after handler work but before acknowledgement can repeat the handler; handlers must be idempotent. Duplicate message IDs are not allowed to overwrite an existing message with conflicting content.
+- Tests may pass an in-memory `InternalMessageBus()`; the normal MissionEngine path uses the durable SQLite file.
+
+Verification: `tests/organization/test_durable_message_dispatch.py` covers persistence/reload, read-state persistence, duplicate-ID safety, successful dispatch, unacknowledged handler failures and fail-closed behavior for unregistered handlers. Results of focused and full local tests are recorded in the final verification subsection after execution.
+
+Important reality boundary: this implements durable transport and a real allowlisted handler-dispatch mechanism, **not** a fully autonomous AI employee. No Bug Hunter handler is automatically registered, no AI/browser provider is called, and a queued QA message is still not proof that independent review occurred. Claude Code Free/browser automation, capability acquisition end-to-end and controlled self-improvement remain separate unfinished integrations. FREE-ONLY / PAID-DENY remains in force; no GitHub Actions workflow is to be run unless local verification is impossible.
+
+
+Final verification — 2026-10-10: focused suite passed (23 tests across durable dispatch, organization foundation, specialist collaboration and MissionEngine lifecycle/help-seeking). Full local `python -m pytest -q` completed with exit code 0; `python -m compileall -q core tests` passed; `git diff --check` passed in both DGM-MAT and AndreOS-Memory. Existing FastAPI/Starlette deprecation warnings remain non-blocking. No GitHub Actions were run. Before commit, local source and memory updates are staged for manual review; no FULL-MIRROR files were accessed or changed.

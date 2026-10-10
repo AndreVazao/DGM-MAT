@@ -14,6 +14,7 @@ from core.runtime.safe_action_queue import SafeActionQueue, ActionStatus
 from core.execution.approval_manager import ApprovalManager
 from core.realtime.realtime_broadcast import safe_broadcast
 from core.organization import CapabilityScout, InternalMessageBus, Message, MessagePriority
+from core.organization.worker_runtime import WorkerRuntime
 from core.organization.help_seeking import HelpContext, HelpSeekingPolicy
 from core.organization.specialist_collaboration import SpecialistCollaborationStore
 from core.organization.validated_learning import ValidatedLessonStore
@@ -25,13 +26,16 @@ class MissionEngine:
     REPO_TIMEOUT_SECONDS = 5.0
     MISSION_EXECUTION_TIMEOUT_SECONDS = 60.0
 
-    def __init__(self):
+    def __init__(self, organization_bus: InternalMessageBus | None = None):
         self.missions_path = storage_manager.get_path("missions")
         self.missions_path.mkdir(parents=True, exist_ok=True)
         self.active_missions: Dict[str, Mission] = {}
         self.approval_manager = ApprovalManager()
         self.capability_scout = CapabilityScout()
-        self.organization_bus = InternalMessageBus()
+        self.organization_bus = organization_bus or InternalMessageBus(
+            storage_manager.get_path("tasks") / "organization_messages.sqlite3"
+        )
+        self.worker_runtime = WorkerRuntime(self.organization_bus)
         self.collaboration_store = SpecialistCollaborationStore(
             storage_manager.get_path("tasks") / "specialist_collaborations"
         )
@@ -42,6 +46,14 @@ class MissionEngine:
         self.action_queue.register_handler("MISSION_EXECUTION", self._handle_queue_execution)
         self.timeout_threshold = timedelta(seconds=self.MISSION_EXECUTION_TIMEOUT_SECONDS)
         self._load_missions()
+
+    def register_organization_worker(self, agent_id: str, handler):
+        """Register an explicit local handler; no implicit AI/provider is activated."""
+        self.worker_runtime.register_handler(agent_id, handler)
+
+    def dispatch_organization_message(self, agent_id: str):
+        """Dispatch at most one durable unread message to a registered local worker."""
+        return self.worker_runtime.dispatch_one(agent_id)
 
     def _load_missions(self):
         """Restores missions from storage."""

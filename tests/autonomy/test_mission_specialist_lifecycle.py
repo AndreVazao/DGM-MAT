@@ -2,6 +2,7 @@
 import pytest
 
 from core.autonomy.mission_engine import MissionEngine
+from core.organization.message_bus import InternalMessageBus
 from core.autonomy.mission_models import Mission
 from core.organization.specialist_collaboration import (
     CollaborationStatus,
@@ -11,7 +12,7 @@ from core.organization.validated_learning import ValidatedLessonStore
 
 
 def make_engine(tmp_path, monkeypatch):
-    engine = MissionEngine()
+    engine = MissionEngine(organization_bus=InternalMessageBus())
     engine.collaboration_store = SpecialistCollaborationStore(tmp_path / "collaborations")
     engine.validated_lesson_store = ValidatedLessonStore(tmp_path / "lessons")
     monkeypatch.setattr(engine, "save_mission", lambda mission: None)
