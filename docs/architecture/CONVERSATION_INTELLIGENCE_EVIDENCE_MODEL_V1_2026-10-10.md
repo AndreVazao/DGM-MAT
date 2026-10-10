@@ -17,8 +17,8 @@ Status: implementation on branch `feat/conversation-turn-semantics-v1`; not yet 
 This is a compatibility-preserving data-model and ingestion step, not the complete recovery system. It does **not** yet:
 - import authenticated histories from provider web apps;
 - infer and automatically confirm intent, proposals or decisions;
-- persist relations or intent history to a database;
-- provide resumable durable import checkpoints;
+- persist the intent/decision timeline or conversation-relation graph to a database;
+- connect the ledger to authenticated provider sessions or execute real browser imports;
 - rename, move or regroup conversations in external AI services;
 - prove that all historical messages have been loaded.
 
@@ -40,9 +40,11 @@ The feature branch now includes `core/conversation_intelligence/progress_store.p
 - A matching conversation with status `complete` is skipped on later runs.
 - Changed content or an incomplete/failed status makes that conversation eligible for processing again.
 - Source-file progress records status, counts, fingerprint and checkpoint; invalid count combinations and false `complete` states are rejected.
-- Conversation summaries stored in the ledger contain counts/fingerprints rather than a duplicate of full conversation text.
+- The ledger stores reusable derived audit snapshots (artifact code, findings, project classification and provenance) so downstream delegations can reuse prior results without reopening the transcript. It deliberately omits the full raw conversation body/messages from the snapshot.
+- `ingest_file()` returns cached audit results for unchanged conversations, so summaries and consolidation remain useful instead of returning an empty delta. `load_saved_audits()`, `summarize()` and `consolidate()` can use the durable ledger without rereading the original export.
+- `record_source()` marks a source `failed` if an audit throws, preserving the last completed checkpoint/count.
 - Database is local at the caller-selected path; do not place it in a public repository or unprotected shared folder.
 
 Additional tests cover no-repeat behavior, changed content, persistence across reopening the database, blocked login checkpoints and coverage invariants.
 
-**Verification remains pending:** these tests have not yet been executed in a real local/CI test run. The implementation remains on the draft feature branch until checks are available and regressions are addressed.
+**Verification state (2026-10-10):** the focused `tests/conversation_intelligence` suite was run locally on the feature branch and passed (17 tests). A broader regression run across conversation intelligence, contracts, organization, autonomy, security and cockpit is still running/not yet confirmed. No PR-triggered workflow runs were returned by GitHub for the latest checked commit. The implementation remains on the draft feature branch until the broader result and compatibility are confirmed.
