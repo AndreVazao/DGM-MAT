@@ -263,3 +263,50 @@ def test_accepted_proposal_preserves_message_and_decision_provenance(tmp_path):
     saved = store.list_proposals(accepted=True)[0]
     assert saved["source_message_id"] == "msg-original"
     assert saved["decision_id"] == "decision-original"
+
+
+def test_reviewed_knowledge_provenance_and_evidence_cannot_be_silently_rewritten(tmp_path):
+    store = ConversationKnowledgeStore(tmp_path / "knowledge.sqlite3")
+    store.save_intent(UserIntent(
+        intent_id="intent-provenance-guard", statement="Preserve source provenance",
+        status="confirmed", source_conversation_id="conv-original", source_message_id="msg-original",
+        evidence=["conv-original#msg-original"], confidence=1.0, reviewed_by_user=True,
+    ))
+    with pytest.raises(ValueError, match="Reviewed intent is immutable"):
+        store.save_intent(UserIntent(
+            intent_id="intent-provenance-guard", statement="Preserve source provenance",
+            status="confirmed", source_conversation_id="conv-substituted", source_message_id="msg-substituted",
+            evidence=["conv-substituted#msg-substituted"], confidence=1.0, reviewed_by_user=True,
+        ))
+    saved_intent = store.get_intent("intent-provenance-guard")
+    assert saved_intent["source_message_id"] == "msg-original"
+    assert saved_intent["evidence"] == ["conv-original#msg-original"]
+
+    store.save_decision(UserDecision(
+        decision_id="decision-provenance-guard", statement="Do not silently replace confirmed decisions",
+        status="confirmed", source_conversation_id="conv-original", source_message_id="msg-original",
+        evidence=["conv-original#msg-original"], confirmed_by_user=True,
+    ))
+    with pytest.raises(ValueError, match="User-confirmed decision is immutable"):
+        store.save_decision(UserDecision(
+            decision_id="decision-provenance-guard", statement="Do not silently replace confirmed decisions",
+            status="confirmed", source_conversation_id="conv-original", source_message_id="msg-substituted",
+            evidence=["conv-original#msg-substituted"], confirmed_by_user=True,
+        ))
+    saved_decision = store.get_decision("decision-provenance-guard")
+    assert saved_decision["source_message_id"] == "msg-original"
+    assert saved_decision["evidence"] == ["conv-original#msg-original"]
+
+    store.save_relation(ConversationRelation(
+        relation_id="relation-evidence-guard", source_conversation_id="conv-a", target_conversation_id="conv-b",
+        relation_type="continues", evidence=["explicit continuation"], confidence=1.0, reviewed_by_user=True,
+    ))
+    with pytest.raises(ValueError, match="Reviewed relation is immutable"):
+        store.save_relation(ConversationRelation(
+            relation_id="relation-evidence-guard", source_conversation_id="conv-a", target_conversation_id="conv-b",
+            relation_type="continues", evidence=["unsupported replacement evidence"], confidence=0.5,
+            reviewed_by_user=True,
+        ))
+    saved_relation = store.list_relations("conv-a")[0]
+    assert saved_relation["evidence"] == ["explicit continuation"]
+    assert saved_relation["confidence"] == 1.0
