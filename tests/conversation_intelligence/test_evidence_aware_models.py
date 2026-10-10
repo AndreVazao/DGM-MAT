@@ -73,3 +73,5 @@ def test_import_coverage_rejects_invalid_counts():
         ImportCoverage(provider="chatgpt", discovered_count=-1).validate()
     with pytest.raises(ValueError, match="cannot exceed"):
         ImportCoverage(provider="chatgpt", discovered_count=2, imported_count=3).validate()
+    with pytest.raises(ValueError, match="cannot exceed"):
+        ImportCoverage(provider="chatgpt", discovered_count=0, imported_count=1).validate()
