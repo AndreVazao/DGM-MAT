@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -88,7 +89,7 @@ class ConversationIngestor:
                         "content": self._flatten_text(body),
                         "timestamp": message.get("create_time"),
                     })
-                candidates = sorted(nodes, key=lambda x: (x.get("timestamp") is None, x.get("timestamp") or 0))
+                candidates = sorted(nodes, key=lambda x: self._timestamp_sort_key(x.get("timestamp")))
             else:
                 return []
 
@@ -116,6 +117,23 @@ class ConversationIngestor:
                 metadata={"raw_keys": sorted(message.keys())},
             ))
         return result
+
+    @staticmethod
+    def _timestamp_sort_key(value: Any) -> tuple[int, float]:
+        """Sort numeric/ISO timestamps without comparing incompatible Python types."""
+        if value is None or value == "":
+            return (2, 0.0)
+        try:
+            return (0, float(value))
+        except (TypeError, ValueError):
+            pass
+        if isinstance(value, str):
+            try:
+                parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                return (1, parsed.timestamp())
+            except ValueError:
+                return (2, 0.0)
+        return (2, 0.0)
 
     def _find_conversations(self, data: Any) -> list[Any]:
         if isinstance(data, list):
