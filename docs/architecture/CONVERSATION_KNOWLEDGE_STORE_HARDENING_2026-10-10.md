@@ -49,9 +49,24 @@ Added `test_missing_source_snapshot_index_falls_back_to_parser_and_repairs_ledge
 - This checkpoint and regression test must be published to the feature branch and then the local feature branch must be fetched and compared with GitHub.
 - AndreOS memory repository: the local branch reports three commits ahead of its cached `origin/main`. A direct `git fetch origin` failed because Windows Git Credential Manager could not persist credentials and Git could not prompt. The checkpoint file content had previously been compared against GitHub, but Git history/refs are not synchronized. Do not claim full Git synchronization until remote fetch/push succeeds or refs are reconciled safely.
 
+
+## 4. Validate interrupted import recovery and changed sources
+
+Added two additional regressions in `tests/conversation_intelligence/test_progress_store.py`:
+
+- `test_interrupted_source_import_resumes_without_reauditing_completed_conversations`: simulates an audit failure on the second conversation, checks that the source is recorded as failed with one completed item, then retries and verifies the first item is reused, the failed item is retried, and the source/index finish complete.
+- `test_changed_source_invalidates_source_cache_and_updates_conversation_snapshot`: changes source bytes, title and content; verifies the source-level fast path is bypassed, the conversation is audited again, the updated snapshot is returned and the new source fingerprint is stored.
+
+Local focused test file: 15 tests passed after these additions. The broader selected suite is being rerun; its final exit code will be recorded after completion.
+
+## Updated local/GitHub state
+
+The two new tests have been appended to the feature branch. After publication, fetch and compare the exact remote head before considering the local branch synchronized. PR #71 remains open and unmerged; CI status remains unverified unless GitHub returns explicit checks.
+
+
 ## Next safe actions
-1. Publish the recovery regression test and this checkpoint to `feat/conversation-turn-semantics-v1`.
-2. Fetch the new remote head locally and verify clean worktree and matching commit.
-3. Continue failure recovery/partial-import tests and review the knowledge-store state-transition tests.
+1. Finish the selected regression suite and `git diff --check`.
+2. Fetch the new remote head locally and verify a clean worktree and exact commit alignment.
+3. Continue reviewing knowledge-store transition/provenance behavior and add focused regressions where a concrete gap is demonstrated.
 4. Recheck PR workflows/status; keep PR #71 open until required gates are satisfied.
 5. Keep the live Core untouched until active missions can be verified through an authorized read path or controlled maintenance is explicitly approved.
