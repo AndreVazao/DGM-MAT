@@ -85,7 +85,7 @@ class ImportCoverage:
     def validate(self) -> None:
         if self.discovered_count < 0 or self.imported_count < 0:
             raise ValueError("Import counts cannot be negative")
-        if self.imported_count > self.discovered_count and self.discovered_count > 0:
+        if self.imported_count > self.discovered_count:
             raise ValueError("Imported count cannot exceed discovered count")
         if self.status == "complete" and self.discovered_count != self.imported_count:
             raise ValueError("Complete coverage requires imported_count == discovered_count")
