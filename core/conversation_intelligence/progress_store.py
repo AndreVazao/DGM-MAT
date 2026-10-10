@@ -200,7 +200,11 @@ class ConversationProgressStore:
         """Persist ordered membership and per-conversation fingerprints for safe cache validation."""
         if conversation_fingerprints is not None and len(conversation_fingerprints) != len(conversation_ids):
             raise ValueError("Conversation IDs and fingerprints must have matching lengths")
-        fingerprints = conversation_fingerprints or [None] * len(conversation_ids)
+        fingerprints = (
+            [None] * len(conversation_ids)
+            if conversation_fingerprints is None
+            else conversation_fingerprints
+        )
         with self._connect() as db:
             db.execute(
                 "DELETE FROM source_conversations WHERE provider=? AND source_key=?",
