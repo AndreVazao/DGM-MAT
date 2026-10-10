@@ -284,3 +284,46 @@ def test_unchanged_completed_source_reuses_cached_audits_without_parsing_export(
     assert second[0].conversation.conversation_id == "stable-conversation"
     assert second[0].suggested_project == "DGM-MAT"
     assert audited == ["stable-conversation"]
+
+
+
+def test_missing_source_snapshot_index_falls_back_to_parser_and_repairs_ledger(tmp_path):
+    import json
+
+    from core.conversation_intelligence.models import ConversationAudit
+    from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
+
+    export_path = tmp_path / "recoverable-source.json"
+    progress_path = tmp_path / "progress.sqlite3"
+    export_path.write_text(json.dumps({"conversations": [{
+        "id": "recoverable-conversation", "title": "Recovery", "content": "Restore missing cache"
+    }]}), encoding="utf-8")
+    pipeline = ConversationIntelligencePipeline(progress_store_path=progress_path)
+    audit_calls = []
+    pipeline.auditor.audit = lambda conversation, artifacts: (
+        audit_calls.append(conversation.conversation_id)
+        or ConversationAudit(conversation=conversation, artifacts=artifacts, suggested_project="DGM-MAT")
+    )
+    first = pipeline.ingest_file(export_path, "chatgpt")
+    assert len(first) == 1
+
+    source_key = str(export_path.resolve())
+    fingerprint = pipeline.progress_store.fingerprint(export_path.read_bytes())
+    pipeline.progress_store.set_source_conversations("chatgpt", source_key, fingerprint, [])
+
+    parse_calls = []
+    original_load_file = pipeline.ingestor.load_file
+    def tracked_parse(*args, **kwargs):
+        parse_calls.append(True)
+        return original_load_file(*args, **kwargs)
+    pipeline.ingestor.load_file = tracked_parse
+
+    recovered = pipeline.ingest_file(export_path, "chatgpt")
+    assert len(recovered) == 1
+    assert recovered[0].suggested_project == "DGM-MAT"
+    assert parse_calls == [True]
+    assert audit_calls == ["recoverable-conversation"]
+    assert pipeline.progress_store.list_source_conversations("chatgpt", source_key, fingerprint) == [
+        "recoverable-conversation"
+    ]
+    assert pipeline.progress_store.get_source("chatgpt", source_key)["status"] == "complete"
