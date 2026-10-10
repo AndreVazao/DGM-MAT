@@ -16,15 +16,17 @@ from .models import (
     ConversationRecord,
 )
 from .progress_store import ConversationProgressStore
+from .knowledge_store import ConversationKnowledgeStore
 
 
 class ConversationIntelligencePipeline:
-    def __init__(self, progress_store_path: str | Path | None = None) -> None:
+    def __init__(self, progress_store_path: str | Path | None = None, knowledge_store_path: str | Path | None = None) -> None:
         self.ingestor = ConversationIngestor()
         self.extractor = CodeExtractor()
         self.auditor = ConversationAuditor()
         self.consolidator = CodeConsolidator()
         self.progress_store = ConversationProgressStore(progress_store_path) if progress_store_path else None
+        self.knowledge_store = ConversationKnowledgeStore(knowledge_store_path) if knowledge_store_path else None
 
     @staticmethod
     def _audit_to_snapshot(audit: ConversationAudit) -> dict:
@@ -169,6 +171,58 @@ class ConversationIntelligencePipeline:
                 )
             raise
         return audits
+
+    def build_delegation_context(self, provider: str | None = None) -> dict:
+        """Provide delegations with cached archive knowledge and open reviews, without rereading exports."""
+        audits = self.load_saved_audits(provider)
+        conversations = []
+        for audit in audits:
+            conversations.append({
+                "conversation_id": audit.conversation.conversation_id,
+                "provider": audit.conversation.provider,
+                "title": audit.conversation.title,
+                "url": audit.conversation.url,
+                "suggested_project": audit.suggested_project,
+                "suggested_title": audit.suggested_title,
+                "findings": [asdict(finding) for finding in audit.findings],
+                "artifacts": [{
+                    "artifact_id": artifact.artifact_id,
+                    "language": artifact.language,
+                    "file_path": artifact.file_path,
+                    "fingerprint": artifact.fingerprint,
+                    "code": artifact.code,
+                    "provenance": asdict(artifact.provenance) if artifact.provenance else None,
+                } for artifact in audit.artifacts],
+            })
+        context = {
+            "archive_summary": self.summarize(audits),
+            "conversations": conversations,
+            "open_review_tasks": [],
+            "knowledge": {},
+        }
+        if self.knowledge_store:
+            context["open_review_tasks"] = self.knowledge_store.list_open_review_tasks()
+            context["knowledge"] = {
+                "summary": self.knowledge_store.summary(),
+                "intents": self.knowledge_store.list_intents(),
+                "proposals": self._list_proposals(),
+                "decisions": self.knowledge_store.list_decisions(),
+                "relations": self.knowledge_store.list_relations(),
+            }
+        return context
+
+    def _list_proposals(self) -> list[dict]:
+        if not self.knowledge_store:
+            return []
+        with self.knowledge_store._connect() as db:
+            rows = db.execute("SELECT * FROM ai_proposals ORDER BY created_at, proposal_id").fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            if item.get("accepted") is not None:
+                item["accepted"] = bool(item["accepted"])
+            result.append(item)
+        return result
 
     def consolidate(self, audits: Iterable[ConversationAudit] | None = None) -> dict:
         selected = list(audits) if audits is not None else self.load_saved_audits()
