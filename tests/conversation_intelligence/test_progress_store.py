@@ -81,8 +81,10 @@ def test_pipeline_persists_results_and_skips_unchanged_history(tmp_path):
     second = pipeline.ingest_file(export_path, "chatgpt")
 
     assert len(first) == 1
-    assert second == []
+    assert len(second) == 1  # cached audit remains available to downstream delegations
     assert calls == ["history-1"]
+    assert pipeline.summarize(second)["conversation_count"] == 1
+    assert pipeline.summarize()["conversation_count"] == 1
     store = ConversationProgressStore(progress_path)
     assert store.get_source("chatgpt", str(export_path.resolve()))["status"] == "complete"
     assert store.summary()["conversations_complete"] == 1
@@ -111,3 +113,70 @@ def test_pipeline_reprocesses_only_when_conversation_content_changes(tmp_path):
     pipeline.ingest_file(export_path, "claude")
 
     assert calls == ["version one", "version two"]
+
+
+
+def test_cached_audit_snapshot_preserves_artifacts_for_consolidation(tmp_path):
+    import json
+
+    from core.conversation_intelligence.models import CodeArtifact, ConversationAudit
+    from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
+
+    export_path = tmp_path / "chatgpt.json"
+    progress_path = tmp_path / "progress.sqlite3"
+    export_path.write_text(json.dumps({"conversations": [{
+        "id": "history-code",
+        "title": "Python module",
+        "content": "Build a utility",
+    }]}), encoding="utf-8")
+
+    pipeline = ConversationIntelligencePipeline(progress_store_path=progress_path)
+    calls = []
+
+    def audit(conversation, artifacts):
+        calls.append(conversation.conversation_id)
+        artifact = CodeArtifact(
+            artifact_id="artifact-1",
+            conversation_id=conversation.conversation_id,
+            provider=conversation.provider,
+            language="python",
+            code="def useful():\n    return 42\n",
+            file_path="useful.py",
+            fingerprint="stable-artifact-fingerprint",
+        )
+        return ConversationAudit(conversation=conversation, artifacts=[artifact], suggested_project="DGM-MAT")
+
+    pipeline.auditor.audit = audit
+    first = pipeline.ingest_file(export_path, "chatgpt")
+    second = pipeline.ingest_file(export_path, "chatgpt")
+
+    assert calls == ["history-code"]
+    assert len(first[0].artifacts) == len(second[0].artifacts) == 1
+    assert second[0].artifacts[0].code == "def useful():\n    return 42\n"
+    assert pipeline.summarize()["artifact_count"] == 1
+    assert pipeline.consolidate()["unique_count"] == 1
+
+
+def test_saved_audits_can_be_loaded_without_source_export(tmp_path):
+    import json
+
+    from core.conversation_intelligence.models import ConversationAudit
+    from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
+
+    export_path = tmp_path / "gemini.json"
+    progress_path = tmp_path / "progress.sqlite3"
+    export_path.write_text(json.dumps({"conversations": [{
+        "id": "history-saved", "title": "Stored context", "content": "DGM-MAT project"
+    }]}), encoding="utf-8")
+    pipeline = ConversationIntelligencePipeline(progress_store_path=progress_path)
+    pipeline.auditor.audit = lambda conversation, artifacts: ConversationAudit(
+        conversation=conversation, artifacts=artifacts, suggested_project="DGM-MAT"
+    )
+    pipeline.ingest_file(export_path, "gemini")
+
+    export_path.unlink()
+    restored = pipeline.load_saved_audits()
+    assert len(restored) == 1
+    assert restored[0].conversation.conversation_id == "history-saved"
+    assert restored[0].conversation.content == ""
+    assert pipeline.summarize()["projects"] == ["DGM-MAT"]
