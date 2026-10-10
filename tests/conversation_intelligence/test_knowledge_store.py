@@ -310,3 +310,74 @@ def test_reviewed_knowledge_provenance_and_evidence_cannot_be_silently_rewritten
     saved_relation = store.list_relations("conv-a")[0]
     assert saved_relation["evidence"] == ["explicit continuation"]
     assert saved_relation["confidence"] == 1.0
+
+
+def test_confirmed_decision_can_only_be_superseded_explicitly_with_provenance(tmp_path):
+    store = ConversationKnowledgeStore(tmp_path / "knowledge.sqlite3")
+    original = UserDecision(
+        decision_id="decision-v1",
+        statement="Keep imports incremental",
+        status="confirmed",
+        source_conversation_id="conv-original",
+        source_message_id="msg-original",
+        evidence=["conv-original#msg-original"],
+        confirmed_by_user=True,
+    )
+    successor = UserDecision(
+        decision_id="decision-v2",
+        statement="Keep imports incremental and fingerprint each source member",
+        status="confirmed",
+        source_conversation_id="conv-followup",
+        source_message_id="msg-followup",
+        supersedes=["decision-v1"],
+        evidence=["conv-followup#msg-followup"],
+        confirmed_by_user=True,
+    )
+    store.save_decision(original)
+    store.save_decision(successor)
+
+    assert store.supersede_confirmed_decision(
+        "decision-v1",
+        superseded_by_decision_id="decision-v2",
+        evidence=["conv-followup#msg-followup explicitly replaces the prior approach"],
+    ) is True
+    assert store.supersede_confirmed_decision(
+        "decision-v1",
+        superseded_by_decision_id="decision-v2",
+        evidence=["conv-followup#msg-followup explicitly replaces the prior approach"],
+    ) is False  # idempotent; no duplicate transition
+
+    old = store.get_decision("decision-v1")
+    assert old["status"] == "superseded"
+    assert old["statement"] == original.statement
+    assert old["source_conversation_id"] == original.source_conversation_id
+    assert old["source_message_id"] == original.source_message_id
+    assert old["evidence"] == original.evidence
+    assert old["confirmed_by_user"] is True
+    history = store.history("decision", "decision-v1")
+    assert [item["event_type"] for item in history] == ["saved", "superseded"]
+    assert history[-1]["payload"]["superseded_by_decision_id"] == "decision-v2"
+    assert history[-1]["payload"]["evidence"]
+
+
+def test_confirmed_decision_supersession_requires_confirmed_successor_and_evidence(tmp_path):
+    store = ConversationKnowledgeStore(tmp_path / "knowledge.sqlite3")
+    store.save_decision(UserDecision(
+        decision_id="decision-old", statement="Old confirmed choice", status="confirmed",
+        confirmed_by_user=True, evidence=["conv-a#msg-a"],
+    ))
+    store.save_decision(UserDecision(
+        decision_id="decision-pending", statement="Possible future choice", status="unverified",
+        confirmed_by_user=False, evidence=["conv-b#msg-b"],
+    ))
+    with pytest.raises(ValueError, match="user-confirmed decision"):
+        store.supersede_confirmed_decision(
+            "decision-old", superseded_by_decision_id="decision-pending", evidence=["conv-b#msg-b"]
+        )
+    with pytest.raises(ValueError, match="non-empty evidence"):
+        store.supersede_confirmed_decision(
+            "decision-old", superseded_by_decision_id="decision-pending", evidence=[]
+        )
+    assert store.get_decision("decision-old")["status"] == "confirmed"
+
+[executed on device: PC-Vazao-Anjos (982eb058-a42c-4897-9732-547f04cb44f0)]
