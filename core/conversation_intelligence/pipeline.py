@@ -123,10 +123,13 @@ class ConversationIntelligencePipeline:
                     fingerprint = self.progress_store.fingerprint(stable_content)
                     if not self.progress_store.should_process(conversation.provider, conversation.conversation_id, fingerprint):
                         saved = self.progress_store.get_conversation(conversation.provider, conversation.conversation_id)
-                        if saved and saved.get("result"):
-                            audits.append(self._snapshot_to_audit(saved["result"], current=conversation))
-                        processed_count += 1
-                        continue
+                        snapshot = saved.get("result") if saved else None
+                        # Older ledger versions stored counters only. Rebuild those
+                        # records once rather than returning a misleading empty audit.
+                        if isinstance(snapshot, dict) and isinstance(snapshot.get("conversation"), dict) and isinstance(snapshot.get("artifacts"), list):
+                            audits.append(self._snapshot_to_audit(snapshot, current=conversation))
+                            processed_count += 1
+                            continue
                     self.progress_store.record_conversation(
                         conversation.provider, conversation.conversation_id, fingerprint,
                         conversation.title, status="processing",
