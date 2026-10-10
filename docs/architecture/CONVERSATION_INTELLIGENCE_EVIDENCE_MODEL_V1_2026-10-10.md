@@ -63,3 +63,16 @@ This is a persistence primitive, not an automated semantic extractor or human-re
 3. Test snapshot serialization for representative imported formats and legacy rows.
 4. Confirm database location/ACLs and ensure raw transcripts/secrets never enter Git.
 5. Keep the PR draft until these checks pass. Do not merge based on successful file commits alone.
+
+
+## Validation checkpoint — 2026-10-10 (local Windows checkout)
+
+- Updated the local feature branch to remote commit `dc8c2e3b79a699a78f743942066909d235d8e3c0`.
+- `python -m pytest tests/conversation_intelligence -q`: exit code 0; focused tests passed (25 collected/executed by the progress output).
+- `python -m pytest tests/conversation_intelligence tests/contracts tests/organization tests/autonomy tests/security tests/cockpit -q`: exit code 0; combined regression suite passed. Pytest output displayed progress through 100%; the remote terminal omitted the final numeric summary line.
+- `python -m compileall -q core\conversation_intelligence`: exit code 0.
+- `git diff --check`: exit code 0; working tree clean after syncing the feature branch.
+- Existing deprecation warnings appeared from Starlette/httpx TestClient integration and FastAPI `on_event`; no test failures were reported.
+- The checked commit had no PR-triggered GitHub Actions workflow runs returned by the available lookup. CI status is therefore **not verified**.
+
+This is meaningful local validation, not production validation. The current data layer still lacks provider-history authentication/import, UI review tasks, automatic evidence mining, and end-to-end office/delegation integration. Keep the PR unmerged until those boundaries and compatibility are reviewed.
