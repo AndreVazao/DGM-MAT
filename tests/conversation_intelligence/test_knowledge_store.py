@@ -189,6 +189,11 @@ def test_knowledge_changes_keep_temporal_snapshots(tmp_path):
     ))
     store.save_intent(UserIntent(
         intent_id="evolving-intent",
+        statement="Initial direction",
+        evidence=["conv-1#msg-1"],
+    ))  # identical repeat must not create another history event
+    store.save_intent(UserIntent(
+        intent_id="evolving-intent",
         statement="Later direction after new user instruction",
         evidence=["conv-2#msg-8"],
     ))
