@@ -48,3 +48,17 @@ The feature branch now includes `core/conversation_intelligence/progress_store.p
 Additional tests cover no-repeat behavior, changed content, persistence across reopening the database, blocked login checkpoints and coverage invariants.
 
 **Verification state (2026-10-10):** the focused `tests/conversation_intelligence` suite passed locally (17 tests). The broader regression run across `tests/conversation_intelligence`, `tests/contracts`, `tests/organization`, `tests/autonomy`, `tests/security` and `tests/cockpit` also completed with exit code 0. The broader run exposed an existing clock-injection bug in `HumanInterventionQueue.create_request`; this branch fixes the initial read to use the supplied creation timestamp, and the regression suite now passes. GitHub returned no PR-triggered workflow runs for the latest checked commit, so local tests are confirmed but CI remains absent. Keep the PR in draft until review/compatibility checks are complete.
+
+
+## Durable knowledge and review ledger — implementation in progress
+
+Added `core/conversation_intelligence/knowledge_store.py`, a separate SQLite/WAL store for evidence-linked user intents, AI proposals, user decisions, conversation relations and explicit review tasks.
+
+- AI proposals remain distinct from user decisions; an AI proposal is never automatically treated as accepted.
+- New intents and decisions remain `unverified` by default. A reviewed intent or user-confirmed decision cannot be silently rewritten by a later unreviewed record.
+- Relations carry evidence, confidence and a user-review flag; self-relations and invalid confidence are rejected.
+- Review tasks have their own open/resolved/cancelled lifecycle. Resolving a review task does not force re-importing or rereading the source conversation.
+- The store persists statements and evidence references, not full raw conversation transcripts.
+- This is a persistence foundation, not an automatic intent-mining engine, a UI workflow, or a claim that external provider histories have already been imported.
+
+Focused conversation-intelligence tests currently pass after adding the knowledge store. The wider regression suite is being rerun after this addition; update the verification status when its final exit code is known.
