@@ -205,24 +205,11 @@ class ConversationIntelligencePipeline:
             context["knowledge"] = {
                 "summary": self.knowledge_store.summary(),
                 "intents": self.knowledge_store.list_intents(),
-                "proposals": self._list_proposals(),
+                "proposals": self.knowledge_store.list_proposals(),
                 "decisions": self.knowledge_store.list_decisions(),
                 "relations": self.knowledge_store.list_relations(),
             }
         return context
-
-    def _list_proposals(self) -> list[dict]:
-        if not self.knowledge_store:
-            return []
-        with self.knowledge_store._connect() as db:
-            rows = db.execute("SELECT * FROM ai_proposals ORDER BY created_at, proposal_id").fetchall()
-        result = []
-        for row in rows:
-            item = dict(row)
-            if item.get("accepted") is not None:
-                item["accepted"] = bool(item["accepted"])
-            result.append(item)
-        return result
 
     def consolidate(self, audits: Iterable[ConversationAudit] | None = None) -> dict:
         selected = list(audits) if audits is not None else self.load_saved_audits()
