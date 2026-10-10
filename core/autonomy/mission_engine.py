@@ -21,6 +21,7 @@ from core.organization.qa_review_coordinator import QAReviewCoordinator
 from core.organization.help_seeking import HelpContext, HelpSeekingPolicy
 from core.organization.specialist_collaboration import SpecialistCollaborationStore
 from core.organization.validated_learning import ValidatedLessonStore
+from core.providers.browser.governed_browser_session import GovernedBrowserSession
 
 class MissionEngine:
     REPO_SCAN_ROOTS = [Path("C:/ProgramasGodMode"), Path("C:/DevopGodMode")]
@@ -56,6 +57,9 @@ class MissionEngine:
             self.qa_review_queue, self.collaboration_store, self.validated_lesson_store,
             Path(__file__).resolve().parents[2],
         )
+        # Browser sessions are ephemeral, in-memory only, and never exported to disk.
+        self.browser_sessions: Dict[str, GovernedBrowserSession] = {}
+        self.browser_screenshot_dir = storage_manager.get_path("tasks") / "browser_screenshots"
         self.action_queue = SafeActionQueue()
         self.action_queue.register_handler("MISSION_EXECUTION", self._handle_queue_execution)
         self.timeout_threshold = timedelta(seconds=self.MISSION_EXECUTION_TIMEOUT_SECONDS)
@@ -88,6 +92,66 @@ class MissionEngine:
     def reconcile_qa_review_lesson(self, work_item_id: str, *, reviewer_id: str):
         """Recover lesson persistence after a collaboration was validated but storage failed."""
         return self.qa_review_coordinator.reconcile_validated_lesson(work_item_id, reviewer_id=reviewer_id)
+
+    def start_governed_browser_session(
+        self, *, allowed_hosts: list[str], headed: bool = True, timeout_ms: int = 15000
+    ) -> Dict[str, Any]:
+        """Open an ephemeral browser session limited to explicitly authorized HTTPS hosts."""
+        if len(self.browser_sessions) >= 3:
+            raise RuntimeError("At most three governed browser sessions may be active")
+        session = GovernedBrowserSession(
+            allowed_hosts=allowed_hosts,
+            headed=headed,
+            timeout_ms=timeout_ms,
+            screenshot_dir=self.browser_screenshot_dir,
+        )
+        info = session.start()
+        handle = f"browser_{uuid4().hex[:12]}"
+        self.browser_sessions[handle] = session
+        return {
+            "handle": handle,
+            "session_id": info.session_id,
+            "current_url": info.current_url,
+            "title": info.title,
+            "headed": info.headed,
+            "allowed_hosts": list(info.allowed_hosts),
+            "cookies_persisted": False,
+            "storage_state_exported": False,
+        }
+
+    def _get_governed_browser_session(self, handle: str) -> GovernedBrowserSession:
+        session = self.browser_sessions.get(handle)
+        if session is None:
+            raise KeyError(f"Unknown or closed browser session: {handle}")
+        return session
+
+    def browser_navigate(self, handle: str, url: str) -> Dict[str, Any]:
+        return self._get_governed_browser_session(handle).navigate(url)
+
+    def browser_read_page(self, handle: str, *, max_chars: int = 20000) -> Dict[str, Any]:
+        return self._get_governed_browser_session(handle).read_page(max_chars=max_chars)
+
+    def browser_click(self, handle: str, selector: str) -> Dict[str, Any]:
+        return self._get_governed_browser_session(handle).click(selector)
+
+    def browser_fill(self, handle: str, selector: str, value: str) -> Dict[str, Any]:
+        return self._get_governed_browser_session(handle).fill(selector, value)
+
+    def browser_scroll(self, handle: str, *, direction: str = "down", pixels: int = 600) -> Dict[str, Any]:
+        return self._get_governed_browser_session(handle).scroll(direction=direction, pixels=pixels)
+
+    def browser_screenshot(self, handle: str, filename: str) -> Dict[str, Any]:
+        return self._get_governed_browser_session(handle).screenshot(filename)
+
+    def browser_ocr_screenshot(self, handle: str, filename: str, *, language: str = "por+eng") -> Dict[str, Any]:
+        return self._get_governed_browser_session(handle).ocr_screenshot(filename, language=language)
+
+    def close_governed_browser_session(self, handle: str) -> Dict[str, Any]:
+        session = self.browser_sessions.pop(handle, None)
+        if session is None:
+            return {"closed": False, "reason": "unknown_or_already_closed"}
+        session.close()
+        return {"closed": True, "handle": handle, "cookies_persisted": False}
 
     def _load_missions(self):
         """Restores missions from storage."""
