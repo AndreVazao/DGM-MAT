@@ -140,6 +140,33 @@ class ConversationProgressStore:
                 imported_count, checkpoint, self._now(), last_error,
             ))
 
+    def get_conversation(self, provider: str, conversation_id: str) -> dict | None:
+        """Return the durable processing record, including its derived audit snapshot."""
+        with self._connect() as db:
+            row = db.execute(
+                "SELECT * FROM conversation_progress WHERE provider=? AND conversation_id=?",
+                (provider, conversation_id),
+            ).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        result["result"] = json.loads(result["result_json"]) if result.get("result_json") else None
+        return result
+
+    def list_conversations(self, provider: str | None = None) -> list[dict]:
+        """List stored processing records without reopening original history exports."""
+        query = "SELECT * FROM conversation_progress"
+        params: tuple = ()
+        if provider is not None:
+            query += " WHERE provider=?"
+            params = (provider,)
+        query += " ORDER BY provider, conversation_id"
+        with self._connect() as db:
+            rows = [dict(row) for row in db.execute(query, params).fetchall()]
+        for row in rows:
+            row["result"] = json.loads(row["result_json"]) if row.get("result_json") else None
+        return rows
+
     def get_source(self, provider: str, source_key: str) -> dict | None:
         with self._connect() as db:
             row = db.execute(
