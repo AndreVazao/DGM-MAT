@@ -161,3 +161,11 @@ Verification: focused lifecycle/dispatch/help-seeking tests passed (11 tests); t
 - `git diff --check`: passed in DGM-MAT and AndreOS-Memory.
 - Backup and SHA-256 manifest: `C:\\ProgramasGodMode\\DGM-MAT-OS\\backups\\qa-review-coordinator-2026-10-10\\SHA256-MANIFEST.json`; source/backup hashes matched at backup creation. Manifest is refreshed after this documentation checkpoint.
 - Git commit/push and post-push clean/sync checks remain pending; no GitHub Actions were run.
+
+
+### Publicação — coordenador QA independente — 2026-10-10
+
+- Publicado em `AndreVazao/DGM-MAT`, branch `main`: commit `033c181` (`feat: add independent QA review coordinator`).
+- Inclui o coordenador QA, integração no MissionEngine, testes novos e documentação. Push confirmado pelo Git; a branch local ficou limpa e alinhada com `origin/main` após o push.
+- O manifesto SHA-256 foi verificado com 6 ficheiros e 0 divergências antes desta atualização documental; a cópia de backup será atualizada com este registo.
+- Falta publicar a atualização correspondente da memória AndreOS-Memory e confirmar o estado final dos dois repositórios.
