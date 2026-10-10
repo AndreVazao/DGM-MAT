@@ -457,3 +457,46 @@ def test_source_cache_rejects_global_snapshot_from_another_export_with_same_conv
         ("Second export", "second content"),
         ("First export", "first content"),
     ]
+
+
+def test_existing_source_membership_schema_is_migrated_without_losing_rows(tmp_path):
+    import sqlite3
+
+    from core.conversation_intelligence.progress_store import ConversationProgressStore
+
+    database = tmp_path / "legacy-progress.sqlite3"
+    with sqlite3.connect(database) as db:
+        db.execute("""
+            CREATE TABLE source_conversations (
+                provider TEXT NOT NULL,
+                source_key TEXT NOT NULL,
+                source_fingerprint TEXT NOT NULL,
+                conversation_id TEXT NOT NULL,
+                ordinal INTEGER NOT NULL,
+                PRIMARY KEY (provider, source_key, ordinal)
+            )
+        """)
+        db.execute(
+            "INSERT INTO source_conversations VALUES (?, ?, ?, ?, ?)",
+            ("chatgpt", "old-export.json", "source-fp", "old-conversation", 0),
+        )
+
+    store = ConversationProgressStore(database)
+    members = store.list_source_conversation_members("chatgpt", "old-export.json", "source-fp")
+    assert members == [{
+        "conversation_id": "old-conversation",
+        "conversation_fingerprint": None,
+    }]
+    with sqlite3.connect(database) as db:
+        columns = {row[1] for row in db.execute("PRAGMA table_info(source_conversations)")}
+    assert "conversation_fingerprint" in columns
+
+
+def test_source_membership_rejects_mismatched_fingerprint_count(tmp_path):
+    store = ConversationProgressStore(tmp_path / "progress.sqlite3")
+    with pytest.raises(ValueError, match="matching lengths"):
+        store.set_source_conversations(
+            "chatgpt", "source.json", "source-fp",
+            ["conversation-1", "conversation-2"],
+            ["conversation-fp-1"],
+        )
