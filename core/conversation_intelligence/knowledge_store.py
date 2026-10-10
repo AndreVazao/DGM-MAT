@@ -255,6 +255,16 @@ class ConversationKnowledgeStore:
                 "decision_id": proposal.decision_id,
             })
 
+    def list_proposals(self, accepted: bool | None = None) -> list[dict]:
+        query = "SELECT * FROM ai_proposals"
+        params: tuple = ()
+        if accepted is not None:
+            query += " WHERE accepted=?"
+            params = (int(accepted),)
+        query += " ORDER BY created_at, proposal_id"
+        with self._connect() as db:
+            return [self._row(row) for row in db.execute(query, params).fetchall()]
+
     def save_decision(self, decision: UserDecision) -> None:
         if not decision.decision_id.strip() or not decision.statement.strip():
             raise ValueError("decision_id and statement are required")
