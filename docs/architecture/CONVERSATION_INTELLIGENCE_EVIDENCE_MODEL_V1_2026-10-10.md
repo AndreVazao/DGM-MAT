@@ -29,3 +29,20 @@ Existing aggregate `ConversationRecord.content` remains available for existing p
 `tests/conversation_intelligence/test_evidence_aware_models.py` covers distinct ordered user/assistant turns, unknown role preservation, OpenAI-style mapping extraction, unverified defaults and import-coverage validation.
 
 **Verification state:** tests are committed to this feature branch but have not been executed in this environment. Do not interpret branch presence or GitHub commit success as a passing test run.
+
+
+## Incremental progress ledger — added after v1 review
+
+The feature branch now includes `core/conversation_intelligence/progress_store.py`, a SQLite/WAL ledger, and optional pipeline integration through `ConversationIntelligencePipeline(progress_store_path=...)`.
+
+- No database is created unless a local progress-store path is explicitly supplied.
+- Each conversation is fingerprinted from its current normalized content and message turns.
+- A matching conversation with status `complete` is skipped on later runs.
+- Changed content or an incomplete/failed status makes that conversation eligible for processing again.
+- Source-file progress records status, counts, fingerprint and checkpoint; invalid count combinations and false `complete` states are rejected.
+- Conversation summaries stored in the ledger contain counts/fingerprints rather than a duplicate of full conversation text.
+- Database is local at the caller-selected path; do not place it in a public repository or unprotected shared folder.
+
+Additional tests cover no-repeat behavior, changed content, persistence across reopening the database, blocked login checkpoints and coverage invariants.
+
+**Verification remains pending:** these tests have not yet been executed in a real local/CI test run. The implementation remains on the draft feature branch until checks are available and regressions are addressed.
