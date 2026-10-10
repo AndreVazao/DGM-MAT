@@ -27,3 +27,33 @@ def test_execution_feed_dispatch(app):
     window.dispatch_message(test_msg)
     assert window.execution_feed.feed_list.count() == 1
     assert "Test Task" in window.execution_feed.feed_list.item(0).text()
+
+
+def test_realtime_state_updates_are_dispatched_through_qt_signals(app):
+    window = MainWindow()
+    window._queue_server_message({
+        "type": "state_update",
+        "data": {
+            "runtime_status": "running",
+            "system_state": "READY",
+            "boot_phase": "OPERATIONAL",
+            "node_status": "ONLINE",
+            "is_degraded": False,
+            "missions": {},
+        },
+    })
+    app.processEvents()
+    assert window.system_state == "READY"
+    assert window.is_connected is False
+    window.close()
+
+
+def test_realtime_client_stop_before_connect_is_final():
+    import asyncio
+    from cockpit.streaming.realtime_client import RealtimeClient
+
+    client = RealtimeClient("ws://127.0.0.1:9/ws")
+    client.stop()
+    asyncio.run(client.connect())
+    assert client._stop_requested is True
+    assert client.is_connected is False

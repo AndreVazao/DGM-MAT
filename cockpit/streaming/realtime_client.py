@@ -18,6 +18,8 @@ class RealtimeClient:
         self._retry_delay = 1.0
         self._max_retry_delay = 30.0
         self.last_reason = "UNKNOWN"
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._stop_requested = False
 
     def add_connection_callback(self, callback: Callable[[bool, str], None]):
         self.connection_state_callbacks.append(callback)
@@ -46,8 +48,11 @@ class RealtimeClient:
 
     async def connect(self):
         """Establishes a persistent connection with exponential backoff and diagnostics."""
+        self._loop = asyncio.get_running_loop()
+        if self._stop_requested:
+            return
         self._running = True
-        while self._running:
+        while self._running and not self._stop_requested:
             try:
                 dgm_logger.info(f"RealtimeClient: Attempting connection to {self.uri}...")
                 async with websockets.connect(self.uri) as websocket:
@@ -90,4 +95,12 @@ class RealtimeClient:
             dgm_logger.warning("RealtimeClient: Attempted to send data while disconnected.")
 
     def stop(self):
+        self._stop_requested = True
         self._running = False
+        loop = self._loop
+        websocket = self.websocket
+        if loop and loop.is_running() and websocket is not None:
+            try:
+                asyncio.run_coroutine_threadsafe(websocket.close(), loop)
+            except Exception as exc:
+                dgm_logger.warning(f"RealtimeClient: Close request failed ({type(exc).__name__}).")

@@ -4,6 +4,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal, Slot, QTimer
 from PySide6.QtGui import QIcon, QPalette, QColor
+import asyncio
+import threading
 
 from cockpit.widgets.dashboard_widget import DashboardWidget
 from cockpit.widgets.agent_widget import AgentWidget
@@ -23,6 +25,9 @@ from cockpit.app.websocket_client import CockpitWebSocketClient
 from core.observability.logger import dgm_logger
 
 class MainWindow(QMainWindow):
+    server_message_received = Signal(dict)
+    connection_state_received = Signal(bool, str)
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("DGM-MAT | Cognitive Operating System Cockpit")
@@ -106,17 +111,31 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Initializing subsystems...")
 
     def _setup_connections(self):
-        self.ws_client.client.add_connection_callback(self._on_connection_changed)
-        self.ws_client.on_message(self._handle_server_message)
+        # Qt widgets must only be touched on the GUI thread. Realtime callbacks
+        # emit signals so Qt queues UI updates safely across threads.
+        self.server_message_received.connect(self._handle_server_message)
+        self.connection_state_received.connect(self._on_connection_changed)
+        self.ws_client.client.add_connection_callback(self._queue_connection_state)
+        self.ws_client.on_message(self._queue_server_message)
+        self._realtime_thread = threading.Thread(
+            target=self._run_realtime_client,
+            name="dgm-cockpit-realtime",
+            daemon=True,
+        )
+        self._realtime_thread.start()
 
-        # Start connection attempt
-        import asyncio
+    def _run_realtime_client(self):
         try:
-            loop = asyncio.get_running_loop()
-            asyncio.run_coroutine_threadsafe(self.ws_client.connect(), loop)
-        except RuntimeError:
-            # Fallback if no loop in current thread
-            pass
+            asyncio.run(self.ws_client.connect())
+        except Exception as exc:
+            dgm_logger.error(f"Cockpit: Realtime client stopped ({type(exc).__name__}).")
+
+    def _queue_connection_state(self, connected: bool, reason: str = "UNKNOWN"):
+        self.connection_state_received.emit(bool(connected), str(reason))
+
+    def _queue_server_message(self, data: dict):
+        if isinstance(data, dict):
+            self.server_message_received.emit(data)
 
     def _fetch_initial_state(self):
         """Priority 2: Manual state hydration on connect."""
@@ -127,7 +146,7 @@ class MainWindow(QMainWindow):
             try:
                 response = requests.get(f"http://{API_HOST}:{API_PORT}/runtime/truth", timeout=2)
                 if response.status_code == 200:
-                    self._handle_server_message({"type": "state_update", "data": response.json()})
+                    self.server_message_received.emit({"type": "state_update", "data": response.json()})
                     dgm_logger.info("Cockpit: Initial state hydration complete.")
             except Exception as e:
                 dgm_logger.warning(f"Cockpit: Initial hydration failed: {e}")
@@ -212,6 +231,14 @@ class MainWindow(QMainWindow):
             "status": state.get("runtime_status", "UNKNOWN"),
             "config": {"execution_mode": "LOW_MEMORY" if state.get("health", {}).get("low_memory_profile") else "STANDARD"}
         })
+
+    def closeEvent(self, event):
+        """Stop the realtime client when the desktop cockpit closes; Core stays alive."""
+        try:
+            self.ws_client.stop()
+        except Exception as exc:
+            dgm_logger.warning(f"Cockpit: Realtime shutdown issue ({type(exc).__name__}).")
+        event.accept()
 
     def _update_status_badge(self):
         if self.is_connected:
