@@ -231,9 +231,13 @@ class ConversationKnowledgeStore:
             ):
                 return
             if existing and existing["accepted"] is not None:
+                # Once a user has accepted/rejected a proposal, preserve the full
+                # provenance chain as well as its text and decision state.
                 if (existing["accepted"] != accepted
                         or existing["statement"] != proposal.statement
-                        or existing["source_conversation_id"] != proposal.source_conversation_id):
+                        or existing["source_conversation_id"] != proposal.source_conversation_id
+                        or existing["source_message_id"] != proposal.source_message_id
+                        or existing["decision_id"] != proposal.decision_id):
                     raise ValueError("An explicitly accepted/rejected proposal cannot be silently rewritten")
             db.execute("""
                 INSERT INTO ai_proposals (
