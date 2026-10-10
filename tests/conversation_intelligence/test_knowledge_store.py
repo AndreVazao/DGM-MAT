@@ -177,3 +177,46 @@ def test_invalid_confidence_and_missing_evidence_resolution_are_rejected(tmp_pat
         store.save_intent(UserIntent(intent_id="bad", statement="x", confidence=1.1))
     with pytest.raises(ValueError, match="resolution and evidence"):
         store.resolve_review_task("missing", resolution="done", evidence=[])
+
+
+
+def test_knowledge_changes_keep_temporal_snapshots(tmp_path):
+    store = ConversationKnowledgeStore(tmp_path / "knowledge.sqlite3")
+    store.save_intent(UserIntent(
+        intent_id="evolving-intent",
+        statement="Initial direction",
+        evidence=["conv-1#msg-1"],
+    ))
+    store.save_intent(UserIntent(
+        intent_id="evolving-intent",
+        statement="Later direction after new user instruction",
+        evidence=["conv-2#msg-8"],
+    ))
+
+    history = store.history("intent", "evolving-intent")
+    assert len(history) == 2
+    assert history[0]["payload"]["statement"] == "Initial direction"
+    assert history[1]["payload"]["statement"] == "Later direction after new user instruction"
+
+
+def test_review_task_history_is_incremental_and_does_not_duplicate_creation(tmp_path):
+    store = ConversationKnowledgeStore(tmp_path / "knowledge.sqlite3")
+    args = dict(
+        task_id="review-evolution",
+        item_type="decision",
+        item_id="decision-1",
+        reason="Confirm which user instruction is current",
+        evidence=["conv-4#msg-2"],
+    )
+    store.create_review_task(**args)
+    store.create_review_task(**args)
+    assert len(store.history("review_task", "review-evolution")) == 1
+
+    assert store.resolve_review_task(
+        "review-evolution",
+        resolution="Later instruction supersedes the earlier approach",
+        evidence=["conv-4#msg-2", "conv-4#msg-9"],
+    )
+    history = store.history("review_task", "review-evolution")
+    assert [entry["event_type"] for entry in history] == ["created", "resolved"]
+    assert history[1]["payload"]["status"] == "resolved"
