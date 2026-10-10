@@ -61,4 +61,4 @@ Added `core/conversation_intelligence/knowledge_store.py`, a separate SQLite/WAL
 - The store persists statements and evidence references, not full raw conversation transcripts.
 - This is a persistence foundation, not an automatic intent-mining engine, a UI workflow, or a claim that external provider histories have already been imported.
 
-Focused conversation-intelligence tests currently pass after adding the knowledge store. The wider regression suite is being rerun after this addition; update the verification status when its final exit code is known.
+**Verification update (2026-10-10):** the focused `tests/conversation_intelligence` suite passed after the knowledge store was added. The broader regression run across `tests/conversation_intelligence`, `tests/contracts`, `tests/organization`, `tests/autonomy`, `tests/security` and `tests/cockpit` also completed with exit code 0 after the knowledge-store addition. GitHub returned no PR-triggered workflow runs for the latest checked head; local tests are confirmed but CI remains absent.
