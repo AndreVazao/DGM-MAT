@@ -39,7 +39,7 @@ The source ledger and audit snapshot are derived processing state. Full raw hist
 
 `core/conversation_intelligence/knowledge_store.py` adds a SQLite/WAL current projection and append-only event history for intents, AI proposals, decisions and conversation relations. Each event may carry evidence references such as conversation ID and message ID. Identical evidence events are idempotent. A confirmed/accepted item cannot be silently downgraded; an explicit transition is required and the previous state remains in history.
 
-This is a persistence primitive, not an automated semantic extractor or human-review task queue. Relation candidates still require evidence and review; no relation graph is inferred automatically by this store. It currently does not implement a separate review-task lifecycle.
+This is a persistence primitive, not an automated semantic extractor or review UI. It does implement a separate review-task lifecycle (open/resolved/cancelled) so a pending human decision can be tracked without reimporting the source conversation. The append-only `knowledge_history` table preserves snapshots for future state changes and review-task transitions; it does not reconstruct changes that happened before this history table was introduced. Relation candidates still require evidence and review; no relation graph is inferred automatically by this store.
 
 ## Important limitations
 
@@ -68,7 +68,7 @@ This is a persistence primitive, not an automated semantic extractor or human-re
 ## Validation checkpoint — 2026-10-10 (local Windows checkout)
 
 - Updated the local feature branch to remote commit `dc8c2e3b79a699a78f743942066909d235d8e3c0`.
-- `python -m pytest tests/conversation_intelligence -q`: exit code 0; focused tests passed (25 collected/executed by the progress output).
+- `python -m pytest tests\conversation_intelligence -q`: exit code 0; focused tests passed (27 tests indicated by pytest progress).
 - `python -m pytest tests/conversation_intelligence tests/contracts tests/organization tests/autonomy tests/security tests/cockpit -q`: exit code 0; combined regression suite passed. Pytest output displayed progress through 100%; the remote terminal omitted the final numeric summary line.
 - `python -m compileall -q core\conversation_intelligence`: exit code 0.
 - `git diff --check`: exit code 0; working tree clean after syncing the feature branch.
