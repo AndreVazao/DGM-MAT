@@ -327,3 +327,83 @@ def test_missing_source_snapshot_index_falls_back_to_parser_and_repairs_ledger(t
         "recoverable-conversation"
     ]
     assert pipeline.progress_store.get_source("chatgpt", source_key)["status"] == "complete"
+
+
+def test_interrupted_source_import_resumes_without_reauditing_completed_conversations(tmp_path):
+    import json
+
+    from core.conversation_intelligence.models import ConversationAudit
+    from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
+
+    export_path = tmp_path / "interrupted.json"
+    export_path.write_text(json.dumps({"conversations": [
+        {"id": "first-item", "title": "First", "content": "Already processed"},
+        {"id": "second-item", "title": "Second", "content": "Fails once"},
+    ]}), encoding="utf-8")
+    pipeline = ConversationIntelligencePipeline(progress_store_path=tmp_path / "progress.sqlite3")
+    calls = []
+
+    def fail_second_once(conversation, artifacts):
+        calls.append(conversation.conversation_id)
+        if conversation.conversation_id == "second-item" and calls.count("second-item") == 1:
+            raise RuntimeError("simulated interruption")
+        return ConversationAudit(conversation=conversation, artifacts=artifacts)
+
+    pipeline.auditor.audit = fail_second_once
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        pipeline.ingest_file(export_path, "chatgpt")
+
+    source_key = str(export_path.resolve())
+    failed = pipeline.progress_store.get_source("chatgpt", source_key)
+    assert failed["status"] == "failed"
+    assert failed["imported_count"] == 1
+    assert pipeline.progress_store.get_conversation("chatgpt", "first-item")["status"] == "complete"
+    assert pipeline.progress_store.get_conversation("chatgpt", "second-item")["status"] == "failed"
+
+    recovered = pipeline.ingest_file(export_path, "chatgpt")
+    assert [audit.conversation.conversation_id for audit in recovered] == ["first-item", "second-item"]
+    assert calls == ["first-item", "second-item", "second-item"]
+    completed = pipeline.progress_store.get_source("chatgpt", source_key)
+    assert completed["status"] == "complete"
+    assert completed["imported_count"] == completed["discovered_count"] == 2
+    assert pipeline.progress_store.list_source_conversations(
+        "chatgpt", source_key, pipeline.progress_store.fingerprint(export_path.read_bytes())
+    ) == ["first-item", "second-item"]
+
+
+def test_changed_source_invalidates_source_cache_and_updates_conversation_snapshot(tmp_path):
+    import json
+
+    from core.conversation_intelligence.models import ConversationAudit
+    from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
+
+    export_path = tmp_path / "changed-source.json"
+    progress_path = tmp_path / "progress.sqlite3"
+    export_path.write_text(json.dumps({"conversations": [
+        {"id": "mutable-item", "title": "Original title", "content": "Original content"},
+    ]}), encoding="utf-8")
+    pipeline = ConversationIntelligencePipeline(progress_store_path=progress_path)
+    calls = []
+
+    def audit(conversation, artifacts):
+        calls.append((conversation.conversation_id, conversation.title, conversation.content))
+        return ConversationAudit(conversation=conversation, artifacts=artifacts, suggested_title=conversation.title)
+
+    pipeline.auditor.audit = audit
+    first = pipeline.ingest_file(export_path, "chatgpt")
+    assert first[0].suggested_title == "Original title"
+
+    export_path.write_text(json.dumps({"conversations": [
+        {"id": "mutable-item", "title": "Updated title", "content": "Updated content"},
+    ]}), encoding="utf-8")
+    second = pipeline.ingest_file(export_path, "chatgpt")
+
+    assert len(second) == 1
+    assert second[0].suggested_title == "Updated title"
+    assert calls == [
+        ("mutable-item", "Original title", "Original content"),
+        ("mutable-item", "Updated title", "Updated content"),
+    ]
+    source = pipeline.progress_store.get_source("chatgpt", str(export_path.resolve()))
+    assert source["status"] == "complete"
+    assert source["source_fingerprint"] == pipeline.progress_store.fingerprint(export_path.read_bytes())
