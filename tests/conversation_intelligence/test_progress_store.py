@@ -250,3 +250,37 @@ def test_delegation_context_reuses_cached_archive_and_open_review_tasks(tmp_path
     assert context["conversations"][0]["conversation_id"] == "delegation-history"
     assert context["open_review_tasks"][0]["task_id"] == "review-delegation-1"
     assert context["knowledge"]["summary"]["review_tasks_open"] == 1
+
+
+
+def test_unchanged_completed_source_reuses_cached_audits_without_parsing_export(tmp_path):
+    import json
+    import pytest
+
+    from core.conversation_intelligence.models import ConversationAudit
+    from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
+
+    export_path = tmp_path / "stable-source.json"
+    export_path.write_text(json.dumps({"conversations": [{
+        "id": "stable-conversation", "title": "Cached source", "content": "Reuse this result"
+    }]}), encoding="utf-8")
+    pipeline = ConversationIntelligencePipeline(progress_store_path=tmp_path / "progress.sqlite3")
+    audited = []
+    pipeline.auditor.audit = lambda conversation, artifacts: (
+        audited.append(conversation.conversation_id)
+        or ConversationAudit(conversation=conversation, artifacts=artifacts, suggested_project="DGM-MAT")
+    )
+
+    first = pipeline.ingest_file(export_path, "chatgpt")
+    assert len(first) == 1
+    assert audited == ["stable-conversation"]
+
+    def unexpected_parse(*args, **kwargs):
+        pytest.fail("unchanged completed source should reuse its source-level snapshot index")
+
+    pipeline.ingestor.load_file = unexpected_parse
+    second = pipeline.ingest_file(export_path, "chatgpt")
+    assert len(second) == 1
+    assert second[0].conversation.conversation_id == "stable-conversation"
+    assert second[0].suggested_project == "DGM-MAT"
+    assert audited == ["stable-conversation"]
