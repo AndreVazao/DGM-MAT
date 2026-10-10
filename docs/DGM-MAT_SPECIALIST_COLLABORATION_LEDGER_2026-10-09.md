@@ -139,3 +139,25 @@ Verification: focused lifecycle/dispatch/help-seeking tests passed (11 tests); t
 - Duplicate correlation IDs are idempotent only for matching source message, subject and body; conflicting requests fail closed rather than overwriting existing work.
 - Deterministic tests: persistence across reopen, idempotent/conflicting intake, ownership enforcement, completion evidence/check requirements, terminal-state protection, and retry-limit handling.
 - Maturity boundary: this is durable queue infrastructure and intake integration, not an AI reviewer. No tests are automatically claimed as run by the reviewer, and no lesson is promoted by queue creation.
+
+
+## Independent QA coordinator — 2026-10-10
+
+- Added `core/organization/qa_review_coordinator.py` and integrated it into `core/autonomy/mission_engine.py` through explicit methods: `prepare_qa_review`, `run_qa_local_verification`, `finalize_qa_review`, and `reconcile_qa_review_lesson`.
+- Review preparation retrieves the persisted collaboration packet by the queue correlation ID, requires `RESULT_RECEIVED`, and rejects reviewer identities matching the original collaborator or reserved self-review labels. Collaborator result/provenance remain untrusted data; no command or code from them is executed.
+- Local verification uses a fixed allowlist only: `git diff --check`, `python -m compileall -q core tests`, and `python -m pytest -q`; subprocesses run with `shell=False` and a bounded timeout. The exact check/evidence report is cached per work-item/reviewer in memory; after process restart, checks must be run again before finalization.
+- PASS requires all recorded checks to have passed with exit code 0, explicit review notes, evidence, and a reusable lesson. The validated collaboration is written to `ValidatedLessonStore` before queue completion. If lesson persistence fails after validation, the queue stays IN_PROGRESS and `reconcile_qa_review_lesson` can retry persistence without repeating collaborator work.
+- FAIL accepts genuine failed-check evidence, rejects the collaboration, marks the queue REJECTED, and never promotes a lesson. Forged or stale checks/evidence that do not exactly match the current verification run are rejected.
+- Added `tests/test_qa_review_coordinator.py` covering reviewer separation, untrusted-result boundary, shell-free fixed commands, passing lesson promotion, forged check rejection, failed-run PASS denial, and rejection without lesson promotion.
+- Initial focused run: `python -m pytest -q tests/test_qa_review_coordinator.py tests/test_qa_review_queue.py tests/autonomy/test_mission_specialist_lifecycle.py` completed with exit code 0. Full suite, compileall, diff check, backup manifest, commit/push and local/GitHub synchronization still pending at this checkpoint.
+- Reality boundary: the coordinator is a deterministic local QA workflow, not an AI reviewer. It does not activate Claude Code, open a browser, make external calls, spend credits, or bypass provider limits. FREE-ONLY / PAID-DENY remains in force. No GitHub Actions were run. `DGM-MAT-FULL-MIRROR` remains prohibited.
+
+
+### Final verification — independent QA coordinator — 2026-10-10
+
+- Focused tests: `tests/test_qa_review_coordinator.py`, `tests/test_qa_review_queue.py`, and `tests/autonomy/test_mission_specialist_lifecycle.py` passed with exit code 0.
+- Full local suite `python -m pytest -q`: exit code 0 (runtime 65.36 seconds). Existing FastAPI/Starlette deprecation warnings remain non-blocking.
+- `python -m compileall -q core tests`: passed.
+- `git diff --check`: passed in DGM-MAT and AndreOS-Memory.
+- Backup and SHA-256 manifest: `C:\\ProgramasGodMode\\DGM-MAT-OS\\backups\\qa-review-coordinator-2026-10-10\\SHA256-MANIFEST.json`; source/backup hashes matched at backup creation. Manifest is refreshed after this documentation checkpoint.
+- Git commit/push and post-push clean/sync checks remain pending; no GitHub Actions were run.

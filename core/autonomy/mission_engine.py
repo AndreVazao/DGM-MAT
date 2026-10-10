@@ -17,6 +17,7 @@ from core.organization import CapabilityScout, InternalMessageBus, Message, Mess
 from core.organization.worker_runtime import WorkerRuntime
 from core.organization.qa_intake_worker import QAIntakeWorker
 from core.organization.qa_review_queue import QAReviewQueue
+from core.organization.qa_review_coordinator import QAReviewCoordinator
 from core.organization.help_seeking import HelpContext, HelpSeekingPolicy
 from core.organization.specialist_collaboration import SpecialistCollaborationStore
 from core.organization.validated_learning import ValidatedLessonStore
@@ -51,6 +52,10 @@ class MissionEngine:
         self.validated_lesson_store = ValidatedLessonStore(
             storage_manager.get_path("evolution_memory") / "validated_specialist_lessons"
         )
+        self.qa_review_coordinator = QAReviewCoordinator(
+            self.qa_review_queue, self.collaboration_store, self.validated_lesson_store,
+            Path(__file__).resolve().parents[2],
+        )
         self.action_queue = SafeActionQueue()
         self.action_queue.register_handler("MISSION_EXECUTION", self._handle_queue_execution)
         self.timeout_threshold = timedelta(seconds=self.MISSION_EXECUTION_TIMEOUT_SECONDS)
@@ -67,6 +72,22 @@ class MissionEngine:
     def dispatch_pending_review_intake(self):
         """Triage one legacy Bug Hunter inbox request; this is not an independent review."""
         return self.worker_runtime.dispatch_one("agent:bug-hunter")
+
+    def prepare_qa_review(self, work_item_id: str, *, reviewer_id: str):
+        """Claim a persisted specialist result for independent local review."""
+        return self.qa_review_coordinator.prepare(work_item_id, reviewer_id=reviewer_id)
+
+    def run_qa_local_verification(self, work_item_id: str, *, reviewer_id: str):
+        """Run the coordinator's fixed local checks; never executes result-provided commands."""
+        return self.qa_review_coordinator.run_local_verification(work_item_id, reviewer_id=reviewer_id)
+
+    def finalize_qa_review(self, work_item_id: str, **review):
+        """Record an explicit independent PASS/FAIL decision and guarded lesson promotion."""
+        return self.qa_review_coordinator.finalize(work_item_id, **review)
+
+    def reconcile_qa_review_lesson(self, work_item_id: str, *, reviewer_id: str):
+        """Recover lesson persistence after a collaboration was validated but storage failed."""
+        return self.qa_review_coordinator.reconcile_validated_lesson(work_item_id, reviewer_id=reviewer_id)
 
     def _load_missions(self):
         """Restores missions from storage."""
