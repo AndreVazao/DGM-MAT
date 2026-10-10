@@ -1,7 +1,7 @@
 # DGM-MAT PC Cockpit — real-time connection and UI-thread safety
 
 Date: 2026-10-10
-Status: **LOCAL DESKTOP CONNECTION FIX IMPLEMENTED; LIVE RUNTIME E2E STILL TO VERIFY**
+Status: **LOCAL DESKTOP CONNECTION FIX IMPLEMENTED; LOOPBACK API/WEBSOCKET HANDSHAKE VERIFIED; FULL Qt-to-runtime E2E STILL TO VERIFY**
 
 ## Findings
 
@@ -25,7 +25,7 @@ Status: **LOCAL DESKTOP CONNECTION FIX IMPLEMENTED; LIVE RUNTIME E2E STILL TO VE
 
 ## Validation
 
-Run `python -m pytest tests/cockpit -q`, compile the two modified modules, and run `git diff --check`. Tests validate the local UI/client contract, not a live server end-to-end connection. The API must be running separately for live verification.
+Run `python -m pytest tests/cockpit -q`, compile the two modified modules, and run `git diff --check`. The cockpit suite passed **7 tests**. Live checks against the already-running local Core returned `/health` HTTP 200, `/runtime/truth` HTTP 200, and a successful WebSocket handshake at `ws://127.0.0.1:8181/ws`. This verifies the local endpoint/handshake, but not yet a full visual Qt session receiving a real state event end-to-end.
 
 ## Next PC cockpit tasks
 
