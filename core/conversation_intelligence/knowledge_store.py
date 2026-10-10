@@ -155,6 +155,18 @@ class ConversationKnowledgeStore:
         now = self._now()
         with self._connect() as db:
             existing = db.execute("SELECT * FROM user_intents WHERE intent_id=?", (intent.intent_id,)).fetchone()
+            if existing and (
+                existing["statement"] == intent.statement
+                and existing["status"] == intent.status
+                and existing["source_conversation_id"] == intent.source_conversation_id
+                and existing["source_message_id"] == intent.source_message_id
+                and existing["observed_at"] == intent.observed_at
+                and existing["supersedes_json"] == self._json(intent.supersedes)
+                and existing["evidence_json"] == self._json(intent.evidence)
+                and existing["confidence"] == intent.confidence
+                and bool(existing["reviewed_by_user"]) == intent.reviewed_by_user
+            ):
+                return
             if existing and existing["reviewed_by_user"]:
                 if (existing["statement"] != intent.statement
                         or existing["status"] != intent.status
@@ -210,6 +222,14 @@ class ConversationKnowledgeStore:
         accepted = None if proposal.accepted is None else int(proposal.accepted)
         with self._connect() as db:
             existing = db.execute("SELECT * FROM ai_proposals WHERE proposal_id=?", (proposal.proposal_id,)).fetchone()
+            if existing and (
+                existing["statement"] == proposal.statement
+                and existing["source_conversation_id"] == proposal.source_conversation_id
+                and existing["source_message_id"] == proposal.source_message_id
+                and existing["accepted"] == accepted
+                and existing["decision_id"] == proposal.decision_id
+            ):
+                return
             if existing and existing["accepted"] is not None:
                 if (existing["accepted"] != accepted
                         or existing["statement"] != proposal.statement
@@ -241,6 +261,17 @@ class ConversationKnowledgeStore:
         now = self._now()
         with self._connect() as db:
             existing = db.execute("SELECT * FROM user_decisions WHERE decision_id=?", (decision.decision_id,)).fetchone()
+            if existing and (
+                existing["statement"] == decision.statement
+                and existing["status"] == decision.status
+                and existing["source_conversation_id"] == decision.source_conversation_id
+                and existing["source_message_id"] == decision.source_message_id
+                and existing["decided_at"] == decision.decided_at
+                and existing["supersedes_json"] == self._json(decision.supersedes)
+                and existing["evidence_json"] == self._json(decision.evidence)
+                and bool(existing["confirmed_by_user"]) == decision.confirmed_by_user
+            ):
+                return
             if existing and existing["confirmed_by_user"]:
                 if (existing["statement"] != decision.statement
                         or existing["status"] != decision.status
@@ -296,6 +327,15 @@ class ConversationKnowledgeStore:
         now = self._now()
         with self._connect() as db:
             existing = db.execute("SELECT * FROM conversation_relations WHERE relation_id=?", (relation.relation_id,)).fetchone()
+            if existing and (
+                existing["source_conversation_id"] == relation.source_conversation_id
+                and existing["target_conversation_id"] == relation.target_conversation_id
+                and existing["relation_type"] == relation.relation_type
+                and existing["evidence_json"] == self._json(relation.evidence)
+                and existing["confidence"] == relation.confidence
+                and bool(existing["reviewed_by_user"]) == relation.reviewed_by_user
+            ):
+                return
             if existing and existing["reviewed_by_user"]:
                 if (existing["source_conversation_id"] != relation.source_conversation_id
                         or existing["target_conversation_id"] != relation.target_conversation_id
