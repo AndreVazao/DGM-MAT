@@ -1,6 +1,6 @@
 # Conversation intelligence — evidence-aware model v1
 
-Date: 2026-10-10  
+Date: 2026-10-10
 Status: implementation on branch `feat/conversation-turn-semantics-v1`; not yet merged and not yet verified by a local test run.
 
 ## What changed
