@@ -91,3 +91,15 @@ After adding temporal snapshots to `knowledge_history`, preserving review-task t
 - No PR-triggered GitHub Actions runs were returned for the checked code commit; CI is still unverified.
 
 The history table preserves state snapshots from the moment it was introduced forward; it cannot recreate prior transitions that were never recorded. Keep the PR in draft pending final diff review and a clean CI/compatibility decision.
+
+
+## Delegation context checkpoint — 2026-10-10
+
+Added `ConversationIntelligencePipeline.build_delegation_context(provider=None)`. It returns saved conversation/artifact snapshots with provenance, archive summary, current intent/proposal/decision/relation records, and open review tasks. The implementation uses the local ledgers and does not reread original exports. The pipeline can be configured with separate explicit progress and knowledge database paths; omitting them creates neither database.
+
+Validation after this addition:
+- Focused `tests\conversation_intelligence`: exit code 0 (28 test progress markers).
+- Combined suite `tests\conversation_intelligence tests\contracts tests\organization tests\autonomy tests\security tests\cockpit`: exit code 0 after the latest code changes.
+- `compileall` and `git diff --check`: exit code 0.
+- Existing deprecation warnings only; no failures reported.
+- This API has not been connected to the live Core/cockpit or exposed over the API. No production restart or external provider import occurred.
