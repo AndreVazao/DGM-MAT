@@ -348,14 +348,16 @@ class ConversationKnowledgeStore:
             raise ValueError("task_id, item_id and reason are required")
         now = self._now()
         with self._connect() as db:
-            db.execute("""
+            inserted = db.execute("""
                 INSERT INTO review_tasks (task_id, item_type, item_id, reason, status, evidence_json, created_at)
                 VALUES (?, ?, ?, ?, 'open', ?, ?)
                 ON CONFLICT(task_id) DO NOTHING
             """, (task_id, item_type, item_id, reason, self._json(evidence or []), now))
             row = db.execute("SELECT * FROM review_tasks WHERE task_id=?", (task_id,)).fetchone()
-            if row is not None:
-                self._record_history(db, "review_task", task_id, "created", dict(row))
+            if row is not None and inserted.rowcount == 1:
+                payload = dict(row)
+                payload["evidence"] = json.loads(payload.pop("evidence_json"))
+                self._record_history(db, "review_task", task_id, "created", payload)
         return self._row(row) or {}
 
     def resolve_review_task(self, task_id: str, *, resolution: str, evidence: list[str]) -> bool:
