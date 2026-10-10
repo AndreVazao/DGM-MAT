@@ -407,3 +407,53 @@ def test_changed_source_invalidates_source_cache_and_updates_conversation_snapsh
     source = pipeline.progress_store.get_source("chatgpt", str(export_path.resolve()))
     assert source["status"] == "complete"
     assert source["source_fingerprint"] == pipeline.progress_store.fingerprint(export_path.read_bytes())
+
+
+def test_source_cache_rejects_global_snapshot_from_another_export_with_same_conversation_id(tmp_path):
+    import json
+
+    from core.conversation_intelligence.models import ConversationAudit
+    from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
+
+    progress_path = tmp_path / "progress.sqlite3"
+    first_path = tmp_path / "first-export.json"
+    second_path = tmp_path / "second-export.json"
+    first_path.write_text(json.dumps({"conversations": [{
+        "id": "shared-id", "title": "First export", "content": "first content"
+    }]}), encoding="utf-8")
+    second_path.write_text(json.dumps({"conversations": [{
+        "id": "shared-id", "title": "Second export", "content": "second content"
+    }]}), encoding="utf-8")
+
+    pipeline = ConversationIntelligencePipeline(progress_store_path=progress_path)
+    audited = []
+
+    def audit(conversation, artifacts):
+        audited.append((conversation.title, conversation.content))
+        return ConversationAudit(
+            conversation=conversation, artifacts=artifacts, suggested_title=conversation.title
+        )
+
+    pipeline.auditor.audit = audit
+    first_result = pipeline.ingest_file(first_path, "chatgpt")
+    assert first_result[0].suggested_title == "First export"
+    second_result = pipeline.ingest_file(second_path, "chatgpt")
+    assert second_result[0].suggested_title == "Second export"
+
+    parse_calls = []
+    original_load_file = pipeline.ingestor.load_file
+
+    def tracked_parse(*args, **kwargs):
+        parse_calls.append(True)
+        return original_load_file(*args, **kwargs)
+
+    pipeline.ingestor.load_file = tracked_parse
+    restored_first = pipeline.ingest_file(first_path, "chatgpt")
+
+    assert parse_calls == [True], "cache must fall back when the global snapshot belongs to another source version"
+    assert restored_first[0].suggested_title == "First export"
+    assert audited == [
+        ("First export", "first content"),
+        ("Second export", "second content"),
+        ("First export", "first content"),
+    ]
