@@ -35,6 +35,8 @@ The system must separate:
 
 The source ledger and audit snapshot are derived processing state. Full raw history needs its own private archive and access/retention policy.
 
+`ConversationIntelligencePipeline.build_delegation_context()` now exposes the saved archive summary, reusable conversation/artifact snapshots with provenance, current intents/proposals/decisions/relations, and open review tasks in one local data-layer call. It loads cached snapshots rather than reopening source exports. This is an API foundation for specialist delegations, not yet an end-to-end agent scheduler or cockpit integration.
+
 ## Temporal knowledge persistence
 
 `core/conversation_intelligence/knowledge_store.py` adds a SQLite/WAL current projection and append-only event history for intents, AI proposals, decisions and conversation relations. Each event may carry evidence references such as conversation ID and message ID. Identical evidence events are idempotent. A confirmed/accepted item cannot be silently downgraded; an explicit transition is required and the previous state remains in history.
