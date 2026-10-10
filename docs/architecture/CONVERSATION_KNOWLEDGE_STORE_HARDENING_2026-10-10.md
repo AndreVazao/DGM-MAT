@@ -71,7 +71,7 @@ Fix:
 - The source-level fast path verifies that the global completed snapshot still matches the member fingerprint before returning it. Legacy membership rows without a member fingerprint fall back to parsing and repair instead of being trusted.
 - Added regression `test_source_cache_rejects_global_snapshot_from_another_export_with_same_conversation_id`.
 
-Focused `test_progress_store.py` and `test_knowledge_store.py` suites passed after this change. The broader selected regression suite is running; its final exit code will be recorded after completion.
+Focused `test_progress_store.py` and `test_knowledge_store.py` suites passed. Added explicit regression coverage for migrating the existing SQLite membership schema and rejecting mismatched ID/fingerprint lists. The full selected regression suite passed with exit code 0: `tests\\conversation_intelligence tests\\contracts tests\\organization tests\\autonomy tests\\security tests\\cockpit`. `git diff --check` also passed (exit code 0).
 
 ## Next safe actions
 1. Capture the broad-suite exit code and `git diff --check`.
