@@ -128,3 +128,14 @@ Added `core/organization/qa_intake_worker.py`, a deterministic, explicitly regis
 This is a real local intake/triage worker, not an AI reviewer or the autonomous Bug Hunter. It does not inspect source code, run pytest, validate specialist claims, or promote lessons. Independent review remains a separate evidence-backed operation. The legacy inbox ID is retained for compatibility; both the `agent:qa-intake` and legacy `agent:bug-hunter` routes use the deterministic intake handler for now. This alias must not be interpreted as a fully active Bug Hunter.
 
 Verification: focused lifecycle/dispatch/help-seeking tests passed (11 tests); the full local `python -m pytest -q` suite completed with exit code 0; `python -m compileall -q core tests` and `git diff --check` for both repositories passed. Existing FastAPI/Starlette deprecation warnings remain non-blocking. No external AI calls or GitHub Actions were used.
+
+
+## 2026-10-10 — Persistent QA review work queue
+
+- Added `core/organization/qa_review_queue.py`, a SQLite-backed queue with idempotent intake keyed by `correlation_id`, mission/source-message linkage, priority, owner, attempt count and limit, timestamps, blocking reason, explicit review outcome, executed-check records and evidence records.
+- `MissionEngine` now opens the queue at the runtime tasks storage path (`qa_review_queue.sqlite3`) and injects it into `QAIntakeWorker`. Successful intake creates a durable `PENDING` work item before the message receipt is acknowledged.
+- Supported states: `PENDING`, `IN_PROGRESS`, `BLOCKED`, `COMPLETED`, `REJECTED`. Claims record owner and attempt. Retry is explicit and only returns blocked items to pending. Attempts over the configured limit require supervisor intervention.
+- Completion is guarded: only the current owner of an `IN_PROGRESS` item may complete it, and completion requires a non-empty explicit outcome, at least one recorded executed check (name/result), and evidence records (source/summary). Intake and dispatch receipts never count as review completion.
+- Duplicate correlation IDs are idempotent only for matching source message, subject and body; conflicting requests fail closed rather than overwriting existing work.
+- Deterministic tests: persistence across reopen, idempotent/conflicting intake, ownership enforcement, completion evidence/check requirements, terminal-state protection, and retry-limit handling.
+- Maturity boundary: this is durable queue infrastructure and intake integration, not an AI reviewer. No tests are automatically claimed as run by the reviewer, and no lesson is promoted by queue creation.

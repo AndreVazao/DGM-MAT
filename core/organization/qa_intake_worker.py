@@ -9,12 +9,16 @@ from __future__ import annotations
 from typing import Any
 
 from .models import Message
+from .qa_review_queue import QAReviewQueue
 
 
 class QAIntakeWorker:
     """Safely triage a specialist-review request into a durable receipt."""
 
     agent_id = "agent:qa-intake"
+
+    def __init__(self, review_queue: QAReviewQueue | None = None) -> None:
+        self.review_queue = review_queue
 
     def __call__(self, message: Message) -> dict[str, Any]:
         missing: list[str] = []
@@ -35,9 +39,21 @@ class QAIntakeWorker:
                 "lesson_promotion_allowed": False,
             }
 
+        work_item = None
+        if self.review_queue is not None:
+            work_item = self.review_queue.enqueue(
+                correlation_id=message.correlation_id,
+                source_message_id=message.message_id,
+                mission_id=message.mission_id,
+                subject=message.subject,
+                request_body=message.body,
+                priority=message.priority.value,
+            )
+
         return {
             "status": "REVIEW_QUEUED",
             "worker": "qa-intake-worker",
+            "work_item": work_item,
             "correlation_id": message.correlation_id,
             "source_message_id": message.message_id,
             "mission_id": message.mission_id,

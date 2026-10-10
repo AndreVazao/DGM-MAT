@@ -16,6 +16,7 @@ from core.realtime.realtime_broadcast import safe_broadcast
 from core.organization import CapabilityScout, InternalMessageBus, Message, MessagePriority
 from core.organization.worker_runtime import WorkerRuntime
 from core.organization.qa_intake_worker import QAIntakeWorker
+from core.organization.qa_review_queue import QAReviewQueue
 from core.organization.help_seeking import HelpContext, HelpSeekingPolicy
 from core.organization.specialist_collaboration import SpecialistCollaborationStore
 from core.organization.validated_learning import ValidatedLessonStore
@@ -37,7 +38,10 @@ class MissionEngine:
             storage_manager.get_path("tasks") / "organization_messages.sqlite3"
         )
         self.worker_runtime = WorkerRuntime(self.organization_bus)
-        self.qa_intake_worker = QAIntakeWorker()
+        self.qa_review_queue = QAReviewQueue(
+            storage_manager.get_path("tasks") / "qa_review_queue.sqlite3"
+        )
+        self.qa_intake_worker = QAIntakeWorker(self.qa_review_queue)
         self.worker_runtime.register_handler(self.qa_intake_worker.agent_id, self.qa_intake_worker)
         # Existing review requests still target agent:bug-hunter; this handler only triages intake.
         self.worker_runtime.register_handler("agent:bug-hunter", self.qa_intake_worker)
