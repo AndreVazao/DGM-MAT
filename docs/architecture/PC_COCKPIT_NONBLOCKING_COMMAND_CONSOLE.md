@@ -37,3 +37,6 @@ Therefore:
 ## Next gate
 
 Complete a route inventory and global authentication contract; migrate the PC cockpit and WebSocket clients to short-lived scoped sessions; add denial tests for every protected route and WebSocket; then implement a read-only pending-interventions view. Only after those checks pass should intervention decisions, pairing, Tailscale access and the Android APK proceed.
+
+
+Route-by-route security inventory and required migration gate: `docs/security/API_ROUTE_AUTH_INVENTORY_2026-10-10.md`.
