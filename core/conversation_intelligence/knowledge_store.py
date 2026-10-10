@@ -310,6 +310,69 @@ class ConversationKnowledgeStore:
                 "confirmed_by_user": decision.confirmed_by_user,
             })
 
+    def supersede_confirmed_decision(
+        self,
+        decision_id: str,
+        *,
+        superseded_by_decision_id: str,
+        evidence: list[str],
+    ) -> bool:
+        """Explicitly supersede a confirmed decision without rewriting its provenance.
+
+        The successor must already exist as a user-confirmed decision. The old
+        decision's text, source, evidence, and confirmation flag are preserved;
+        only its lifecycle status changes, with an append-only history event.
+        Repeating the same transition is idempotent.
+        """
+        if not decision_id.strip() or not superseded_by_decision_id.strip():
+            raise ValueError("decision ids are required")
+        if decision_id == superseded_by_decision_id:
+            raise ValueError("A decision cannot supersede itself")
+        if not evidence or any(not str(item).strip() for item in evidence):
+            raise ValueError("explicit supersession requires non-empty evidence")
+
+        now = self._now()
+        with self._connect() as db:
+            old = db.execute(
+                "SELECT * FROM user_decisions WHERE decision_id=?", (decision_id,)
+            ).fetchone()
+            successor = db.execute(
+                "SELECT * FROM user_decisions WHERE decision_id=?", (superseded_by_decision_id,)
+            ).fetchone()
+            if old is None or successor is None:
+                raise ValueError("both the original and successor decisions must exist")
+            if not bool(successor["confirmed_by_user"]) or successor["status"] != "confirmed":
+                raise ValueError("successor must be a user-confirmed decision")
+            if old["status"] == "superseded":
+                prior = db.execute(
+                    "SELECT payload_json FROM knowledge_history WHERE entity_type='decision' "
+                    "AND entity_id=? AND event_type='superseded' ORDER BY event_no DESC LIMIT 1",
+                    (decision_id,),
+                ).fetchone()
+                if prior is not None:
+                    payload = json.loads(prior["payload_json"])
+                    if payload.get("superseded_by_decision_id") == superseded_by_decision_id:
+                        return False
+                raise ValueError("decision is already superseded by a different decision")
+            if old["status"] != "confirmed" or not bool(old["confirmed_by_user"]):
+                raise ValueError("only a user-confirmed decision can be explicitly superseded")
+
+            db.execute(
+                "UPDATE user_decisions SET status='superseded', updated_at=? WHERE decision_id=?",
+                (now, decision_id),
+            )
+            self._record_history(db, "decision", decision_id, "superseded", {
+                "decision_id": decision_id,
+                "original_statement": old["statement"],
+                "original_source_conversation_id": old["source_conversation_id"],
+                "original_source_message_id": old["source_message_id"],
+                "superseded_by_decision_id": superseded_by_decision_id,
+                "evidence": evidence,
+                "confirmed_by_user": bool(old["confirmed_by_user"]),
+                "status": "superseded",
+            })
+            return True
+
     def get_decision(self, decision_id: str) -> dict | None:
         with self._connect() as db:
             row = db.execute("SELECT * FROM user_decisions WHERE decision_id=?", (decision_id,)).fetchone()
@@ -438,3 +501,5 @@ class ConversationKnowledgeStore:
             open_tasks = db.execute("SELECT COUNT(*) AS n FROM review_tasks WHERE status='open'").fetchone()
             result["review_tasks_open"] = int(open_tasks["n"])
             return result
+
+[executed on device: PC-Vazao-Anjos (982eb058-a42c-4897-9732-547f04cb44f0)]
