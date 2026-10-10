@@ -76,3 +76,16 @@ This is a persistence primitive, not an automated semantic extractor or review U
 - The checked commit had no PR-triggered GitHub Actions workflow runs returned by the available lookup. CI status is therefore **not verified**.
 
 This is meaningful local validation, not production validation. The current data layer still lacks provider-history authentication/import, UI review tasks, automatic evidence mining, and end-to-end office/delegation integration. Keep the PR unmerged until those boundaries and compatibility are reviewed.
+
+
+## Latest regression checkpoint — 2026-10-10
+
+After adding temporal snapshots to `knowledge_history`, preserving review-task transitions, and making identical knowledge writes idempotent, the local Windows checkout was fast-forwarded to code/test commit `506c6349a8e82745b85fa51197133e2255952f60`.
+
+- `python -m pytest tests\conversation_intelligence tests\contracts tests\organization tests\autonomy tests\security tests\cockpit -q`: exit code 0 after the latest code and test changes.
+- `python -m compileall -q core\conversation_intelligence`: exit code 0.
+- `git diff --check`: exit code 0.
+- Only the previously noted FastAPI/Starlette/httpx deprecation warnings were displayed. No test failures were reported.
+- No PR-triggered GitHub Actions runs were returned for the checked code commit; CI is still unverified.
+
+The history table preserves state snapshots from the moment it was introduced forward; it cannot recreate prior transitions that were never recorded. Keep the PR in draft pending final diff review and a clean CI/compatibility decision.
