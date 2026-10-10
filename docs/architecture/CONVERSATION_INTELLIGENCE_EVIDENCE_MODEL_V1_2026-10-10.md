@@ -54,7 +54,7 @@ Additional tests cover no-repeat behavior, changed content, persistence across r
 
 Added `core/conversation_intelligence/knowledge_store.py`, a separate SQLite/WAL store for evidence-linked user intents, AI proposals, user decisions, conversation relations and explicit review tasks.
 
-- AI proposals remain distinct from user decisions; an AI proposal is never automatically treated as accepted.
+- AI proposals remain distinct from user decisions; an AI proposal is never automatically treated as accepted. Once acceptance/rejection is explicit, the proposal statement and decision cannot be silently rewritten.
 - New intents and decisions remain `unverified` by default. A reviewed intent or user-confirmed decision cannot be silently rewritten by a later unreviewed record.
 - Relations carry evidence, confidence and a user-review flag; self-relations and invalid confidence are rejected.
 - Review tasks have their own open/resolved/cancelled lifecycle. Resolving a review task does not force re-importing or rereading the source conversation.
