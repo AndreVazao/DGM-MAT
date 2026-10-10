@@ -143,7 +143,10 @@ class HumanInterventionQueue:
                 )
         except sqlite3.IntegrityError as exc:
             raise ValueError("An active human intervention already exists for this mission step") from exc
-        return self.get_request(request_id)  # type: ignore[return-value]
+        # Use the creation timestamp for the initial read. A caller may create a
+        # request with a historical/test clock; using wall-clock time here can
+        # expire it before the caller has a chance to process the returned record.
+        return self.get_request(request_id, now=created)  # type: ignore[return-value]
 
     def get_request(self, request_id: str, *, now: datetime | None = None) -> dict[str, Any] | None:
         with closing(self._connect()) as connection:

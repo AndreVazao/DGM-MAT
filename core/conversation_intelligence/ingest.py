@@ -3,10 +3,11 @@ from __future__ import annotations
 import html
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .models import ConversationRecord
+from .models import ConversationMessage, ConversationRecord
 
 
 class ConversationIngestor:
@@ -46,6 +47,7 @@ class ConversationIngestor:
                     source=source,
                     url=item.get("url"),
                     metadata={"raw_keys": sorted(item.keys())},
+                    messages=self._extract_messages(item, cid, source),
                 ))
         return result
 
@@ -63,6 +65,75 @@ class ConversationIngestor:
             source=source,
             metadata={"format": "html"},
         )]
+
+    def _extract_messages(self, item: dict[str, Any], conversation_id: str, source: str) -> list[ConversationMessage]:
+        """Extract only explicit message arrays; never invent speaker attribution."""
+        candidates: Any = item.get("messages")
+        if isinstance(candidates, dict):
+            candidates = candidates.get("messages") or candidates.get("items")
+            if not isinstance(candidates, list):
+                return []
+        if not isinstance(candidates, list):
+            mapping = item.get("mapping")
+            if isinstance(mapping, dict):
+                nodes = []
+                for node_id, node in mapping.items():
+                    if not isinstance(node, dict) or not isinstance(node.get("message"), dict):
+                        continue
+                    message = node["message"]
+                    author = message.get("author") if isinstance(message.get("author"), dict) else {}
+                    body = message.get("content", {})
+                    nodes.append({
+                        "id": message.get("id") or node_id,
+                        "role": author.get("role") or "unknown",
+                        "content": self._flatten_text(body),
+                        "timestamp": message.get("create_time"),
+                    })
+                candidates = sorted(nodes, key=lambda x: self._timestamp_sort_key(x.get("timestamp")))
+            else:
+                return []
+
+        result: list[ConversationMessage] = []
+        for message in candidates:
+            if not isinstance(message, dict):
+                continue
+            author = message.get("author") if isinstance(message.get("author"), dict) else {}
+            role = str(message.get("role") or message.get("speaker") or message.get("sender") or author.get("role") or "unknown").strip().lower()
+            body = message.get("content")
+            if body is None:
+                body = message.get("text", message.get("message", message.get("parts", "")))
+            text = self._flatten_text(body).strip()
+            if not text:
+                continue
+            timestamp = message.get("timestamp", message.get("create_time", message.get("created_at")))
+            message_id = str(message.get("id") or message.get("message_id") or self._id(f"{conversation_id}:{len(result)}", text))
+            result.append(ConversationMessage(
+                message_id=message_id,
+                role=role,
+                content=text,
+                sequence=len(result),
+                timestamp=str(timestamp) if timestamp is not None else None,
+                source_path=source,
+                metadata={"raw_keys": sorted(message.keys())},
+            ))
+        return result
+
+    @staticmethod
+    def _timestamp_sort_key(value: Any) -> tuple[int, float]:
+        """Sort numeric/ISO timestamps without comparing incompatible Python types."""
+        if value is None or value == "":
+            return (2, 0.0)
+        try:
+            return (0, float(value))
+        except (TypeError, ValueError):
+            pass
+        if isinstance(value, str):
+            try:
+                parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                return (1, parsed.timestamp())
+            except ValueError:
+                return (2, 0.0)
+        return (2, 0.0)
 
     def _find_conversations(self, data: Any) -> list[Any]:
         if isinstance(data, list):
