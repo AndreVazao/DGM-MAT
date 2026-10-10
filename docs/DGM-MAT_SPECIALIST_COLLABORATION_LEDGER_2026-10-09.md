@@ -100,14 +100,22 @@ Final verification — 2026-10-09: focused lifecycle/help-seeking/collaboration 
 Implemented locally:
 
 - `core/organization/message_bus.py` now uses SQLite and supports a durable database path. Production `MissionEngine` stores messages at `storage/tasks/organization_messages.sqlite3` under the configured runtime storage root. Inbox/outbox content and read state survive a new bus instance and process restart.
-- `core/organization/worker_runtime.py` dispatches one unread message to an explicitly registered local Python handler. It never evaluates message bodies as code or shell commands. Successful handler execution marks the message read; handler exceptions return an explicit failure and leave the message unread for inspection/retry.
+- `core/organization/worker_runtime.py` dispatches one unread message to an explicitly registered local Python handler. It never evaluates message bodies as code or shell commands. A JSON-safe handler result and the message acknowledgement are committed atomically to a durable receipt table; receipts can be read after restart with `get_dispatch_result()`. Handler exceptions or result-persistence failures return an explicit failure and leave the message unread for inspection/retry.
 - `MissionEngine.register_organization_worker(...)` and `MissionEngine.dispatch_organization_message(...)` expose the integration point.
 - Message delivery is **at-least-once**, not exactly-once. A crash after handler work but before acknowledgement can repeat the handler; handlers must be idempotent. Duplicate message IDs are not allowed to overwrite an existing message with conflicting content.
 - Tests may pass an in-memory `InternalMessageBus()`; the normal MissionEngine path uses the durable SQLite file.
 
-Verification: `tests/organization/test_durable_message_dispatch.py` covers persistence/reload, read-state persistence, duplicate-ID safety, successful dispatch, unacknowledged handler failures and fail-closed behavior for unregistered handlers. Results of focused and full local tests are recorded in the final verification subsection after execution.
+Verification: `tests/organization/test_durable_message_dispatch.py` covers persistence/reload, read-state persistence, duplicate-ID safety, successful dispatch and durable result receipt across restart, unacknowledged handler failures and fail-closed behavior for unregistered handlers. Results of focused and full local tests are recorded in the final verification subsection after execution.
 
 Important reality boundary: this implements durable transport and a real allowlisted handler-dispatch mechanism, **not** a fully autonomous AI employee. No Bug Hunter handler is automatically registered, no AI/browser provider is called, and a queued QA message is still not proof that independent review occurred. Claude Code Free/browser automation, capability acquisition end-to-end and controlled self-improvement remain separate unfinished integrations. FREE-ONLY / PAID-DENY remains in force; no GitHub Actions workflow is to be run unless local verification is impossible.
 
 
 Final verification — 2026-10-10: focused suite passed (23 tests across durable dispatch, organization foundation, specialist collaboration and MissionEngine lifecycle/help-seeking). Full local `python -m pytest -q` completed with exit code 0; `python -m compileall -q core tests` passed; `git diff --check` passed in both DGM-MAT and AndreOS-Memory. Existing FastAPI/Starlette deprecation warnings remain non-blocking. No GitHub Actions were run. Before commit, local source and memory updates are staged for manual review; no FULL-MIRROR files were accessed or changed.
+
+
+### Test isolation note — 2026-10-10
+
+MissionEngine now defaults to the durable production bus. Tests that assert inbox counts or only exercise unrelated mission behavior must inject `InternalMessageBus()` (in-memory) so persistent messages from prior test runs cannot contaminate assertions. The capability-discovery regression exposed this isolation requirement; the capability-discovery, help-seeking and mission-system tests now explicitly use in-memory buses. Cross-process mission persistence tests retain the real storage path where relevant.
+
+
+Final verification — durable dispatch receipts and test isolation — 2026-10-10: focused dispatch/foundation/specialist lifecycle tests passed (24 tests in the dispatch-focused set; 10 tests in the capability/help-seeking/mission-system regression set). Full local `python -m pytest -q` completed with exit code 0 after isolating tests from the persistent runtime inbox. `python -m compileall -q core tests` and `git diff --check` passed for DGM-MAT and AndreOS-Memory. Existing FastAPI/Starlette deprecation warnings remain non-blocking. No GitHub Actions were run. Latest refinement is ready for a separate commit after this verification.

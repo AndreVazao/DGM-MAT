@@ -64,7 +64,16 @@ def test_worker_runtime_executes_only_registered_handler_and_acknowledges_succes
     assert result.result == {"review": "received"}
     assert seen == [message.message_id]
     assert bus.receive("agent:bug-hunter", unread_only=True) == []
+    receipt = bus.get_dispatch_result(message.message_id)
+    assert receipt is not None
+    assert receipt["status"] == "HANDLED"
+    assert receipt["result"] == {"review": "received"}
     bus.close()
+
+    restarted = InternalMessageBus(tmp_path / "messages.sqlite3")
+    assert restarted.get_dispatch_result(message.message_id)["result"] == {"review": "received"}
+    assert restarted.receive("agent:bug-hunter", unread_only=True) == []
+    restarted.close()
 
 
 def test_worker_runtime_leaves_message_unread_when_handler_fails(tmp_path):
@@ -82,6 +91,7 @@ def test_worker_runtime_leaves_message_unread_when_handler_fails(tmp_path):
     assert result is not None
     assert result.status == "HANDLER_FAILED_UNACKNOWLEDGED"
     assert result.error_type == "RuntimeError"
+    assert bus.get_dispatch_result(message.message_id) is None
     assert [item.message_id for item in bus.receive("agent:bug-hunter", unread_only=True)] == [message.message_id]
     bus.close()
 

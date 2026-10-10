@@ -67,6 +67,18 @@ class InternalMessageBus:
             )
             """
         )
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS organization_dispatch_receipts (
+                message_id TEXT PRIMARY KEY,
+                agent_id TEXT NOT NULL,
+                status TEXT NOT NULL,
+                result_json TEXT NOT NULL,
+                dispatched_at TEXT NOT NULL,
+                FOREIGN KEY(message_id) REFERENCES organization_messages(message_id)
+            )
+            """
+        )
         self._conn.commit()
 
     @staticmethod
@@ -179,6 +191,53 @@ class InternalMessageBus:
             inboxes = self._conn.execute("SELECT COUNT(*) FROM organization_messages").fetchone()[0]
             outboxes = self._conn.execute("SELECT COUNT(*) FROM organization_messages").fetchone()[0]
         return {"inboxes": int(inboxes), "outboxes": int(outboxes)}
+
+    def complete_dispatch(self, agent_id: str, message_id: str, result: Any) -> None:
+        """Persist a JSON-safe handler receipt and acknowledge the message atomically."""
+        result_json = json.dumps(result, ensure_ascii=False, allow_nan=False)
+        read_at = datetime.now().astimezone().isoformat()
+        with self._lock, self._conn:
+            message = self._conn.execute(
+                "SELECT recipient_id FROM organization_messages WHERE message_id=?",
+                (message_id,),
+            ).fetchone()
+            if message is None or message["recipient_id"] != agent_id:
+                raise KeyError(message_id)
+            receipt = self._conn.execute(
+                "SELECT agent_id, result_json FROM organization_dispatch_receipts WHERE message_id=?",
+                (message_id,),
+            ).fetchone()
+            if receipt is not None and receipt["agent_id"] != agent_id:
+                raise ValueError(f"Conflicting dispatch receipt: {message_id}")
+            if receipt is None:
+                self._conn.execute(
+                    """INSERT INTO organization_dispatch_receipts
+                    (message_id, agent_id, status, result_json, dispatched_at)
+                    VALUES (?, ?, 'HANDLED', ?, ?)""",
+                    (message_id, agent_id, result_json, read_at),
+                )
+            self._conn.execute(
+                "UPDATE organization_messages SET read_at=COALESCE(read_at, ?) WHERE message_id=? AND recipient_id=?",
+                (read_at, message_id, agent_id),
+            )
+
+    def get_dispatch_result(self, message_id: str) -> dict[str, Any] | None:
+        """Return a durable handler receipt without exposing arbitrary Python objects."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT message_id, agent_id, status, result_json, dispatched_at "
+                "FROM organization_dispatch_receipts WHERE message_id=?",
+                (message_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return {
+            "message_id": row["message_id"],
+            "agent_id": row["agent_id"],
+            "status": row["status"],
+            "result": json.loads(row["result_json"]),
+            "dispatched_at": row["dispatched_at"],
+        }
 
     def close(self) -> None:
         with self._lock:

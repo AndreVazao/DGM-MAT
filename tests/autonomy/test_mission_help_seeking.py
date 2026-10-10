@@ -1,13 +1,14 @@
 # Path: C:\\ProgramasGodMode\\DGM-MAT\\tests\\autonomy\\test_mission_help_seeking.py
 """Integration regression tests for MissionEngine help recommendations."""
 from core.autonomy.mission_engine import MissionEngine
+from core.organization.message_bus import InternalMessageBus
 from core.autonomy.mission_models import Mission, MissionStatus
 
 
 def test_failed_mission_records_help_recommendation_without_spending(tmp_path, monkeypatch):
     from core.organization.specialist_collaboration import SpecialistCollaborationStore
 
-    engine = MissionEngine()
+    engine = MissionEngine(organization_bus=InternalMessageBus())
     engine.collaboration_store = SpecialistCollaborationStore(tmp_path / "failed-mission-handoffs")
     monkeypatch.setattr(engine, "save_mission", lambda mission: None)
     monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
@@ -43,7 +44,7 @@ def test_mission_can_prepare_persistent_free_only_specialist_handoff(tmp_path, m
         SpecialistCollaborationStore,
     )
 
-    engine = MissionEngine()
+    engine = MissionEngine(organization_bus=InternalMessageBus())
     engine.collaboration_store = SpecialistCollaborationStore(tmp_path / "handoffs")
     monkeypatch.setattr(engine, "save_mission", lambda mission: None)
     monkeypatch.setattr(engine, "_sync_state", lambda mission: None)

@@ -1,10 +1,11 @@
 import pytest
 from core.autonomy.mission_engine import MissionEngine
+from core.organization.message_bus import InternalMessageBus
 from core.autonomy.mission_models import MissionStatus
 from core.autonomy.active_runtime.objective_engine import ObjectiveEngine
 
 def test_mission_lifecycle():
-    engine = MissionEngine()
+    engine = MissionEngine(organization_bus=InternalMessageBus())
     mission = engine.create_mission("Test Goal", "Test Description")
     assert mission.mission_id.startswith("mission_")
     assert mission.status == MissionStatus.QUEUED
@@ -15,7 +16,7 @@ def test_mission_lifecycle():
 
 def test_objective_generation_with_missions():
     obj_engine = ObjectiveEngine()
-    engine = MissionEngine()
+    engine = MissionEngine(organization_bus=InternalMessageBus())
     mission = engine.create_mission("Build Feature X", "Desc")
     engine.decompose_mission(mission.mission_id)
 

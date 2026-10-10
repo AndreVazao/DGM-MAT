@@ -1,4 +1,5 @@
 from core.autonomy.mission_engine import MissionEngine
+from core.organization.message_bus import InternalMessageBus
 
 
 class FakeScout:
@@ -23,7 +24,7 @@ class FakeScout:
 
 
 def test_mission_engine_routes_explicit_capability_gap_to_scout():
-    engine = MissionEngine()
+    engine = MissionEngine(organization_bus=InternalMessageBus())
     engine.capability_scout = FakeScout()
 
     mission = engine.create_mission(

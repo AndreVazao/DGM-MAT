@@ -50,6 +50,8 @@ class WorkerRuntime:
         message = messages[0]
         try:
             result = handler(message)
+            # Persist result and acknowledgement in one SQLite transaction.
+            self.bus.complete_dispatch(agent_id, message.message_id, result)
         except Exception as exc:
             # Leave unread so a supervisor can inspect/retry; never hide failure.
             return DispatchResult(
@@ -58,7 +60,6 @@ class WorkerRuntime:
                 status="HANDLER_FAILED_UNACKNOWLEDGED",
                 error_type=type(exc).__name__,
             )
-        self.bus.mark_read(agent_id, message.message_id)
         return DispatchResult(
             agent_id=agent_id,
             message_id=message.message_id,
