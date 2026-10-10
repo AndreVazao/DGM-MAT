@@ -87,3 +87,13 @@ Static scan found at least these desktop call sites:
 - No provider calls, paid API, credit consumption or GitHub Actions.
 
 Source implementation note: `docs/architecture/PC_COCKPIT_NONBLOCKING_COMMAND_CONSOLE.md`.
+
+
+## Follow-up 2026-10-10 — enforcement implemented in source
+- Added core/api/auth_middleware.py and wired it into core/api/api_server.py after route registration. Private inventoried HTTP/WebSocket routes now require short-lived bearer sessions; GET /health remains public and POST /auth/session remains the protected bootstrap exchange.
+- Removed wildcard CORS and restricted it to the local desktop origins. Both WebSockets now require Authorization header.
+- Added cockpit/api_client.py and migrated desktop HTTP clients; WebSocket client exchanges bootstrap to a short-lived token in memory only. No token in URL/logs.
+- Added tests/security/test_api_global_auth_enforcement.py (7 tests).
+- Important: running API process was not restarted; new enforcement is implemented in source but not yet verified as active in the live server. Do not expose remote access before controlled restart + live E2E checks.
+- Browser/mobile pairing is not implemented. Static /app shell may load but its private API calls are protected.
+- Detailed implementation note: docs/security/GLOBAL_API_AUTH_ENFORCEMENT_2026-10-10.md.

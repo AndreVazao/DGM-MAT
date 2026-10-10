@@ -1,4 +1,4 @@
-import requests
+from cockpit.api_client import authenticated_request
 import threading
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QProgressBar, QHBoxLayout,
@@ -110,7 +110,7 @@ class OperationalDashboard(QWidget):
         def run_dispatch():
             try:
                 url = f"http://{API_HOST}:{API_PORT}/runtime/missions"
-                response = requests.post(url, json={"goal": goal}, timeout=5)
+                response = authenticated_request("POST", url, json={"goal": goal}, timeout=5)
                 if response.status_code == 200:
                     self.mission_updated.emit()
             except Exception as e:
@@ -125,14 +125,14 @@ class OperationalDashboard(QWidget):
         def run_poll():
             try:
                 url = f"http://{API_HOST}:{API_PORT}/runtime/status"
-                response = requests.get(url, timeout=3)
+                response = authenticated_request("GET", url, timeout=3)
                 if response.status_code == 200:
                     data = response.json()
                     self.update_status(data)
 
                 # Also poll approvals
                 url_app = f"http://{API_HOST}:{API_PORT}/runtime/approvals"
-                res_app = requests.get(url_app, timeout=3)
+                res_app = authenticated_request("GET", url_app, timeout=3)
                 if res_app.status_code == 200:
                     apps = res_app.json()
                     # ApprovalQueueWidget update logic
@@ -146,7 +146,7 @@ class OperationalDashboard(QWidget):
         def run_refresh():
             try:
                 url = f"http://{API_HOST}:{API_PORT}/runtime/missions"
-                response = requests.get(url, timeout=5)
+                response = authenticated_request("GET", url, timeout=5)
                 if response.status_code == 200:
                     missions = response.json()
                     self.mission_widget.update_missions(missions)
@@ -159,7 +159,7 @@ class OperationalDashboard(QWidget):
         def run_sync():
             try:
                 url = f"http://{API_HOST}:{API_PORT}/runtime/workspace/scan"
-                requests.get(url, timeout=30)
+                authenticated_request("GET", url, timeout=30)
             except Exception:
                 pass
         threading.Thread(target=run_sync, daemon=True).start()

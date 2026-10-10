@@ -1,9 +1,9 @@
 # Path: C:\ProgramasGodMode\DGM-MAT\core\api\security_policy.py
 """Explicit API security inventory and reusable fail-closed auth primitives.
 
-NOT globally enforced yet: existing desktop clients do not attach a DGM-MAT
-session credential. Do not use classification as proof of authentication.
-Remote binding remains prohibited until client migration and enforcement tests pass.
+The inventory is enforced by LocalSessionAuthMiddleware in api_server.py.
+Route classification is still not proof of security by itself; keep remote binding
+prohibited until all client migration and negative enforcement tests pass.
 """
 from __future__ import annotations
 import hmac

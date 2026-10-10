@@ -27,7 +27,7 @@ def test_runtime_http_request_runs_off_gui_thread(monkeypatch):
         request_thread_ids.append(threading.get_ident())
         return FakeResponse()
 
-    monkeypatch.setattr("cockpit.widgets.command_console.requests.post", fake_post)
+    monkeypatch.setattr("cockpit.widgets.command_console.authenticated_request", fake_post)
     worker = _RuntimeRequestWorker(
         "http://127.0.0.1:8181/runtime",
         "test directive",

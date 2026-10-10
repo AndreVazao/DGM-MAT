@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import html
+import requests
 from datetime import datetime
 from typing import Any
 
-import requests
+from cockpit.api_client import authenticated_request, LocalApiAuthenticationError
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QFont, QTextCursor
 from PySide6.QtWidgets import (
@@ -35,7 +36,7 @@ class _RuntimeRequestWorker(QThread):
     def run(self) -> None:
         try:
             if self.status_only:
-                response = requests.get(f"{self.api_url}/status", timeout=(2, 8))
+                response = authenticated_request("GET", f"{self.api_url}/status", timeout=(2, 8))
                 if response.status_code != 200:
                     self.completed.emit(
                         "Error",
@@ -56,8 +57,8 @@ class _RuntimeRequestWorker(QThread):
                 self.completed.emit("Status", message, "system")
                 return
 
-            response = requests.post(
-                f"{self.api_url}/missions",
+            response = authenticated_request(
+                "POST", f"{self.api_url}/missions",
                 json={
                     "goal": self.directive,
                     "description": "Directive from desktop cockpit",
@@ -81,6 +82,12 @@ class _RuntimeRequestWorker(QThread):
                     "Runtime response did not confirm mission creation.",
                     "error",
                 )
+        except LocalApiAuthenticationError:
+            self.completed.emit(
+                "Error",
+                "Local API authentication is unavailable. Check the local runtime and bootstrap setup.",
+                "error",
+            )
         except requests.Timeout:
             self.completed.emit(
                 "Error",

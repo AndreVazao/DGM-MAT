@@ -5,6 +5,7 @@ import time
 import httpx
 from typing import Callable, List, Optional
 from core.observability.logger import dgm_logger
+from cockpit.api_client import get_access_token, LocalApiAuthenticationError
 
 class RealtimeClient:
     def __init__(self, uri: str = "ws://localhost:8181/ws"):
@@ -55,7 +56,9 @@ class RealtimeClient:
         while self._running and not self._stop_requested:
             try:
                 dgm_logger.info(f"RealtimeClient: Attempting connection to {self.uri}...")
-                async with websockets.connect(self.uri) as websocket:
+                parsed = self.uri.replace("ws://", "http://", 1).replace("wss://", "https://", 1)
+                token = await asyncio.to_thread(get_access_token, parsed)
+                async with websockets.connect(self.uri, additional_headers={"Authorization": "Bearer " + token}) as websocket:
                     self.websocket = websocket
                     self._retry_delay = 1.0 # Reset on success
                     self._update_connection_state(True, "CONNECTED")

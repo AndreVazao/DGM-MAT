@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
     QMessageBox, QInputDialog, QLineEdit
 )
 from PySide6.QtCore import Qt
-import requests
+from cockpit.api_client import authenticated_request
 from pathlib import Path
 from core.provider_sync.provider_registry import provider_registry
 from core.security.vault import credential_vault
@@ -83,7 +83,7 @@ class ProviderManagementWidget(QWidget):
 
     def _load_backend_providers(self):
         try:
-            response = requests.get(f"http://{API_HOST}:{API_PORT}/runtime/providers", timeout=1)
+            response = authenticated_request("GET", f"http://{API_HOST}:{API_PORT}/runtime/providers", timeout=1)
             if response.status_code == 200:
                 return response.json().get("providers", [])
         except Exception:

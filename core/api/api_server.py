@@ -18,7 +18,8 @@ from core.api.runtime_api import router as runtime_router
 from core.api.mobile_bridge import router as mobile_router
 from core.api.governance_api import router as governance_router
 from core.api.provider_execution_api import router as provider_execution_router
-from core.api.local_auth_api import router as local_auth_router
+from core.api.local_auth_api import router as local_auth_router, session_manager
+from core.api.auth_middleware import LocalSessionAuthMiddleware
 from core.federation.node_identity import local_node
 from core.federation.rendezvous_client import RendezvousClient
 
@@ -27,10 +28,10 @@ app = FastAPI(title="DGM-MAT API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://127.0.0.1:8181", "http://localhost:8181"],
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(runtime_router)
@@ -133,6 +134,14 @@ def _mobile_ui_directory() -> Path | None:
 mobile_ui = _mobile_ui_directory()
 if mobile_ui:
     app.mount("/app", StaticFiles(directory=str(mobile_ui), html=True), name="mobile-app")
+
+# Enforce the route inventory after all HTTP/WebSocket routes and the optional UI mount are registered.
+# Keep this middleware outermost; it validates sessions before route handlers run.
+app.add_middleware(
+    LocalSessionAuthMiddleware,
+    routes=app.router.routes,
+    session_manager=session_manager,
+)
 
 
 def run_api():

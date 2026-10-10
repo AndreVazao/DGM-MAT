@@ -139,12 +139,12 @@ class MainWindow(QMainWindow):
 
     def _fetch_initial_state(self):
         """Priority 2: Manual state hydration on connect."""
-        import requests
+        from cockpit.api_client import authenticated_request
         import threading
         from shared.config.settings import API_HOST, API_PORT
         def run_fetch():
             try:
-                response = requests.get(f"http://{API_HOST}:{API_PORT}/runtime/truth", timeout=2)
+                response = authenticated_request("GET", f"http://{API_HOST}:{API_PORT}/runtime/truth", timeout=2)
                 if response.status_code == 200:
                     self.server_message_received.emit({"type": "state_update", "data": response.json()})
                     dgm_logger.info("Cockpit: Initial state hydration complete.")
