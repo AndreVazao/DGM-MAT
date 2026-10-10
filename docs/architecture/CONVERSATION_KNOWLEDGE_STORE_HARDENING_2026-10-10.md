@@ -70,3 +70,16 @@ The two new tests have been appended to the feature branch. After publication, f
 3. Continue reviewing knowledge-store transition/provenance behavior and add focused regressions where a concrete gap is demonstrated.
 4. Recheck PR workflows/status; keep PR #71 open until required gates are satisfied.
 5. Keep the live Core untouched until active missions can be verified through an authorized read path or controlled maintenance is explicitly approved.
+
+
+## 5. Reject silent changes to reviewed provenance
+
+Inspection found that reviewed intents, user-confirmed decisions and reviewed relations were protected against some core-field changes, but a payload retaining the same statement/endpoints could change source message IDs, evidence or confidence and be silently ignored. The store now rejects every non-identical rewrite of a reviewed intent, confirmed decision or reviewed relation. Exact idempotent repeats still return through the existing equality checks.
+
+Regression: test_reviewed_knowledge_provenance_and_evidence_cannot_be_silently_rewritten verifies that altered provenance/evidence is rejected and the original records remain intact. Focused knowledge-store and progress-store tests passed locally; the broad selected suite was running when this checkpoint was written.
+
+## Next safe actions
+1. Record the final broad-suite exit code and git diff --check.
+2. Synchronize DGM-MAT local branch to the published feature branch only after matching local blob hashes to remote tree blobs.
+3. Keep PR #71 open: no workflow runs or combined status checks have been returned for the latest checked commit.
+4. Keep the live Core untouched until active missions can be verified through an authorized read path or controlled maintenance is explicitly approved.
