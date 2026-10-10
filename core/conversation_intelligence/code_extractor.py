@@ -4,7 +4,7 @@ import ast
 import hashlib
 import re
 
-from .models import CodeArtifact, ConversationRecord
+from .models import ArtifactProvenance, CodeArtifact, ConversationRecord
 
 FENCE_RE = re.compile(r"```([A-Za-z0-9_+#.-]*)\s*\n([\s\S]*?)```", re.MULTILINE)
 FILE_RE = re.compile(r"(?://|#|<!--)\s*FILE:\s*([^\n>]+)", re.IGNORECASE)
@@ -31,6 +31,14 @@ class CodeExtractor:
                 file_path=file_path,
                 source_marker="markdown_fence",
                 fingerprint=self.fingerprint(code),
+                provenance=ArtifactProvenance(
+                    artifact_id=hashlib.sha256(f"{conversation.conversation_id}:{index}:{code}".encode()).hexdigest()[:20],
+                    conversation_id=conversation.conversation_id,
+                    source_provider=conversation.provider,
+                    source_url=conversation.url,
+                    source_path=conversation.source or conversation.metadata.get("path"),
+                    source_fingerprint=self.fingerprint(code),
+                ),
             )
             self._validate_python(artifact)
             artifacts.append(artifact)
