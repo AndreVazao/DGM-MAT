@@ -111,12 +111,19 @@ def test_ai_proposal_is_not_a_user_decision_and_acceptance_is_preserved(tmp_path
         accepted=True,
         decision_id="decision-explicit",
     ))
-    with pytest.raises(ValueError, match="acceptance decision cannot be silently overwritten"):
+    with pytest.raises(ValueError, match="cannot be silently rewritten"):
         store.save_proposal(AIProposal(
             proposal_id="proposal",
             statement="Move all conversations to provider folders",
             source_conversation_id="conv-ai",
             accepted=False,
+        ))
+    with pytest.raises(ValueError, match="cannot be silently rewritten"):
+        store.save_proposal(AIProposal(
+            proposal_id="proposal",
+            statement="Silently change the accepted proposal text",
+            source_conversation_id="conv-ai",
+            accepted=True,
         ))
 
 
