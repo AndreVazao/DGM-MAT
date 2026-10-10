@@ -49,11 +49,15 @@ class ConversationProgressStore:
                     source_fingerprint TEXT NOT NULL,
                     conversation_id TEXT NOT NULL,
                     ordinal INTEGER NOT NULL,
+                    conversation_fingerprint TEXT,
                     PRIMARY KEY (provider, source_key, ordinal)
                 );
                 CREATE INDEX IF NOT EXISTS ix_source_conversations_lookup
                     ON source_conversations(provider, source_key, source_fingerprint, ordinal);
             """)
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(source_conversations)")}
+            if "conversation_fingerprint" not in columns:
+                db.execute("ALTER TABLE source_conversations ADD COLUMN conversation_fingerprint TEXT")
 
     def _connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(str(self.database_path), timeout=10)
@@ -186,9 +190,17 @@ class ConversationProgressStore:
         return dict(row) if row else None
 
     def set_source_conversations(
-        self, provider: str, source_key: str, source_fingerprint: str, conversation_ids: list[str]
+        self,
+        provider: str,
+        source_key: str,
+        source_fingerprint: str,
+        conversation_ids: list[str],
+        conversation_fingerprints: list[str] | None = None,
     ) -> None:
-        """Persist ordered source membership so unchanged exports can reuse snapshots without parsing."""
+        """Persist ordered membership and per-conversation fingerprints for safe cache validation."""
+        if conversation_fingerprints is not None and len(conversation_fingerprints) != len(conversation_ids):
+            raise ValueError("Conversation IDs and fingerprints must have matching lengths")
+        fingerprints = conversation_fingerprints or [None] * len(conversation_ids)
         with self._connect() as db:
             db.execute(
                 "DELETE FROM source_conversations WHERE provider=? AND source_key=?",
@@ -196,10 +208,10 @@ class ConversationProgressStore:
             )
             db.executemany(
                 """INSERT INTO source_conversations
-                    (provider, source_key, source_fingerprint, conversation_id, ordinal)
-                    VALUES (?, ?, ?, ?, ?)""",
+                    (provider, source_key, source_fingerprint, conversation_id, ordinal, conversation_fingerprint)
+                    VALUES (?, ?, ?, ?, ?, ?)""",
                 [
-                    (provider, source_key, source_fingerprint, conversation_id, ordinal)
+                    (provider, source_key, source_fingerprint, conversation_id, ordinal, fingerprints[ordinal])
                     for ordinal, conversation_id in enumerate(conversation_ids)
                 ],
             )
@@ -207,14 +219,22 @@ class ConversationProgressStore:
     def list_source_conversations(
         self, provider: str, source_key: str, source_fingerprint: str
     ) -> list[str]:
+        return [
+            item["conversation_id"]
+            for item in self.list_source_conversation_members(provider, source_key, source_fingerprint)
+        ]
+
+    def list_source_conversation_members(
+        self, provider: str, source_key: str, source_fingerprint: str
+    ) -> list[dict]:
         with self._connect() as db:
             rows = db.execute(
-                """SELECT conversation_id FROM source_conversations
+                """SELECT conversation_id, conversation_fingerprint FROM source_conversations
                    WHERE provider=? AND source_key=? AND source_fingerprint=?
                    ORDER BY ordinal""",
                 (provider, source_key, source_fingerprint),
             ).fetchall()
-        return [row["conversation_id"] for row in rows]
+        return [dict(row) for row in rows]
 
     def pending_conversations(self, provider: str | None = None) -> list[dict]:
         query = "SELECT * FROM conversation_progress WHERE status != 'complete'"
