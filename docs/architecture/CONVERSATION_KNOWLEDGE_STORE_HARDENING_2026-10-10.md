@@ -59,3 +59,23 @@ Reviewed intents, user-confirmed decisions and reviewed relations now reject eve
 2. Continue focused state-transition and provenance tests only where a concrete gap is identified.
 3. Keep PR #71 open until required remote checks/reviews are explicitly available.
 4. Do not restart the live Core until active missions can be verified through an authorized read path or controlled maintenance is explicitly approved.
+
+
+## 6. Guard source-level cache against duplicate conversation IDs across exports
+
+A concrete cache-collision case was identified: the same provider conversation ID can appear in two distinct export files. The global progress ledger is keyed by provider and conversation ID, so importing the second export can replace the single stored audit snapshot. Without an additional check, the first export's unchanged source-level cache could then return the second export's snapshot.
+
+Fix:
+- Added an additive `conversation_fingerprint` column to `source_conversations`, including a safe migration for existing SQLite databases.
+- Source membership now stores the fingerprint calculated from each conversation's normalized content.
+- The source-level fast path verifies that the global completed snapshot still matches the member fingerprint before returning it. Legacy membership rows without a member fingerprint fall back to parsing and repair instead of being trusted.
+- Added regression `test_source_cache_rejects_global_snapshot_from_another_export_with_same_conversation_id`.
+
+Focused `test_progress_store.py` and `test_knowledge_store.py` suites passed after this change. The broader selected regression suite is running; its final exit code will be recorded after completion.
+
+## Next safe actions
+1. Capture the broad-suite exit code and `git diff --check`.
+2. Fetch and compare changed file blobs, then align the local DGM-MAT branch to the remote feature branch only after equality is verified.
+3. Recheck remote workflow runs and status checks; do not describe absent checks as passing.
+4. Resolve AndreOS memory Git authentication before attempting full refs/history synchronization.
+5. Keep PR #71 open and do not restart the live Core while active missions remain unverifiable.
