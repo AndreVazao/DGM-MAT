@@ -54,3 +54,60 @@ def test_source_count_invariants_are_enforced(tmp_path):
     store = ConversationProgressStore(tmp_path / "progress.sqlite3")
     with pytest.raises(ValueError, match="0 <= imported_count"):
         store.record_source("chatgpt", "x", "fp", "partial", 2, 3)
+
+def test_pipeline_persists_results_and_skips_unchanged_history(tmp_path):
+    import json
+
+    from core.conversation_intelligence.models import ConversationAudit
+    from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
+
+    export_path = tmp_path / "chatgpt.json"
+    progress_path = tmp_path / "progress.sqlite3"
+    export_path.write_text(json.dumps({
+        "conversations": [{
+            "id": "history-1",
+            "title": "Old finished conversation",
+            "messages": [{"id": "m1", "role": "user", "content": "Already documented"}],
+        }]
+    }), encoding="utf-8")
+
+    pipeline = ConversationIntelligencePipeline(progress_store_path=progress_path)
+    calls = []
+    pipeline.auditor.audit = lambda conversation, artifacts: (
+        calls.append(conversation.conversation_id) or ConversationAudit(conversation=conversation, artifacts=artifacts)
+    )
+
+    first = pipeline.ingest_file(export_path, "chatgpt")
+    second = pipeline.ingest_file(export_path, "chatgpt")
+
+    assert len(first) == 1
+    assert second == []
+    assert calls == ["history-1"]
+    store = ConversationProgressStore(progress_path)
+    assert store.get_source("chatgpt", str(export_path.resolve()))["status"] == "complete"
+    assert store.summary()["conversations_complete"] == 1
+
+
+def test_pipeline_reprocesses_only_when_conversation_content_changes(tmp_path):
+    import json
+
+    from core.conversation_intelligence.models import ConversationAudit
+    from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
+
+    export_path = tmp_path / "claude.json"
+    export_path.write_text(json.dumps({"conversations": [{
+        "id": "history-2", "title": "Conversation", "content": "version one"
+    }]}), encoding="utf-8")
+    pipeline = ConversationIntelligencePipeline(progress_store_path=tmp_path / "progress.sqlite3")
+    calls = []
+    pipeline.auditor.audit = lambda conversation, artifacts: (
+        calls.append(conversation.content) or ConversationAudit(conversation=conversation, artifacts=artifacts)
+    )
+
+    pipeline.ingest_file(export_path, "claude")
+    export_path.write_text(json.dumps({"conversations": [{
+        "id": "history-2", "title": "Conversation", "content": "version two"
+    }]}), encoding="utf-8")
+    pipeline.ingest_file(export_path, "claude")
+
+    assert calls == ["version one", "version two"]
