@@ -168,11 +168,7 @@ class ConversationKnowledgeStore:
             ):
                 return
             if existing and existing["reviewed_by_user"]:
-                if (existing["statement"] != intent.statement
-                        or existing["status"] != intent.status
-                        or not intent.reviewed_by_user):
-                    raise ValueError("Reviewed intent is immutable without an explicit reviewed migration")
-                return
+                raise ValueError("Reviewed intent is immutable without an explicit reviewed migration")
             db.execute("""
                 INSERT INTO user_intents (
                     intent_id, statement, status, source_conversation_id, source_message_id,
@@ -287,11 +283,7 @@ class ConversationKnowledgeStore:
             ):
                 return
             if existing and existing["confirmed_by_user"]:
-                if (existing["statement"] != decision.statement
-                        or existing["status"] != decision.status
-                        or not decision.confirmed_by_user):
-                    raise ValueError("User-confirmed decision is immutable without an explicit reviewed migration")
-                return
+                raise ValueError("User-confirmed decision is immutable without an explicit reviewed migration")
             db.execute("""
                 INSERT INTO user_decisions (
                     decision_id, statement, status, source_conversation_id, source_message_id,
@@ -351,12 +343,7 @@ class ConversationKnowledgeStore:
             ):
                 return
             if existing and existing["reviewed_by_user"]:
-                if (existing["source_conversation_id"] != relation.source_conversation_id
-                        or existing["target_conversation_id"] != relation.target_conversation_id
-                        or existing["relation_type"] != relation.relation_type
-                        or not relation.reviewed_by_user):
-                    raise ValueError("Reviewed relation is immutable without an explicit reviewed migration")
-                return
+                raise ValueError("Reviewed relation is immutable without an explicit reviewed migration")
             db.execute("""
                 INSERT INTO conversation_relations (
                     relation_id, source_conversation_id, target_conversation_id, relation_type,
