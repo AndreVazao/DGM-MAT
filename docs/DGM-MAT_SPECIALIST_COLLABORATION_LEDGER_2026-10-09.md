@@ -119,3 +119,12 @@ MissionEngine now defaults to the durable production bus. Tests that assert inbo
 
 
 Final verification — durable dispatch receipts and test isolation — 2026-10-10: focused dispatch/foundation/specialist lifecycle tests passed (24 tests in the dispatch-focused set; 10 tests in the capability/help-seeking/mission-system regression set). Full local `python -m pytest -q` completed with exit code 0 after isolating tests from the persistent runtime inbox. `python -m compileall -q core tests` and `git diff --check` passed for DGM-MAT and AndreOS-Memory. Existing FastAPI/Starlette deprecation warnings remain non-blocking. No GitHub Actions were run. Latest refinement is ready for a separate commit after this verification.
+
+
+## QA Intake Worker — 2026-10-10
+
+Added `core/organization/qa_intake_worker.py`, a deterministic, explicitly registered internal handler. `MissionEngine.dispatch_pending_review_intake()` can process one persisted review request from the existing `agent:bug-hunter` inbox. The handler writes a durable dispatch receipt through the existing SQLite bus and returns `REVIEW_QUEUED` plus required next steps. The receipt explicitly states `independent_review_performed=false`, `tests_executed=false`, and `lesson_promotion_allowed=false`.
+
+This is a real local intake/triage worker, not an AI reviewer or the autonomous Bug Hunter. It does not inspect source code, run pytest, validate specialist claims, or promote lessons. Independent review remains a separate evidence-backed operation. The legacy inbox ID is retained for compatibility; both the `agent:qa-intake` and legacy `agent:bug-hunter` routes use the deterministic intake handler for now. This alias must not be interpreted as a fully active Bug Hunter.
+
+Verification: focused lifecycle/dispatch/help-seeking tests passed (11 tests); the full local `python -m pytest -q` suite completed with exit code 0; `python -m compileall -q core tests` and `git diff --check` for both repositories passed. Existing FastAPI/Starlette deprecation warnings remain non-blocking. No external AI calls or GitHub Actions were used.

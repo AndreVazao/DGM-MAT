@@ -15,6 +15,7 @@ from core.execution.approval_manager import ApprovalManager
 from core.realtime.realtime_broadcast import safe_broadcast
 from core.organization import CapabilityScout, InternalMessageBus, Message, MessagePriority
 from core.organization.worker_runtime import WorkerRuntime
+from core.organization.qa_intake_worker import QAIntakeWorker
 from core.organization.help_seeking import HelpContext, HelpSeekingPolicy
 from core.organization.specialist_collaboration import SpecialistCollaborationStore
 from core.organization.validated_learning import ValidatedLessonStore
@@ -36,6 +37,10 @@ class MissionEngine:
             storage_manager.get_path("tasks") / "organization_messages.sqlite3"
         )
         self.worker_runtime = WorkerRuntime(self.organization_bus)
+        self.qa_intake_worker = QAIntakeWorker()
+        self.worker_runtime.register_handler(self.qa_intake_worker.agent_id, self.qa_intake_worker)
+        # Existing review requests still target agent:bug-hunter; this handler only triages intake.
+        self.worker_runtime.register_handler("agent:bug-hunter", self.qa_intake_worker)
         self.collaboration_store = SpecialistCollaborationStore(
             storage_manager.get_path("tasks") / "specialist_collaborations"
         )
@@ -54,6 +59,10 @@ class MissionEngine:
     def dispatch_organization_message(self, agent_id: str):
         """Dispatch at most one durable unread message to a registered local worker."""
         return self.worker_runtime.dispatch_one(agent_id)
+
+    def dispatch_pending_review_intake(self):
+        """Triage one legacy Bug Hunter inbox request; this is not an independent review."""
+        return self.worker_runtime.dispatch_one("agent:bug-hunter")
 
     def _load_missions(self):
         """Restores missions from storage."""

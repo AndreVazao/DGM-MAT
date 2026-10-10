@@ -46,6 +46,17 @@ def test_result_is_untrusted_then_independently_reviewed_and_persisted_as_lesson
     assert len(review_messages) == 1
     assert review_messages[0].correlation_id == collaboration_id
     assert review_messages[0].requires_response is True
+    intake = engine.dispatch_pending_review_intake()
+    assert intake is not None
+    assert intake.status == "HANDLED"
+    assert intake.result["status"] == "REVIEW_QUEUED"
+    assert intake.result["independent_review_performed"] is False
+    assert intake.result["tests_executed"] is False
+    assert intake.result["lesson_promotion_allowed"] is False
+    receipt = engine.organization_bus.get_dispatch_result(review_messages[0].message_id)
+    assert receipt is not None
+    assert receipt["result"]["status"] == "REVIEW_QUEUED"
+    assert engine.organization_bus.receive("agent:bug-hunter", unread_only=True) == []
 
     validated = engine.validate_specialist_result(
         collaboration_id,
