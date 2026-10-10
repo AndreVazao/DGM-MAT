@@ -51,3 +51,8 @@ Use legitimate free web interfaces as a complementary execution surface alongsid
 - Local Portuguese/English screenshot OCR: IMPLEMENTED and END-TO-END VERIFIED on the development PC.
 - Cockpit/API exposure: NOT IMPLEMENTED; intentionally blocked until auth/security migration.
 - Free-web AI collaborator workflow: NOT YET VERIFIED END TO END.
+
+
+## Human intervention and mobile resume (2026-10-10)
+
+See `docs/architecture/HUMAN_IN_THE_LOOP_HANDOFF.md` for the required phone pop-up, durable pause/checkpoint, synchronization recovery, manual CAPTCHA/MFA, secure-input boundaries and safe mission resume design. The current `browser_fill` sensitive-field denial remains in force. This is specified only: no mobile handoff or secret relay is implemented, and browser controls remain unavailable through the cockpit/API until global authentication and client migration are verified.
