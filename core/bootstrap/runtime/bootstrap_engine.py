@@ -129,10 +129,20 @@ class BootstrapEngine:
     def _prepare_providers(self):
         self._trace(f"TRACE_IMPORT:core.providers.provider_registry")
         DependencyLoader.validate_dependency("core.providers.provider_registry")
+        from core.provider_sync.provider_registry import initialize_default_providers, provider_registry
+        initialize_default_providers()
+        local = provider_registry.get_provider("ollama")
+        if local is not None:
+            local.broadcast_health()
+            self._trace(f"LOCAL_OLLAMA_STATUS:{local.health_metrics.get('status', 'unknown')} models={len(getattr(local, '_installed_models', []))}")
 
     def _prepare_federation(self):
         self._trace(f"TRACE_IMPORT:core.federation.federation_engine")
         DependencyLoader.validate_dependency("core.federation.federation_engine")
+        federation_enabled = os.getenv("DGM_FEDERATION_ENABLED", "0").strip().casefold() in {"1", "true", "yes", "on"}
+        if not federation_enabled:
+            self._trace("FEDERATION_SKIPPED_LOCAL_ONLY")
+            return
         try:
             from core.federation.node_identity import local_node
             from core.federation.rendezvous_client import RendezvousClient

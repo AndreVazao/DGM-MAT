@@ -103,14 +103,32 @@ def _register_rendezvous() -> None:
         return
 
 
+RENDEZVOUS_ENABLED_ENV = "DGM_RENDEZVOUS_ENABLED"
+RENDEZVOUS_INTERVAL_ENV = "DGM_RENDEZVOUS_INTERVAL_SECONDS"
+DEFAULT_RENDEZVOUS_INTERVAL_SECONDS = 20 * 60
+
+
+def _rendezvous_interval_seconds() -> int:
+    """Return a bounded heartbeat interval; default to 20 minutes."""
+    try:
+        configured = int(os.getenv(RENDEZVOUS_INTERVAL_ENV, str(DEFAULT_RENDEZVOUS_INTERVAL_SECONDS)))
+    except (TypeError, ValueError):
+        configured = DEFAULT_RENDEZVOUS_INTERVAL_SECONDS
+    return max(60, min(configured, 24 * 60 * 60))
+
+
 def _rendezvous_heartbeat() -> None:
+    interval = _rendezvous_interval_seconds()
     while True:
         _register_rendezvous()
-        time.sleep(60)
+        time.sleep(interval)
 
 
 @app.on_event("startup")
 def start_rendezvous_heartbeat() -> None:
+    # Disabled by default until mobile/federation deployment is intentionally activated.
+    if os.getenv(RENDEZVOUS_ENABLED_ENV, "0").strip().lower() not in {"1", "true", "yes", "on"}:
+        return
     thread = threading.Thread(
         target=_rendezvous_heartbeat,
         name="dgm-rendezvous-heartbeat",

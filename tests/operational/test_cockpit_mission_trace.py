@@ -4,13 +4,18 @@ from core.api.api_server import app
 from core.runtime.runtime_state_store import state_store
 from core.autonomy.mission_engine import mission_engine
 from core.runtime.safe_action_queue import SafeActionQueue
+from core.api.local_auth_api import session_manager
 
 client = TestClient(app)
+
+def _headers():
+    token, _ = session_manager.create_session("cockpit-trace-test", {"local-client", "operator"})
+    return {"Authorization": f"Bearer {token}"}
 
 def test_cockpit_mission_trace():
     # 1. Simulate Cockpit sending a directive
     directive = "list repositories in workspace"
-    response = client.post("/runtime/missions", json={"goal": directive})
+    response = client.post("/runtime/missions", headers=_headers(), json={"goal": directive})
     assert response.status_code == 200
     data = response.json()
     mission_id = data["mission_id"]
@@ -32,7 +37,7 @@ def test_cockpit_mission_trace():
 def test_failed_mission_trace():
     # 1. Simulate invalid directive
     directive = "x" # too short
-    response = client.post("/runtime/missions", json={"goal": directive})
+    response = client.post("/runtime/missions", headers=_headers(), json={"goal": directive})
     assert response.status_code == 200 # API succeeds but mission fails internally
     data = response.json()
     mission_id = data["mission_id"]

@@ -28,7 +28,6 @@ def run_runtime(profile="FULL"):
 
     try:
         while True:
-            trace_runtime_activation("TRACE_LOOP_START:main.py")
             time.sleep(1)
     except KeyboardInterrupt:
         dgm_logger.info("Main: Shutdown requested.")

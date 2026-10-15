@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from core.repository_intelligence.portfolio_auditor import RepositoryAuditEngine
 from core.self_healing.self_repair_engine import SelfRepairEngine
+from core.governance.runtime_capability_profile import collect_runtime_capability_profile
 
 
 router = APIRouter(prefix="/governance", tags=["governance"])
@@ -20,6 +21,12 @@ class AuditRequest(BaseModel):
 class RepairRequest(BaseModel):
     confirm: bool = False
     dry_run: bool = True
+
+
+@router.get("/runtime-capabilities")
+def runtime_capabilities():
+    """Expose a cheap, read-only profile of the current host's observed capacity."""
+    return collect_runtime_capability_profile().to_dict()
 
 
 @router.get("/audit/workspace")

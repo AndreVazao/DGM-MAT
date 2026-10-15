@@ -124,14 +124,28 @@ class RealitySnapshotService:
 
             if provider:
                 if self.profile.lazy_provider_health:
-                    status = "deferred"
+                    # Low-memory mode must not initiate another probe, but it must
+                    # preserve a concrete observation already made by bootstrap or
+                    # another governed caller instead of replacing it with "deferred".
+                    last_observation = provider.health_metrics.get("last_check", 0)
+                    reported_status = provider.health_metrics.get("status", "unknown")
+                    availability_observed = bool(last_observation) and reported_status in {
+                        "ok", "degraded", "error", "unavailable"
+                    }
+                    if availability_observed:
+                        status = reported_status
+                        healthy = status == "ok"
+                        available = provider.is_available()
+                        latency = provider.get_avg_latency()
+                    else:
+                        status = "deferred"
                 else:
                     try:
                         health_data = provider.check_health()
                         reported_status = health_data.get("status", "unknown")
                         last_observation = provider.health_metrics.get("last_check", 0)
                         availability_observed = bool(last_observation) and reported_status in {
-                            "ok", "degraded", "error"
+                            "ok", "degraded", "error", "unavailable"
                         }
                         status = reported_status if availability_observed else "unknown"
                         healthy = availability_observed and status == "ok"
@@ -170,17 +184,27 @@ class RealitySnapshotService:
 
     def _scan_installed_providers(self) -> List[str]:
         providers_dir = self.base_dir / "core" / "providers"
-        installed = []
+        installed = set()
         if providers_dir.exists():
             try:
                 for entry in providers_dir.iterdir():
-                    if entry.is_dir() and not entry.name.startswith("__"):
-                        provider_file = entry / f"{entry.name}_provider.py"
-                        if provider_file.exists():
-                            installed.append(entry.name)
+                    if not entry.is_dir() or entry.name.startswith("__"):
+                        continue
+
+                    # Legacy provider packages use <folder>/<folder>_provider.py.
+                    provider_file = entry / f"{entry.name}_provider.py"
+                    if provider_file.is_file():
+                        installed.add(entry.name)
+
+                    # Local providers may be adapters under core/providers/local,
+                    # e.g. ollama_adapter.py. Report the provider name, not "local".
+                    for adapter_file in entry.glob("*_adapter.py"):
+                        provider_name = adapter_file.stem[:-len("_adapter")]
+                        if provider_name:
+                            installed.add(provider_name)
             except PermissionError:
                 pass
-        return installed
+        return sorted(installed)
 
     def _get_cloned_repos(self) -> List[str]:
         repos = []

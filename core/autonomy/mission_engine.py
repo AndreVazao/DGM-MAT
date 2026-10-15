@@ -37,6 +37,7 @@ class MissionEngine:
         self.missions_path = storage_manager.get_path("missions")
         self.missions_path.mkdir(parents=True, exist_ok=True)
         self.active_missions: Dict[str, Mission] = {}
+        self._loading_missions = False
         self.approval_manager = ApprovalManager()
         self.capability_scout = CapabilityScout()
         self.organization_bus = organization_bus or InternalMessageBus(
@@ -159,8 +160,75 @@ class MissionEngine:
         session.close()
         return {"closed": True, "handle": handle, "cookies_persisted": False}
 
+    def recover_interrupted_missions(self, *, now: datetime | None = None) -> Dict[str, int]:
+        """Reconcile stale RUNNING mission checkpoints without silently replaying work.
+
+        This is called only by the full Runtime bootstrap, before its queue consumer
+        starts. Old RUNNING missions with a still-unapproved durable queue action are
+        returned to QUEUED. Approved actions remain eligible for their explicit approval
+        path. All other stale RUNNING missions become FAILED with an auditable recovery
+        marker; the original mission/source metadata is preserved and nothing is replayed.
+        """
+        now = now or datetime.now()
+        counts = {"requeued_unapproved": 0, "awaiting_approved_action": 0, "failed_requires_review": 0, "manual_review": 0}
+        for mission in list(self.active_missions.values()):
+            if mission.status != MissionStatus.RUNNING:
+                continue
+            raw_started = mission.metadata.get("execution_started_at")
+            try:
+                started_at = datetime.fromisoformat(raw_started) if isinstance(raw_started, str) and raw_started.strip() else mission.created_at
+                if started_at.tzinfo is not None:
+                    started_at = started_at.astimezone().replace(tzinfo=None)
+                comparable_now = now.astimezone().replace(tzinfo=None) if now.tzinfo is not None else now
+            except (TypeError, ValueError, OverflowError):
+                counts["manual_review"] += 1
+                continue
+            if comparable_now - started_at <= self.timeout_threshold:
+                continue
+
+            action = None
+            action_id = mission.metadata.get("action_id")
+            if isinstance(action_id, int) and not isinstance(action_id, bool):
+                action = self.action_queue.get_action(action_id)
+            action_status = str(action.get("status")) if action else None
+            recovery = {
+                "detected_at": comparable_now.isoformat(),
+                "previous_execution_started_at": raw_started,
+                "previous_status": MissionStatus.RUNNING.value,
+                "action_id": action_id,
+                "action_status": action_status,
+                "automatic_replay": False,
+            }
+
+            if action and action_status == ActionStatus.QUEUED.value and action.get("action_type") == "MISSION_EXECUTION" and not action.get("is_approved"):
+                recovery["state"] = "stale_running_reset_to_queued"
+                mission.logs.append("Recovered stale RUNNING checkpoint: durable action remains unapproved; returned mission to QUEUED without executing it.")
+                self._update_status(mission, MissionStatus.QUEUED, {"recovery": recovery})
+                counts["requeued_unapproved"] += 1
+                continue
+
+            if action and action_status == ActionStatus.APPROVED.value and action.get("is_approved"):
+                counts["awaiting_approved_action"] += 1
+                continue
+
+            recovery["state"] = "interrupted_requires_review"
+            reason = "Previous execution was interrupted or its durable state is inconsistent; automatic replay is disabled and review is required."
+            mission.logs.append("Recovered stale RUNNING checkpoint as FAILED; no automatic replay was attempted.")
+            self._update_status(mission, MissionStatus.FAILED, {"error": reason, "recovery": recovery})
+            counts["failed_requires_review"] += 1
+        return counts
+
     def _load_missions(self):
-        """Restores missions from storage."""
+        """Restore mission checkpoints and publish one atomic snapshot."""
+        self._loading_missions = True
+        try:
+            self._load_missions_from_disk()
+        finally:
+            self._loading_missions = False
+            self._sync_missions_snapshot()
+
+    def _load_missions_from_disk(self):
+        """Read mission checkpoints without broadcasting every row while importing."""
         for mission_file in self.missions_path.glob("*.json"):
             try:
                 with open(mission_file, "r") as f:
@@ -377,9 +445,11 @@ class MissionEngine:
                 dgm_logger.info(f"MISSION_EXECUTION_STARTED: {mission_id}")
                 dgm_logger.info(f"MissionEngine: Queue execution triggered for {mission_id}")
                 mission.logs.append("Action approved in SafeActionQueue. Starting execution.")
+                # Start the execution clock only after explicit queue approval. This
+                # applies to every mission path, not just repository-listing missions.
+                self._mark_execution_started(mission)
 
                 if "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
-                    self._mark_execution_started(mission)
                     result = self._execute_list_repositories_mission(mission)
                     self._finish_mission_success(mission, result)
                     return result
@@ -539,16 +609,19 @@ class MissionEngine:
                 # Human waits persist on disk and never occupy the scheduler or time out.
                 continue
 
-            # Measure running work from its execution checkpoint, not creation time.
-            timeout_origin = mission.created_at
-            if mission.status == MissionStatus.RUNNING and mission.metadata.get("execution_started_at"):
-                try:
-                    timeout_origin = datetime.fromisoformat(mission.metadata["execution_started_at"])
-                except (TypeError, ValueError):
-                    timeout_origin = mission.created_at
-            if datetime.now() - timeout_origin > self.timeout_threshold:
-                self._timeout_mission(mission, "Mission timed out before execution completed.")
-                continue
+            # Only actively executing missions consume the execution-time budget.
+            # QUEUED and APPROVAL_PENDING may wait indefinitely for an operator or
+            # worker and must not fail merely because their creation time is old.
+            if mission.status == MissionStatus.RUNNING:
+                timeout_origin = mission.created_at
+                if mission.metadata.get("execution_started_at"):
+                    try:
+                        timeout_origin = datetime.fromisoformat(mission.metadata["execution_started_at"])
+                    except (TypeError, ValueError):
+                        timeout_origin = mission.created_at
+                if datetime.now() - timeout_origin > self.timeout_threshold:
+                    self._timeout_mission(mission, "Mission timed out before execution completed.")
+                    continue
 
             # 2. Lifecycle Transitions
             if mission.status == MissionStatus.CREATED:
@@ -1180,12 +1253,66 @@ class MissionEngine:
                 except OSError:
                     pass
 
+    def _build_local_subtasks(self, mission: Mission) -> List[SubTask] | None:
+        """Use a local model for a proposed plan; never executes the returned subtasks."""
+        if os.getenv("DGM_LOCAL_REASONING_ENABLED", "1").strip().casefold() in {"0", "false", "no", "off"}:
+            return None
+        try:
+            from core.provider_sync.provider_registry import initialize_default_providers, provider_registry
+            initialize_default_providers()
+            provider = provider_registry.get_provider("ollama")
+            if provider is None:
+                return None
+            goal = mission.goal.lower()
+            coder_terms = ("code", "repo", "repository", "script", "python", "bug", "implement", "software", "github", "file")
+            model = provider.config.get("coder_model") if any(term in goal for term in coder_terms) else provider.config.get("model")
+            messages = [
+                {"role": "system", "content": "You are a local planning assistant. Return only a JSON array with 3 to 5 objects, each with title and description strings. This is planning only: do not claim anything was executed; do not include shell commands, code, credentials, external calls, or paid services."},
+                {"role": "user", "content": "Create a small, verifiable task plan for this mission. Keep each step concrete, reversible, and testable. Mission: " + mission.goal[:3000]},
+            ]
+            raw = provider.generate(messages, model=model, json_mode=True, num_ctx=512, num_predict=128)
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                parsed = parsed.get("subtasks")
+            if not isinstance(parsed, list) or not 3 <= len(parsed) <= 5:
+                raise ValueError("local planner must return 3 to 5 subtasks")
+            subtasks = []
+            for item in parsed:
+                if not isinstance(item, dict):
+                    raise ValueError("local planner returned a non-object subtask")
+                title = item.get("title")
+                description = item.get("description")
+                if not isinstance(title, str) or not title.strip() or not isinstance(description, str) or not description.strip():
+                    raise ValueError("local planner returned an incomplete subtask")
+                subtasks.append(SubTask(
+                    subtask_id=f"st_{uuid4().hex[:4]}",
+                    title=title.strip()[:120],
+                    description=description.strip()[:1200],
+                ))
+            mission.metadata["local_planning"] = {
+                "status": "PROPOSED",
+                "provider": "ollama",
+                "model": model,
+                "created_at": datetime.now().isoformat(),
+                "automatic_subtask_execution": False,
+            }
+            mission.logs.append(f"Local model {model} proposed {len(subtasks)} subtasks; no subtask was executed automatically.")
+            return subtasks
+        except Exception as exc:
+            mission.metadata["local_planning"] = {
+                "status": "DETERMINISTIC_FALLBACK",
+                "reason": type(exc).__name__,
+                "automatic_subtask_execution": False,
+            }
+            dgm_logger.warning(f"LOCAL_PLANNER_FALLBACK: {type(exc).__name__}: {exc}")
+            return None
+
     def decompose_mission(self, mission_id: str) -> List[SubTask]:
         mission = self.active_missions.get(mission_id)
         if not mission or mission.status == MissionStatus.FAILED:
             return []
 
-        subtasks = [
+        subtasks = self._build_local_subtasks(mission) or [
             SubTask(subtask_id=f"st_{uuid4().hex[:4]}", title="Analyze requirements", description=f"Analyze {mission.goal}"),
             SubTask(subtask_id=f"st_{uuid4().hex[:4]}", title="Execute implementation", description=f"Implement changes for {mission.goal}"),
             SubTask(subtask_id=f"st_{uuid4().hex[:4]}", title="Verify results", description=f"Verify {mission.goal}")
@@ -1231,7 +1358,27 @@ class MissionEngine:
                 break
         return True
 
+    def _sync_missions_snapshot(self):
+        snapshot = {}
+        for mission in self.active_missions.values():
+            snapshot[mission.mission_id] = {
+                "id": mission.mission_id,
+                "mission_id": mission.mission_id,
+                "goal": mission.goal,
+                "status": mission.status.value,
+                "updated_at": datetime.now().isoformat(),
+                "progress": mission.progress,
+                "logs": mission.logs,
+                "error": mission.error,
+                "metadata": mission.metadata,
+                "result": mission.metadata.get("result"),
+                "output": mission.metadata.get("output"),
+            }
+        state_store.dispatch(StateEvents.MISSIONS_RECONCILED, snapshot)
+
     def _sync_state(self, mission: Mission):
+        if getattr(self, "_loading_missions", False):
+            return
         state_store.dispatch(StateEvents.MISSION_UPDATED, {
             "id": mission.mission_id,
             "mission_id": mission.mission_id,

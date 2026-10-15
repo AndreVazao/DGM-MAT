@@ -42,3 +42,21 @@ def test_start_is_idempotent_when_api_is_already_healthy(capsys):
 def test_process_identity_fails_closed_for_unknown_pid():
     with patch.dict("sys.modules", {"psutil": None}):
         assert backend_service._pid_is_dgm_api(987654321) is False
+
+def test_full_runtime_command_uses_headless_entrypoint():
+    command = backend_service._command_for_mode("full", "127.0.0.1", 8181)
+    assert command[-2:] == [str(backend_service.PROJECT_ROOT / "main.py"), "--headless"]
+
+
+def test_full_runtime_is_loopback_only(capsys):
+    assert backend_service.start("0.0.0.0", 8181, mode="full") == 2
+    assert "loopback-only" in capsys.readouterr().out
+
+
+def test_full_runtime_refuses_to_start_beside_api_only_process(capsys):
+    with patch.object(backend_service, "_health", return_value=(True, "DGM-MAT API healthy")):
+        with patch.object(backend_service, "_runtime_readiness", return_value=(False, "runtime status is starting")):
+            with patch.object(backend_service.subprocess, "Popen") as popen:
+                assert backend_service.start("127.0.0.1", 8181, mode="full") == 2
+    popen.assert_not_called()
+    assert "No second process was started" in capsys.readouterr().out

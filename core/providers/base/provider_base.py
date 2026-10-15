@@ -71,18 +71,39 @@ class ProviderBase:
         return status in ["ok", "degraded"]
 
     def broadcast_health(self):
-        health = self.check_health()
-        safe_broadcast({
-            "type": "provider_health",
-            "payload": {
-                "name": self.name,
-                "status": self.health_metrics["status"],
-                "latency": self.get_avg_latency(),
-                "quota_used": self.health_metrics["quota_used"],
-                "capabilities": self.capabilities,
-                "timestamp": time.time()
-            }
-        })
+        self.check_health()
+        observed_at = self.health_metrics.get("last_check") or None
+        status = self.health_metrics.get("status", "unknown")
+        available = self.is_available()
+        timestamp = time.time()
+        payload = {
+            "name": self.name,
+            "status": status,
+            "latency": self.get_avg_latency(),
+            "quota_used": self.health_metrics["quota_used"],
+            "capabilities": dict(self.capabilities),
+            "timestamp": timestamp,
+            "snapshot_observed_at": timestamp,
+            "health_observed_at": observed_at,
+            "installed": True,
+            "loaded": True,
+            "healthy": bool(observed_at) and status in {"ok", "degraded"},
+            "available": available,
+            "reported_status": status,
+            "reported_healthy": bool(observed_at) and status in {"ok", "degraded"},
+            "reported_available": available,
+            "freshness_status": "observed" if observed_at else "unobserved",
+            "source": "provider_adapter",
+        }
+        # Persist the observation into the same truth store consumed by the cockpit API,
+        # not just a transient websocket broadcast.
+        try:
+            from core.runtime.runtime_state_store import StateEvents, state_store
+            state_store.dispatch(StateEvents.PROVIDER_UPDATED, payload)
+        except Exception:
+            # Health reporting must not crash a provider check; the realtime event is still emitted.
+            pass
+        safe_broadcast({"type": "provider_health", "payload": payload})
 
     def check_health(self) -> Dict[str, Any]:
         """

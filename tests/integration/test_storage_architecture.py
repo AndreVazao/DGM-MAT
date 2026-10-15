@@ -10,8 +10,10 @@ def temp_storage_dir(tmp_path):
     storage_dir.mkdir(parents=True, exist_ok=True)
     return storage_dir
 
-def test_storage_manager_default_path():
+def test_storage_manager_default_path(monkeypatch):
     """Default path is repository/install relative, not the historical machine path."""
+    monkeypatch.delenv("DGM_STORAGE_PATH", raising=False)
+    monkeypatch.delenv("DGM_BASE_PATH", raising=False)
     manager = RuntimeStorageManager()
     assert "devopgodmode" not in str(manager.base_path).lower()
     assert "storage" in manager.base_path.parts and "runtime" in manager.base_path.parts

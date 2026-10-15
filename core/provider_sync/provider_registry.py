@@ -16,7 +16,7 @@ class ProviderRegistry:
         self._providers: Dict[str, ProviderBase] = {}
         self.config_file = "provider_configs.json"
         self.priority_order = [
-            "chatgpt", "grok", "gemini", "deepseek", "qwen", "claude",
+            "ollama", "chatgpt", "grok", "gemini", "deepseek", "qwen", "claude",
             "poisongpt", "z"
         ]
 
@@ -82,7 +82,10 @@ provider_registry = ProviderRegistry()
 
 def initialize_default_providers():
     """
-    Preserve the historical bootstrap API without auto-discovering code.
-    Current canonical runtime starts with an explicitly registered set.
+    Register trusted local inference explicitly; never import provider code from disk.
+    Cloud providers remain unregistered unless a separately governed adapter is added.
     """
+    if provider_registry.get_provider("ollama") is None:
+        from core.providers.local.ollama_adapter import OllamaProvider
+        provider_registry.register("ollama", OllamaProvider())
     provider_registry.load_configs()

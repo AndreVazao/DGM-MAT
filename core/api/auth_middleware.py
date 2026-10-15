@@ -100,6 +100,12 @@ class LocalSessionAuthMiddleware:
                 # The static shell contains no credentials. All API data routes remain protected.
                 await self.app(scope, receive, send)
                 return
+            if classification.scope in {SecurityScope.PROVIDER_API, SecurityScope.PROVIDER_OPERATOR}:
+                # Provider routes enforce dedicated DGM_PROVIDER_* credentials in their
+                # handlers. Requiring a local-session bearer here would consume the same
+                # Authorization header and make the provider-specific check impossible.
+                await self.app(scope, receive, send)
+                return
         else:
             classification = classify_route(getattr(route, "path", scope.get("path", "")), (), "websocket")
             if classification is None:

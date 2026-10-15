@@ -57,6 +57,20 @@ class Runtime:
         self.provider_agent = agents["provider"]
         self.autonomy_agent = agents["autonomy"]
 
+        # Publish constructed runtime agents to the single cockpit truth store.
+        # "initialized" is intentional: construction is not proof that a provider,
+        # external credential, or downstream capability is currently available.
+        for role, agent in agents.items():
+            self.state_store.dispatch(StateEvents.AGENT_STATUS_CHANGED, {
+                "id": f"core:{role}",
+                "name": role,
+                "role": role,
+                "status": "initialized",
+                "implementation": type(agent).__name__,
+                "provider_required": role == "provider",
+                "source": "core.runtime.Runtime",
+            })
+
         # Initialize advanced engines via late import
         if self.profile.low_memory:
             dgm_logger.info("Runtime: Low-memory profile defers advanced engine initialization.")
@@ -207,6 +221,17 @@ class Runtime:
         self.event_bus.start()
         if self.kernel:
             self.kernel.boot()
+
+        # Reconcile stale mission checkpoints before starting the durable queue worker.
+        # This never auto-approves or replays a mission; unapproved actions stay unapproved.
+        try:
+            from core.autonomy.mission_engine import mission_engine
+            recovery = mission_engine.recover_interrupted_missions()
+            if any(recovery.values()):
+                dgm_logger.warning(f"Runtime: Mission startup reconciliation: {recovery}")
+        except Exception as exc:
+            self.is_degraded = True
+            dgm_logger.error(f"Runtime: Mission startup reconciliation failed: {type(exc).__name__}: {exc}")
 
         # Start SafeActionQueue consumer
         try:

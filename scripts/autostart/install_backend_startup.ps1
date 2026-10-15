@@ -17,10 +17,10 @@ if ((Test-Path $ShortcutPath) -and -not (Test-Path $BackupPath)) {
 $WshShell = New-Object -ComObject WScript.Shell
 $Shortcut = $WshShell.CreateShortcut($ShortcutPath)
 $Shortcut.TargetPath = $PythonW
-$Shortcut.Arguments = '"' + $Manager + '" start'
+$Shortcut.Arguments = '"' + $Manager + '" start --mode full'
 $Shortcut.WorkingDirectory = $ProjectRoot
 $Shortcut.WindowStyle = 7
-$Shortcut.Description = 'Starts only the DGM-MAT API in the background; no dashboard or autonomous workers.'
+$Shortcut.Description = 'Starts the full DGM-MAT runtime headlessly with its local agents and durable queue worker; loopback-only API.'
 $Shortcut.Save()
 Write-Output "INSTALLED: $ShortcutPath"
 Write-Output "TARGET: $PythonW"

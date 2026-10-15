@@ -11,6 +11,7 @@ class StateEvents(Enum):
     PROVIDER_UPDATED = "provider_updated"
     PROVIDERS_RECONCILED = "providers_reconciled"
     MISSION_UPDATED = "mission_updated"
+    MISSIONS_RECONCILED = "missions_reconciled"
     AGENT_STATUS_CHANGED = "agent_status_changed"
     FEDERATION_SYNC = "federation_sync"
     WEBSOCKET_CLIENT_CONNECTED = "websocket_client_connected"
@@ -104,6 +105,13 @@ class StateReducer:
             mission_id = payload.get("id")
             if mission_id:
                 new_state.missions[mission_id] = payload
+
+        elif event_type == StateEvents.MISSIONS_RECONCILED:
+            new_state.missions = {
+                mission_id: record
+                for mission_id, record in payload.items()
+                if isinstance(mission_id, str) and isinstance(record, dict)
+            } if isinstance(payload, dict) else {}
 
         elif event_type == StateEvents.AGENT_STATUS_CHANGED:
             agent_id = payload.get("id")
