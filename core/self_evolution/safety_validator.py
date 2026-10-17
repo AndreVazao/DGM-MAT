@@ -1,11 +1,42 @@
-from typing import Dict, Any
+from typing import Any
 from core.observability.logger import dgm_logger
 
+
 class SafetyValidator:
-    def validate(self, patch: Dict[str, Any]) -> bool:
-        # Check against protected modules
-        protected = ["core/governance", "core/kernel/live_kernel.py"]
-        if any(p in patch["module"] for p in protected):
-            dgm_logger.error(f"SafetyValidator: Patch targets protected module {patch['module']}")
+    """Reject patches unless a real, structurally valid diff exists."""
+
+    def validate(self, patch: dict[str, Any]) -> bool:
+        if not isinstance(patch, dict):
+            dgm_logger.warning("SafetyValidator: Patch candidate is not a mapping.")
             return False
-        return patch["risk_score"] < 50
+
+        module = patch.get("module")
+        diff = patch.get("diff")
+        if not isinstance(module, str) or not module.strip():
+            dgm_logger.warning("SafetyValidator: Patch target is missing.")
+            return False
+
+        # A placeholder string, a missing diff, or arbitrary text is not a patch.
+        if not isinstance(diff, str) or not diff.startswith("diff --git a/"):
+            dgm_logger.warning("SafetyValidator: No real unified diff was generated.")
+            return False
+        if "\n--- a/" not in diff or "\n+++ b/" not in diff:
+            dgm_logger.warning("SafetyValidator: Unified diff headers are incomplete.")
+            return False
+
+        normalized_target = module.replace("\\", "/").replace(".", "/")
+        protected = (
+            "core/governance",
+            "core/kernel/live_kernel.py",
+            "core/storage/storage_manager.py",
+            "core/self_evolution/safety_validator.py",
+        )
+        if any(path in normalized_target for path in protected):
+            dgm_logger.error("SafetyValidator: Patch targets a protected subsystem.")
+            return False
+
+        risk_score = patch.get("risk_score", 100)
+        if not isinstance(risk_score, (int, float)) or risk_score >= 50:
+            dgm_logger.warning("SafetyValidator: Patch risk score is missing or too high.")
+            return False
+        return True
