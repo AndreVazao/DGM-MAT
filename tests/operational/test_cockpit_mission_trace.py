@@ -18,6 +18,8 @@ def test_cockpit_mission_trace():
     response = client.post("/runtime/missions", headers=_headers(), json={"goal": directive})
     assert response.status_code == 200
     data = response.json()
+    assert data["status"] == "success"
+    assert data["mission_status"] == "QUEUED"
     mission_id = data["mission_id"]
     assert mission_id is not None
 
