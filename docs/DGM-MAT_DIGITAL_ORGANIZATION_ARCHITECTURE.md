@@ -314,3 +314,8 @@ The first organization package provides:
 These components are deliberately decoupled from execution. The next layers
 will connect them to the existing DGM-MAT Mission Engine, Event Bus,
 Execution Fabric, Cockpit, AndreOS memory and provider adapters.
+
+
+## Binding clarification — departments, external collaborators and evolution (2026-10-09)
+
+The company model is normative: each function should have a clearly owned specialist agent contract and department, but roster entries are not proof of active independent execution. Claude Code Free / ChatGPT may be used as temporary external specialists via legitimate free browser sessions or supported integrations; DGM-MAT must review results and learn from them. The Capability Acquisition/Recruitment department may create or recruit free capabilities after sandboxing, tests and independent review. A dedicated self-improvement function must safely improve DGM-MAT itself through backup, isolated change, tests, independent QA/security review and controlled promotion. Paid tools may be available for future configuration but remain denied for execution by default. Full charter: `docs/DGM-MAT_ENTERPRISE_AUTONOMY_AND_ZERO_COST_CHARTER_2026-10-09.md`.
