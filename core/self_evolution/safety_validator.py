@@ -24,12 +24,16 @@ class SafetyValidator:
             dgm_logger.warning("SafetyValidator: Unified diff headers are incomplete.")
             return False
 
-        normalized_target = module.replace("\\", "/").replace(".", "/")
+        normalized_target = module.replace("\\", "/")
+        if "/" not in normalized_target and not normalized_target.endswith(".py"):
+            normalized_target = normalized_target.replace(".", "/")
+        if normalized_target.endswith(".py"):
+            normalized_target = normalized_target[:-3]
         protected = (
             "core/governance",
-            "core/kernel/live_kernel.py",
-            "core/storage/storage_manager.py",
-            "core/self_evolution/safety_validator.py",
+            "core/kernel/live_kernel",
+            "core/storage/storage_manager",
+            "core/self_evolution/safety_validator",
         )
         if any(path in normalized_target for path in protected):
             dgm_logger.error("SafetyValidator: Patch targets a protected subsystem.")
