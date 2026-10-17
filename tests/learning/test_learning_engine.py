@@ -1,8 +1,9 @@
-from pathlib import Path
-
 import pytest
 
 from core.learning.learning_engine import LearningEngine
+from core.autonomy.mission_engine import MissionEngine
+from core.autonomy.mission_models import Mission, MissionStatus
+from core.organization.message_bus import InternalMessageBus
 
 
 def test_execution_observations_persist_without_raw_error_or_prompt(tmp_path):
@@ -68,3 +69,33 @@ def test_learning_engine_rejects_non_dictionary_execution_data(tmp_path):
         engine.learn_from_execution("not an execution record")
 
     assert not engine.observations_path.exists()
+
+
+
+def test_mission_engine_records_terminal_outcome_observation(tmp_path, monkeypatch):
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    engine.learning_engine = LearningEngine(tmp_path / "mission-observations.jsonl")
+    monkeypatch.setattr(engine, "save_mission", lambda mission: None)
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+
+    mission = Mission(
+        mission_id="mission_learning_hook",
+        goal="Verify learning hook",
+        description="A test-only mission",
+        status=MissionStatus.RUNNING,
+    )
+    result = {
+        "mission_id": mission.mission_id,
+        "handler": "test_executor",
+        "execution_duration": 0.125,
+    }
+
+    engine._record_execution_observation(mission, result, MissionStatus.COMPLETED)
+
+    assert mission.metadata["learning_observation"]["status"] == "RECORDED"
+    assert mission.metadata["learning_observation"]["promotion_status"] == "OBSERVATION_ONLY"
+    restored = LearningEngine(engine.learning_engine.observations_path)
+    assert len(restored.learnings) == 1
+    assert restored.learnings[0]["mission_id"] == mission.mission_id
+    assert restored.learnings[0]["status"] == "COMPLETED"
+    assert restored.learnings[0]["success"] is True
