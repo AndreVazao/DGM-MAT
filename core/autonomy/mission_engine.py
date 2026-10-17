@@ -25,6 +25,7 @@ from core.organization.help_seeking import HelpContext, HelpSeekingPolicy
 from core.organization.specialist_collaboration import SpecialistCollaborationStore
 from core.organization.validated_learning import ValidatedLessonStore
 from core.providers.browser.governed_browser_session import GovernedBrowserSession
+from core.learning.learning_engine import LearningEngine
 
 class MissionEngine:
     REPO_SCAN_ROOTS = [Path("C:/ProgramasGodMode"), Path("C:/DevopGodMode")]
@@ -60,6 +61,7 @@ class MissionEngine:
         self.validated_lesson_store = ValidatedLessonStore(
             storage_manager.get_path("evolution_memory") / "validated_specialist_lessons"
         )
+        self.learning_engine = LearningEngine()
         self.qa_review_coordinator = QAReviewCoordinator(
             self.qa_review_queue, self.collaboration_store, self.validated_lesson_store,
             Path(__file__).resolve().parents[2],
@@ -843,8 +845,35 @@ class MissionEngine:
         dgm_logger.error(f"MISSION_TIMEOUT: {mission.mission_id} - {reason}")
         self._finish_mission_failure(mission, TimeoutError(reason))
 
+    def _record_execution_observation(
+        self, mission: Mission, result: Dict[str, Any], terminal_status: MissionStatus
+    ) -> None:
+        """Persist an outcome observation without promoting it to a reusable lesson."""
+        try:
+            record = self.learning_engine.learn_from_execution({
+                "mission_id": mission.mission_id,
+                "handler": result.get("handler", "mission_execution"),
+                "status": terminal_status.value,
+                "success": terminal_status == MissionStatus.COMPLETED,
+                "error_type": result.get("error_type", "MissionExecutionError"),
+                "duration_seconds": result.get("execution_duration", 0.0),
+            })
+            mission.metadata["learning_observation"] = {
+                "status": "RECORDED",
+                "observation_id": record["observation_id"],
+                "promotion_status": "OBSERVATION_ONLY",
+            }
+            self.save_mission(mission)
+            self._sync_state(mission)
+        except Exception as exc:
+            # Learning persistence must never turn a completed mission into a false failure.
+            dgm_logger.warning(
+                f"LEARNING_OBSERVATION_NOT_RECORDED: {mission.mission_id} - {type(exc).__name__}"
+            )
+
     def _finish_mission_success(self, mission: Mission, result: Dict[str, Any]):
         self._store_mission_result(mission, result)
+        self._record_execution_observation(mission, result, MissionStatus.COMPLETED)
         self._emit_mission_result(mission, result)
         self._update_status(mission, MissionStatus.COMPLETED, {"completed_at": datetime.now().isoformat()})
         dgm_logger.info(f"MISSION_EXECUTION_FINISHED: {mission.mission_id}")
@@ -1160,6 +1189,7 @@ class MissionEngine:
         result = {
             "mission_id": mission.mission_id,
             "handler": "mission_execution",
+            "error_type": type(exc).__name__,
             "repositories": [],
             "count": 0,
             "repos_scanned": 0,
@@ -1172,6 +1202,7 @@ class MissionEngine:
             "generated_at": datetime.now().isoformat()
         }
         self._store_mission_result(mission, result)
+        self._record_execution_observation(mission, result, MissionStatus.FAILED)
         self._emit_mission_result(mission, result)
         self._update_status(mission, MissionStatus.FAILED, {"error": str(exc), "completed_at": datetime.now().isoformat()})
         dgm_logger.error(f"MISSION_EXECUTION_FAILED: {mission.mission_id} - {exc}")
