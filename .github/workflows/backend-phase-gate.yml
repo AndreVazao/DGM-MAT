@@ -1,0 +1,136 @@
+name: Backend Phase Gate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "core/**"
+      - "shared/**"
+      - "cockpit/**"
+      - "tests/**"
+      - "requirements*.txt"
+      - "requirements/**"
+      - "pyproject.toml"
+      - "pytest.ini"
+      - ".github/workflows/backend-phase-gate.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-phase-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mission-api-and-runtime:
+    name: Mission API, queue and recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout reviewed PR revision
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements/runtime.txt
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Compile Python modules
+        run: python -m compileall -q core cockpit shared
+      - name: Validate mission API truth and queue contracts
+        env:
+          PYTHONPATH: .
+          DGM_COMMAND_AUDIT_PATH: ${{ runner.temp }}/dgm-command-audit.jsonl
+        run: |
+          pytest -q             tests/operational/test_cockpit_mission_trace.py             tests/runtime/test_safe_action_queue.py             tests/contracts/test_queue_boundary.py             tests/autonomy/test_mission_system.py             tests/autonomy/test_mission_recovery.py             tests/contracts/test_cross_process_mission.py
+
+  understand-help-research-learn:
+    name: Understanding, help-seeking, research and learning
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout reviewed PR revision
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements/runtime.txt
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Validate intent planning and help-seeking behavior
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest -q             tests/autonomy/test_local_mission_planner.py             tests/autonomy/test_mission_capability_discovery.py             tests/autonomy/test_mission_help_seeking.py             tests/autonomy/test_mission_human_intervention.py             tests/organization/test_capability_scout.py             tests/organization/test_help_seeking.py
+      - name: Validate research, memory and self-evolution contracts
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest -q             tests/conversation_intelligence/test_knowledge_store.py             tests/integration/test_knowledge_fabric.py             tests/integration/test_research_layer.py             tests/knowledge_graph/test_consolidation.py             tests/self_evolution/test_self_analysis.py
+
+  security-and-governed-execution:
+    name: Authentication, permissions and governed execution
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout reviewed PR revision
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements/runtime.txt
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Validate auth and security policy
+        env:
+          PYTHONPATH: .
+          DGM_COMMAND_AUDIT_PATH: ${{ runner.temp }}/dgm-command-audit.jsonl
+        run: |
+          pytest -q             tests/security/test_api_global_auth_enforcement.py             tests/security/test_api_security_policy.py             tests/test_command_executor.py             tests/test_operation_audit.py
+
+  result-summary:
+    name: Required phase-gate summary
+    if: always()
+    needs:
+      - mission-api-and-runtime
+      - understand-help-research-learn
+      - security-and-governed-execution
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail unless every gate passed
+        env:
+          MISSION_RESULT: ${{ needs.mission-api-and-runtime.result }}
+          LEARNING_RESULT: ${{ needs.understand-help-research-learn.result }}
+          SECURITY_RESULT: ${{ needs.security-and-governed-execution.result }}
+        run: |
+          printf 'Mission API/runtime: %s\n' "$MISSION_RESULT"
+          printf 'Understand/help/research/learn: %s\n' "$LEARNING_RESULT"
+          printf 'Security/governed execution: %s\n' "$SECURITY_RESULT"
+          test "$MISSION_RESULT" = success
+          test "$LEARNING_RESULT" = success
+          test "$SECURITY_RESULT" = success
