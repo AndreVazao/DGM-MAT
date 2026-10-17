@@ -112,6 +112,7 @@ jobs:
           pytest -q
           tests/conversation_intelligence/test_knowledge_store.py
           tests/self_evolution/test_self_analysis.py
+          tests/self_evolution/test_evolution_sandbox_truth.py
 
   security-and-governed-execution:
     name: Authentication, permissions and governed execution
