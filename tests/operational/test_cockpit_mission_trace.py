@@ -37,7 +37,7 @@ def test_cockpit_mission_trace():
     assert action["action_type"] == "MISSION_EXECUTION"
 
 def test_failed_mission_trace():
-    # 1. Simulate invalid directive
+    # 1. Invalid directives must be reported as failed, never as successful creation.
     directive = "x" # too short
     response = client.post("/runtime/missions", headers=_headers(), json={"goal": directive})
     assert response.status_code == 200
