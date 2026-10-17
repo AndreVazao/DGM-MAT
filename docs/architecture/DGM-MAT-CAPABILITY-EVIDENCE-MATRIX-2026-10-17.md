@@ -6,6 +6,15 @@ Evidence basis: source inspection of `main` and GitHub Actions focused runs. Thi
 
 ## Current verified evidence
 
+### GitHub Actions evidence — 2026-10-17
+
+- The independent intent-planning/help-seeking suite passed: **21 tests**.
+- The persistent knowledge-store/self-analysis suite passed: **15 tests**.
+- The new self-evolution truthfulness regression suite passed: **5 tests**.
+- Total confirmed in these independent suites: **41 passing tests**.
+- The overall phase gate remains **FAIL/BLOCKED**, correctly: the mission/API, authentication/security and research/knowledge-fabric jobs require the private `DGM-Contracts` repository, and the required `DGM_CONTRACTS_READ_TOKEN` secret is not configured in Actions.
+- These results do **not** prove mission execution end to end. The tests that would exercise the real API/queue and private modular dependencies have not run successfully yet.
+
 | Capability | What exists in source | What has passed in Actions | Current conclusion |
 |---|---|---|---|
 | Understand a natural-language request | Mission API accepts a goal string; local Ollama planner can propose 3–5 subtasks; capability-gap routing detects some explicit gaps. | 21 focused tests passed across local mission planning, capability discovery, help-seeking, human intervention, capability scout and help-seeking policy. | **Partial.** Planning and selected intent rules are tested; there is no general intent/skill contract for arbitrary requests. |
