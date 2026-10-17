@@ -115,6 +115,11 @@ jobs:
           else
             echo "::notice::Evolution truth regression tests are introduced on the backend stabilization branch and will run when present."
           fi
+          if [ -f tests/learning/test_learning_engine.py ]; then
+            pytest -q tests/learning/test_learning_engine.py
+          else
+            echo "::notice::Execution-learning persistence tests will run when the learning engine test file is present."
+          fi
 
   security-and-governed-execution:
     name: Authentication, permissions and governed execution
