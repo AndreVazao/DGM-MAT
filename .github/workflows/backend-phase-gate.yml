@@ -44,6 +44,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
+      - name: Restore modular runtime dependencies
+        run: |
+          git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
+          git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Connectors.git ../DGM-MAT-Connectors
+          git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Agents.git ../DGM-MAT-Agents
+          python -m pip install -e ../DGM-Contracts
+          python -m pip install -e ../DGM-MAT-Connectors
+          python -m pip install -e ../DGM-MAT-Agents
       - name: Compile Python modules
         run: python -m compileall -q core cockpit shared
       - name: Validate mission API truth and queue contracts
@@ -80,6 +88,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
+      - name: Restore modular runtime dependencies
+        run: |
+          git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
+          git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Connectors.git ../DGM-MAT-Connectors
+          git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Agents.git ../DGM-MAT-Agents
+          python -m pip install -e ../DGM-Contracts
+          python -m pip install -e ../DGM-MAT-Connectors
+          python -m pip install -e ../DGM-MAT-Agents
       - name: Validate intent planning and help-seeking behavior
         env:
           PYTHONPATH: .
@@ -123,6 +139,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
+      - name: Restore modular runtime dependencies
+        run: |
+          git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
+          git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Connectors.git ../DGM-MAT-Connectors
+          git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Agents.git ../DGM-MAT-Agents
+          python -m pip install -e ../DGM-Contracts
+          python -m pip install -e ../DGM-MAT-Connectors
+          python -m pip install -e ../DGM-MAT-Agents
       - name: Validate auth and security policy
         env:
           PYTHONPATH: .
