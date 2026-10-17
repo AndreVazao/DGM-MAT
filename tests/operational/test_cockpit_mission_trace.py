@@ -28,6 +28,7 @@ def test_cockpit_mission_trace():
     assert mission_id in truth.missions
     assert truth.missions[mission_id]["goal"] == directive
     assert truth.missions[mission_id]["status"] == "QUEUED"
+    assert truth.missions[mission_id]["mission_id"] == mission_id
 
     # 3. Verify Action was enqueued in SafeActionQueue
     queue = SafeActionQueue()
