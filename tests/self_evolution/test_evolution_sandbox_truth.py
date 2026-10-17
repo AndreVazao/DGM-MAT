@@ -60,4 +60,4 @@ async def test_sandbox_never_reports_simulated_success():
 async def test_evolution_engine_does_not_offer_placeholder_for_promotion():
     candidate = await EvolutionEngine().propose_evolution("core.autonomy")
 
-    assert candidate is None
+    assert candidate is None  # No promotion candidate without a real diff and sandbox run.
