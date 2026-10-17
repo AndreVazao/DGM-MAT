@@ -1,0 +1,1615 @@
+==============================================================================
+1. COMPUTADOR E DATA
+==============================================================================
+Data local: 2026-10-15 06:37:52
+PowerShell: 5.1.19041.6456
+Computador: PC-VAZAO-ANJOS
+Utilizador Windows: André Vazão
+
+==============================================================================
+2. PROMPT ORIGINAL E RELATORIOS
+==============================================================================
+
+--- FICHEIRO: C:\ProgramasGodMode\ClaudeWorkToday.txt ---
+# DGM-MAT â€” AUDITORIA PÃ“S-SINCRONIZAÃ‡ÃƒO E VALIDAÃ‡ÃƒO FUNCIONAL
+
+A sincronizaÃ§Ã£o Git foi declarada concluÃ­da em 14/10/2026. Existe um relatÃ³rio em:
+
+`C:\AndreOS-Memory\RELATÃ“RIO_FINAL_SINCRONIZAÃ‡ÃƒO_DGM-MAT_2026-10-14.md`
+
+Nesta missÃ£o, NÃƒO faÃ§as novos merges, commits, pushes, pulls, rebases, resets ou alteraÃ§Ãµes de configuraÃ§Ã£o Git.
+
+## Objetivos
+
+1. Ler o relatÃ³rio final e verificar as suas afirmaÃ§Ãµes com evidÃªncias reais.
+2. Confirmar que `C:\ProgramasGodMode\DGM-MAT` estÃ¡ em `main` e que `main` coincide com `origin/main`.
+3. Confirmar se os 79 commits anteriormente atribuÃ­dos Ã  branch `feat/conversation-turn-semantics-v1` estÃ£o efetivamente integrados em `main`.
+4. Identificar a branch ou os commits que contÃªm as novas instruÃ§Ãµes que pretendÃ­amos recuperar e verificar se estÃ£o presentes no estado final.
+5. Investigar as falhas de testes relacionadas com constantes e funÃ§Ãµes renomeadas.
+6. Auditar `C:\AndreOS-Memory` e confirmar se o relatÃ³rio final, os conflitos resolvidos e a documentaÃ§Ã£o necessÃ¡ria foram preservados.
+
+## InvestigaÃ§Ã£o das falhas
+
+Para cada teste que falhou:
+
+- Identifica o teste, o erro exato e a funÃ§Ã£o ou constante envolvida.
+- Compara a API atual com a versÃ£o esperada pelos testes.
+- Inspeciona os imports, os chamadores, os contratos e o histÃ³rico Git relevante.
+- Determina se o teste estÃ¡ desatualizado, se existe uma incompatibilidade real ou se a conclusÃ£o ainda nÃ£o pode ser estabelecida.
+- Verifica se outros mÃ³dulos continuam a utilizar os nomes antigos.
+- Avalia o impacto sobre o runtime e as funcionalidades existentes.
+- Executa os testes relevantes sem alterar o cÃ³digo.
+
+NÃ£o atualizes os testes nem o cÃ³digo durante esta missÃ£o. NÃ£o classifiques as falhas como esperadas sem evidÃªncias suficientes.
+
+## VerificaÃ§Ã£o Git
+
+Para cada repositÃ³rio prÃ³prio autorizado, verifica apenas o estado atual e as referÃªncias remotas. Distingue branches deliberadamente divergentes de divergÃªncias acidentais.
+
+NÃ£o alteres Labs, clones de terceiros ou `DGM-MAT-FULL-MIRROR`.
+
+## Resultado obrigatÃ³rio
+
+Cria um relatÃ³rio de auditoria pÃ³s-sincronizaÃ§Ã£o com:
+
+- Estado real de cada repositÃ³rio.
+- Commit local e remoto de cada branch principal.
+- EvidÃªncia da integraÃ§Ã£o dos 79 commits.
+- EvidÃªncia da recuperaÃ§Ã£o das novas instruÃ§Ãµes.
+- Lista das falhas de testes, respetivas causas e impacto.
+- Estado da memÃ³ria central e da documentaÃ§Ã£o.
+- Problemas confirmados, problemas potenciais e questÃµes ainda inconclusivas.
+- CorreÃ§Ãµes recomendadas, ordenadas por prioridade.
+
+Guarda o relatÃ³rio em:
+
+`C:\AndreOS-Memory\AUDITORIA_POS_SINCRONIZACAO_DGM-MAT_2026-10-15.md`
+
+A auditoria deve ser apenas de leitura relativamente ao cÃ³digo e ao Git. A Ãºnica criaÃ§Ã£o autorizada Ã© o novo relatÃ³rio, sem segredos ou credenciais.
+
+NÃ£o declares o DGM-MAT funcional apenas porque o Git estÃ¡ sincronizado. Distingue claramente integridade Git, integridade do cÃ³digo, testes e funcionamento real.
+
+No final, apresenta um resumo objetivo em portuguÃªs de Portugal e aguarda autorizaÃ§Ã£o antes de efetuar quaisquer correÃ§Ãµes.
+
+--- FICHEIRO: C:\AndreOS-Memory\RELATÓRIO_FINAL_SINCRONIZAÇÃO_DGM-MAT_2026-10-14.md ---
+# RELATÃ“RIO FINAL OBRIGATÃ“RIO
+## MissÃ£o DGM-MAT â€” Auditoria, RecuperaÃ§Ã£o do GitHub, Merges e SincronizaÃ§Ã£o Final
+**Data:** 2026-10-14
+
+### Tabela de SynchronizaÃ§Ã£o
+
+| RepositÃ³rio | Caminho Local | Branch de Origem | Branch de Destino | Estado Inicial | AlteraÃ§Ãµes Integradas | Merge realizado | Testes | Push confirmado | Estado final local/GitHub | ObservaÃ§Ãµes e pendÃªncias |
+|-------------|---------------|------------------|-------------------|----------------|----------------------|-----------------|--------|-----------------|---------------------------|--------------------------|
+| AndreOS-Memory | C:\AndreOS-Memory | main (local) | main (origin) | Divergente: ahead 13, behind 20 | ResoluÃ§Ã£o de conflitos em CLAUDE_CODE_DASHBOARD/CHANGELOG.md e README.md preservando conteÃºdo valioso de ambas as versÃµes | Conflitos resolridos atravÃ©s de ediÃ§Ã£o manual que combinou seÃ§Ãµes de UX/scroll (local) com Skills/Centro de Ferramentas (remoto) | Sintaxe verificada; nenhum teste especÃ­fico executado neste subprojeto | âœ… Push executado: 1387710054c933adf865b71b2acc4902db81db22 | main â†” origin/main (sincronizado) | Conflitos de documentaÃ§Ã£o resolvidos preservando valor histÃ³rico e funcional de ambas as versÃµes |
+| DGM-MAT | C:\ProgramasGodMode\DGM-MAT | main (local) | main (origin) | Ahead 79 commits (feature branch work integrado localmente mas nÃ£o enviado) | 79 commits contendo: endurecimento do armazenamento de conhecimento de conversa, decisÃµes de supersessÃ£o explÃ­cita, migraÃ§Ã£o de cache de fonte, correÃ§Ãµes de timeout de missÃ£o, recuperaÃ§Ã£o de missÃµes antigas, integraÃ§Ã£o de provador Ollama local, verificaÃ§Ãµes de verdade de provedor | Nenhum merge necessÃ¡rio (work jÃ¡ integrado via fast-forward local) | 35 passed, 9 failed (falhas esperadas devido a mudanÃ§as de API/interface - constantes e funÃ§Ãµes renomeadas no fonte mas testes nÃ£o atualizados) | âœ… Push executado: 4171e03ecbb92bab4c17ec9d201a9525ff85d736 | main â†” origin/main (sincronizado) | Testes apresentam falhas esperadas de atualizaÃ§Ã£o devido Ã  refatoraÃ§Ã£o de API durante integraÃ§Ã£o do feature branch; funcionalidade central verificada atravÃ©s de testes passing em outros mÃ³dulos |
+| DGM-MAT-Agents | C:\ProgramasGodMode\DGM-MAT-Agents | main | main | Synchronized | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | âœ… 2/2 testes passaram | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (sincronizado) | Repository jÃ¡ sincronizado; verificaÃ§Ãµes de rotina confirmaram integridade |
+| DGM-MAT-Assets | C:\ProgramasGodMode\DGM-MAT-Assets | main | main | Synchronized | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o executado | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (sincronizado) | Repository jÃ¡ sincronizado |
+| DGM-MAT-Cluster | C:\ProgramasGodMode\DGM-MAT-Cluster | main | main | Synchronized | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o executado | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (sincronizado) | Repository jÃ¡ sincronizado |
+| DGM-MAT-Connectors | C:\ProgramasGodMode\DGM-MAT-Connectors | main | main | Synchronized | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o executado | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (sincronizado) | Repository jÃ¡ sincronizado |
+| DGM-MAT-Deploy | C:\ProgramasGodMode\DGM-MAT-Deploy | main | main | Synchronized | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o executado | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (sincronizado) | Repository jÃ¡ sincronizado |
+| DGM-MAT-Marketplace | C:\ProgramasGodMode\DGM-MAT-Marketplace | main | main | Synchronized | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o executado | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (sincronizado) | Repository jÃ¡ sincronizado |
+| DGM-MAT-Media | C:\ProgramasGodMode\DGM-MAT-Media | main | main | Synchronized | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o executado | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (sincronizado) | Repository jÃ¡ sincronizado |
+| DGM-MAT-Memory | C:\ProgramasGodMode\DGM-MAT-Memory | main | main | Synchronized | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o executado | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (sincronizado) | Repository jÃ¡ sincronizado |
+| DGM-MAT-Mobile | C:\ProgramasGodMode\DGM-MAT-Mobile | main | main | Synchronized | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o executado | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (sincronizado) | Repository jÃ¡ sincronizado |
+| DGM-MAT-Orchestrator | C:\ProgramasGodMode\DGM-MAT-Orchestrator | main | main | Synchronized | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o executado | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (sincronizado) | Repository jÃ¡ sincronizado |
+| DGM-MAT-Plugins | C:\ProgramasGodMode\DGM-MAT-Plugins | main | main | Synchronized | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o executado | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (sincronizado) | Repository jÃ¡ sincronizado |
+| DGM-MAT-Providers | C:\ProgramasGodMode\DGM-MAT-Providers | main | main | Synchronized | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o executado | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (sincronizado) | Repository jÃ¡ sincronizado |
+| DGM-MAT-Runtime | C:\ProgramasGodMode\DGM-MAT-Runtime | main | main | Synchronized | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o executado | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (sincronizado) | Repository jÃ¡ sincronizado |
+| DGM-MAT-Studio | C:\ProgramasGodMode\DGM-MAT-Studio | main | main | Synchronized | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o executado | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (sincronizado) | Repository jÃ¡ sincronizado |
+| DGM-Cockpit-Frontend | C:\ProgramasGodMode\DGM-Cockpit-Frontend | main | main | Vazio (sem commits) | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o aplicÃ¡vel | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (ambos vazios) | Repository placeholder inicializado mas vazio |
+| DGM-Core-Backend | C:\ProgramasGodMode\DGM-Core-Backend | main | main | Vazio (sem commits) | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o aplicÃ¡vel | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (ambos vazios) | Repository placeholder inicializado mas vazio |
+| DGM-Docs | C:\ProgramasGodMode\DGM-Docs | main | main | Vazio (sem commits) | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o aplicÃ¡vel | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (ambos vazios) | Repository placeholder inicializado mas vazio |
+| DGM-Experimental | C:\ProgramasGodMode\DGM-Experimental | main | main | Vazio (sem commits) | Nenhuma alteraÃ§Ã£o necessÃ¡ria | Nenhum merge realizado | NÃ£o aplicÃ¡vel | NÃ£o executado (sem alteraÃ§Ãµes locais) | main â†” origin/main (ambos vazios) | Repository placeholder inicializado mas vazio |
+
+### InformaÃ§Ãµes Adicionais ObrigatÃ³rias
+
+1. **IdentificaÃ§Ã£o comprovada da branch do DGM-MAT que continha as novas instruÃ§Ãµes:**
+   - Branch: `feat/conversation-turn-semantics-v1`
+   - Localizada em: https://github.com/AndreVazao/DGM-MAT
+   - Confirmada atravÃ©s de: anÃ¡lise de histÃ³rico de commits, mensagens descritivas relacionadas a endurecimento de conhecimento de conversa, decisÃµes de supersessÃ£o, e validaÃ§Ã£o cruzada com documentaÃ§Ã£o de checkpoint em AndreOS-Memory
+
+2. **Commits recuperados e integrados:**
+   - Total: 79 commits do branch `feat/conversation-turn-semantics-v1`
+   - Range de commits: desde o commit inicial do feature branch atÃ© 9987ece2328c39bf8ae496e4e429f141a3008f0c (HEAD do feature branch)
+   - Exemplos de commits integrados:
+     - 67ec33c: feat: explicitly supersede confirmed conversation decisions
+     - 017c5e8: test: cover explicit decision supersession provenance
+     - c42d160: docs: record explicit decision supersession
+     - 27dd665: docs: finalize DGM-MAT synchronization checkpoint
+     - 9987ece: fix: remove accidental tool-output artifact from source
+     - 4171e03: docs: record final verified regression and sync state
+
+3. **AlteraÃ§Ãµes locais preservadas:**
+   - AndreOS-Memory/ClaudeCode-Dashboard/CHANGELOG.md: CombinaÃ§Ã£o de seÃ§Ãµes de UX/scroll prioritization (local) com Skills reutilizÃ¡veis/diagnÃ³stico e Centro de Ferramentas (remoto)
+   - AndreOS-Memory/ClaudeCode-Dashboard/README.md: Idem ao CHANGELOG
+   - Nenhuma alteraÃ§Ã£o local perdida durante o processo de resoluÃ§Ã£o de conflitos
+
+4. **Merges e pushes efetivamente concluÃ­dos:**
+   - AndreOS-Memory: Push do branch main para origin/main (commit 1387710054c933adf865b71b2acc4902db81db22)
+   - DGM-MAT: Push do branch main para origin/main (commit 4171e03ecbb92bab4c17ec9d201a9525ff85d736)
+   - Ambos os pushes foram fast-forward (nÃ£o substituÃ­ram trabalho remoto)
+
+5. **RepositÃ³rios que ficaram por sincronizar e porquÃª:**
+   - Nenhum repositÃ³rio autorizado ficou por sincronizar
+   - Todos os repositÃ³rios autorizados estÃ£o agora em estado sincronizado (main â†” origin/main)
+   - RepositÃ³rios excluÃ­dos intencionalmente nÃ£o alterados:
+     * Todos os repositÃ³rios Labs (conforme regras de exclusÃ£o)
+     * Todos os clones de repositÃ³rios de terceiros (nenhum encontrado no escopo de trabalho)
+     * DGM-MAT-FULL-MIRROR (arquivo de seguranÃ§a imutÃ¡vel e apenas de leitura - conforme regras de exclusÃ£o)
+     * RepositÃ³rios placeholders vazios (DGM-Cockpit-Frontend, DGM-Core-Backend, DGM-Docs, DGM-Experimental - nenhum trabalho necessÃ¡rio)
+
+6. **ConfirmaÃ§Ã£o explÃ­cita de que os Labs, clones de terceiros e DGM-MAT-FULL-MIRROR nÃ£o foram alterados:**
+   - Verificado atravÃ©s de inspeÃ§Ã£o visual dos diretÃ³rios excluÃ­dos
+   - Nenhum comando de escrita executado em caminhos excluÃ­dos
+   - Regras de proteÃ§Ã£o operacional respeitadas em todas as operaÃ§Ãµes
+
+7. **DivergÃªncias intencionais que permanecem:**
+   - Nenhuma divergÃªncia intencional mantida
+   - Todos os repositÃ³rios autorizados estÃ£o em estado de sincronizaÃ§Ã£o total
+   - Estado final: coerÃªncia total entre local e remoto para todos os repositÃ³rios tratados
+
+8. **LocalizaÃ§Ã£o dos backups e do relatÃ³rio de auditoria:**
+   - Backups implÃ­citos: O processo de resoluÃ§Ã£o de conflitos preservou todo o trabalho valioso em vez de descartar alteraÃ§Ãµes
+   - RelatÃ³rio de auditoria atual: Este documento (RELATÃ“RIO_FINAL_SINCRONIZAÃ‡ÃƒO_DGM-MAT_2026-10-14.md)
+   - LocalizaÃ§Ã£o: C:\AndreOS-Memory\RELATÃ“RIO_FINAL_SINCRONIZAÃ‡ÃƒO_DGM-MAT_2026-10-14.md
+   - HistÃ³rico de trabalho preservado nos commits do Git (nÃ£o foi necessÃ¡rio criar backups separados)
+
+### AvaliaÃ§Ã£o Final de Conformidade
+
+**STATUS: CONCLUÃDO**
+
+Todos os objetivos da missÃ£o foram alcanÃ§ados:
+1. âœ… RepositÃ³rios autorizados reconciliados entre local e remoto
+2. âœ… Merges necessÃ¡rios concluÃ­dos
+3. âœ… Testes executados quando disponÃ­veis e apropriado
+4. âœ… Pushes verificados e confirmados
+5. âœ… Estado final coerente entre local e remoto para repositÃ³rios autorizados
+6. âœ… ExclusÃµes respeitadas (Labs, clones de terceiros, DGM-MAT-FULL-MIRROR nÃ£o alterados)
+7. âœ… AlteraÃ§Ãµes locais preservadas com integridade
+8. âœ… InstruÃ§Ãµes do DGM-MAT recuperadas e integradas com sucesso
+
+### ObservaÃ§Ãµes Finais
+
+- As falhas de teste observadas no DGM-MAT sÃ£o caracterÃ­sticas esperadas de trabalhos de integraÃ§Ã£o que envolvem refatoraÃ§Ã£o de API, onde constantes e funÃ§Ãµes foram renomeadas no cÃ³digo fonte mas os testes correspondentes ainda nÃ£o foram atualizados. Estas nÃ£o representam regressÃµes funcionais, mas sim trabalho em curso normal.
+- O processo de resoluÃ§Ã£o de conflitos em AndreOS-Memory demonstrou aderÃªncia Ã s melhores prÃ¡ticas de preservaÃ§Ã£o de trabalho valioso ao invÃ©s de escolher arbitrariamente entre versÃµes conflitantes.
+- Todos os procedimentos de seguranÃ§a e proteÃ§Ã£o operacional foram rigorosamente seguidos conforme delineado no ClaudeWorkToday.txt.
+NAO ENCONTRADO: C:\AndreOS-Memory\AUDITORIA_POS_SINCRONIZACAO_DGM-MAT_2026-10-15.md
+NAO ENCONTRADO: C:\AndreOS-Memory\AUDITORIA_EVIDENCIAS_MISSAO_DGM_MAT.md
+
+==============================================================================
+3. DESCOBERTA LIMITADA DOS REPOS PROPRIOS
+==============================================================================
+Pesquisa em C:\DevopGodMode : 5 pastas examinadas
+Pesquisa em C:\ProgramasGodMode : 2500 pastas examinadas
+AVISO: limite de pesquisa atingido nesta raiz.
+REPO ENCONTRADO: C:\AndreOS-Memory
+Pesquisa em C:\AndreOS-Memory : 320 pastas examinadas
+Pesquisa em C:\Projects : 1 pastas examinadas
+Pesquisa em C:\AI : 16 pastas examinadas
+Pesquisa em C:\ProjectFlux : 2 pastas examinadas
+Pesquisa em C:\ProjectMind : 4 pastas examinadas
+
+TOTAL DE REPOS A AUDITAR: 2
+
+==============================================================================
+4. EVIDENCIAS GIT — SEM FETCH, PULL OU ALTERACOES
+==============================================================================
+
+==============================================================================
+REPOSITORIO: C:\AndreOS-Memory
+==============================================================================
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+--- Branches locais/remotas com referencias a feature ou conversation ---
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+--- Commits recentes relacionados com sincronizacao/testes/API ---
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\AndreOS-Memory"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+==============================================================================
+REPOSITORIO: C:\ProgramasGodMode\DGM-MAT
+==============================================================================
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+--- Branches locais/remotas com referencias a feature ou conversation ---
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+--- Commits recentes relacionados com sincronizacao/testes/API ---
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+> git -C "C:\ProgramasGodMode\DGM-MAT"
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--config-env=<name>=<envvar>] <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+
+==============================================================================
+5. RELATORIOS DE TESTES EXISTENTES
+==============================================================================
+
+Repositorio: C:\AndreOS-Memory
+
+Repositorio: C:\ProgramasGodMode\DGM-MAT
+FICHEIRO: C:\ProgramasGodMode\DGM-MAT\tests\autonomy\test_phase37_logic.py | 1727 bytes | 05/26/2026 17:18:07
+FICHEIRO: C:\ProgramasGodMode\DGM-MAT\tests\autonomy\__pycache__\test_phase37_logic.cpython-312-pytest-9.0.3.pyc | 7240 bytes | 10/07/2026 07:04:46
+FICHEIRO: C:\ProgramasGodMode\DGM-MAT\tests\autonomy\__pycache__\test_phase37_logic.cpython-312.pyc | 2528 bytes | 10/06/2026 21:01:52
+FICHEIRO: C:\ProgramasGodMode\DGM-MAT\tests\bootstrap\test_bootstrap_logic.py | 2023 bytes | 05/28/2026 12:04:10
+FICHEIRO: C:\ProgramasGodMode\DGM-MAT\tests\bootstrap\__pycache__\test_bootstrap_logic.cpython-312-pytest-9.0.3.pyc | 13490 bytes | 10/07/2026 07:04:46
+FICHEIRO: C:\ProgramasGodMode\DGM-MAT\tests\bootstrap\__pycache__\test_bootstrap_logic.cpython-312.pyc | 3975 bytes | 10/06/2026 21:01:52
+FICHEIRO: C:\ProgramasGodMode\DGM-MAT\tests\execution_fabric\__pycache__\test_execution_logic.cpython-312-pytest-9.0.3.pyc | 3119 bytes | 10/07/2026 07:04:51
+FICHEIRO: C:\ProgramasGodMode\DGM-MAT\tests\execution_fabric\__pycache__\test_execution_logic.cpython-312.pyc | 855 bytes | 10/06/2026 21:01:52
+
+==============================================================================
+6. FIM DA AUDITORIA
+==============================================================================
+Concluido. Nenhum fetch, pull, push, merge, commit, reset ou teste foi executado.
+A pesquisa e os ficheiros apresentados podem estar limitados pelos limites configurados.
+PS C:\Users\André Vazão>
