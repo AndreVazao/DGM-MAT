@@ -212,9 +212,15 @@ def index_obsidian():
 @router.post("/missions")
 def create_mission(mission_data: MissionCreate):
     """Requirement 7: Mission creation interface."""
-    # Let the Mission Consumer (CognitionLoop) handle transitions
+    # Creation is not execution: expose validation failure truthfully to callers.
     mission = mission_engine.create_mission(mission_data.goal, mission_data.description)
-    return {"status": "success", "mission_id": mission.mission_id}
+    if mission.status.value == "FAILED":
+        return {
+            "status": "failed",
+            "mission_id": mission.mission_id,
+            "error": mission.error or "Mission validation failed.",
+        }
+    return {"status": "success", "mission_id": mission.mission_id, "mission_status": mission.status.value}
 
 @router.get("/missions")
 def list_missions():
