@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from threading import RLock
 from typing import Any
+from uuid import uuid4
 
 from core.storage.storage_manager import storage_manager
 
@@ -78,7 +79,7 @@ class LearningEngine:
         pattern_id = hashlib.sha256(pattern_material.encode("utf-8")).hexdigest()[:16]
         record = {
             "schema": "dgm.execution-observation.v1",
-            "observation_id": f"observation_{pattern_id}_{len(self.learnings) + 1}",
+            "observation_id": f"observation_{uuid4().hex}",
             "mission_id": mission_id,
             "handler": handler,
             "status": status,
