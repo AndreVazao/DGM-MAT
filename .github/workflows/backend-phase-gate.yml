@@ -50,8 +50,14 @@ jobs:
         env:
           PYTHONPATH: .
           DGM_COMMAND_AUDIT_PATH: ${{ runner.temp }}/dgm-command-audit.jsonl
-        run: |
-          pytest -q             tests/operational/test_cockpit_mission_trace.py             tests/runtime/test_safe_action_queue.py             tests/contracts/test_queue_boundary.py             tests/autonomy/test_mission_system.py             tests/autonomy/test_mission_recovery.py             tests/contracts/test_cross_process_mission.py
+        run: >-
+          pytest -q
+          tests/operational/test_cockpit_mission_trace.py
+          tests/runtime/test_safe_action_queue.py
+          tests/contracts/test_queue_boundary.py
+          tests/autonomy/test_mission_system.py
+          tests/autonomy/test_mission_recovery.py
+          tests/contracts/test_cross_process_mission.py
 
   understand-help-research-learn:
     name: Understanding, help-seeking, research and learning
@@ -77,13 +83,24 @@ jobs:
       - name: Validate intent planning and help-seeking behavior
         env:
           PYTHONPATH: .
-        run: |
-          pytest -q             tests/autonomy/test_local_mission_planner.py             tests/autonomy/test_mission_capability_discovery.py             tests/autonomy/test_mission_help_seeking.py             tests/autonomy/test_mission_human_intervention.py             tests/organization/test_capability_scout.py             tests/organization/test_help_seeking.py
+        run: >-
+          pytest -q
+          tests/autonomy/test_local_mission_planner.py
+          tests/autonomy/test_mission_capability_discovery.py
+          tests/autonomy/test_mission_help_seeking.py
+          tests/autonomy/test_mission_human_intervention.py
+          tests/organization/test_capability_scout.py
+          tests/organization/test_help_seeking.py
       - name: Validate research, memory and self-evolution contracts
         env:
           PYTHONPATH: .
-        run: |
-          pytest -q             tests/conversation_intelligence/test_knowledge_store.py             tests/integration/test_knowledge_fabric.py             tests/integration/test_research_layer.py             tests/knowledge_graph/test_consolidation.py             tests/self_evolution/test_self_analysis.py
+        run: >-
+          pytest -q
+          tests/conversation_intelligence/test_knowledge_store.py
+          tests/integration/test_knowledge_fabric.py
+          tests/integration/test_research_layer.py
+          tests/knowledge_graph/test_consolidation.py
+          tests/self_evolution/test_self_analysis.py
 
   security-and-governed-execution:
     name: Authentication, permissions and governed execution
@@ -110,8 +127,12 @@ jobs:
         env:
           PYTHONPATH: .
           DGM_COMMAND_AUDIT_PATH: ${{ runner.temp }}/dgm-command-audit.jsonl
-        run: |
-          pytest -q             tests/security/test_api_global_auth_enforcement.py             tests/security/test_api_security_policy.py             tests/test_command_executor.py             tests/test_operation_audit.py
+        run: >-
+          pytest -q
+          tests/security/test_api_global_auth_enforcement.py
+          tests/security/test_api_security_policy.py
+          tests/test_command_executor.py
+          tests/test_operation_audit.py
 
   result-summary:
     name: Required phase-gate summary
