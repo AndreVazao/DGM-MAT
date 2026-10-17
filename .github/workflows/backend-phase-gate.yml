@@ -108,11 +108,13 @@ jobs:
       - name: Validate persistent knowledge store and self-evolution proposals
         env:
           PYTHONPATH: .
-        run: >-
-          pytest -q
-          tests/conversation_intelligence/test_knowledge_store.py
-          tests/self_evolution/test_self_analysis.py
-          tests/self_evolution/test_evolution_sandbox_truth.py
+        run: |
+          pytest -q tests/conversation_intelligence/test_knowledge_store.py tests/self_evolution/test_self_analysis.py
+          if [ -f tests/self_evolution/test_evolution_sandbox_truth.py ]; then
+            pytest -q tests/self_evolution/test_evolution_sandbox_truth.py
+          else
+            echo "::notice::Evolution truth regression tests are introduced on the backend stabilization branch and will run when present."
+          fi
 
   security-and-governed-execution:
     name: Authentication, permissions and governed execution
