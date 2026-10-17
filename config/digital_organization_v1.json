@@ -21,15 +21,7 @@
       "id": "engineering",
       "name": "Engineering",
       "mission": "Software architecture and implementation",
-      "specialties": [
-        "python",
-        "javascript",
-        "typescript",
-        "backend",
-        "frontend",
-        "database",
-        "architecture"
-      ]
+      "specialties": ["python", "javascript", "typescript", "backend", "frontend", "database", "architecture"]
     },
     {
       "id": "qa",
@@ -60,18 +52,7 @@
       "id": "ai-liaison",
       "name": "AI Provider Liaison",
       "mission": "Provider-specific interaction behind normalized contracts",
-      "providers": [
-        "chatgpt",
-        "claude",
-        "gemini",
-        "grok",
-        "deepseek"
-      ]
-    },
-    {
-      "id": "capability-acquisition",
-      "name": "Capability Acquisition & Skill Forge",
-      "mission": "Discover, assess, adapt, validate and promote reusable capabilities and recruit new workers"
+      "providers": ["chatgpt", "claude", "gemini", "grok", "deepseek"]
     }
   ],
   "pilot_agents": [
@@ -80,8 +61,7 @@
     "agent:qa",
     "agent:bug-hunter",
     "agent:conversation-intelligence",
-    "agent:devops",
-    "agent:capability-scout"
+    "agent:devops"
   ],
   "human_authority": {
     "owner_role": "director",
@@ -96,10 +76,6 @@
   },
   "memory": {
     "source_of_truth": "AndreOS/andreos-memory",
-    "scopes": [
-      "institutional",
-      "project",
-      "agent"
-    ]
+    "scopes": ["institutional", "project", "agent"]
   }
 }

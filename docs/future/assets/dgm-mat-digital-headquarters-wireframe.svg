@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+<title id="title">DGM-MAT Digital Headquarters — wireframe conceptual</title>
+<desc id="desc">Dark interface with fixed left navigation, isometric office in the centre, agent infirmary, warehouse and delivery vehicles, and request chat on the right.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#061426"/><stop offset="1" stop-color="#020812"/></linearGradient>
+  <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#0b2742"/><stop offset="1" stop-color="#06182b"/></linearGradient>
+  <linearGradient id="blue" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#0878ef"/><stop offset="1" stop-color="#19d5ee"/></linearGradient>
+  <style>
+    text{font-family:Inter,Segoe UI,Arial,sans-serif;fill:#e8f5ff} .muted{fill:#8eacc8;font-size:13px}.small{font-size:14px}.label{font-size:16px;font-weight:700}.panel{fill:url(#panel);stroke:#15517b;stroke-width:1.5}.tile{fill:#0b2037;stroke:#17486a;stroke-width:1}.line{stroke:#1b5279;stroke-width:1.5}.cyan{fill:#19d5ee}.green{fill:#23e6a2}.orange{fill:#ffb84d}.red{fill:#ff5e75}
+  </style>
+</defs>
+<rect width="1600" height="1000" fill="url(#bg)"/>
+<!-- header -->
+<rect x="0" y="0" width="1600" height="72" fill="#06101f" stroke="#17486a"/>
+<path d="M28 22 L48 10 L68 22 L68 48 L48 60 L28 48 Z" fill="none" stroke="#1a9dff" stroke-width="5"/><path d="M39 28 L48 22 L57 28 L57 42 L48 48 L39 42 Z" fill="none" stroke="#22d5f2" stroke-width="3"/>
+<text x="84" y="31" font-size="26" font-weight="800">DGM-MAT</text><text x="84" y="53" class="muted">DIGITAL HEADQUARTERS</text>
+<text x="320" y="29" class="small">Mais que uma empresa...</text><text x="320" y="49" class="muted">Um ecossistema de inteligência.</text>
+<g transform="translate(830 13)"><rect width="175" height="45" rx="9" class="tile"/><text x="15" y="19" class="muted">AGENTES ATIVOS</text><text x="15" y="37" class="label">18 / 24</text></g>
+<g transform="translate(1015 13)"><rect width="175" height="45" rx="9" class="tile"/><text x="15" y="19" class="muted">PEDIDOS EM CURSO</text><text x="15" y="37" class="label">08</text></g>
+<g transform="translate(1200 13)"><rect width="175" height="45" rx="9" class="tile"/><text x="15" y="19" class="muted">EM RECUPERAÇÃO</text><text x="15" y="37" class="label">01</text></g>
+<g transform="translate(1385 13)"><rect width="190" height="45" rx="9" class="tile"/><text x="15" y="19" class="muted">SISTEMA</text><text x="15" y="37" class="label green">● ONLINE</text></g>
+<!-- left nav -->
+<rect x="8" y="84" width="188" height="902" rx="12" class="panel"/>
+<text x="28" y="116" class="muted">EMPRESA</text>
+<g font-size="16">
+<rect x="18" y="130" width="168" height="43" rx="8" fill="#0758bb"/><text x="32" y="157" font-weight="700">⌂  Visão geral</text>
+<text x="32" y="205">▦  Escritório</text><text x="32" y="251">♙  Agentes</text><text x="32" y="297">✦  Formação</text><text x="32" y="343">⌘  Departamentos</text><text x="32" y="389">◎  Missões</text><text x="32" y="435">▣  Clientes / Pedidos</text><text x="32" y="481">▤  Armazém / Expedições</text><text x="32" y="527">✚  Enfermaria</text><text x="32" y="573">⚒  Remodelação</text><text x="32" y="619">↗  Expansão</text><text x="32" y="665">▧  Memória</text><text x="32" y="711">⚙  Configurações</text>
+</g>
+<line x1="25" y1="740" x2="178" y2="740" class="line"/><text x="28" y="770" class="label">Saúde da empresa</text><rect x="28" y="788" width="144" height="10" rx="5" fill="#173750"/><rect x="28" y="788" width="128" height="10" rx="5" fill="url(#blue)"/><text x="28" y="820" class="muted">Dados reais do backend</text>
+<!-- centre facility -->
+<rect x="210" y="84" width="935" height="650" rx="12" class="panel"/>
+<text x="232" y="116" class="label">ESCRITÓRIO VIVO</text><text x="415" y="116" class="muted">Representação conceptual • estados ligados ao backend</text>
+<!-- isometric floor plane -->
+<polygon points="260,230 650,140 1090,270 690,620" fill="#0d2638" stroke="#1a7597" stroke-width="2"/>
+<polygon points="260,230 650,140 650,168 260,258" fill="#16405a"/><polygon points="650,140 1090,270 1090,300 650,168" fill="#10334b"/>
+<!-- floor grids -->
+<g stroke="#17445c" stroke-width="1"><path d="M310 219 L735 565 M375 203 L800 510 M440 187 L870 455 M505 172 L940 400 M570 157 L1005 345"/><path d="M335 285 L770 188 M410 350 L850 211 M485 415 L930 233 M560 480 L1010 255 M635 545 L1080 277"/></g>
+<!-- departments -->
+<g><polygon points="290,244 455,206 535,270 370,313" fill="#123d55" stroke="#2584a3"/><text x="365" y="263" class="label">RECEÇÃO</text><text x="357" y="281" class="muted">Pedidos novos</text>
+<polygon points="490,197 640,162 715,185 565,224" fill="#15364b" stroke="#2584a3"/><text x="560" y="191" class="label">PATRÃO DGM-MAT</text>
+<polygon points="375,324 555,282 655,332 475,377" fill="#123c50" stroke="#2584a3"/><text x="460" y="330" class="label">DESENVOLVIMENTO</text>
+<polygon points="580,246 740,210 835,252 675,292" fill="#123c50" stroke="#2584a3"/><text x="660" y="249" class="label">REUNIÕES</text>
+<polygon points="700,305 855,270 950,310 795,353" fill="#123c50" stroke="#2584a3"/><text x="765" y="309" class="label">INVESTIGAÇÃO</text>
+<polygon points="500,397 650,361 740,405 590,448" fill="#123c50" stroke="#2584a3"/><text x="565" y="405" class="label">FORMAÇÃO</text>
+<polygon points="730,410 860,380 955,420 825,452" fill="#3d2036" stroke="#ff6478"/><text x="777" y="412" class="label red">ENFERMARIA ✚</text><text x="778" y="431" class="muted">Diagnóstico / recuperação</text>
+<polygon points="340,450 490,415 590,460 440,497" fill="#47351e" stroke="#ffb84d"/><text x="405" y="455" class="label orange">ARMAZÉM</text><text x="390" y="475" class="muted">Fila • produção • QA</text>
+<polygon points="605,490 755,455 850,500 700,537" fill="#173e40" stroke="#23e6a2"/><text x="665" y="494" class="label green">EXPEDIÇÃO</text><text x="655" y="513" class="muted">Pedidos de ajuda / entregas</text>
+<polygon points="865,477 1005,445 1060,475 920,510" fill="#123c50" stroke="#2584a3"/><text x="910" y="476" class="label">MEMÓRIA</text></g>
+<!-- agents -->
+<g><g transform="translate(414 286)"><circle r="15" fill="#0878ef" stroke="#74e5ff" stroke-width="2"/><text x="-5" y="5" font-size="14">A</text><rect x="20" y="-15" width="100" height="31" rx="6" class="tile"/><text x="28" y="-2" class="small">Dev-01</text><text x="28" y="10" class="muted">82%</text><rect x="28" y="17" width="75" height="4" rx="2" fill="#173750"/><rect x="28" y="17" width="61" height="4" rx="2" fill="#23e6a2"/></g>
+<g transform="translate(688 236)"><circle r="15" fill="#0878ef" stroke="#74e5ff" stroke-width="2"/><text x="-5" y="5" font-size="14">A</text><rect x="20" y="-15" width="110" height="31" rx="6" class="tile"/><text x="28" y="-2" class="small">Research-01</text><text x="28" y="10" class="muted">64%</text></g>
+<g transform="translate(780 410)"><circle r="15" fill="#7d2238" stroke="#ff6478" stroke-width="2"/><text x="-5" y="5" font-size="14">+</text><rect x="20" y="-15" width="122" height="35" rx="6" fill="#301b2a" stroke="#ff6478"/><text x="28" y="-2" class="small">Agent-Dev-05</text><text x="28" y="12" class="muted">Em recuperação</text></g></g>
+<!-- warehouse boxes and vans -->
+<g><rect x="372" y="478" width="30" height="25" fill="#d48a2c" stroke="#ffcf7d"/><rect x="405" y="470" width="28" height="24" fill="#b97822" stroke="#ffcf7d"/><rect x="434" y="482" width="28" height="24" fill="#d48a2c" stroke="#ffcf7d"/><rect x="374" y="507" width="28" height="24" fill="#b97822" stroke="#ffcf7d"/><rect x="405" y="500" width="30" height="25" fill="#d48a2c" stroke="#ffcf7d"/>
+<g transform="translate(695 545)"><rect width="58" height="26" rx="5" fill="#0b78bb" stroke="#4bdcff" stroke-width="2"/><rect x="38" y="-9" width="23" height="35" rx="4" fill="#07538c" stroke="#4bdcff" stroke-width="2"/><circle cx="14" cy="29" r="6" fill="#08121f" stroke="#8beaff" stroke-width="2"/><circle cx="48" cy="29" r="6" fill="#08121f" stroke="#8beaff" stroke-width="2"/><text x="10" y="17" font-size="11">DGM</text></g>
+<path d="M760 558 C805 575 840 566 870 544" fill="none" stroke="#23e6a2" stroke-width="3" stroke-dasharray="6 5"/><text x="803" y="587" class="muted">Rota simbólica de expedição</text></g>
+<!-- bottom panels -->
+<rect x="210" y="748" width="455" height="238" rx="12" class="panel"/><text x="232" y="779" class="label">AGENTES EM DESTAQUE</text>
+<g class="small"><text x="235" y="812">● Dev-01 — Desenvolvimento</text><text x="625" y="812" text-anchor="end" class="green">82%</text><rect x="235" y="821" width="390" height="6" rx="3" fill="#173750"/><rect x="235" y="821" width="320" height="6" rx="3" fill="url(#blue)"/>
+<text x="235" y="851">● Research-01 — Investigação</text><text x="625" y="851" text-anchor="end" class="cyan">64%</text><rect x="235" y="860" width="390" height="6" rx="3" fill="#173750"/><rect x="235" y="860" width="250" height="6" rx="3" fill="url(#blue)"/>
+<text x="235" y="890">✚ Agent-Dev-05 — Recuperação</text><text x="625" y="890" text-anchor="end" class="red">BLOQUEADO</text><text x="235" y="923" class="muted">Percentagens ilustrativas neste mockup;</text><text x="235" y="943" class="muted">na aplicação devem vir de métricas reais.</text></g>
+<rect x="680" y="748" width="465" height="238" rx="12" class="panel"/><text x="702" y="779" class="label">ARMAZÉM / FLUXO DE SERVIÇO</text>
+<g><rect x="702" y="798" width="196" height="65" rx="8" class="tile"/><text x="717" y="821" class="muted">A AGUARDAR ATRIBUIÇÃO</text><text x="717" y="848" font-size="23" font-weight="700">07</text><rect x="914" y="798" width="205" height="65" rx="8" class="tile"/><text x="929" y="821" class="muted">EM PRODUÇÃO</text><text x="929" y="848" font-size="23" font-weight="700">08</text>
+<rect x="702" y="875" width="196" height="65" rx="8" class="tile"/><text x="717" y="898" class="muted">CONTROLO DE QUALIDADE</text><text x="717" y="925" font-size="23" font-weight="700">03</text><rect x="914" y="875" width="205" height="65" rx="8" class="tile"/><text x="929" y="898" class="muted">PRONTOS A EXPEDIR</text><text x="929" y="925" font-size="23" font-weight="700">02</text></g>
+<!-- right chat -->
+<rect x="1160" y="84" width="432" height="902" rx="12" class="panel"/><text x="1182" y="116" class="label">PEDIDOS, RESPOSTAS E CHAT</text><line x1="1180" y1="130" x2="1570" y2="130" class="line"/>
+<rect x="1180" y="147" width="390" height="125" rx="9" class="tile"/><text x="1196" y="173" class="label">Pedido de cliente</text><text x="1196" y="197" class="small">Investigar sincronização de repositórios</text><text x="1196" y="218" class="muted">Prioridade alta • Em análise</text><rect x="1196" y="238" width="345" height="7" rx="3" fill="#173750"/><rect x="1196" y="238" width="120" height="7" rx="3" fill="url(#blue)"/>
+<rect x="1180" y="285" width="390" height="142" rx="9" class="tile"/><text x="1196" y="311" class="label">DGM-MAT — Patrão</text><text x="1196" y="337" class="small">Pedido classificado. A atribuição será</text><text x="1196" y="357" class="small">confirmada quando a missão existir no</text><text x="1196" y="377" class="small">backend e o agente iniciar o trabalho.</text><text x="1196" y="405" class="muted">Mensagem ilustrativa de mockup</text>
+<text x="1182" y="460" class="label">ATIVIDADE RECENTE</text><g class="small"><circle cx="1195" cy="490" r="6" class="green"/><text x="1212" y="495">Missão validada</text><text x="1548" y="495" text-anchor="end" class="muted">há 12 min</text><circle cx="1195" cy="528" r="6" class="orange"/><text x="1212" y="533">Novo pedido recebido</text><text x="1548" y="533" text-anchor="end" class="muted">há 28 min</text><circle cx="1195" cy="566" r="6" class="red"/><text x="1212" y="571">Agente em recuperação</text><text x="1548" y="571" text-anchor="end" class="muted">há 42 min</text><circle cx="1195" cy="604" r="6" class="cyan"/><text x="1212" y="609">Expedição iniciada</text><text x="1548" y="609" text-anchor="end" class="muted">há 1 h</text></g>
+<rect x="1180" y="650" width="390" height="145" rx="9" class="tile"/><text x="1196" y="676" class="label">ESTADO DA EMPRESA</text><text x="1196" y="705" class="small green">● Sistema online</text><text x="1196" y="728" class="muted">Estados desconhecidos não são</text><text x="1196" y="747" class="muted">assumidos como sucesso.</text><text x="1196" y="776" class="muted">Dados de demonstração no conceito</text>
+<rect x="1180" y="820" width="390" height="104" rx="9" fill="#071728" stroke="#27769b"/><text x="1196" y="846" class="muted">Escreve um pedido ao DGM-MAT…</text><line x1="1196" y1="860" x2="1538" y2="860" class="line"/><text x="1196" y="892" class="muted">[ campo de mensagem ]</text><rect x="1518" y="870" width="35" height="35" rx="8" fill="url(#blue)"/><text x="1527" y="893" font-size="18">➤</text>
+<text x="1182" y="955" class="muted">Pedidos • Chat • Notificações</text>
+</svg>
