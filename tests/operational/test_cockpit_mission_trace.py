@@ -38,8 +38,10 @@ def test_failed_mission_trace():
     # 1. Simulate invalid directive
     directive = "x" # too short
     response = client.post("/runtime/missions", headers=_headers(), json={"goal": directive})
-    assert response.status_code == 200 # API succeeds but mission fails internally
+    assert response.status_code == 200
     data = response.json()
+    assert data["status"] == "failed"
+    assert data["error"] == "Goal too short or invalid"
     mission_id = data["mission_id"]
 
     # 2. Verify Mission marked as FAILED in Truth State
