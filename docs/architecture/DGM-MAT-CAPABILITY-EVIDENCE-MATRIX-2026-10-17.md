@@ -11,8 +11,8 @@ Evidence basis: source inspection of `main` and GitHub Actions focused runs. Thi
 - The independent intent-planning/help-seeking suite passed: **21 tests**.
 - The persistent knowledge-store/self-analysis suite passed: **15 tests**.
 - The new self-evolution truthfulness regression suite passed: **5 tests**.
-- The durable execution-learning suite passed: **4 tests**, including persistence, privacy minimization and the MissionEngine outcome hook.
-- Total confirmed across these independent suites: **45 passing tests**.
+- The durable execution-learning suite previously passed **3 tests** for persistence and privacy minimization. A fourth test now checks the MissionEngine outcome hook and awaits its latest Actions result.
+- Confirmed total before that fourth test: **44 passing tests** across the independent suites.
 - The overall phase gate remains **FAIL/BLOCKED**, correctly: the mission/API, authentication/security and research/knowledge-fabric jobs require the private `DGM-Contracts` repository, and the required `DGM_CONTRACTS_READ_TOKEN` secret is not configured in Actions.
 - These results do **not** prove mission execution end to end. The tests that would exercise the real API/queue and private modular dependencies have not run successfully yet.
 
