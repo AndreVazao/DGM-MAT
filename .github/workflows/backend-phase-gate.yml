@@ -100,6 +100,8 @@ jobs:
         run: >-
           pytest -q
           tests/autonomy/test_local_mission_planner.py
+          tests/autonomy/test_mission_intent_router.py
+          tests/autonomy/test_mission_research.py
           tests/autonomy/test_mission_capability_discovery.py
           tests/autonomy/test_mission_help_seeking.py
           tests/autonomy/test_mission_human_intervention.py
@@ -211,6 +213,33 @@ jobs:
           tests/integration/test_research_layer.py
           tests/knowledge_graph/test_consolidation.py
 
+  minimal-chat-cockpit:
+    name: Minimal PC chat cockpit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout reviewed PR revision
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Compile and test the minimal chat shell
+        env:
+          PYTHONPATH: .
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m compileall -q cockpit/minimal_chat_window.py cockpit/widgets/command_console.py cockpit/app/main.py
+          pytest -q tests/cockpit/test_minimal_chat_window.py
+
   result-summary:
     name: Required phase-gate summary
     if: always()
@@ -219,6 +248,7 @@ jobs:
       - understand-help-research-learn
       - security-and-governed-execution
       - research-and-knowledge-fabric
+      - minimal-chat-cockpit
     runs-on: ubuntu-latest
     steps:
       - name: Fail unless every gate passed
@@ -227,12 +257,15 @@ jobs:
           LEARNING_RESULT: ${{ needs.understand-help-research-learn.result }}
           SECURITY_RESULT: ${{ needs.security-and-governed-execution.result }}
           RESEARCH_RESULT: ${{ needs.research-and-knowledge-fabric.result }}
+          COCKPIT_RESULT: ${{ needs.minimal-chat-cockpit.result }}
         run: |
           printf 'Mission API/runtime: %s\n' "$MISSION_RESULT"
           printf 'Understand/help/research/learn: %s\n' "$LEARNING_RESULT"
           printf 'Security/governed execution: %s\n' "$SECURITY_RESULT"
           printf 'Research/knowledge fabric: %s\n' "$RESEARCH_RESULT"
+          printf 'Minimal PC chat cockpit: %s\n' "$COCKPIT_RESULT"
           test "$MISSION_RESULT" = success
           test "$LEARNING_RESULT" = success
           test "$SECURITY_RESULT" = success
           test "$RESEARCH_RESULT" = success
+          test "$COCKPIT_RESULT" = success

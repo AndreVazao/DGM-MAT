@@ -138,3 +138,22 @@ def test_cors_is_not_wildcard_and_rejects_untrusted_preflight(client):
         },
     )
     assert response.status_code in {400, 403}
+
+def test_queue_decision_routes_require_operator_session(client):
+    assert client.post("/runtime/queue/actions/999999/approve").status_code == 401
+    assert client.post(
+        "/runtime/queue/actions/999999/reject",
+        json={"reason": "reject for security test"},
+    ).status_code == 401
+
+    read_only_token = _session({"local-client"})
+    headers = {"Authorization": f"Bearer {read_only_token}"}
+    assert client.post(
+        "/runtime/queue/actions/999999/approve", headers=headers
+    ).status_code == 403
+    assert client.post(
+        "/runtime/queue/actions/999999/reject",
+        headers=headers,
+        json={"reason": "reject for security test"},
+    ).status_code == 403
+
