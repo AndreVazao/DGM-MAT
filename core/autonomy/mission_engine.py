@@ -1255,6 +1255,7 @@ class MissionEngine:
             except ValueError:
                 execution_duration = 0.0
         result = {
+            "status": "failed",
             "mission_id": mission.mission_id,
             "handler": "mission_execution",
             "error_type": type(exc).__name__,
