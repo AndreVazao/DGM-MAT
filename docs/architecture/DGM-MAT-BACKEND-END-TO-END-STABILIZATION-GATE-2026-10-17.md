@@ -26,6 +26,9 @@ The only current delivery goal is a stable DGM-MAT backend and a minimal PC chat
 - Generic approved missions still receive a proposed plan, but now terminate as `FAILED` with an explicit `NotImplementedError` until a real generic executor is registered. This prevents the previous false implication that planning meant execution.
 - The default cockpit entrypoint now opens a single chat view. It submits one mission, polls actual mission state, reports final output/errors, and supports explicit chat commands `aprovar ação <id>` and `rejeitar ação <id> <motivo>`. It does not resubmit a mission on polling timeout.
 - Self-evolution placeholder generation and simulated sandbox success were changed to fail closed; focused regression tests were added.
+- A deterministic multilingual intent router now recognizes only the allowlisted read-only repository-listing handler. Unknown or mutating requests are not auto-approved.
+- Failure handling now performs a bounded local search over DGM-MAT `core/`, `docs/` and `tests/` before preparing a free-only help packet. It does not browse the internet, execute commands, or search user workspaces.
+- A persistent, privacy-minimized execution-observation store is wired to terminal mission outcomes. Observations are not treated as validated reusable lessons.
 - An independent CI job was added for the minimal chat UI so its syntax and UI tests can run without the private companion package.
 
 These are code changes on the stabilization branch, not evidence of a successful Windows run or full end-to-end execution. The latest queued Actions revision must finish before its independent UI test result can be reported. The private-package-dependent mission/security/research gates remain blocked until `DGM_CONTRACTS_READ_TOKEN` is configured.
