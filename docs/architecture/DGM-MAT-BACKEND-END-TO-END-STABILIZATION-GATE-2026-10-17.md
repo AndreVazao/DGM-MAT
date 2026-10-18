@@ -19,6 +19,17 @@ The only current delivery goal is a stable DGM-MAT backend and a minimal PC chat
 - `cockpit/widgets/command_console.py`: a non-blocking HTTP console exists and posts a directive to the mission API, but its success message means only “mission created”; it does not wait for or prove a final result.
 - `cockpit/main_window.py`: the desktop window is a multi-tab operations console with a command panel, not the intended minimal chat cockpit.
 
+## Stabilization branch changes prepared (not yet merged or fully verified)
+
+- Mission creation now returns the durable queue `action_id` and its current `action_status`; mission listing exposes the same correlation.
+- Authenticated operator-only endpoints were added to approve/reject one durable queue action. Rejection synchronizes the associated mission to `CANCELLED` with the operator reason.
+- Generic approved missions still receive a proposed plan, but now terminate as `FAILED` with an explicit `NotImplementedError` until a real generic executor is registered. This prevents the previous false implication that planning meant execution.
+- The default cockpit entrypoint now opens a single chat view. It submits one mission, polls actual mission state, reports final output/errors, and supports explicit chat commands `aprovar ação <id>` and `rejeitar ação <id> <motivo>`. It does not resubmit a mission on polling timeout.
+- Self-evolution placeholder generation and simulated sandbox success were changed to fail closed; focused regression tests were added.
+- An independent CI job was added for the minimal chat UI so its syntax and UI tests can run without the private companion package.
+
+These are code changes on the stabilization branch, not evidence of a successful Windows run or full end-to-end execution. The latest queued Actions revision must finish before its independent UI test result can be reported. The private-package-dependent mission/security/research gates remain blocked until `DGM_CONTRACTS_READ_TOKEN` is configured.
+
 ## Blocking findings
 
 1. **Mission creation is not mission completion.** The current cockpit reports the ID after creation only. It must show the real status and result/error, and must not imply execution succeeded just because the POST succeeded.
