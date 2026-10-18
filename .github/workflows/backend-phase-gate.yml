@@ -277,6 +277,30 @@ jobs:
       - name: Compile source and test files
         run: python -m compileall -q core cockpit shared tests
 
+  queue-safety-regression:
+    name: Durable queue decision safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout reviewed PR revision
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements/runtime.txt
+      - name: Install runtime dependencies and pytest
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements/runtime.txt pytest
+      - name: Verify queue lifecycle and idempotent decisions
+        env:
+          PYTHONPATH: .
+        run: pytest -q tests/runtime/test_safe_action_queue.py
+
   result-summary:
     name: Required phase-gate summary
     if: always()
@@ -287,6 +311,7 @@ jobs:
       - research-and-knowledge-fabric
       - minimal-chat-cockpit
       - python-source-compile
+      - queue-safety-regression
     runs-on: ubuntu-latest
     steps:
       - name: Fail unless every gate passed
@@ -297,6 +322,7 @@ jobs:
           RESEARCH_RESULT: ${{ needs.research-and-knowledge-fabric.result }}
           COCKPIT_RESULT: ${{ needs.minimal-chat-cockpit.result }}
           COMPILE_RESULT: ${{ needs.python-source-compile.result }}
+          QUEUE_RESULT: ${{ needs.queue-safety-regression.result }}
         run: |
           printf 'Mission API/runtime: %s\n' "$MISSION_RESULT"
           printf 'Understand/help/research/learn: %s\n' "$LEARNING_RESULT"
@@ -310,3 +336,4 @@ jobs:
           test "$RESEARCH_RESULT" = success
           test "$COCKPIT_RESULT" = success
           test "$COMPILE_RESULT" = success
+          test "$QUEUE_RESULT" = success
