@@ -10,6 +10,7 @@ from typing import List, Optional, Dict, Any
 from core.storage.storage_manager import storage_manager
 from core.repository_cognition.repo_scanner import CognitiveRepoScanner
 from core.autonomy.mission_engine import mission_engine
+from core.autonomy.mission_models import MissionStatus
 from core.workspace.workspace_manager import workspace_manager
 from core.connectors.boundary import create_runtime_connectors
 from core.runtime.runtime_state_store import state_store, StateEvents
@@ -313,7 +314,12 @@ def reject_queue_action(action_id: int, rejection: QueueRejection, request: Requ
     updated = queue.get_action(action_id)
     if not updated or updated.get("status") != "REJECTED":
         raise HTTPException(status_code=503, detail="Queue rejection could not be persisted")
-    return {"status": "rejected", "action_id": action_id, "rejected_by": operator, "reason": rejection.reason.strip()}
+    mission_id = (action.get("payload") or {}).get("mission_id")
+    mission = mission_engine.active_missions.get(mission_id) if mission_id else None
+    if mission and mission.status not in {MissionStatus.COMPLETED, MissionStatus.CANCELLED, MissionStatus.FAILED}:
+        mission.metadata["queue_rejection"] = {"action_id": action_id, "operator": operator, "reason": rejection.reason.strip()}
+        mission_engine._update_status(mission, MissionStatus.CANCELLED, {"error": "Mission rejected by operator: " + rejection.reason.strip()})
+    return {"status": "rejected", "action_id": action_id, "mission_id": mission_id, "rejected_by": operator, "reason": rejection.reason.strip()}
 
 
 @router.get("/queue")
