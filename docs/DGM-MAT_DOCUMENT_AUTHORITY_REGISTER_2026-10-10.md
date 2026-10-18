@@ -29,6 +29,8 @@ A diretiva `DGM-MAT_PRIMARY_MISSION_AND_EVOLVING_TRUTH_2026-10-10.md` é a autor
 
 **NOVA AUTORIDADE ARQUITETURAL:** [`architecture/DGM-MAT-ARCHITECTURE-CONSTITUTION-MODULAR-DEPARTMENTS-2026-10-18.md`](architecture/DGM-MAT-ARCHITECTURE-CONSTITUTION-MODULAR-DEPARTMENTS-2026-10-18.md).
 
+**INVENTÁRIO DOCUMENTAL DESTA RECUPERAÇÃO:** [`architecture/DGM-MAT-RECOVERY-UNIFICATION-INVENTORY-2026-10-18.md`](architecture/DGM-MAT-RECOVERY-UNIFICATION-INVENTORY-2026-10-18.md). O inventário é dirigido e declara explicitamente o que ainda não foi verificado.
+
 Esta Constituição governa a separação dos repositórios, a hierarquia central/departamentos, as dependências entre módulos, a independência do core em relação ao cockpit e a missão de inteligência de conversações. A diretiva primária de missão/verdade evolutiva continua a governar a prioridade operacional e a proveniência; os dois documentos são complementares e não se anulam.
 
 ### Inventário dirigido de documentos de escritório virtual e organização
