@@ -9,6 +9,7 @@ from uuid import uuid4
 from datetime import datetime, timedelta
 
 from core.autonomy.mission_models import Mission, MissionStatus, SubTask
+from core.autonomy.mission_intent_router import classify_mission_intent
 from core.storage.storage_manager import storage_manager
 from core.observability.logger import dgm_logger
 from core.runtime.runtime_state_store import state_store, StateEvents
@@ -318,7 +319,8 @@ class MissionEngine:
 
         # Validation Logic
         status = MissionStatus.CREATED
-        metadata = {}
+        intent_decision = classify_mission_intent(goal)
+        metadata = {"intent": intent_decision.to_dict()}
         error_msg = None
 
         if not goal or len(goal) < 3:
@@ -359,8 +361,8 @@ class MissionEngine:
             # Transition to QUEUED immediately
             self._update_status(mission, MissionStatus.QUEUED)
 
-            # For "lista as minhas repos", we auto-approve in the queue for demonstration/testing
-            if "lista" in goal.lower() and "repos" in goal.lower():
+            # Only a positively classified, read-only registered handler may auto-run.
+            if intent_decision.intent == "list_repositories" and intent_decision.supported and not intent_decision.requires_approval:
                 dgm_logger.info(f"MissionEngine: Auto-approving {mission_id} in queue.")
                 self.action_queue.approve(action_id, operator="system_auto")
 
@@ -451,7 +453,8 @@ class MissionEngine:
                 # applies to every mission path, not just repository-listing missions.
                 self._mark_execution_started(mission)
 
-                if "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
+                intent = classify_mission_intent(mission.goal)
+                if intent.intent == "list_repositories" and intent.supported:
                     result = self._execute_list_repositories_mission(mission)
                     self._finish_mission_success(mission, result)
                     return result
@@ -661,10 +664,18 @@ class MissionEngine:
             if decision == "approve" or approval_status == "approved":
                 dgm_logger.info(f"MISSION_STARTED: {mission.mission_id}")
                 mission.logs.append("User approved mission via legacy interface.")
-                if "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
+                intent = classify_mission_intent(mission.goal)
+                if intent.intent == "list_repositories" and intent.supported:
                     self._mark_execution_started(mission)
                 else:
                     self.decompose_mission(mission.mission_id)
+                    self._finish_mission_failure(
+                        mission,
+                        NotImplementedError(
+                            "Mission was planned, but no generic task executor is registered. "
+                            "The subtasks are proposals only and were not executed."
+                        ),
+                    )
             elif decision == "reject":
                 dgm_logger.warning(f"MISSION_FAILED: {mission.mission_id} - Rejected by user")
                 mission.logs.append("Mission rejected by user.")
@@ -683,7 +694,8 @@ class MissionEngine:
                 return
 
         # Execute directly for specific goals that do not need subtasks.
-        if not mission.subtasks and "lista" in mission.goal.lower() and "repos" in mission.goal.lower():
+        intent = classify_mission_intent(mission.goal)
+        if not mission.subtasks and intent.intent == "list_repositories" and intent.supported:
             try:
                 result = self._execute_list_repositories_mission(mission)
                 self._finish_mission_success(mission, result)
