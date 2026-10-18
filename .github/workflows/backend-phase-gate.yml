@@ -100,6 +100,7 @@ jobs:
         run: >-
           pytest -q
           tests/autonomy/test_local_mission_planner.py
+          tests/autonomy/test_mission_intent_router.py
           tests/autonomy/test_mission_capability_discovery.py
           tests/autonomy/test_mission_help_seeking.py
           tests/autonomy/test_mission_human_intervention.py
