@@ -1197,15 +1197,15 @@ class MissionEngine:
                     )
                 matches = report.get("results", [])[:3]
                 if matches:
-                    output += "\\n\\nPesquisa local no DGM-MAT (sem rede nem comandos):"
+                    output += "\n\nPesquisa local no DGM-MAT (sem rede nem comandos):"
                     for item in matches:
                         output += (
-                            f"\\n- {item.get('path')}:{item.get('line')}: "
+                            f"\n- {item.get('path')}:{item.get('line')}: "
                             f"{item.get('snippet')}"
                         )
                 else:
                     output += (
-                        "\\n\\nPesquisa local no DGM-MAT: não encontrei evidência relevante "
+                        "\n\nPesquisa local no DGM-MAT: não encontrei evidência relevante "
                         "nos ficheiros pesquisados; não foram feitas chamadas externas nem executados comandos."
                     )
                 mission.logs.append(
@@ -1219,7 +1219,7 @@ class MissionEngine:
                     "external_calls": 0,
                     "commands_executed": 0,
                 }
-                output += "\\n\\nPesquisa local bloqueada; não foram feitas chamadas externas nem executados comandos."
+                output += "\n\nPesquisa local bloqueada; não foram feitas chamadas externas nem executados comandos."
                 mission.logs.append("Local help research was blocked; no network call or command execution occurred.")
 
         # If the mission needs free investigation, prepare a reusable handoff packet.
