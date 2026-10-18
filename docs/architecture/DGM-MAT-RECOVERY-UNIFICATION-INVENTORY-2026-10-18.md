@@ -46,7 +46,28 @@ A recuperação integra alterações e história de trabalho do PC e do GitHub. 
 | `docs/architecture/DGM-MAT-BACKEND-END-TO-END-STABILIZATION-GATE-2026-10-17.md` | **GATE DE TESTES** | Critérios de validação do backend; testes verdes provam apenas o âmbito efetivamente executado. |
 | `docs/architecture/DGM-MAT-CAPABILITY-EVIDENCE-MATRIX-2026-10-17.md` | **MATRIZ DE EVIDÊNCIA** | Liga capacidades a testes/evidência e lacunas; manter alinhada com o código real. |
 
-## 4. Conclusões técnicas extraídas da documentação
+| `docs/future/README-DIGITAL-HEADQUARTERS-RESEARCH-PACKAGE.md` | **PONTE DE COMPATIBILIDADE** | Era idêntico ao índice em `docs/architecture/`; foi substituído por um apontador com links para preservar URLs antigas. O conteúdo integral continua no caminho canónico e no histórico Git. |
+
+## 4. Inventário inicial das repos satélite verificadas em GitHub
+
+A leitura de metadados e da raiz de cada repositório na branch `main` produziu o seguinte estado observável. Isto verifica a existência e o conteúdo superficial da raiz, não valida o funcionamento completo.
+
+| Repositório | Visibilidade observada | Evidência na raiz / package | Conclusão segura |
+|---|---|---|---|
+| `AndreVazao/DGM-Contracts` | **Privado** | `pyproject.toml`, `src/`, `tests/`; pacote `dgm-contracts 0.1.0`, dependência Pydantic. | Existe uma implementação empacotada; CI não a consegue clonar anonimamente. O workflow prevê `DGM_CONTRACTS_READ_TOKEN`. Não tornar público nem retirar a dependência para contornar o acesso. |
+| `AndreVazao/DGM-MAT-Agents` | Público | `src/`, `tests/`, `pyproject.toml`; pacote `dgm-mat-agents 0.1.0` depende de `dgm-contracts`. O README afirma que o código original é preservado no Core durante a migração e que a remoção aguarda migração dos consumers e regressão verde. | Fronteira modular intencional, com coexistência temporária documentada. É necessário validar os imports/consumers reais antes de mover ou remover código do Core. |
+| `AndreVazao/DGM-MAT-Connectors` | Público | `src/`, `tests/`, `pyproject.toml`; README enumera conectores externos. | Pacote modular existe na raiz; cobertura e utilização efetiva pelo Core ainda exigem auditoria de imports e testes de integração. |
+| `AndreVazao/DGM-MAT-Runtime` | Público | Apenas `README.md` na raiz, sem `pyproject.toml`, `src/` ou `tests/`. | Scaffold/placeholder, não há evidência de pacote instalável na branch `main` consultada. |
+| `AndreVazao/DGM-MAT-Orchestrator` | Público | Apenas `README.md` na raiz, sem `pyproject.toml`, `src/` ou `tests/`. | Scaffold/placeholder, não há evidência de pacote instalável na branch `main` consultada. |
+| `AndreVazao/DGM-Cockpit-Frontend` | Público | `index.html`, `app.js`, `styles.css`, `manifest.json`, `tests/`, documentação e packaging. | Há um frontend real na árvore; o próprio README mantém pendente a validação visual/integração no PC. Não é o cérebro e não deve ser condição de execução do backend. |
+
+### Consequência para o workflow de backend
+
+`.github/workflows/backend-phase-gate.yml` tenta restaurar Contracts, Connectors e Agents como dependências satélite em vários jobs. Isto é coerente com a arquitetura modular e **não deve ser removido apenas para tornar o CI verde**. O bloqueio concreto identificado é que Contracts é privado, enquanto o workflow tenta clone anónimo se o secret `DGM_CONTRACTS_READ_TOKEN` não existir. É um problema de acesso/credencial de CI a resolver de forma segura, não prova de que a repo deva ser fundida no Core.
+
+A auditoria desta sessão ainda não verificou todas as imports/callers, todos os manifests e a compatibilidade de versões de cada satélite; por isso não declara as integrações completas nem autoriza eliminar código duplicado em migração.
+
+## 5. Conclusões técnicas extraídas da documentação
 
 1. **O cérebro deve funcionar sem cockpit.** A UI, renderer e telefone são clientes/projeções; não são fonte única de verdade nem donos do ciclo de vida das missões.
 2. **Os departamentos têm responsabilidades, chefias e autonomia delimitadas.** A autonomia operacional não lhes permite mudar a política central, permissões, memória nuclear ou validação final.
@@ -57,7 +78,7 @@ A recuperação integra alterações e história de trabalho do PC e do GitHub. 
 7. **Há pelo menos uma duplicação documental exata** do conceito da sede digital entre `docs/architecture/` e `docs/future/`. O mesmo conteúdo não deve ser mantido em dois sítios indefinidamente, mas a remoção só ocorre após auditoria de referências e confirmação de que o índice canónico aponta para a cópia mantida.
 8. **Não se fez uma leitura semântica linha a linha de todos os documentos de todas as pastas, nem de todas as repos satélite, branches e conteúdos locais do PC.** O inventário é dirigido e explicitamente parcial.
 
-## 5. Próximas ações de auditoria — ordem obrigatória
+## 6. Próximas ações de auditoria — ordem obrigatória
 
 1. Obter a lista completa das repos autorizadas e confirmar visibilidade, branch principal, estado e permissões.
 2. Comparar árvore/commits do ramo de recuperação com os ramos do PC e GitHub; registar origem de cada bloco de trabalho.
@@ -67,7 +88,7 @@ A recuperação integra alterações e história de trabalho do PC e do GitHub. 
 6. Pesquisar referências ao documento duplicado da sede digital, eleger uma localização canónica e só então remover a cópia redundante com registo.
 7. Só classificar um documento como `SUPERADO` quando houver sucessor explícito e referências atualizadas. Não apagar histórico sem autorização.
 
-## 6. Regra de comunicação de estado
+## 7. Regra de comunicação de estado
 
 - **DOCUMENTADO** não significa **IMPLEMENTADO**.
 - **IMPLEMENTADO** não significa **VALIDADO**.
