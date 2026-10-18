@@ -1,7 +1,8 @@
 import pytest
 from core.autonomy.mission_engine import MissionEngine
 from core.organization.message_bus import InternalMessageBus
-from core.autonomy.mission_models import MissionStatus
+from core.autonomy.mission_models import Mission, MissionStatus
+from core.learning.learning_engine import LearningEngine
 from core.autonomy.active_runtime.objective_engine import ObjectiveEngine
 
 def test_mission_lifecycle():
@@ -44,4 +45,48 @@ def test_approved_generic_mission_does_not_claim_execution_without_executor():
     assert mission.subtasks
     assert all(task.status != "completed" for task in mission.subtasks)
     assert mission.metadata["result"]["error_type"] == "NotImplementedError"
+
+def test_failed_mission_surfaces_local_research_evidence(tmp_path, monkeypatch):
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    engine.learning_engine = LearningEngine(tmp_path / "observations.jsonl")
+    engine.local_mission_research = type(
+        "ResearchStub",
+        (),
+        {"search": lambda self, goal, unknowns: {
+            "status": "EVIDENCE_FOUND",
+            "results": [{
+                "path": "docs/executor-guide.md",
+                "line": 12,
+                "snippet": "No generic executor is registered.",
+                "score": 1,
+            }],
+            "files_scanned": 4,
+            "external_calls": 0,
+            "commands_executed": 0,
+        }},
+    )()
+    monkeypatch.setattr(engine, "save_mission", lambda mission: None)
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    monkeypatch.setattr(engine, "_emit_mission_result", lambda mission, result: None)
+    monkeypatch.setattr(
+        engine, "prepare_specialist_collaboration",
+        lambda mission_id, context="": {"status": "PREPARED"},
+    )
+    mission = Mission(
+        mission_id="mission_research_test",
+        goal="Inspect executor routing",
+        description="Test local evidence in failure result",
+        status=MissionStatus.RUNNING,
+    )
+    engine.active_missions[mission.mission_id] = mission
+
+    result = engine._finish_mission_failure(
+        mission, NotImplementedError("No generic executor is registered")
+    )
+
+    assert mission.status == MissionStatus.FAILED
+    assert mission.metadata["help_research"]["status"] == "EVIDENCE_FOUND"
+    assert "docs/executor-guide.md:12" in result["output"]
+    assert "No generic executor is registered." in result["output"]
+    assert mission.metadata["learning_observation"]["promotion_status"] == "OBSERVATION_ONLY"
 
