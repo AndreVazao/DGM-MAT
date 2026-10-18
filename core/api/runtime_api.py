@@ -4,8 +4,8 @@ import json
 import os
 import time
 import psutil
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from core.storage.storage_manager import storage_manager
 from core.repository_cognition.repo_scanner import CognitiveRepoScanner
@@ -33,6 +33,9 @@ class MissionCreate(BaseModel):
 
 class ApprovalDecision(BaseModel):
     decision: str # "approve" or "reject"
+
+class QueueRejection(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
 
 @router.websocket("/ws")
 async def runtime_websocket_endpoint(websocket: WebSocket):
@@ -264,6 +267,42 @@ def list_approvals():
         }
         for item in manager.get_pending_approvals()
     ]
+
+@router.post("/queue/actions/{action_id}/approve")
+def approve_queue_action(action_id: int, request: Request):
+    """Explicit operator approval for one durable SafeActionQueue action."""
+    queue = SafeActionQueue()
+    action = queue.get_action(action_id)
+    if action is None:
+        raise HTTPException(status_code=404, detail="Queue action not found")
+    if action.get("status") != "QUEUED":
+        raise HTTPException(status_code=409, detail=f"Queue action is {action.get('status')}, not QUEUED")
+    principal = getattr(request.state, "dgm_principal", {}) or {}
+    operator = str(principal.get("subject") or "local-operator")
+    queue.approve(action_id, operator=operator)
+    updated = queue.get_action(action_id)
+    if not updated or updated.get("status") != "APPROVED" or not updated.get("is_approved"):
+        raise HTTPException(status_code=503, detail="Queue approval could not be persisted")
+    return {"status": "approved", "action_id": action_id, "approved_by": operator}
+
+
+@router.post("/queue/actions/{action_id}/reject")
+def reject_queue_action(action_id: int, rejection: QueueRejection, request: Request):
+    """Explicit operator rejection for one durable SafeActionQueue action."""
+    queue = SafeActionQueue()
+    action = queue.get_action(action_id)
+    if action is None:
+        raise HTTPException(status_code=404, detail="Queue action not found")
+    if action.get("status") != "QUEUED":
+        raise HTTPException(status_code=409, detail=f"Queue action is {action.get('status')}, not QUEUED")
+    principal = getattr(request.state, "dgm_principal", {}) or {}
+    operator = str(principal.get("subject") or "local-operator")
+    queue.reject(action_id, reason=rejection.reason.strip(), operator=operator)
+    updated = queue.get_action(action_id)
+    if not updated or updated.get("status") != "REJECTED":
+        raise HTTPException(status_code=503, detail="Queue rejection could not be persisted")
+    return {"status": "rejected", "action_id": action_id, "rejected_by": operator, "reason": rejection.reason.strip()}
+
 
 @router.get("/queue")
 def get_queue_status():
