@@ -10,15 +10,15 @@ Este índice liga a visão original do escritório digital DGM-MAT aos requisito
 
 ## Pacote conceptual principal
 
-Os documentos abaixo estão presentes em `docs/future/`:
+Os documentos de pesquisa abaixo permanecem em `docs/future/`. O conceito principal e o índice do pacote documental têm uma única cópia canónica em `docs/architecture/`; os caminhos antigos em `docs/future/` são apenas pontes de compatibilidade.
 
-- [Conceito do Digital Headquarters](../future/DGM-MAT-DIGITAL-HEADQUARTERS-CONCEPT-2026-10-12.md)
+- [Conceito canónico do Digital Headquarters](DGM-MAT-DIGITAL-HEADQUARTERS-CONCEPT-2026-10-12.md)
 - [Runtime adaptável e trabalhadores distribuídos](../future/DGM-MAT-ADAPTIVE-RUNTIME-AND-DISTRIBUTED-WORKERS-2026-10-12.md)
 - [Ferramentas, skills e roteiro de autonomia](../future/DGM-MAT-ADAPTIVE-TOOLS-SKILLS-AND-AUTONOMY-ROADMAP-2026-10-13.md)
 - [Soberania dos departamentos e governação de agentes](../future/DGM-MAT-DEPARTMENT-SOVEREIGNTY-AND-AGENT-GOVERNANCE-2026-10-13.md)
 - [Agentes externos e autoaperfeiçoamento](../future/DGM-MAT-EXTERNAL-AGENTS-AND-SELF-IMPROVEMENT-RESEARCH-2026-10-12.md)
 - [Pesquisa de tecnologias para escritório virtual](../future/DGM-MAT-VIRTUAL-OFFICE-TECHNOLOGY-RESEARCH-2026-10-12.md)
-- [Índice do pacote de investigação](../future/README-DIGITAL-HEADQUARTERS-RESEARCH-PACKAGE.md)
+- [Índice canónico do pacote de investigação](README-DIGITAL-HEADQUARTERS-RESEARCH-PACKAGE.md)
 - [Wireframe SVG](../future/assets/dgm-mat-digital-headquarters-wireframe.svg)
 
 ## Requisitos e plano complementar
@@ -40,6 +40,11 @@ Os documentos abaixo estão presentes em `docs/future/`:
 
 ## Resultado da auditoria documental de 2026-10-17
 
-A auditoria da árvore recursiva de `main` confirmou a presença do pacote conceptual, do wireframe e dos documentos complementares de arquitetura. Foram encontrados materiais relacionados tanto em `docs/future/` como em `docs/architecture/`; este índice torna explícita a relação entre eles sem apagar ou substituir conteúdo histórico.
+A auditoria documental de 2026-10-17 confirmou a presença dos materiais conceptuais. Na revisão de 2026-10-18, as duas cópias exatas foram identificadas por blob SHA e os caminhos duplicados em `docs/future/` foram substituídos por ponteiros de compatibilidade para as versões canónicas em `docs/architecture/`. O wireframe e os documentos de pesquisa continuam nos seus caminhos próprios. O histórico Git conserva o conteúdo anterior.
 
 **Limite da validação:** esta é uma confirmação de presença e ligação documental no GitHub. Não equivale a uma comparação semântica linha a linha de todas as versões históricas, nem a testes de software, build ou validação visual/runtime.
+
+
+## Autoridade arquitetural vinculativa — 2026-10-18
+
+A modularidade e a distinção entre recuperação PC + GitHub e fusão de repositórios são regidas pela [Constituição arquitetural do DGM-MAT](DGM-MAT-ARCHITECTURE-CONSTITUTION-MODULAR-DEPARTMENTS-2026-10-18.md). O inventário da revisão está em [DGM-MAT Recovery & Unification Inventory](DGM-MAT-RECOVERY-UNIFICATION-INVENTORY-2026-10-18.md).
