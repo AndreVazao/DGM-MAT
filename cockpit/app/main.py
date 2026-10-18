@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 from PySide6.QtWidgets import QApplication
-from cockpit.main_window import MainWindow
+from cockpit.minimal_chat_window import MinimalChatWindow
 
 def load_styles(app):
     style_path = Path(
@@ -20,6 +20,6 @@ def load_styles(app):
 def run_cockpit():
     app = QApplication(sys.argv)
     load_styles(app)
-    window = MainWindow()
+    window = MinimalChatWindow()
     window.show()
     sys.exit(app.exec())

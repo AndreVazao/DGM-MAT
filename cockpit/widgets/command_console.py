@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import html
+import re
+import time
 import requests
 from datetime import datetime
 from typing import Any
@@ -23,7 +25,7 @@ from PySide6.QtWidgets import (
 
 
 class _RuntimeRequestWorker(QThread):
-    """Run all HTTP work outside the Qt GUI thread and return bounded results."""
+    """Submit one mission, handle explicit queue decisions, and report real status."""
 
     completed = Signal(str, str, str)
 
@@ -33,79 +35,190 @@ class _RuntimeRequestWorker(QThread):
         self.directive = directive
         self.status_only = status_only
 
+    def _request(self, method: str, suffix: str, **kwargs):
+        return authenticated_request(
+            method, f"{self.api_url}{suffix}", **kwargs
+        )
+
+    def _mission(self, mission_id: str) -> dict[str, Any] | None:
+        response = self._request("GET", "/missions", timeout=(2, 5))
+        if response.status_code != 200:
+            raise RuntimeError(f"Não foi possível consultar as missões (HTTP {response.status_code}).")
+        data = response.json()
+        if not isinstance(data, list):
+            raise ValueError("O runtime devolveu uma lista de missões inválida.")
+        return next(
+            (item for item in data if isinstance(item, dict) and item.get("mission_id") == mission_id),
+            None,
+        )
+
+    def _finish_from_mission(self, mission: dict[str, Any]) -> bool:
+        status = str(mission.get("status", "UNKNOWN")).upper()
+        mission_id = str(mission.get("mission_id", "desconhecida"))
+        result = mission.get("result") or (mission.get("metadata") or {}).get("result") or {}
+        output = mission.get("output") or result.get("output") or result.get("summary")
+
+        if status == "COMPLETED":
+            self.completed.emit(
+                "DGM-MAT",
+                f"Missão concluída ({mission_id}).\n{output or 'O runtime confirmou conclusão, mas não devolveu texto de resultado.'}",
+                "info",
+            )
+            return True
+        if status == "FAILED":
+            self.completed.emit(
+                "DGM-MAT",
+                f"Missão falhou ({mission_id}).\n{mission.get('error') or result.get('error') or output or 'O runtime não forneceu detalhes do erro.'}",
+                "error",
+            )
+            return True
+        if status == "CANCELLED":
+            self.completed.emit(
+                "Sistema",
+                f"Missão cancelada ({mission_id}).\n{mission.get('error') or 'A ação foi recusada pelo operador.'}",
+                "system",
+            )
+            return True
+        if status == "WAITING_FOR_USER":
+            intervention = (mission.get("metadata") or {}).get("human_intervention") or {}
+            self.completed.emit(
+                "DGM-MAT",
+                f"A missão ({mission_id}) precisa da tua intervenção.\n{intervention.get('instructions') or intervention.get('reason') or 'Consulta o pedido de intervenção na missão.'}",
+                "system",
+            )
+            return True
+        if status == "APPROVAL_PENDING":
+            self.completed.emit(
+                "DGM-MAT",
+                f"A missão ({mission_id}) aguarda uma decisão de aprovação.",
+                "system",
+            )
+            return True
+        return False
+
+    def _poll_mission(self, mission_id: str, *, timeout_seconds: int = 65) -> None:
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline:
+            mission = self._mission(mission_id)
+            if mission is None:
+                raise RuntimeError(f"A missão {mission_id} ainda não aparece na consulta do runtime.")
+            if self._finish_from_mission(mission):
+                return
+
+            status = str(mission.get("status", "UNKNOWN")).upper()
+            action_status = str(mission.get("action_status") or "").upper()
+            action_id = mission.get("action_id")
+            if status == "QUEUED" and action_status == "QUEUED":
+                self.completed.emit(
+                    "DGM-MAT",
+                    f"Missão registada ({mission_id}), mas aguarda aprovação explícita da ação {action_id}. "
+                    f"Se confirmares, escreve: aprovar ação {action_id}. Para recusar: rejeitar ação {action_id} motivo.",
+                    "system",
+                )
+                return
+            time.sleep(2)
+
+        self.completed.emit(
+            "Sistema",
+            f"A missão {mission_id} continua sem estado final após {timeout_seconds}s. "
+            "Não voltei a submetê-la para evitar duplicar trabalho. Verifica o runtime e consulta a missão antes de repetir.",
+            "error",
+        )
+
+    def _handle_queue_decision(self, directive: str) -> bool:
+        approve = re.fullmatch(r"\s*(?:aprovar|approve)\s+(?:a\s+)?(?:ação|action)\s+(\d+)\s*", directive, re.IGNORECASE)
+        reject = re.fullmatch(r"\s*(?:rejeitar|rejeita|reject)\s+(?:a\s+)?(?:ação|action)\s+(\d+)(?:\s+(.+))?\s*", directive, re.IGNORECASE)
+        if not approve and not reject:
+            return False
+
+        action_id = int((approve or reject).group(1))
+        if approve:
+            response = self._request("POST", f"/queue/actions/{action_id}/approve", timeout=(2, 8))
+        else:
+            reason = (reject.group(2) or "Recusado pelo operador no cockpit.").strip()
+            response = self._request(
+                "POST", f"/queue/actions/{action_id}/reject",
+                json={"reason": reason}, timeout=(2, 8),
+            )
+        if response.status_code != 200:
+            detail = response.text[:500]
+            self.completed.emit("Erro", f"A decisão sobre a ação {action_id} não foi aceite (HTTP {response.status_code}). {detail}", "error")
+            return True
+
+        payload = response.json()
+        if reject:
+            self.completed.emit(
+                "Sistema",
+                f"Ação {action_id} recusada. Missão associada: {payload.get('mission_id') or 'nenhuma'}.",
+                "system",
+            )
+            return True
+
+        self.completed.emit("Sistema", f"Ação {action_id} aprovada. A acompanhar o estado real da missão…", "system")
+        mission_id = None
+        queue_response = self._request("GET", "/queue", timeout=(2, 8))
+        if queue_response.status_code == 200:
+            queue_data = queue_response.json()
+            actions = queue_data.get("recent_actions", []) if isinstance(queue_data, dict) else []
+            action = next((item for item in actions if int(item.get("id", -1)) == action_id), None)
+            if action:
+                mission_id = (action.get("payload") or {}).get("mission_id")
+        if mission_id:
+            self._poll_mission(str(mission_id))
+        else:
+            self.completed.emit("Sistema", "A decisão foi registada, mas a ação não está ligada a uma missão consultável.", "system")
+        return True
+
     def run(self) -> None:
         try:
             if self.status_only:
-                response = authenticated_request("GET", f"{self.api_url}/status", timeout=(2, 8))
+                response = self._request("GET", "/status", timeout=(2, 8))
                 if response.status_code != 200:
-                    self.completed.emit(
-                        "Error",
-                        f"Could not retrieve runtime status (HTTP {response.status_code}).",
-                        "error",
-                    )
+                    self.completed.emit("Erro", f"Não foi possível consultar o runtime (HTTP {response.status_code}).", "error")
                     return
                 data = response.json()
                 resources = data.get("resources") or {}
-                message = chr(10).join([
-                    "--- RUNTIME OPERATIONAL STATUS ---",
-                    f"Status: [{str(data.get('status', 'unknown')).upper()}]",
-                    f"Degraded: {bool(data.get('is_degraded', False))}",
-                    f"CPU: {resources.get('cpu', 'n/a')}% | MEM: {resources.get('memory', 'n/a')}%",
-                    f"Active Missions: {data.get('missions_active', 0)}",
-                    "---",
+                message = "\n".join([
+                    "--- ESTADO OPERACIONAL ---",
+                    f"Estado: {str(data.get('status', 'desconhecido')).upper()}",
+                    f"Degradado: {bool(data.get('is_degraded', False))}",
+                    f"CPU: {resources.get('cpu', 'n/d')}% | Memória: {resources.get('memory', 'n/d')}%",
+                    f"Missões ativas: {data.get('missions_active', 0)}",
                 ])
-                self.completed.emit("Status", message, "system")
+                self.completed.emit("Sistema", message, "system")
                 return
 
-            response = authenticated_request(
-                "POST", f"{self.api_url}/missions",
-                json={
-                    "goal": self.directive,
-                    "description": "Directive from desktop cockpit",
-                },
+            if self._handle_queue_decision(self.directive):
+                return
+
+            response = self._request(
+                "POST", "/missions",
+                json={"goal": self.directive, "description": "Pedido enviado pelo cockpit de chat"},
                 timeout=(2, 10),
             )
             if response.status_code not in (200, 201):
-                self.completed.emit(
-                    "Error",
-                    f"Mission request failed (HTTP {response.status_code}). No success was assumed.",
-                    "error",
-                )
+                self.completed.emit("Erro", f"O runtime recusou o pedido (HTTP {response.status_code}). Não foi assumido sucesso.", "error")
                 return
             data: dict[str, Any] = response.json()
             mission_id = data.get("mission_id")
-            if data.get("status") == "success" and mission_id:
-                self.completed.emit("Runtime", f"Mission created: {mission_id}", "info")
-            else:
-                self.completed.emit(
-                    "Error",
-                    "Runtime response did not confirm mission creation.",
-                    "error",
-                )
+            if data.get("status") != "success" or not mission_id:
+                self.completed.emit("DGM-MAT", f"O pedido não foi aceite. {data.get('error') or 'Resposta sem confirmação de criação.'}", "error")
+                return
+
+            self.completed.emit(
+                "Sistema",
+                f"Missão registada: {mission_id} | estado: {data.get('mission_status', 'desconhecido')}.",
+                "system",
+            )
+            self._poll_mission(str(mission_id))
         except LocalApiAuthenticationError:
-            self.completed.emit(
-                "Error",
-                "Local API authentication is unavailable. Check the local runtime and bootstrap setup.",
-                "error",
-            )
+            self.completed.emit("Erro", "Não foi possível autenticar no runtime local. Verifica o serviço e a configuração de acesso local.", "error")
         except requests.Timeout:
-            self.completed.emit(
-                "Error",
-                "Runtime request timed out. The outcome may be unknown; check Missions before retrying.",
-                "error",
-            )
+            self.completed.emit("Erro", "O pedido HTTP excedeu o tempo limite. O resultado pode ser desconhecido; consulta a missão antes de voltar a enviá-la.", "error")
         except requests.RequestException:
-            self.completed.emit(
-                "Error",
-                "Could not communicate with the local runtime. Check the runtime connection.",
-                "error",
-            )
-        except (ValueError, TypeError, AttributeError):
-            self.completed.emit(
-                "Error",
-                "Runtime returned an invalid response. No success was assumed.",
-                "error",
-            )
+            self.completed.emit("Erro", "Não foi possível comunicar com o runtime local. Verifica a ligação ao serviço.", "error")
+        except (RuntimeError, ValueError, TypeError, AttributeError) as exc:
+            self.completed.emit("Erro", str(exc) or "O runtime devolveu uma resposta inválida.", "error")
 
 
 class CommandConsoleWidget(QWidget):
@@ -123,20 +236,20 @@ class CommandConsoleWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
 
-        header = QLabel("COGNITIVE TERMINAL")
+        header = QLabel("DGM-MAT — CHAT DE MISSÕES")
         header.setStyleSheet(
-            "font-weight: bold; color: #00ff00; font-size: 12px; font-family: 'Consolas';"
+            "font-weight: bold; color: #4ec9b0; font-size: 12px;"
         )
         layout.addWidget(header)
 
         self.output = QTextEdit()
         self.output.setReadOnly(True)
         self.output.setStyleSheet(
-            "background-color: #0f0f0f; color: #d4d4d4; "
-            "font-family: 'Consolas', 'Courier New', monospace; "
+            "background-color: #17191d; color: #e5e7eb; "
+            "font-family: 'Segoe UI', sans-serif; "
             "border: none; line-height: 1.4;"
         )
-        self.output.setFont(QFont("Consolas", 10))
+        self.output.setFont(QFont("Segoe UI", 10))
         layout.addWidget(self.output, 1)
 
         input_container = QFrame()
@@ -154,10 +267,10 @@ class CommandConsoleWidget(QWidget):
         )
         self.input_field.returnPressed.connect(self._handle_command)
 
-        self.send_btn = QPushButton("ENVIAR")
+        self.send_btn = QPushButton("Enviar")
         self.send_btn.setStyleSheet(
-            "background-color: #007acc; color: white; font-weight: bold; "
-            "padding: 8px 20px; border-radius: 3px;"
+            "background-color: #2563eb; color: white; font-weight: bold; "
+            "padding: 8px 20px; border-radius: 6px;"
         )
         self.send_btn.clicked.connect(self._handle_command)
 
@@ -167,7 +280,7 @@ class CommandConsoleWidget(QWidget):
 
         self._append_message(
             "Sistema",
-            "Consola pronta. As operações de rede decorrem em segundo plano.",
+            "Estou ligado ao backend local. Envia uma missão em linguagem natural. Quando uma ação pedir aprovação, escreve “aprovar ação ID” ou “rejeitar ação ID motivo”. Só apresento uma missão como concluída quando o backend devolver o estado final.",
             "system",
         )
 
@@ -181,11 +294,11 @@ class CommandConsoleWidget(QWidget):
         self.input_field.setEnabled(available)
         self.send_btn.setEnabled(available)
         if not self._runtime_available:
-            self.input_field.setPlaceholderText("Runtime offline - input disabled")
+            self.input_field.setPlaceholderText("Runtime offline — envio desativado")
         elif busy:
-            self.input_field.setPlaceholderText("Waiting for runtime...")
+            self.input_field.setPlaceholderText("À espera do backend…")
         else:
-            self.input_field.setPlaceholderText("Type a directive...")
+            self.input_field.setPlaceholderText("Escreve uma missão…")
 
     def _handle_command(self) -> None:
         if self._worker is not None and self._worker.isRunning():

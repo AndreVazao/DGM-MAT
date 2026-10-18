@@ -56,6 +56,8 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("POST",), "/runtime/approvals/{request_id}", SecurityScope.OPERATOR, "Mission approval decision."),
     RouteClassification(("GET",), "/runtime/approvals", SecurityScope.OPERATOR, "Pending approvals."),
     RouteClassification(("GET",), "/runtime/queue", SecurityScope.OPERATOR, "Action queue details."),
+    RouteClassification(("POST",), "/runtime/queue/actions/{action_id}/approve", SecurityScope.OPERATOR, "Explicit operator approval of one durable queue action."),
+    RouteClassification(("POST",), "/runtime/queue/actions/{action_id}/reject", SecurityScope.OPERATOR, "Explicit operator rejection of one durable queue action."),
     RouteClassification(("GET",), "/mobile/status", SecurityScope.LOCAL_CLIENT, "Mobile service status."),
     RouteClassification(("GET",), "/mobile/threads", SecurityScope.LOCAL_CLIENT, "Conversation list."),
     RouteClassification(("POST",), "/mobile/threads", SecurityScope.OPERATOR, "Creates a conversation."),

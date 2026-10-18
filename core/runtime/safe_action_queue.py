@@ -180,44 +180,66 @@ class SafeActionQueue:
             dgm_logger.info(f"SafeActionQueue: Action {action.id} ({action_type}) enqueued.")
             return action.id
 
-    def approve(self, action_id: int, operator: str = "manual"):
+    def approve(self, action_id: int, operator: str = "manual") -> bool:
+        """Approve a queued action exactly once; never reopen a decided action."""
         with SessionLocal() as session:
+            changed = session.query(ActionRecord).filter(
+                ActionRecord.id == action_id,
+                ActionRecord.status == ActionStatus.QUEUED,
+            ).update(
+                {
+                    ActionRecord.status: ActionStatus.APPROVED,
+                    ActionRecord.is_approved: True,
+                    ActionRecord.approved_by: operator,
+                    ActionRecord.approved_at: datetime.now(),
+                },
+                synchronize_session=False,
+            )
+            if changed != 1:
+                session.rollback()
+                return False
+
             action = session.get(ActionRecord, action_id)
-            if action:
-                action.status = ActionStatus.APPROVED
-                action.is_approved = True
-                action.approved_by = operator
-                action.approved_at = datetime.now()
+            audit = json.loads(action.audit_trail)
+            audit.append({
+                "timestamp": datetime.now().isoformat(),
+                "status": ActionStatus.APPROVED,
+                "operator": operator,
+            })
+            action.audit_trail = json.dumps(audit)
+            session.commit()
+            dgm_logger.info(f"SafeActionQueue: Action {action_id} approved by {operator}.")
+            return True
 
-                audit = json.loads(action.audit_trail)
-                audit.append({
-                    "timestamp": datetime.now().isoformat(),
-                    "status": ActionStatus.APPROVED,
-                    "operator": operator
-                })
-                action.audit_trail = json.dumps(audit)
-
-                session.commit()
-                dgm_logger.info(f"SafeActionQueue: Action {action_id} approved by {operator}.")
-
-    def reject(self, action_id: int, reason: str, operator: str = "manual"):
+    def reject(self, action_id: int, reason: str, operator: str = "manual") -> bool:
+        """Reject a queued action exactly once; preserve all prior decisions."""
         with SessionLocal() as session:
+            changed = session.query(ActionRecord).filter(
+                ActionRecord.id == action_id,
+                ActionRecord.status == ActionStatus.QUEUED,
+            ).update(
+                {
+                    ActionRecord.status: ActionStatus.REJECTED,
+                    ActionRecord.error_message: reason,
+                },
+                synchronize_session=False,
+            )
+            if changed != 1:
+                session.rollback()
+                return False
+
             action = session.get(ActionRecord, action_id)
-            if action:
-                action.status = ActionStatus.REJECTED
-                action.error_message = reason
-
-                audit = json.loads(action.audit_trail)
-                audit.append({
-                    "timestamp": datetime.now().isoformat(),
-                    "status": ActionStatus.REJECTED,
-                    "operator": operator,
-                    "reason": reason
-                })
-                action.audit_trail = json.dumps(audit)
-
-                session.commit()
-                dgm_logger.info(f"SafeActionQueue: Action {action_id} rejected.")
+            audit = json.loads(action.audit_trail)
+            audit.append({
+                "timestamp": datetime.now().isoformat(),
+                "status": ActionStatus.REJECTED,
+                "operator": operator,
+                "reason": reason,
+            })
+            action.audit_trail = json.dumps(audit)
+            session.commit()
+            dgm_logger.info(f"SafeActionQueue: Action {action_id} rejected.")
+            return True
 
     def get_action(self, action_id: int) -> Optional[Dict[str, Any]]:
         with SessionLocal() as session:

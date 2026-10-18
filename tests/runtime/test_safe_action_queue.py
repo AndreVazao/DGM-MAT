@@ -23,3 +23,50 @@ def test_action_queue_rejection():
     action = queue.get_action(action_id)
     assert action["status"] == ActionStatus.REJECTED
     assert action["error_message"] == "Security risk"
+
+
+def test_action_decision_cannot_be_applied_twice():
+    queue = SafeActionQueue()
+    action_id = queue.enqueue("idempotency_approve_test", {"case": "approve"})
+
+    assert queue.approve(action_id, operator="first_operator") is True
+    assert queue.approve(action_id, operator="second_operator") is False
+
+    action = queue.get_action(action_id)
+    assert action["status"] == ActionStatus.APPROVED
+    assert action["approved_by"] == "first_operator"
+    assert sum(
+        entry.get("status") == ActionStatus.APPROVED
+        for entry in action["audit_trail"]
+    ) == 1
+
+
+def test_rejection_cannot_overwrite_an_approval():
+    queue = SafeActionQueue()
+    action_id = queue.enqueue("idempotency_reject_test", {"case": "reject"})
+    assert queue.approve(action_id, operator="operator") is True
+
+    assert queue.reject(action_id, reason="late rejection", operator="other") is False
+    action = queue.get_action(action_id)
+    assert action["status"] == ActionStatus.APPROVED
+    assert action["is_approved"] is True
+    assert action["error_message"] is None
+
+
+def test_terminal_action_cannot_be_reapproved():
+    from core.storage.database import SessionLocal
+    from core.storage.models import ActionRecord
+
+    queue = SafeActionQueue()
+    action_id = queue.enqueue("terminal_reapproval_test", {"case": "completed"})
+    assert queue.approve(action_id, operator="operator") is True
+
+    with SessionLocal() as session:
+        action = session.get(ActionRecord, action_id)
+        action.status = ActionStatus.COMPLETED
+        session.commit()
+
+    assert queue.approve(action_id, operator="late_operator") is False
+    assert queue.reject(action_id, reason="late rejection", operator="late_operator") is False
+    action = queue.get_action(action_id)
+    assert action["status"] == ActionStatus.COMPLETED

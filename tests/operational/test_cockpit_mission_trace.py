@@ -18,6 +18,10 @@ def test_cockpit_mission_trace():
     response = client.post("/runtime/missions", headers=_headers(), json={"goal": directive})
     assert response.status_code == 200
     data = response.json()
+    assert data["status"] == "success"
+    assert data["mission_status"] == "QUEUED"
+    assert data["action_id"] is not None
+    assert data["action_status"] in {"QUEUED", "APPROVED"}
     mission_id = data["mission_id"]
     assert mission_id is not None
 
@@ -25,24 +29,57 @@ def test_cockpit_mission_trace():
     truth = state_store.get_snapshot()
     assert mission_id in truth.missions
     assert truth.missions[mission_id]["goal"] == directive
+    assert truth.missions[mission_id]["status"] == "QUEUED"
+    assert truth.missions[mission_id]["mission_id"] == mission_id
 
-    # 3. Verify Action was enqueued in SafeActionQueue
+    # 3. Verify the durable action is correlated, whether waiting or safely auto-approved.
     queue = SafeActionQueue()
-    queued_actions = queue.list_queued()
-    # Find the action for this mission
-    action = next((a for a in queued_actions if a["payload"].get("mission_id") == mission_id), None)
+    action = queue.get_action(data["action_id"])
     assert action is not None
+    assert action["payload"].get("mission_id") == mission_id
     assert action["action_type"] == "MISSION_EXECUTION"
+    assert action["status"] in {"QUEUED", "APPROVED", "RUNNING", "COMPLETED"}
 
 def test_failed_mission_trace():
-    # 1. Simulate invalid directive
+    # 1. Invalid directives must be reported as failed, never as successful creation.
     directive = "x" # too short
     response = client.post("/runtime/missions", headers=_headers(), json={"goal": directive})
-    assert response.status_code == 200 # API succeeds but mission fails internally
+    assert response.status_code == 200
     data = response.json()
+    assert data["status"] == "failed"
+    assert data["error"] == "Goal too short or invalid"
     mission_id = data["mission_id"]
 
     # 2. Verify Mission marked as FAILED in Truth State
     truth = state_store.get_snapshot()
     assert mission_id in truth.missions
     assert truth.missions[mission_id]["status"] == "FAILED"
+
+
+def test_operator_can_approve_queue_action():
+    response = client.post('/runtime/missions', headers=_headers(), json={'goal': 'summarize a test repository', 'description': 'approval API test'})
+    assert response.status_code == 200
+    mission_id = response.json()['mission_id']
+    action_id = mission_engine.active_missions[mission_id].metadata['action_id']
+    approved = client.post(f'/runtime/queue/actions/{action_id}/approve', headers=_headers())
+    assert approved.status_code == 200
+    assert approved.json()['status'] == 'approved'
+    action = SafeActionQueue().get_action(action_id)
+    assert action['status'] == 'APPROVED'
+    assert action['is_approved'] is True
+    assert action['approved_by'] == 'cockpit-trace-test'
+
+
+def test_operator_can_reject_queue_action():
+    response = client.post('/runtime/missions', headers=_headers(), json={'goal': 'summarize another test repository', 'description': 'rejection API test'})
+    assert response.status_code == 200
+    mission_id = response.json()['mission_id']
+    action_id = mission_engine.active_missions[mission_id].metadata['action_id']
+    rejected = client.post(f'/runtime/queue/actions/{action_id}/reject', headers=_headers(), json={'reason': 'Rejected by operator test'})
+    assert rejected.status_code == 200
+    assert rejected.json()['status'] == 'rejected'
+    action = SafeActionQueue().get_action(action_id)
+    assert action['status'] == 'REJECTED'
+    assert action['error_message'] == 'Rejected by operator test'
+    assert rejected.json()['mission_id'] == mission_id
+    assert mission_engine.active_missions[mission_id].status.value == 'CANCELLED'
