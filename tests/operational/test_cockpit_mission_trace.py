@@ -66,3 +66,16 @@ def test_operator_can_approve_queue_action():
     assert action['status'] == 'APPROVED'
     assert action['is_approved'] is True
     assert action['approved_by'] == 'cockpit-trace-test'
+
+
+def test_operator_can_reject_queue_action():
+    response = client.post('/runtime/missions', headers=_headers(), json={'goal': 'summarize another test repository', 'description': 'rejection API test'})
+    assert response.status_code == 200
+    mission_id = response.json()['mission_id']
+    action_id = mission_engine.active_missions[mission_id].metadata['action_id']
+    rejected = client.post(f'/runtime/queue/actions/{action_id}/reject', headers=_headers(), json={'reason': 'Rejected by operator test'})
+    assert rejected.status_code == 200
+    assert rejected.json()['status'] == 'rejected'
+    action = SafeActionQueue().get_action(action_id)
+    assert action['status'] == 'REJECTED'
+    assert action['error_message'] == 'Rejected by operator test'
