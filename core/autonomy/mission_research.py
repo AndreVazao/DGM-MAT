@@ -22,7 +22,7 @@ _STOP_WORDS = {
     "quero", "preciso", "ajuda", "missao", "tarefa", "fazer", "faz",
 }
 _SKIP_DIRS = {".git", ".venv", "venv", "node_modules", "__pycache__", "dist", "build"}
-_SKIP_NAME_PARTS = {".env", "secret", "credential", "password", "token", "private_key", "id_rsa"}
+_SKIP_NAME_PARTS = {".env", "secret", "credential", "password", "token", "api_key", "private_key", "id_rsa"}
 _TEXT_SUFFIXES = {".md", ".py", ".rst", ".txt", ".toml", ".yaml", ".yml", ".json"}
 _SECRET_PATTERNS = (
     re.compile(r"(?i)(api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret)\s*[:=]\s*[^\s,;]{6,}"),
