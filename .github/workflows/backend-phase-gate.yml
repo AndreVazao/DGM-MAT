@@ -9,6 +9,8 @@ on:
       - "shared/**"
       - "cockpit/**"
       - "tests/**"
+      - "docs/architecture/DGM-MAT-BACKEND-END-TO-END-STABILIZATION-GATE-2026-10-17.md"
+      - "docs/architecture/DGM-MAT-CAPABILITY-EVIDENCE-MATRIX-2026-10-17.md"
       - "requirements*.txt"
       - "requirements/**"
       - "pyproject.toml"
