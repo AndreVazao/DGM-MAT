@@ -88,17 +88,16 @@ class LocalSessionAuthMiddleware:
             route_path = getattr(route, "path", path)
             route_kind = "mount" if route.__class__.__name__ == "Mount" else "http"
             route_methods = getattr(route, "methods", ()) or ()
-            classification = classify_route(route_path, route_methods, route_kind)
-            # Some ASGI/router combinations expose a route's full method set (for
-            # example GET+HEAD) while the active request uses only one method.
-            # Retry against the concrete request method, but keep the same explicit
-            # route-path allowlist; unknown paths/methods remain fail-closed.
+            # Prefer the concrete path and method for exact inventory entries. This
+            # avoids depending on router-specific method-set representations.
+            # Parameterized routes then fall back to the matched route template.
+            classification = classify_route(path, (method,), route_kind)
+            if classification is None:
+                classification = classify_route(route_path, route_methods, route_kind)
+            # Some routers expose a full method set (for example GET+HEAD) even
+            # when only one method is active. Keep the explicit route allowlist.
             if classification is None and method in route_methods:
                 classification = classify_route(route_path, (method,), route_kind)
-            # Fall back to the concrete URL only for exact inventory entries. Dynamic
-            # route templates continue to use the matched route path above.
-            if classification is None and route_path != path:
-                classification = classify_route(path, (method,), route_kind)
             if classification is None:
                 await self._http_error(send, 403, "Route has no security classification.")
                 return
