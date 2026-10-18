@@ -223,7 +223,15 @@ def create_mission(mission_data: MissionCreate):
             "mission_id": mission.mission_id,
             "error": mission.error or "Mission validation failed.",
         }
-    return {"status": "success", "mission_id": mission.mission_id, "mission_status": mission.status.value}
+    action_id = mission.metadata.get("action_id")
+    action = SafeActionQueue().get_action(action_id) if action_id else None
+    return {
+        "status": "success",
+        "mission_id": mission.mission_id,
+        "mission_status": mission.status.value,
+        "action_id": action_id,
+        "action_status": action.get("status") if action else None,
+    }
 
 @router.get("/missions")
 def list_missions():
@@ -237,6 +245,10 @@ def list_missions():
             "logs": m.logs,
             "error": m.error,
             "metadata": m.metadata,
+            "action_id": m.metadata.get("action_id"),
+            "action_status": (
+                SafeActionQueue().get_action(m.metadata.get("action_id")) or {}
+            ).get("status") if m.metadata.get("action_id") else None,
             "result": m.metadata.get("result"),
             "output": m.metadata.get("output")
         }
