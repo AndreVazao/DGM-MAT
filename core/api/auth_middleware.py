@@ -85,11 +85,16 @@ class LocalSessionAuthMiddleware:
                     return
                 await self.app(scope, receive, send)
                 return
-            classification = classify_route(
-                getattr(route, "path", path),
-                getattr(route, "methods", ()) or (),
-                "mount" if route.__class__.__name__ == "Mount" else "http",
-            )
+            route_path = getattr(route, "path", path)
+            route_kind = "mount" if route.__class__.__name__ == "Mount" else "http"
+            route_methods = getattr(route, "methods", ()) or ()
+            classification = classify_route(route_path, route_methods, route_kind)
+            # Some ASGI/router combinations expose a route's full method set (for
+            # example GET+HEAD) while the active request uses only one method.
+            # Retry against the concrete request method, but keep the same explicit
+            # route-path allowlist; unknown paths/methods remain fail-closed.
+            if classification is None and method in route_methods:
+                classification = classify_route(route_path, (method,), route_kind)
             if classification is None:
                 await self._http_error(send, 403, "Route has no security classification.")
                 return
