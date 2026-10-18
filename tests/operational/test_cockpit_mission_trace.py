@@ -52,3 +52,17 @@ def test_failed_mission_trace():
     truth = state_store.get_snapshot()
     assert mission_id in truth.missions
     assert truth.missions[mission_id]["status"] == "FAILED"
+
+
+def test_operator_can_approve_queue_action():
+    response = client.post('/runtime/missions', headers=_headers(), json={'goal': 'summarize a test repository', 'description': 'approval API test'})
+    assert response.status_code == 200
+    mission_id = response.json()['mission_id']
+    action_id = mission_engine.active_missions[mission_id].metadata['action_id']
+    approved = client.post(f'/runtime/queue/actions/{action_id}/approve', headers=_headers())
+    assert approved.status_code == 200
+    assert approved.json()['status'] == 'approved'
+    action = SafeActionQueue().get_action(action_id)
+    assert action['status'] == 'APPROVED'
+    assert action['is_approved'] is True
+    assert action['approved_by'] == 'cockpit-trace-test'
