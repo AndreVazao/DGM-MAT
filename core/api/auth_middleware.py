@@ -95,6 +95,10 @@ class LocalSessionAuthMiddleware:
             # route-path allowlist; unknown paths/methods remain fail-closed.
             if classification is None and method in route_methods:
                 classification = classify_route(route_path, (method,), route_kind)
+            # Fall back to the concrete URL only for exact inventory entries. Dynamic
+            # route templates continue to use the matched route path above.
+            if classification is None and route_path != path:
+                classification = classify_route(path, (method,), route_kind)
             if classification is None:
                 await self._http_error(send, 403, "Route has no security classification.")
                 return
