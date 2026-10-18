@@ -25,6 +25,37 @@ A diretiva `DGM-MAT_PRIMARY_MISSION_AND_EVOLVING_TRUTH_2026-10-10.md` é a autor
 3. A documentação de recuperação existe, mas browser persistente, integração no cockpit e importação E2E ainda não estão comprovados como implementados.
 4. Não houve remoção física de documentos. Classificar e ligar sucessores antes de qualquer eliminação.
 
+## Atualização vinculativa — arquitetura modular e escritório virtual (2026-10-18)
+
+**NOVA AUTORIDADE ARQUITETURAL:** [`architecture/DGM-MAT-ARCHITECTURE-CONSTITUTION-MODULAR-DEPARTMENTS-2026-10-18.md`](architecture/DGM-MAT-ARCHITECTURE-CONSTITUTION-MODULAR-DEPARTMENTS-2026-10-18.md).
+
+Esta Constituição governa a separação dos repositórios, a hierarquia central/departamentos, as dependências entre módulos, a independência do core em relação ao cockpit e a missão de inteligência de conversações. A diretiva primária de missão/verdade evolutiva continua a governar a prioridade operacional e a proveniência; os dois documentos são complementares e não se anulam.
+
+### Inventário dirigido de documentos de escritório virtual e organização
+
+- **NORMATIVO — arquitetura modular:** `architecture/DGM-MAT-ARCHITECTURE-CONSTITUTION-MODULAR-DEPARTMENTS-2026-10-18.md`.
+- **COMPLEMENTAR — core independente e plano de implementação:** `architecture/DGM-MAT_CORE_INDEPENDENCE_AND_VIRTUAL_OFFICE_IMPLEMENTATION_PLAN_2026-10-14.md`.
+- **COMPLEMENTAR — requisitos de escritório adaptável:** `architecture/DGM-MAT_ADAPTIVE_VIRTUAL_OFFICE_AND_CORE_REQUIREMENTS_2026-10-14.md`.
+- **COMPLEMENTAR — fábrica, RH, hierarquia, Programação e Design:** `architecture/DGM-MAT_FACTORY_HR_DEPARTMENTAL_HIERARCHY_PROGRAMMING_AND_DESIGN_2026-10-14.md`.
+- **COMPLEMENTAR — catálogo de capacidades:** `architecture/DGM-MAT_MASTER_CAPABILITY_CATALOG_2026-10-14.md`. É um catálogo de candidatos/capacidades, não prova de instalação ou execução.
+- **COMPLEMENTAR — conceito da sede digital:** `architecture/DGM-MAT-DIGITAL-HEADQUARTERS-CONCEPT-2026-10-12.md`.
+- **COMPLEMENTAR — índice de integração documental:** `architecture/DGM-MAT-DIGITAL-HEADQUARTERS-INTEGRATION-INDEX-2026-10-17.md`.
+- **COMPLEMENTAR — soberania departamental e governação de agentes:** `future/DGM-MAT-DEPARTMENT-SOVEREIGNTY-AND-AGENT-GOVERNANCE-2026-10-13.md`.
+- **COMPLEMENTAR — organização digital e ordem de construção:** `DGM-MAT_DIGITAL_ORGANIZATION_ARCHITECTURE.md` e `DGM-MAT_DIGITAL_ORGANIZATION_BUILD_ORDER.md`.
+- **COMPLEMENTAR — recuperação de conversas e montagem de projetos:** `DGM-MAT_CONVERSATION_RECOVERY_AND_PROJECT_ASSEMBLY.md`.
+- **EVIDÊNCIA / HISTÓRICO TÉCNICO:** `architecture/CONVERSATION_KNOWLEDGE_STORE_HARDENING_2026-10-10.md`; regista alterações e testes de checkpoints anteriores, não prova por si só o estado atual de todas as integrações.
+- **GUARDRAILS COMPLEMENTARES:** `ARCHITECTURE_GUARDRAILS.md`; deve ser interpretado em conjunto com a Constituição. Qualquer frase antiga de “locked” não autoriza violar a hierarquia arquitetural aqui definida.
+
+### Conclusões da revisão documental de 2026-10-18
+
+1. A distinção entre core em background e cockpit opcional já estava documentada.
+2. A hierarquia Patrão → chefias → agentes principais/subagentes e a soberania limitada dos departamentos já estavam documentadas.
+3. A missão de recuperar conversas, separar mensagens do utilizador das respostas das IAs, preservar proveniência, relacionar conversas entre providers e agrupar projetos já estava documentada.
+4. Os documentos usam estados como “proposta”, “plano”, “futuro” e “a validar”; não se deve inferir implementação completa a partir deles.
+5. A recuperação PC + GitHub é uma integração de trabalho, não uma ordem para consolidar as repos satélite.
+6. Não foram apagados documentos nesta atualização. O inventário identificado não demonstra que todos os documentos do repositório, todas as repos satélite, todas as branches ou todo o conteúdo local do PC tenham sido revistos linha a linha. O estado global do inventário continua **PARCIAL** até essa auditoria terminar.
+7. Documentos duplicados ou antigos devem ser marcados como superados e ligados ao sucessor; a eliminação física só pode ocorrer depois de comparar conteúdo, verificar referências, preservar histórico e obter autorização explícita.
+
 ## Continuação
 Completar o inventário; ler documentos em conflito; consolidar memória mestre, decisões, arquitetura e backlog; implementar recuperação incremental com proveniência e estados de cobertura; só depois retomar engenharia não urgente.
 
