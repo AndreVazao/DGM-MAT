@@ -25,3 +25,23 @@ def test_objective_generation_with_missions():
     assert len(mission_tasks) == 3
     assert mission_tasks[0]["mission_id"] == mission.mission_id
     assert mission_tasks[0]["approval_required"] is True
+
+def test_approved_generic_mission_does_not_claim_execution_without_executor():
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    mission = engine.create_mission(
+        "Prepare a summary of the repository architecture",
+        "Regression: generic planning must not masquerade as execution",
+    )
+
+    result = engine._handle_queue_execution({
+        "mission_id": mission.mission_id,
+        "goal": mission.goal,
+    })
+
+    assert mission.status == MissionStatus.FAILED
+    assert result["status"] if "status" in result else result["error_type"] == "NotImplementedError"
+    assert "no generic task executor is registered" in result["error"]
+    assert mission.subtasks
+    assert all(task.status != "completed" for task in mission.subtasks)
+    assert mission.metadata["result"]["error_type"] == "NotImplementedError"
+
