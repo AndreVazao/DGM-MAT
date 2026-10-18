@@ -23,6 +23,7 @@ Os documentos de pesquisa abaixo permanecem em `docs/future/`. O conceito princi
 
 ## Requisitos e plano complementar
 
+- [Arquitetura distribuída, cérebro headless e roteiro da cidade virtual](DGM-MAT-DISTRIBUTED-BRAIN-AND-VIRTUAL-CITY-ROADMAP-2026-10-18.md)
 - [Requisitos consolidados do cérebro e escritório adaptável](DGM-MAT_ADAPTIVE_VIRTUAL_OFFICE_AND_CORE_REQUIREMENTS_2026-10-14.md)
 - [Plano de implementação do cérebro independente e escritório virtual](DGM-MAT_CORE_INDEPENDENCE_AND_VIRTUAL_OFFICE_IMPLEMENTATION_PLAN_2026-10-14.md)
 - [Conceito arquitetural em `docs/architecture`](DGM-MAT-DIGITAL-HEADQUARTERS-CONCEPT-2026-10-12.md)
@@ -37,6 +38,10 @@ Os documentos de pesquisa abaixo permanecem em `docs/future/`. O conceito princi
 5. **Segurança e controlo humano.** Permissões explícitas, auditoria, execução limitada e aprovação humana para operações destrutivas ou de elevado impacto.
 6. **Implementação por fases.** Primeiro contratos/backend, estado e eventos reais; depois cockpit 2D acessível; só depois visualização avançada. O cockpit móvel vem depois de o cérebro e o painel de PC estarem estáveis.
 7. **Sem alegações de conclusão prematuras.** O wireframe é uma referência visual. A documentação, por si só, não comprova integração funcional, testes, build Windows ou execução.
+
+## Decisão arquitetural confirmada em 2026-10-18
+
+O cérebro funciona headless e permanece a autoridade soberana. Os departamentos devem ser modulares para começarem num único PC e poderem migrar para PCs satélite na mesma rede; o Headquarters pode correr noutro PC, browser ou telemóvel e apenas observa eventos/estado reais. A evolução visual poderá representar primeiro um edifício com vários andares e, à medida que existam máquinas e serviços reais, uma cidade de edifícios departamentais. A fase atual continua centrada na estabilidade e validação ponta a ponta do cérebro com cockpit simples; a distribuição multi-PC e a cidade são direção arquitetural futura, não capacidades aqui declaradas como implementadas. Ver o roteiro detalhado ligado acima.
 
 ## Resultado da auditoria documental de 2026-10-17
 
