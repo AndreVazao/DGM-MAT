@@ -112,6 +112,9 @@ def test_queue_execution_starts_execution_clock_for_non_repository_mission(tmp_p
 
     result = engine._handle_queue_execution({"mission_id": mission.mission_id})
 
-    assert result["status"] == "decomposed"
+    # Planning-only is not execution: without a generic executor the mission
+    # must terminate truthfully as failed rather than report "decomposed" as success.
+    assert result["status"] == "failed"
+    assert mission.status is MissionStatus.FAILED
     assert datetime.fromisoformat(mission.metadata["execution_started_at"]) > datetime.now() - timedelta(seconds=5)
     assert mission.metadata["execution_timeout_seconds"] == engine.MISSION_EXECUTION_TIMEOUT_SECONDS
