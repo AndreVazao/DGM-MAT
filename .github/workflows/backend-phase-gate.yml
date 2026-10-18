@@ -48,7 +48,6 @@ jobs:
           python -m pip install -r requirements.txt
       - name: Restore modular runtime dependencies
         env:
-          DGM_CONTRACTS_READ_TOKEN: ${{ secrets.DGM_CONTRACTS_READ_TOKEN }}
         run: |
           echo "Restoring public DGM-Contracts without requiring a token."
           git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
@@ -145,7 +144,6 @@ jobs:
           python -m pip install -r requirements.txt
       - name: Restore modular runtime dependencies
         env:
-          DGM_CONTRACTS_READ_TOKEN: ${{ secrets.DGM_CONTRACTS_READ_TOKEN }}
         run: |
           echo "Restoring public DGM-Contracts without requiring a token."
           git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
@@ -188,7 +186,6 @@ jobs:
           python -m pip install -r requirements.txt
       - name: Restore modular runtime dependencies
         env:
-          DGM_CONTRACTS_READ_TOKEN: ${{ secrets.DGM_CONTRACTS_READ_TOKEN }}
         run: |
           echo "Restoring public DGM-Contracts without requiring a token."
           git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
