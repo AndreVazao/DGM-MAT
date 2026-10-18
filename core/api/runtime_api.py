@@ -292,7 +292,8 @@ def approve_queue_action(action_id: int, request: Request):
         raise HTTPException(status_code=409, detail=f"Queue action is {action.get('status')}, not QUEUED")
     principal = getattr(request.state, "dgm_principal", {}) or {}
     operator = str(principal.get("subject") or "local-operator")
-    queue.approve(action_id, operator=operator)
+    if not queue.approve(action_id, operator=operator):
+        raise HTTPException(status_code=409, detail="Queue action was already decided or is no longer QUEUED")
     updated = queue.get_action(action_id)
     if not updated or updated.get("status") != "APPROVED" or not updated.get("is_approved"):
         raise HTTPException(status_code=503, detail="Queue approval could not be persisted")
@@ -310,7 +311,8 @@ def reject_queue_action(action_id: int, rejection: QueueRejection, request: Requ
         raise HTTPException(status_code=409, detail=f"Queue action is {action.get('status')}, not QUEUED")
     principal = getattr(request.state, "dgm_principal", {}) or {}
     operator = str(principal.get("subject") or "local-operator")
-    queue.reject(action_id, reason=rejection.reason.strip(), operator=operator)
+    if not queue.reject(action_id, reason=rejection.reason.strip(), operator=operator):
+        raise HTTPException(status_code=409, detail="Queue action was already decided or is no longer QUEUED")
     updated = queue.get_action(action_id)
     if not updated or updated.get("status") != "REJECTED":
         raise HTTPException(status_code=503, detail="Queue rejection could not be persisted")
