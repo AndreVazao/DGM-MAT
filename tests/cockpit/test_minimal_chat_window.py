@@ -33,6 +33,6 @@ def test_chat_escapes_user_and_runtime_html(qt_app):
     rendered = chat.output.toHtml()
     assert "&lt;script&gt;" in rendered
     assert "&lt;img" in rendered
-    assert "onerror=alert(1)" not in rendered
+    assert "<img src=x onerror=alert(1)>" not in rendered
 
     chat.close()
