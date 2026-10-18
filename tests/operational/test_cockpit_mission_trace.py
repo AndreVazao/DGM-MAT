@@ -20,6 +20,8 @@ def test_cockpit_mission_trace():
     data = response.json()
     assert data["status"] == "success"
     assert data["mission_status"] == "QUEUED"
+    assert data["action_id"] is not None
+    assert data["action_status"] in {"QUEUED", "APPROVED"}
     mission_id = data["mission_id"]
     assert mission_id is not None
 
