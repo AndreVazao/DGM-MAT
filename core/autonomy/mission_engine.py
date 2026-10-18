@@ -459,13 +459,18 @@ class MissionEngine:
                     capability = self._capability_request_from_goal(mission.goal)
                     if capability and "capability_discovery" not in mission.metadata:
                         self.discover_capability_for_mission(mission, capability)
-                    dgm_logger.info(f"MISSION_HANDLER_SELECTED: {mission_id} - decompose_mission")
+                    dgm_logger.info(f"MISSION_HANDLER_SELECTED: {mission_id} - planning_only_no_executor")
                     self.decompose_mission(mission_id)
-                    return {
-                        "status": "decomposed",
-                        "mission_id": mission_id,
-                        "capability_discovery": "performed" if capability else "not_requested",
-                    }
+                    # A plan is not execution. Until a registered generic executor
+                    # exists, finish truthfully instead of leaving the mission RUNNING
+                    # with proposed subtasks that no worker can execute.
+                    return self._finish_mission_failure(
+                        mission,
+                        NotImplementedError(
+                            "Mission was planned, but no generic task executor is registered. "
+                            "The subtasks are proposals only and were not executed."
+                        ),
+                    )
             except Exception as exc:
                 result = self._finish_mission_failure(mission, exc)
                 raise RuntimeError(result["output"]) from exc
