@@ -81,3 +81,5 @@ def test_operator_can_reject_queue_action():
     action = SafeActionQueue().get_action(action_id)
     assert action['status'] == 'REJECTED'
     assert action['error_message'] == 'Rejected by operator test'
+    assert rejected.json()['mission_id'] == mission_id
+    assert mission_engine.active_missions[mission_id].status.value == 'CANCELLED'
