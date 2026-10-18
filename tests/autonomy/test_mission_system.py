@@ -39,7 +39,7 @@ def test_approved_generic_mission_does_not_claim_execution_without_executor():
     })
 
     assert mission.status == MissionStatus.FAILED
-    assert result["status"] if "status" in result else result["error_type"] == "NotImplementedError"
+    assert result["error_type"] == "NotImplementedError"
     assert "no generic task executor is registered" in result["error"]
     assert mission.subtasks
     assert all(task.status != "completed" for task in mission.subtasks)
