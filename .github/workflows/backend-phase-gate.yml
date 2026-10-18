@@ -244,6 +244,22 @@ jobs:
           python -m compileall -q cockpit/minimal_chat_window.py cockpit/widgets/command_console.py cockpit/app/main.py
           pytest -q tests/cockpit/test_minimal_chat_window.py
 
+  python-source-compile:
+    name: Python source syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout reviewed PR revision
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Compile source and test files
+        run: python -m compileall -q core cockpit shared tests
+
   result-summary:
     name: Required phase-gate summary
     if: always()
@@ -253,6 +269,7 @@ jobs:
       - security-and-governed-execution
       - research-and-knowledge-fabric
       - minimal-chat-cockpit
+      - python-source-compile
     runs-on: ubuntu-latest
     steps:
       - name: Fail unless every gate passed
@@ -262,14 +279,17 @@ jobs:
           SECURITY_RESULT: ${{ needs.security-and-governed-execution.result }}
           RESEARCH_RESULT: ${{ needs.research-and-knowledge-fabric.result }}
           COCKPIT_RESULT: ${{ needs.minimal-chat-cockpit.result }}
+          COMPILE_RESULT: ${{ needs.python-source-compile.result }}
         run: |
           printf 'Mission API/runtime: %s\n' "$MISSION_RESULT"
           printf 'Understand/help/research/learn: %s\n' "$LEARNING_RESULT"
           printf 'Security/governed execution: %s\n' "$SECURITY_RESULT"
           printf 'Research/knowledge fabric: %s\n' "$RESEARCH_RESULT"
           printf 'Minimal PC chat cockpit: %s\n' "$COCKPIT_RESULT"
+          printf 'Python source syntax: %s\n' "$COMPILE_RESULT"
           test "$MISSION_RESULT" = success
           test "$LEARNING_RESULT" = success
           test "$SECURITY_RESULT" = success
           test "$RESEARCH_RESULT" = success
           test "$COCKPIT_RESULT" = success
+          test "$COMPILE_RESULT" = success
