@@ -67,6 +67,17 @@ A leitura de metadados e da raiz de cada repositório na branch `main` produziu 
 
 A auditoria desta sessão ainda não verificou todas as imports/callers, todos os manifests e a compatibilidade de versões de cada satélite; por isso não declara as integrações completas nem autoriza eliminar código duplicado em migração.
 
+### Evidência direta de imports e shims no DGM-MAT
+
+Na branch de recuperação foram lidos os seguintes ficheiros:
+- `core/contracts/compat.py` importa tipos de `dgm_contracts` (`ApprovalDecision`, `ApprovalRequest`, `EventEnvelope`, `ExecutionRequest`, `MissionState`). `core/contracts/` é um adaptador de compatibilidade, não prova de que o pacote `DGM-Contracts` foi copiado integralmente para o Core.
+- `core/agents/_compat.py` e `core/agents/boundary.py` carregam `dgm_mat_agents` e incluem fallback para a pasta irmã `DGM-MAT-Agents/src`; `core/agents/base_agent.py` identifica-se como shim cujo implementation lives in DGM-MAT-Agents.
+- `core/connectors/boundary.py` carrega `dgm_mat_connectors` e inclui fallback para `DGM-MAT-Connectors/src`.
+- O README de `DGM-MAT-Agents` afirma explicitamente que a fonte permanece no Core durante a migração e que a remoção aguarda migração dos consumers e regressão completa verde.
+
+**Conclusão:** as dependências satélite não são apenas referências antigas no workflow; existem imports e shims ativos na branch. A duplicação de código durante a migração é deliberada e temporária segundo o README do satélite. Não remover os shims, dependências ou fontes do Core até mapear todos os consumers e provar a integração com testes. A correção do acesso privado a Contracts é separada da decisão de modularidade.
+
+
 ## 5. Conclusões técnicas extraídas da documentação
 
 1. **O cérebro deve funcionar sem cockpit.** A UI, renderer e telefone são clientes/projeções; não são fonte única de verdade nem donos do ciclo de vida das missões.
