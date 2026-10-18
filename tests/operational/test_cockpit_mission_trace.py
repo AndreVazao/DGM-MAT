@@ -32,13 +32,13 @@ def test_cockpit_mission_trace():
     assert truth.missions[mission_id]["status"] == "QUEUED"
     assert truth.missions[mission_id]["mission_id"] == mission_id
 
-    # 3. Verify Action was enqueued in SafeActionQueue
+    # 3. Verify the durable action is correlated, whether waiting or safely auto-approved.
     queue = SafeActionQueue()
-    queued_actions = queue.list_queued()
-    # Find the action for this mission
-    action = next((a for a in queued_actions if a["payload"].get("mission_id") == mission_id), None)
+    action = queue.get_action(data["action_id"])
     assert action is not None
+    assert action["payload"].get("mission_id") == mission_id
     assert action["action_type"] == "MISSION_EXECUTION"
+    assert action["status"] in {"QUEUED", "APPROVED", "RUNNING", "COMPLETED"}
 
 def test_failed_mission_trace():
     # 1. Invalid directives must be reported as failed, never as successful creation.
