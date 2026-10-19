@@ -56,6 +56,42 @@ def test_stale_running_mission_with_explicitly_approved_action_is_not_rewritten(
     assert engine.action_queue.get_action(action_id)["is_approved"] is True
 
 
+def test_stale_running_mission_closes_interrupted_queue_action_without_replay(tmp_path):
+    from core.storage.database import SessionLocal
+
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    engine.active_missions = {}
+    now = datetime.now()
+    mission_id = "recovery-running-action-test"
+    action_id = engine.action_queue.enqueue(
+        "MISSION_EXECUTION",
+        {"mission_id": mission_id, "goal": "Recovery regression test"},
+    )
+    assert engine.action_queue.approve(action_id, operator="recovery-regression-test") is True
+
+    # Simulate a worker that claimed the durable action and then crashed.
+    with SessionLocal() as session:
+        assert engine.action_queue._claim_approved_action(session, action_id) is True
+
+    mission = _stale_mission(engine, mission_id, action_id, now)
+    report = engine.recover_interrupted_missions(now=now)
+
+    action = engine.action_queue.get_action(action_id)
+    assert report["failed_requires_review"] == 1
+    assert mission.status is MissionStatus.FAILED
+    assert mission.metadata["recovery"]["automatic_replay"] is False
+    assert mission.metadata["recovery"]["queue_action_reconciliation"] == "FAILED_REQUIRES_REVIEW"
+    assert mission.metadata["recovery"]["action_status"] == "FAILED"
+    assert action["status"] == "FAILED"
+    assert "automatic replay is disabled" in action["error_message"]
+    assert any(
+        entry.get("event") == "INTERRUPTED_ACTION_RECONCILED"
+        and entry.get("automatic_replay") is False
+        for entry in action["audit_trail"]
+    )
+
+
 def test_queued_and_approval_pending_missions_do_not_timeout_from_creation_time(tmp_path, monkeypatch):
     import pytest
 
