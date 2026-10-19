@@ -41,6 +41,37 @@ def test_action_decision_cannot_be_applied_twice():
     ) == 1
 
 
+def test_approved_action_can_be_claimed_only_once_across_consumers():
+    from core.storage.database import SessionLocal
+
+    queue = SafeActionQueue()
+    action_id = queue.enqueue("atomic_claim_test", {"case": "single_claim"})
+    assert queue.approve(action_id, operator="claim_test_operator") is True
+
+    with SessionLocal() as session:
+        assert queue._claim_approved_action(session, action_id) is True
+
+    claimed = queue.get_action(action_id)
+    assert claimed["status"] == ActionStatus.RUNNING
+    running_entries = [
+        entry for entry in claimed["audit_trail"]
+        if entry.get("status") == ActionStatus.RUNNING
+    ]
+    assert len(running_entries) == 1
+
+    # Simulates a second consumer that selected the row before the first claim
+    # committed. The conditional update must reject the stale candidate.
+    with SessionLocal() as competing_session:
+        assert queue._claim_approved_action(competing_session, action_id) is False
+
+    after_competitor = queue.get_action(action_id)
+    assert after_competitor["status"] == ActionStatus.RUNNING
+    assert sum(
+        entry.get("status") == ActionStatus.RUNNING
+        for entry in after_competitor["audit_trail"]
+    ) == 1
+
+
 def test_rejection_cannot_overwrite_an_approval():
     queue = SafeActionQueue()
     action_id = queue.enqueue("idempotency_reject_test", {"case": "reject"})
