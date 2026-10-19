@@ -38,7 +38,6 @@ PR #71 — modelo de mensagens e conhecimento baseado em evidências — também
 - Sincronização do clone local em `C:\ProgramasGodMode\DGM-MAT` com o SHA remoto atual; o PC local não foi inspecionado nesta operação.
 - Estado do histórico Git local/remoto de `C:\AndreOS-Memory`; a sincronização desse histórico tinha ficado pendente devido a autenticação.
 - Execução funcional real do runtime no PC, interface cockpit ligada ao backend, persistência após reinício e acesso remoto a partir do Android.
-- Execução funcional real do runtime no PC, interface cockpit ligada ao backend, persistência após reinício e acesso remoto a partir do Android.
 - Execução direta de testes no PC local; não foi realizada nesta sessão. A evidência disponível é CI remoto nos heads dos PRs.
 
 ## Próxima fase — auditoria operacional baseada em evidências
