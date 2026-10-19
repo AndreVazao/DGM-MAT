@@ -49,20 +49,28 @@ class SelfRepairEngine:
     def apply_safe(self, *, dry_run: bool = True) -> dict[str, Any]:
         diagnosis = self.diagnose()
         applied: list[dict[str, Any]] = []
+        planned: list[dict[str, Any]] = []
+        failed: list[dict[str, Any]] = []
         skipped: list[dict[str, Any]] = []
         for action in diagnosis["actions"]:
             if not action["allowed_automatically"]:
                 skipped.append(action)
                 continue
             if dry_run:
-                applied.append({**action, "status": "planned"})
+                planned.append({**action, "status": "planned"})
                 continue
             result = self._run_safe_action(action)
-            applied.append({**action, **result})
+            outcome = {**action, **result}
+            if result.get("status") == "passed":
+                applied.append(outcome)
+            else:
+                failed.append(outcome)
         return {
             "schema": "dgm-mat.self-repair-result.v1",
             "dry_run": dry_run,
+            "planned": planned,
             "applied": applied,
+            "failed": failed,
             "skipped_for_approval": skipped,
         }
 
