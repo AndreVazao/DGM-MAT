@@ -2,7 +2,7 @@ from fastapi.routing import APIRoute
 from starlette.routing import Mount, WebSocketRoute
 
 from core.api.api_server import app
-from core.api.security_policy import ROUTE_CLASSIFICATIONS, SecurityScope, bearer_matches, classify_route
+from core.api.security_policy import ROUTE_CLASSIFICATIONS, SecurityScope, bearer_matches, classify_request_path, classify_route
 
 
 def test_all_registered_routes_are_classified():
@@ -41,6 +41,14 @@ def test_sensitive_routes_are_not_public():
     ]:
         item = classify_route(path, (method,))
         assert item is not None and item.scope is not SecurityScope.PUBLIC_HEALTH
+
+
+def test_concrete_queue_decision_paths_resolve_to_operator_policy():
+    approve = classify_request_path("/runtime/queue/actions/123/approve", "POST")
+    reject = classify_request_path("/runtime/queue/actions/123/reject", "POST")
+
+    assert approve is not None and approve.scope is SecurityScope.OPERATOR
+    assert reject is not None and reject.scope is SecurityScope.OPERATOR
 
 
 def test_governed_command_routes_are_operator_only():
