@@ -68,6 +68,37 @@ class SafeActionQueue:
             self._worker_thread.join(timeout=5)
             dgm_logger.info("SafeActionQueue: Consumer stopped.")
 
+    def _claim_approved_action(self, session, action_id: int) -> bool:
+        """Atomically claim one approved action so competing consumers cannot both execute it."""
+        changed = session.query(ActionRecord).filter(
+            ActionRecord.id == action_id,
+            ActionRecord.status == ActionStatus.APPROVED,
+            ActionRecord.is_approved == True,
+        ).update(
+            {ActionRecord.status: ActionStatus.RUNNING},
+            synchronize_session=False,
+        )
+        if changed != 1:
+            session.rollback()
+            return False
+
+        # The conditional UPDATE is the claim. Read the committed candidate's audit
+        # data only after winning the claim, then persist the RUNNING audit entry.
+        session.expire_all()
+        action = session.get(ActionRecord, action_id)
+        if action is None:
+            session.rollback()
+            return False
+        audit = json.loads(action.audit_trail)
+        audit.append({
+            "timestamp": datetime.now().isoformat(),
+            "status": ActionStatus.RUNNING,
+            "message": "Action claimed for execution"
+        })
+        action.audit_trail = json.dumps(audit)
+        session.commit()
+        return True
+
     def _consumer_worker(self):
         dgm_logger.info("QUEUE_CONSUMER_START")
         while not self._stop_event.is_set():
@@ -77,28 +108,26 @@ class SafeActionQueue:
                 # Polling for approved actions
                 action_to_process = None
                 with SessionLocal() as session:
-                    action_to_process = session.query(ActionRecord).filter(
+                    candidate = session.query(ActionRecord).filter(
                         ActionRecord.status == ActionStatus.APPROVED,
                         ActionRecord.is_approved == True
                     ).order_by(ActionRecord.created_at.asc()).first()
 
-                    if action_to_process:
-                        # Mark as RUNNING immediately to prevent double processing
-                        action_id = action_to_process.id
-                        action_type = action_to_process.action_type
-                        payload = json.loads(action_to_process.payload)
-
+                    if candidate:
+                        action_id = candidate.id
+                        action_type = candidate.action_type
+                        payload = json.loads(candidate.payload)
                         dgm_logger.info(f"QUEUE_POPPED: Action {action_id} ({action_type})")
 
-                        action_to_process.status = ActionStatus.RUNNING
-                        audit = json.loads(action_to_process.audit_trail)
-                        audit.append({
-                            "timestamp": datetime.now().isoformat(),
-                            "status": ActionStatus.RUNNING,
-                            "message": "Action started execution"
-                        })
-                        action_to_process.audit_trail = json.dumps(audit)
-                        session.commit()
+                        # SELECT alone is not a claim: another consumer may have
+                        # selected this same row. Only the conditional UPDATE winner
+                        # may execute the action.
+                        if self._claim_approved_action(session, action_id):
+                            action_to_process = True
+                        else:
+                            dgm_logger.info(
+                                f"QUEUE_CLAIM_SKIPPED: Action {action_id} was claimed or decided by another consumer"
+                            )
                     else:
                         dgm_logger.debug("QUEUE_EMPTY")
 
