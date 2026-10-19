@@ -117,7 +117,7 @@ jobs:
         env:
           PYTHONPATH: .
         run: |
-          pytest -q tests/conversation_intelligence/test_knowledge_store.py tests/self_evolution/test_self_analysis.py
+          pytest -q tests/conversation_intelligence/test_knowledge_store.py tests/self_evolution/test_self_analysis.py tests/self_evolution/test_evolution_fail_closed.py
           if [ -f tests/self_evolution/test_evolution_sandbox_truth.py ]; then
             pytest -q tests/self_evolution/test_evolution_sandbox_truth.py
           else
