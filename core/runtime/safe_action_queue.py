@@ -270,6 +270,48 @@ class SafeActionQueue:
             dgm_logger.info(f"SafeActionQueue: Action {action_id} rejected.")
             return True
 
+    def fail_interrupted_action(self, action_id: int, reason: str) -> bool:
+        """Close a crashed RUNNING action without replaying it automatically."""
+        normalized_reason = reason.strip()
+        if not normalized_reason:
+            raise ValueError("reason is required to reconcile an interrupted action")
+
+        with SessionLocal() as session:
+            changed = session.query(ActionRecord).filter(
+                ActionRecord.id == action_id,
+                ActionRecord.status == ActionStatus.RUNNING.value,
+            ).update(
+                {
+                    ActionRecord.status: ActionStatus.FAILED.value,
+                    ActionRecord.error_message: normalized_reason,
+                },
+                synchronize_session=False,
+            )
+            if changed != 1:
+                session.rollback()
+                return False
+
+            session.expire_all()
+            action = session.get(ActionRecord, action_id)
+            if action is None:
+                session.rollback()
+                return False
+            audit = json.loads(action.audit_trail)
+            audit.append({
+                "timestamp": datetime.now().isoformat(),
+                "status": ActionStatus.FAILED.value,
+                "event": "INTERRUPTED_ACTION_RECONCILED",
+                "message": "Worker stopped while action was RUNNING; automatic replay is disabled.",
+                "automatic_replay": False,
+                "reason": normalized_reason,
+            })
+            action.audit_trail = json.dumps(audit)
+            session.commit()
+            dgm_logger.warning(
+                f"QUEUE_INTERRUPTED_RECONCILED: Action {action_id} marked FAILED; automatic replay disabled."
+            )
+            return True
+
     def get_action(self, action_id: int) -> Optional[Dict[str, Any]]:
         with SessionLocal() as session:
             action = session.get(ActionRecord, action_id)
