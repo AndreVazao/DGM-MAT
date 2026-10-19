@@ -37,5 +37,14 @@ class EvolutionGuardrails:
         return True
 
     def enforce_policy(self, evolution_proposal: Dict[str, Any]) -> bool:
-        """Checks if the evolution aligns with current operational policies."""
-        return True
+        """Fail closed until a real operational-policy evaluator is implemented."""
+        if not isinstance(evolution_proposal, dict):
+            dgm_logger.warning("EvolutionGuardrails: Invalid proposal; policy enforcement refused.")
+            return False
+
+        # This component currently has no connected policy source/evaluator.
+        # A default True would falsely imply that a policy check was performed.
+        dgm_logger.error(
+            "EvolutionGuardrails: No operational-policy evaluator is wired; refusing policy clearance."
+        )
+        return False
