@@ -39,6 +39,19 @@ def test_valid_session_allows_local_read_and_operator_action_route(client):
     assert response.status_code == 422
 
 
+def test_blank_or_whitespace_mission_goal_is_rejected(client):
+    token = _session()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    for goal in ("", "   ", "\\t\\n"):
+        response = client.post(
+            "/runtime/missions",
+            headers=headers,
+            json={"goal": goal, "description": "must not create"},
+        )
+        assert response.status_code == 422
+
+
 def test_expired_or_revoked_session_is_rejected(client):
     token = _session()
     headers = {"Authorization": f"Bearer {token}"}
