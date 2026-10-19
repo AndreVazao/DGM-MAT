@@ -5,7 +5,7 @@ import os
 import time
 import psutil
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any
 from core.storage.storage_manager import storage_manager
 from core.repository_cognition.repo_scanner import CognitiveRepoScanner
@@ -29,8 +29,16 @@ connectors = create_runtime_connectors()
 obsidian_connector = connectors["obsidian"]
 
 class MissionCreate(BaseModel):
-    goal: str
+    goal: str = Field(min_length=1, max_length=2000)
     description: Optional[str] = ""
+
+    @field_validator("goal")
+    @classmethod
+    def require_nonblank_goal(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("goal must contain non-whitespace characters")
+        return normalized
 
 class ApprovalDecision(BaseModel):
     decision: str # "approve" or "reject"
