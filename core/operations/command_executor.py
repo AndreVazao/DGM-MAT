@@ -149,6 +149,11 @@ class CommandExecutor:
             return self._result(command_id, "failed", None, "", type(exc).__name__, started)
 
     def _validate_target(self, raw: str) -> Path:
+        # Reject control characters before filesystem checks: some platforms accept
+        # a NUL-containing string through normalization but then report it as merely
+        # a missing directory, obscuring the actual invalid-input boundary.
+        if not isinstance(raw, str) or not raw or any(ord(char) < 32 or ord(char) == 127 for char in raw):
+            raise CommandDenied("Target path is invalid.")
         try:
             target = self._normalize_path(raw)
         except (OSError, RuntimeError, ValueError) as exc:

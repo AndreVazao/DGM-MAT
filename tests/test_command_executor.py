@@ -195,4 +195,4 @@ def test_git_target_with_invalid_path_characters_is_denied(tmp_path):
         which=lambda name: "/usr/bin/git",
     )
     with pytest.raises(CommandDenied, match="Target path is invalid"):
-        executor.execute("git.status", target_path="bad\\x00path")
+        executor.execute("git.status", target_path="bad\x00path")

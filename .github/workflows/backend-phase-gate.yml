@@ -47,19 +47,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
       - name: Restore modular runtime dependencies
-        env:
-          DGM_CONTRACTS_READ_TOKEN: ${{ secrets.DGM_CONTRACTS_READ_TOKEN }}
         run: |
-          if [ -n "$DGM_CONTRACTS_READ_TOKEN" ]; then
-            echo "Restoring DGM-Contracts using the optional read-only token."
-            GH_TOKEN="$DGM_CONTRACTS_READ_TOKEN" gh repo clone AndreVazao/DGM-Contracts ../DGM-Contracts
-          else
-            echo "No DGM_CONTRACTS_READ_TOKEN configured; attempting anonymous clone (DGM-Contracts must be public)."
-            if ! git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts; then
-              echo "::error::Could not clone DGM-Contracts anonymously. Confirm AndreVazao/DGM-Contracts is public, or configure the optional DGM_CONTRACTS_READ_TOKEN secret."
-              exit 1
-            fi
-          fi
+          echo "Restoring public DGM-Contracts without requiring a token."
+          git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Connectors.git ../DGM-MAT-Connectors
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Agents.git ../DGM-MAT-Agents
           python -m pip install -e ../DGM-Contracts
@@ -152,19 +142,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
       - name: Restore modular runtime dependencies
-        env:
-          DGM_CONTRACTS_READ_TOKEN: ${{ secrets.DGM_CONTRACTS_READ_TOKEN }}
         run: |
-          if [ -n "$DGM_CONTRACTS_READ_TOKEN" ]; then
-            echo "Restoring DGM-Contracts using the optional read-only token."
-            GH_TOKEN="$DGM_CONTRACTS_READ_TOKEN" gh repo clone AndreVazao/DGM-Contracts ../DGM-Contracts
-          else
-            echo "No DGM_CONTRACTS_READ_TOKEN configured; attempting anonymous clone (DGM-Contracts must be public)."
-            if ! git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts; then
-              echo "::error::Could not clone DGM-Contracts anonymously. Confirm AndreVazao/DGM-Contracts is public, or configure the optional DGM_CONTRACTS_READ_TOKEN secret."
-              exit 1
-            fi
-          fi
+          echo "Restoring public DGM-Contracts without requiring a token."
+          git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Connectors.git ../DGM-MAT-Connectors
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Agents.git ../DGM-MAT-Agents
           python -m pip install -e ../DGM-Contracts
@@ -203,19 +183,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
       - name: Restore modular runtime dependencies
-        env:
-          DGM_CONTRACTS_READ_TOKEN: ${{ secrets.DGM_CONTRACTS_READ_TOKEN }}
         run: |
-          if [ -n "$DGM_CONTRACTS_READ_TOKEN" ]; then
-            echo "Restoring DGM-Contracts using the optional read-only token."
-            GH_TOKEN="$DGM_CONTRACTS_READ_TOKEN" gh repo clone AndreVazao/DGM-Contracts ../DGM-Contracts
-          else
-            echo "No DGM_CONTRACTS_READ_TOKEN configured; attempting anonymous clone (DGM-Contracts must be public)."
-            if ! git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts; then
-              echo "::error::Could not clone DGM-Contracts anonymously. Confirm AndreVazao/DGM-Contracts is public, or configure the optional DGM_CONTRACTS_READ_TOKEN secret."
-              exit 1
-            fi
-          fi
+          echo "Restoring public DGM-Contracts without requiring a token."
+          git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Connectors.git ../DGM-MAT-Connectors
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Agents.git ../DGM-MAT-Agents
           python -m pip install -e ../DGM-Contracts

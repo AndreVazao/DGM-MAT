@@ -71,6 +71,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("GET",), "/governance/repair/self/plan", SecurityScope.OPERATOR, "Self-repair plan."),
     RouteClassification(("POST",), "/governance/repair/self/apply", SecurityScope.OPERATOR, "Potentially mutating repair."),
     RouteClassification(("POST",), "/governance/conversations/analyze", SecurityScope.OPERATOR, "Processes submitted conversation content."),
+    RouteClassification(("GET",), "/governance/runtime-capabilities", SecurityScope.OPERATOR, "Read-only observed host capability snapshot."),
     RouteClassification(("GET",), "/governance/commands/catalog", SecurityScope.OPERATOR, "Lists allowlisted read-only local diagnostics."),
     RouteClassification(("POST",), "/governance/commands/run", SecurityScope.OPERATOR, "Runs one allowlisted read-only local diagnostic."),
     RouteClassification(("POST",), "/provider-execution/requests", SecurityScope.PROVIDER_API, "Provider request intake."),
@@ -91,6 +92,36 @@ def classify_route(path: str, methods: Iterable[str] | None = None, route_type: 
         if entry.path == path and entry.methods == normalized:
             return entry
     return None
+
+def classify_request_path(path: str, method: str, route_type: str = "http") -> RouteClassification | None:
+    """Classify a concrete request path against the explicit route inventory.
+
+    This fallback handles framework route wrappers that do not expose their
+    canonical template consistently. It requires exact segment counts and
+    treats a whole {parameter} segment as one non-empty path segment.
+    """
+    normalized_method = str(method).upper()
+    if route_type.casefold() == "websocket":
+        normalized_method = "WS"
+    elif route_type.casefold() == "mount":
+        normalized_method = "MOUNT"
+
+    request_parts = path.strip("/").split("/")
+    for entry in ROUTE_CLASSIFICATIONS:
+        if entry.methods != (normalized_method,):
+            continue
+        template_parts = entry.path.strip("/").split("/")
+        if len(template_parts) != len(request_parts):
+            continue
+        matched = all(
+            (part.startswith("{") and part.endswith("}") and bool(actual))
+            or part == actual
+            for part, actual in zip(template_parts, request_parts)
+        )
+        if matched:
+            return entry
+    return None
+
 
 def bearer_matches(authorization: str | None, expected_token: str | None) -> bool:
     """Strict constant-time bearer comparison; missing config fails closed."""
