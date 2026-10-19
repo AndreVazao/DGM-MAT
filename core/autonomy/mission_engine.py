@@ -205,6 +205,29 @@ class MissionEngine:
                 "automatic_replay": False,
             }
 
+            # If the process died after claiming a durable queue action, that row
+            # would otherwise remain RUNNING forever because consumers only poll
+            # APPROVED actions. Close it as FAILED for review; never replay blindly.
+            if (
+                action
+                and action_status == ActionStatus.RUNNING.value
+                and action.get("action_type") == "MISSION_EXECUTION"
+                and isinstance(action_id, int)
+                and not isinstance(action_id, bool)
+            ):
+                reason = (
+                    "Worker was interrupted while this mission action was RUNNING; "
+                    "automatic replay is disabled and manual review is required."
+                )
+                if self.action_queue.fail_interrupted_action(action_id, reason):
+                    action_status = ActionStatus.FAILED.value
+                    recovery["queue_action_reconciliation"] = "FAILED_REQUIRES_REVIEW"
+                else:
+                    refreshed_action = self.action_queue.get_action(action_id)
+                    action_status = str(refreshed_action.get("status")) if refreshed_action else None
+                    recovery["queue_action_reconciliation"] = "STATE_CHANGED_DURING_RECOVERY"
+                recovery["action_status"] = action_status
+
             if action and action_status == ActionStatus.QUEUED.value and action.get("action_type") == "MISSION_EXECUTION" and not action.get("is_approved"):
                 recovery["state"] = "stale_running_reset_to_queued"
                 mission.logs.append("Recovered stale RUNNING checkpoint: durable action remains unapproved; returned mission to QUEUED without executing it.")
