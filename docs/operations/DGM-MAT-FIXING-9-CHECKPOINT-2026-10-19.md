@@ -6,7 +6,7 @@
 ## Estado GitHub verificado
 
 - Repositório: `AndreVazao/DGM-MAT`
-- Branch principal `main` (estado atual): `6326b064518394d1838c30bb3764787ab8f615f0`
+- `main` no checkpoint de código anterior a esta atualização documental: `ae4c153e7f535170b8de3eab525788a5978f503b`
 - Branch de trabalho: `fixing/operational-reality-audit-2026-10-19`
 - A branch de auditoria original foi criada a partir de `ab216c67248cac83eb71c2b2bc48c8f27ed657aa`.
 - PRs #97 e #98 foram integrados depois da criação inicial do checkpoint.
@@ -21,17 +21,19 @@
 | #96 — requisito do cockpit conversacional remoto | Integrado por squash | `ab216c67248cac83eb71c2b2bc48c8f27ed657aa` | Documento de arquitetura adicionado. É documentação de requisitos, não prova de conectividade remota implementada. |
 | #97 — reclamação atómica de ações aprovadas | Integrado por squash | `365a190860987ca852e713f2cc936d7dfeeb5fab` | Backend Phase Gate: todos os jobs e resumo obrigatório passaram. O teste da fila cobre a rejeição de uma segunda reclamação da mesma ação. |
 | #98 — autoevolução fail-closed | Integrado por squash | `6326b064518394d1838c30bb3764787ab8f615f0` | Backend Phase Gate: todos os jobs e resumo obrigatório passaram, incluindo testes de recusa de promoção/política. |
+| #100 — reconciliar ações interrompidas em `RUNNING` | Integrado por squash | `ae4c153e7f535170b8de3eab525788a5978f503b` | Backend Phase Gate: todos os jobs e resumo obrigatório passaram. A recuperação fecha a ação interrompida como `FAILED`, preserva auditoria e não a reproduz automaticamente. |
 
 PR #71 — modelo de mensagens e conhecimento baseado em evidências — também foi confirmado como integrado anteriormente, no commit de merge `ad333bdc95f9e930445c2177d6685c6487f07ec1`.
 
 ## O que está validado e o que não está
 
 ### Validado por evidência remota
-- Os PRs #94, #95, #96, #97 e #98 estão fechados e integrados.
-- A branch `main` aponta para `6326b064518394d1838c30bb3764787ab8f615f0`.
-- Os workflows de PR #94, #95, #97 e #98 terminaram com sucesso; os jobs funcionais e os resumos obrigatórios foram reportados como `success`.
+- Os PRs #94, #95, #96, #97, #98 e #100 estão fechados e integrados.
+- O commit de integração do PR #98 foi `6326b064518394d1838c30bb3764787ab8f615f0`; o baseline de código mais recente registado aqui é o PR #100 (`ae4c153e7f535170b8de3eab525788a5978f503b`).
+- Os workflows de PR #94, #95, #97, #98 e #100 terminaram com sucesso; os jobs funcionais e os resumos obrigatórios foram reportados como `success`.
 - Os checks Snyk e CodeRabbit reportaram sucesso nos heads de PR #97 e #98.
 - A fila só permite que o consumidor que ganha a atualização condicional para `RUNNING` execute a ação; a decisão de aprovação continua explícita.
+- Na recuperação de missões antigas, ações `MISSION_EXECUTION` que ficaram `RUNNING` após interrupção são marcadas `FAILED` para revisão, sem replay automático.
 - O enforcement de política e a promoção de autoevolução agora falham fechados enquanto os respetivos mecanismos reais não estiverem implementados.
 
 ### Ainda não validado
