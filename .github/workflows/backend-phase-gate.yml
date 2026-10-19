@@ -54,8 +54,6 @@ jobs:
           fi
           echo "Restoring private DGM-Contracts with the configured read-only token."
           GH_TOKEN="$DGM_CONTRACTS_READ_TOKEN" gh repo clone AndreVazao/DGM-Contracts ../DGM-Contracts
-          echo "Restoring public DGM-Contracts without requiring a token."
-          git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Connectors.git ../DGM-MAT-Connectors
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Agents.git ../DGM-MAT-Agents
           python -m pip install -e ../DGM-Contracts
@@ -155,8 +153,6 @@ jobs:
           fi
           echo "Restoring private DGM-Contracts with the configured read-only token."
           GH_TOKEN="$DGM_CONTRACTS_READ_TOKEN" gh repo clone AndreVazao/DGM-Contracts ../DGM-Contracts
-          echo "Restoring public DGM-Contracts without requiring a token."
-          git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Connectors.git ../DGM-MAT-Connectors
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Agents.git ../DGM-MAT-Agents
           python -m pip install -e ../DGM-Contracts
@@ -202,8 +198,6 @@ jobs:
           fi
           echo "Restoring private DGM-Contracts with the configured read-only token."
           GH_TOKEN="$DGM_CONTRACTS_READ_TOKEN" gh repo clone AndreVazao/DGM-Contracts ../DGM-Contracts
-          echo "Restoring public DGM-Contracts without requiring a token."
-          git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Connectors.git ../DGM-MAT-Connectors
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Agents.git ../DGM-MAT-Agents
           python -m pip install -e ../DGM-Contracts
