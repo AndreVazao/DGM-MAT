@@ -74,6 +74,22 @@ def test_apply_safe_reports_failed_actions_separately(tmp_path, monkeypatch):
     assert result["failed"] == [{**action, "status": "failed", "returncode": 1}]
 
 
+def test_apply_safe_reports_unimplemented_actions_as_failed(tmp_path, monkeypatch):
+    engine = SelfRepairEngine(tmp_path / "example")
+    action = _automatic_action()
+    monkeypatch.setattr(engine, "diagnose", lambda: {"actions": [action]})
+    monkeypatch.setattr(
+        engine,
+        "_run_safe_action",
+        lambda _action: {"status": "not-implemented"},
+    )
+
+    result = engine.apply_safe(dry_run=False)
+
+    assert result["applied"] == []
+    assert result["failed"] == [{**action, "status": "not-implemented"}]
+
+
 def test_apply_safe_only_lists_successful_actions_as_applied(tmp_path, monkeypatch):
     engine = SelfRepairEngine(tmp_path / "example")
     action = _automatic_action()
