@@ -68,7 +68,7 @@ class SelfRepairEngine:
 
     def _plan(self, audit) -> list[RepairAction]:
         actions: list[RepairAction] = []
-        if audit.missing_readme if hasattr(audit, "missing_readme") else False:
+        if not audit.readme_present:
             actions.append(
                 RepairAction(
                     id="README-001",

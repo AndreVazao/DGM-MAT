@@ -47,8 +47,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
       - name: Restore modular runtime dependencies
-        env:
-          DGM_CONTRACTS_READ_TOKEN: ${{ secrets.DGM_CONTRACTS_READ_TOKEN }}
         run: |
           if [ -z "$DGM_CONTRACTS_READ_TOKEN" ]; then
             echo "::error::DGM-Contracts is private. Configure the repository secret DGM_CONTRACTS_READ_TOKEN with Contents: Read-only access to AndreVazao/DGM-Contracts. Do not expose the token in logs or workflow files."
@@ -56,6 +54,8 @@ jobs:
           fi
           echo "Restoring private DGM-Contracts with the configured read-only token."
           GH_TOKEN="$DGM_CONTRACTS_READ_TOKEN" gh repo clone AndreVazao/DGM-Contracts ../DGM-Contracts
+          echo "Restoring public DGM-Contracts without requiring a token."
+          git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Connectors.git ../DGM-MAT-Connectors
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Agents.git ../DGM-MAT-Agents
           python -m pip install -e ../DGM-Contracts
@@ -148,8 +148,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
       - name: Restore modular runtime dependencies
-        env:
-          DGM_CONTRACTS_READ_TOKEN: ${{ secrets.DGM_CONTRACTS_READ_TOKEN }}
         run: |
           if [ -z "$DGM_CONTRACTS_READ_TOKEN" ]; then
             echo "::error::DGM-Contracts is private. Configure the repository secret DGM_CONTRACTS_READ_TOKEN with Contents: Read-only access to AndreVazao/DGM-Contracts. Do not expose the token in logs or workflow files."
@@ -157,6 +155,8 @@ jobs:
           fi
           echo "Restoring private DGM-Contracts with the configured read-only token."
           GH_TOKEN="$DGM_CONTRACTS_READ_TOKEN" gh repo clone AndreVazao/DGM-Contracts ../DGM-Contracts
+          echo "Restoring public DGM-Contracts without requiring a token."
+          git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Connectors.git ../DGM-MAT-Connectors
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Agents.git ../DGM-MAT-Agents
           python -m pip install -e ../DGM-Contracts
@@ -195,8 +195,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
       - name: Restore modular runtime dependencies
-        env:
-          DGM_CONTRACTS_READ_TOKEN: ${{ secrets.DGM_CONTRACTS_READ_TOKEN }}
         run: |
           if [ -z "$DGM_CONTRACTS_READ_TOKEN" ]; then
             echo "::error::DGM-Contracts is private. Configure the repository secret DGM_CONTRACTS_READ_TOKEN with Contents: Read-only access to AndreVazao/DGM-Contracts. Do not expose the token in logs or workflow files."
@@ -204,6 +202,8 @@ jobs:
           fi
           echo "Restoring private DGM-Contracts with the configured read-only token."
           GH_TOKEN="$DGM_CONTRACTS_READ_TOKEN" gh repo clone AndreVazao/DGM-Contracts ../DGM-Contracts
+          echo "Restoring public DGM-Contracts without requiring a token."
+          git clone --depth 1 https://github.com/AndreVazao/DGM-Contracts.git ../DGM-Contracts
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Connectors.git ../DGM-MAT-Connectors
           git clone --depth 1 https://github.com/AndreVazao/DGM-MAT-Agents.git ../DGM-MAT-Agents
           python -m pip install -e ../DGM-Contracts

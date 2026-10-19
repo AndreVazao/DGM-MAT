@@ -8,7 +8,7 @@ from typing import Any
 from starlette.routing import Match
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from core.api.security_policy import SecurityScope, classify_route
+from core.api.security_policy import SecurityScope, classify_request_path, classify_route
 
 
 _ALLOWED_ORIGINS = {
@@ -85,11 +85,21 @@ class LocalSessionAuthMiddleware:
                     return
                 await self.app(scope, receive, send)
                 return
-            classification = classify_route(
-                getattr(route, "path", path),
-                getattr(route, "methods", ()) or (),
-                "mount" if route.__class__.__name__ == "Mount" else "http",
-            )
+            route_path = getattr(route, "path", path)
+            route_kind = "mount" if route.__class__.__name__ == "Mount" else "http"
+            route_methods = getattr(route, "methods", ()) or ()
+            # Prefer the concrete path and method for exact inventory entries. This
+            # avoids depending on router-specific method-set representations.
+            # Parameterized routes then fall back to the matched route template.
+            classification = classify_route(path, (method,), route_kind)
+            if classification is None:
+                classification = classify_route(route_path, route_methods, route_kind)
+            # Some routers expose a full method set (for example GET+HEAD) even
+            # when only one method is active. Keep the explicit route allowlist.
+            if classification is None and method in route_methods:
+                classification = classify_route(route_path, (method,), route_kind)
+            if classification is None:
+                classification = classify_request_path(path, method, route_kind)
             if classification is None:
                 await self._http_error(send, 403, "Route has no security classification.")
                 return
