@@ -8,7 +8,7 @@ from typing import Any
 from starlette.routing import Match
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from core.api.security_policy import SecurityScope, classify_route
+from core.api.security_policy import SecurityScope, classify_request_path, classify_route
 
 
 _ALLOWED_ORIGINS = {
@@ -98,6 +98,8 @@ class LocalSessionAuthMiddleware:
             # when only one method is active. Keep the explicit route allowlist.
             if classification is None and method in route_methods:
                 classification = classify_route(route_path, (method,), route_kind)
+            if classification is None:
+                classification = classify_request_path(path, method, route_kind)
             if classification is None:
                 await self._http_error(send, 403, "Route has no security classification.")
                 return
