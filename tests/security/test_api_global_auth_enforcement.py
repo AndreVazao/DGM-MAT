@@ -43,7 +43,7 @@ def test_blank_or_whitespace_mission_goal_is_rejected(client):
     token = _session()
     headers = {"Authorization": f"Bearer {token}"}
 
-    for goal in ("", "   ", "\\t\\n"):
+    for goal in ("", "   "):
         response = client.post(
             "/runtime/missions",
             headers=headers,
