@@ -880,7 +880,7 @@ class MissionEngine:
                             "The subtasks are proposals only and were not executed."
                         ),
                     )
-            elif decision == "reject":
+            elif decision == "reject" or approval_status == "rejected":
                 dgm_logger.warning(f"MISSION_CANCELLED: {mission.mission_id} - Rejected by user")
                 mission.logs.append("Mission rejected by user.")
                 # A deliberate operator rejection is cancellation, not execution failure.
