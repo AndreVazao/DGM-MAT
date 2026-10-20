@@ -184,4 +184,31 @@ def test_approval_action_id_is_recovered_from_legacy_id_field(tmp_path, monkeypa
     request_id = engine.request_approval(mission.mission_id, "Needs approval")
     assert request_id == mission.metadata["approval_request_id"]
     assert mission.metadata["approval_action_id"] == 73
-    assert mission.metadata["approval_action_id"] == 73
+
+
+def test_legacy_scheduler_recovers_durable_rejection_after_checkpoint_gap(tmp_path, monkeypatch):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    request_id = "approval-rejection-recovery"
+    mission = _mission(
+        "mission-rejection-recovery",
+        request_id,
+        MissionStatus.APPROVAL_PENDING,
+    )
+    engine.save_mission(mission)
+    engine.active_missions = {mission.mission_id: mission}
+    approvals = _FakeApprovalManager(request_id)
+    approvals.approvals[request_id]["status"] = "rejected"
+    engine.approval_manager = approvals
+
+    # Simulate a crash after the durable approval record was rejected but before
+    # last_decision was written to the mission checkpoint.
+    engine._handle_approval_pending(mission)
+
+    assert mission.status is MissionStatus.CANCELLED
+    assert mission.error == "User rejected mission."
+    persisted = __import__("json").loads(
+        (tmp_path / f"{mission.mission_id}.json").read_text(encoding="utf-8")
+    )
+    assert persisted["status"] == MissionStatus.CANCELLED.value
