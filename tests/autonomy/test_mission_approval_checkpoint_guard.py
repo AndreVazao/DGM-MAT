@@ -255,5 +255,8 @@ def test_durable_approval_wins_over_stale_legacy_rejection(tmp_path, monkeypatch
     monkeypatch.setattr(engine, "_mark_execution_started", lambda current: setattr(current, "status", MissionStatus.RUNNING))
     engine._handle_approval_pending(mission)
 
-    assert mission.status is MissionStatus.RUNNING
+    # The durable approval wins; this unsupported generic mission still fails
+    # closed in the existing executor contract, but it is not cancelled as rejected.
+    assert mission.status is MissionStatus.FAILED
+    assert mission.error != "User rejected mission."
     assert approvals.decisions == []
