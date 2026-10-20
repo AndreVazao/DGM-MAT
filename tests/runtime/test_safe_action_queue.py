@@ -101,3 +101,29 @@ def test_terminal_action_cannot_be_reapproved():
     assert queue.reject(action_id, reason="late rejection", operator="late_operator") is False
     action = queue.get_action(action_id)
     assert action["status"] == ActionStatus.COMPLETED
+
+
+def test_mission_execution_telemetry_is_bounded_and_omits_goal_content():
+    queue = SafeActionQueue()
+    action_id = queue.enqueue(
+        "MISSION_EXECUTION",
+        {"mission_id": "telemetry-mission", "goal": "PRIVATE_GOAL_MUST_NOT_LEAK"},
+    )
+    assert queue.approve(action_id, operator="telemetry-test") is True
+
+    telemetry = queue.get_mission_execution_telemetry(limit=1)
+
+    assert telemetry["total"] >= 1
+    assert telemetry["counts"]["APPROVED"] >= 1
+    assert telemetry["recent"][0]["mission_id"] == "telemetry-mission"
+    assert telemetry["recent"][0]["status"] == "APPROVED"
+    assert telemetry["content_minimized"] is True
+    assert "PRIVATE_GOAL_MUST_NOT_LEAK" not in str(telemetry)
+    assert "payload" not in telemetry["recent"][0]
+
+
+def test_mission_execution_telemetry_rejects_invalid_limits():
+    queue = SafeActionQueue()
+    for limit in (0, -1, 51, True, "8"):
+        with pytest.raises(ValueError):
+            queue.get_mission_execution_telemetry(limit=limit)
