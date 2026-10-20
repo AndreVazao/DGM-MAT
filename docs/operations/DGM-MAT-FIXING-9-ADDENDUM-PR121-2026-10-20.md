@@ -33,3 +33,27 @@ Auditar e testar o caminho legado de rejeição de aprovação e todos os respet
 ## Limites da evidência
 
 A validação reportada nesta fase é CI remoto do GitHub Actions. Não foram executados testes locais, nem foi verificado o runtime no PC. O checkpoint não afirma que o cockpit esteja operacional ou ligado a um backend em execução.
+
+## Seguimento concluído — PRs #123 e #124 (2026-10-20)
+
+### PR #123 — rejeição humana = cancelamento
+- Integrado na `main`: `d8b7e2f7acbf8047a261c4b38532d7110aa51d3f`.
+- Backend Phase Gate run 115 (`39400546448`): sete jobs funcionais e resumo obrigatório com sucesso; Snyk e CodeRabbit com sucesso.
+- A rejeição explícita passa a `CANCELLED`, não `FAILED`.
+- Limite: esta alteração isolada não garantia que a missão e o registo de aprovação convergissem depois de uma interrupção.
+
+### PR #124 — reconciliação da decisão de aprovação
+- Integrado na `main`: `6bb0f790f4c390ae40c965c87dd2deddc5ac55cd`.
+- Backend Phase Gate run 117 (`39400541300`): sete jobs funcionais e resumo obrigatório com sucesso; Snyk e CodeRabbit com sucesso.
+- A fachada de aprovação devolve o resultado real da decisão durável.
+- O checkpoint da missão só é atualizado quando a decisão durável é aceite ou quando a mesma decisão já está registada.
+- `approve/approved` e `reject/rejected` são normalizados para valores canónicos.
+- O scheduler recupera uma rejeição já persistida se o processo parou antes de gravar `last_decision`.
+- O identificador da ação de aprovação é preservado nos metadados da missão, incluindo respostas de compatibilidade que usam `id`.
+
+### Evidência e limites
+- As verificações referidas são CI remoto no GitHub Actions; Snyk e CodeRabbit também reportaram sucesso.
+- Não foram executados testes locais nem foi verificado o runtime no PC.
+- Não existe transação atómica entre a base de dados da fila e o ficheiro de checkpoint da missão. A estratégia é persistir primeiro a decisão autoritativa e reconciliar o checkpoint a partir dela após reinício.
+- Próximo foco técnico: auditar a recuperação completa da ação `MISSION_EXECUTION` e o ciclo de vida `APPROVED → RUNNING → terminal`, incluindo interrupções e garantia de não repetição automática de efeitos externos.
+
