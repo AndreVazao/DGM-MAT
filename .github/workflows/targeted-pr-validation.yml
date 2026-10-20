@@ -37,21 +37,11 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements/runtime.txt
-      - name: Install test dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt pytest
       - name: Compile Python sources
         run: python -m compileall -q core cockpit shared tests
-      - name: Select and run affected regression tests only
+      - name: Select affected regression tests
+        id: select
         shell: bash
-        env:
-          PYTHONPATH: .
-          DGM_COMMAND_AUDIT_PATH: ${{ runner.temp }}/dgm-command-audit.jsonl
         run: |
           set -euo pipefail
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -61,7 +51,7 @@ jobs:
           fi
           cat "${RUNNER_TEMP}/changed-files.txt"
           python - <<'PY'
-          import os, pathlib, subprocess, sys
+          import os, pathlib
           changed_file = pathlib.Path(os.environ["RUNNER_TEMP"]) / "changed-files.txt"
           changed = set(changed_file.read_text(encoding="utf-8").splitlines())
           tests = set()
@@ -81,13 +71,32 @@ jobs:
           if any_changed("core/self_healing/self_repair_engine.py", "core/self_healing/approval_gate.py"):
               tests.add("tests/self_healing/test_self_repair_approval_gate.py")
           if any(path.startswith("core/security/") or path == "core/api/security.py" for path in changed):
-              tests.update(path for path in changed if path.startswith("tests/security/") and path.endswith(".py"))
+              tests.update({
+                  "tests/security/test_api_global_auth_enforcement.py",
+                  "tests/security/test_api_security_policy.py",
+              })
           tests.update(path for path in changed if path.startswith("tests/") and path.endswith(".py"))
           existing = sorted(path for path in tests if pathlib.Path(path).is_file())
-          if not existing:
-              print("No mapped regression tests changed; syntax compilation passed. No historical suite rerun.")
-              sys.exit(0)
-          print("Running affected tests only:")
-          print("\n".join(existing))
-          sys.exit(subprocess.call([sys.executable, "-m", "pytest", "-q", *existing]))
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write("has_tests=" + ("true" if existing else "false") + "\\n")
+          (pathlib.Path(os.environ["RUNNER_TEMP"]) / "selected-tests.txt").write_text(
+              "\\n".join(existing) + ("\\n" if existing else ""), encoding="utf-8"
+          )
+          print("Selected regressions: " + (", ".join(existing) if existing else "none; no historical suites will be rerun"))
+          PY
+      - name: Install dependencies for selected tests only
+        if: steps.select.outputs.has_tests == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest
+      - name: Run selected regressions only
+        if: steps.select.outputs.has_tests == 'true'
+        env:
+          PYTHONPATH: .
+          DGM_COMMAND_AUDIT_PATH: ${{ runner.temp }}/dgm-command-audit.jsonl
+        run: |
+          python - <<'PY'
+          import os, pathlib, subprocess, sys
+          paths = pathlib.Path(os.environ["RUNNER_TEMP"], "selected-tests.txt").read_text(encoding="utf-8").splitlines()
+          sys.exit(subprocess.call([sys.executable, "-m", "pytest", "-q", *paths]))
           PY
