@@ -72,3 +72,27 @@ def test_repository_status_does_not_override_mutating_requests():
     assert decision.intent == "unsupported"
     assert decision.supported is False
     assert decision.requires_approval is True
+
+
+def test_local_research_requires_local_scope_and_is_supported_in_portuguese_and_english():
+    for goal in [
+        "research the local repository for approval queue",
+        "search the local codebase for mission recovery",
+        "pesquisa no código local o fluxo de aprovação",
+        "procura na documentação local por recuperação de missões",
+    ]:
+        decision = classify_mission_intent(goal)
+        assert decision.intent == "local_research"
+        assert decision.supported is True
+        assert decision.requires_approval is False
+
+
+def test_external_or_mutating_research_is_not_auto_routed_to_local_search():
+    for goal in [
+        "research the web for a new provider",
+        "research the local repository and update the code",
+    ]:
+        decision = classify_mission_intent(goal)
+        assert decision.intent == "unsupported"
+        assert decision.supported is False
+        assert decision.requires_approval is True
