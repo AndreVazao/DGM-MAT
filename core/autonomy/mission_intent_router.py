@@ -52,8 +52,7 @@ _LOCAL_RESEARCH_VERBS = {
 }
 _LOCAL_RESEARCH_TARGET_WORDS = {
     "local", "repository", "repo", "repositorio", "code", "codebase",
-    "codigo", "docs", "documentation", "documentacao", "workspace",
-    "project", "projeto", "dgm", "system", "sistema",
+    "codigo", "docs", "documentation", "documentacao", "workspace", "dgm",
 }
 _EXTERNAL_RESEARCH_WORDS = {"web", "internet", "online", "external", "externo", "externa"}
 _MUTATION_WORDS = {
