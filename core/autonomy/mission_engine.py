@@ -638,8 +638,13 @@ class MissionEngine:
                 intent = classify_mission_intent(mission.goal)
                 if intent.intent == "list_repositories" and intent.supported:
                     result = self._execute_list_repositories_mission(mission)
-                    self._finish_mission_success(mission, result)
-                    return result
+                    finalized = self._finish_mission_success(mission, result)
+                    if finalized is None:
+                        raise RuntimeError(
+                            "Mission success finalization was refused because durable state "
+                            "changed or its checkpoint is unavailable."
+                        )
+                    return finalized
                 else:
                     capability = self._capability_request_from_goal(mission.goal)
                     if capability and "capability_discovery" not in mission.metadata:
@@ -649,15 +654,26 @@ class MissionEngine:
                     # A plan is not execution. Until a registered generic executor
                     # exists, finish truthfully instead of leaving the mission RUNNING
                     # with proposed subtasks that no worker can execute.
-                    return self._finish_mission_failure(
+                    result = self._finish_mission_failure(
                         mission,
                         NotImplementedError(
                             "Mission was planned, but no generic task executor is registered. "
                             "The subtasks are proposals only and were not executed."
                         ),
                     )
+                    if result is None:
+                        raise RuntimeError(
+                            "Mission failure finalization was refused because durable state "
+                            "changed or its checkpoint is unavailable."
+                        )
+                    return result
             except Exception as exc:
                 result = self._finish_mission_failure(mission, exc)
+                if result is None:
+                    raise RuntimeError(
+                        "Mission finalization was refused because durable state changed "
+                        "or its checkpoint is unavailable; no stale result was returned."
+                    ) from exc
                 raise RuntimeError(result["output"]) from exc
 
     def request_human_intervention(
@@ -1096,6 +1112,7 @@ class MissionEngine:
         dgm_logger.info(f"MISSION_EXECUTION_FINISHED: {mission.mission_id}")
         dgm_logger.info(f"MISSION_FORCE_COMPLETE: {mission.mission_id}")
         dgm_logger.info(f"MISSION_COMPLETED: {mission.mission_id}")
+        return result
 
     def prepare_specialist_collaboration(
         self,
