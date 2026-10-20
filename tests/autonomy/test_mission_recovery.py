@@ -20,6 +20,113 @@ def _stale_mission(engine, mission_id, action_id, now):
     return mission
 
 
+class _FakeMissionActionQueue:
+    def __init__(self, actions=None):
+        self.actions = list(actions or [])
+        self.next_id = 900
+
+    def list_mission_execution_actions(self):
+        return [dict(action) for action in self.actions]
+
+    def enqueue(self, action_type, payload):
+        self.next_id += 1
+        action = {
+            "id": self.next_id,
+            "action_type": action_type,
+            "payload": dict(payload),
+            "status": "QUEUED",
+            "is_approved": False,
+        }
+        self.actions.append(action)
+        return action["id"]
+
+
+def test_reconciliation_enqueues_missing_action_without_approval(tmp_path, monkeypatch):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    engine.active_missions = {}
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    mission = Mission(
+        mission_id="missing-queue-action",
+        goal="Recover durable queue link",
+        description="Crash between mission checkpoint and queue enqueue",
+        status=MissionStatus.CREATED,
+    )
+    engine.active_missions[mission.mission_id] = mission
+    queue = _FakeMissionActionQueue()
+    engine.action_queue = queue
+
+    report = engine._reconcile_mission_queue_links()
+
+    assert report == {"linked_existing": 0, "enqueued_missing": 1, "conflicts": 0}
+    assert mission.status is MissionStatus.QUEUED
+    assert mission.metadata["action_id"] == 901
+    assert mission.metadata["queue_reconciliation"]["status"] == "MISSING_ACTION_CREATED_UNAPPROVED"
+    assert queue.actions[0]["is_approved"] is False
+    assert queue.actions[0]["status"] == "QUEUED"
+
+
+def test_reconciliation_restores_existing_action_link_without_duplicate(tmp_path, monkeypatch):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    engine.active_missions = {}
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    mission = Mission(
+        mission_id="existing-queue-action",
+        goal="Restore durable queue link",
+        description="Crash after enqueue before checkpoint update",
+        status=MissionStatus.CREATED,
+        metadata={},
+    )
+    action = {
+        "id": 321,
+        "action_type": "MISSION_EXECUTION",
+        "payload": {"mission_id": mission.mission_id, "goal": mission.goal},
+        "status": "QUEUED",
+        "is_approved": False,
+    }
+    queue = _FakeMissionActionQueue([action])
+    engine.action_queue = queue
+    engine.active_missions[mission.mission_id] = mission
+
+    report = engine._reconcile_mission_queue_links()
+
+    assert report == {"linked_existing": 1, "enqueued_missing": 0, "conflicts": 0}
+    assert mission.status is MissionStatus.QUEUED
+    assert mission.metadata["action_id"] == 321
+    assert len(queue.actions) == 1
+
+
+def test_reconciliation_flags_duplicate_actions_without_choosing_or_approving(tmp_path, monkeypatch):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    engine.active_missions = {}
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    mission = Mission(
+        mission_id="duplicate-queue-actions",
+        goal="Review duplicate durable actions",
+        description="No automatic action selection",
+        status=MissionStatus.QUEUED,
+    )
+    actions = [
+        {"id": action_id, "action_type": "MISSION_EXECUTION",
+         "payload": {"mission_id": mission.mission_id, "goal": mission.goal},
+         "status": "QUEUED", "is_approved": False}
+        for action_id in (41, 42)
+    ]
+    queue = _FakeMissionActionQueue(actions)
+    engine.action_queue = queue
+    engine.active_missions[mission.mission_id] = mission
+
+    report = engine._reconcile_mission_queue_links()
+
+    assert report == {"linked_existing": 0, "enqueued_missing": 0, "conflicts": 1}
+    assert mission.metadata["queue_reconciliation"]["status"] == "MULTIPLE_ACTIONS_REQUIRES_REVIEW"
+    assert mission.metadata["queue_reconciliation"]["automatic_replay"] is False
+    assert len(queue.actions) == 2
+    assert all(not action["is_approved"] for action in queue.actions)
+
+
 def test_stale_running_mission_with_unapproved_action_returns_to_queue(tmp_path):
     engine = MissionEngine()
     engine.missions_path = tmp_path
