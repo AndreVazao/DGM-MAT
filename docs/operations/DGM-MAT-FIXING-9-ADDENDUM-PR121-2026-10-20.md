@@ -106,5 +106,5 @@ A validação reportada nesta fase é CI remoto do GitHub Actions. Não foram ex
 3. `repository_status` — estado Git do próprio DGM-MAT.
 4. `local_research` — pesquisa limitada em código/documentação local com evidência.
 
-Estas quatro capacidades não equivalem a um executor genérico. O próximo passo é um contrato explícito de pedido de esclarecimento/ajuda e continuação da missão sem divergência entre checkpoint e fila; depois, novos executores específicos com testes próprios.
+Estas quatro capacidades não equivalem a um executor genérico. A `HumanInterventionQueue` e os métodos locais `request_human_intervention()/resolve_human_intervention()` já existem, com checkpoint durável `WAITING_FOR_USER`, decisões de uso único e verificação antes de retomar. Ainda não estão expostos por HTTP/WebSocket. Próximo passo: auditar a integração e a recuperação após reinício e ligar uma vista local autenticada do PC cockpit aos pedidos pendentes e respostas limitadas. Não expor esta fila ao APK até existirem emparelhamento de dispositivos, scopes, revogação e proteção anti-replay. Depois, continuar com executores específicos e testes próprios.
 
