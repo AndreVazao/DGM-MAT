@@ -78,8 +78,10 @@ A validação reportada nesta fase é CI remoto do GitHub Actions. Não foram ex
 - Teste de contrato do cockpit passou no run `39411786744`. O cockpit continua a ser apresentação; não é autoridade de execução.
 
 ### APK Android
-- Build bem-sucedido e artefacto registado na secção de evidência deste documento de orçamento.
-- Workflow desativado automaticamente depois do upload. Não reativar para builds repetidos sem pedido explícito.
+- Build bem-sucedido no run [39409853967](https://github.com/AndreVazao/DGM-MAT-Mobile/actions/runs/39409853967), commit `75adce8549141e052da76ee07f4979748ee10c5c`.
+- Artefacto: `DGM-MAT-Mobile-Android-APK`, ID `12259215772`, tamanho 3 698 457 bytes (cerca de 3,53 MiB), disponível até 2026-11-19. O link de execução permite descarregar o ZIP do artefacto com a conta GitHub autorizada.
+- SHA-256 do artefacto ZIP: `ee075ac10ddd967aeb57b053b2f1563e03453d1fffe0f98a4a83d0002e7b50be`.
+- O workflow de build foi desativado automaticamente depois do upload bem-sucedido. Não reativar para builds repetidos sem pedido explícito.
 - Falta instalar o APK num dispositivo Android e verificar pairing, autenticação e conectividade real ao PC. Não há evidência de teste no dispositivo ou no PC.
 
 ### Próximas verificações, sem repetir suites históricas
