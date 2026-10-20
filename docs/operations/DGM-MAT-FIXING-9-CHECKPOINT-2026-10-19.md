@@ -6,10 +6,10 @@
 ## Estado GitHub verificado
 
 - Repositório: `AndreVazao/DGM-MAT`
-- `main` no baseline de código desta atualização: `210407ba75ddd56bfb5c49c6493eb700af0e1704`
+- `main` no baseline de código desta atualização: `096af7422fdc0a05db7818dbc33a10580e4658d2`
 - Branch de trabalho: `fixing/operational-reality-audit-2026-10-19`
 - A branch de auditoria original foi criada a partir de `ab216c67248cac83eb71c2b2bc48c8f27ed657aa`.
-- PRs #97, #98, #100, #102, #103, #105, #107, #109, #111 e #113 estão integrados.
+- PRs #97, #98, #100, #102, #103, #105, #107, #109, #111, #113 e #115 estão integrados.
 - A atualização deste checkpoint é documental e não altera o código de runtime.
 
 ## PRs consolidados nesta fase
@@ -29,19 +29,21 @@
 | #109 — impedir decomposição de reabrir missões terminais | Integrado por squash | `3785f62199a5925d6d71267bb5b8af905ccb9d0f` | Backend Phase Gate, resumo obrigatório, Snyk e CodeRabbit passaram. `decompose_mission` relê o checkpoint e recusa estados `COMPLETED`, `CANCELLED`, `FAILED` e `WAITING_FOR_USER`, sem criar subtarefas nem reabrir a missão. |
 | #111 — atualizar o estado durável antes das transições do scheduler | Integrado por squash | `56fe2e6963afb983d655367ae25c1ceca5dd5444` | Backend Phase Gate, resumo obrigatório, Snyk e CodeRabbit passaram. Antes de timeout/transições, o scheduler atualiza do checkpoint os estados que pode alterar, evitando que uma cópia antiga em memória faça falhar ou reabra uma missão já terminalizada por outro processo. |
 | #113 — listar missões a partir dos checkpoints duráveis | Integrado por squash | `210407ba75ddd56bfb5c49c6493eb700af0e1704` | Backend Phase Gate, resumo obrigatório, Snyk e CodeRabbit passaram. `GET /runtime/missions` relê cada checkpoint antes de devolver o estado, evitando mostrar `QUEUED` quando o estado persistido já é terminal. |
+| #115 — proteger alterações de handoff humano contra cache obsoleta | Integrado por squash | `096af7422fdc0a05db7818dbc33a10580e4658d2` | Backend Phase Gate, resumo obrigatório, Snyk e CodeRabbit passaram. Pedir ou resolver uma intervenção humana relê o checkpoint durável primeiro; missões terminais não podem receber um novo handoff nem ser retomadas por uma decisão antiga. |
 
 PR #71 — modelo de mensagens e conhecimento baseado em evidências — também foi confirmado como integrado anteriormente, no commit de merge `ad333bdc95f9e930445c2177d6685c6487f07ec1`.
 
 ## O que está validado e o que não está
 
 ### Validado por evidência remota
-- Os PRs #94, #95, #96, #97, #98, #100, #102, #103, #105, #107, #109, #111 e #113 estão fechados e integrados.
-- O baseline de código mais recente é o PR #113 (`210407ba75ddd56bfb5c49c6493eb700af0e1704`).
+- Os PRs #94, #95, #96, #97, #98, #100, #102, #103, #105, #107, #109, #111, #113 e #115 estão fechados e integrados.
+- O baseline de código mais recente é o PR #115 (`096af7422fdc0a05db7818dbc33a10580e4658d2`).
 - Os workflows de PR #94, #95, #97, #98 e #100 terminaram com sucesso; os jobs funcionais e os resumos obrigatórios foram reportados como `success`.
 - Os checks Snyk e CodeRabbit reportaram sucesso nos heads de PR #97, #98, #102 e #103.
 - Observações de saúde de providers datadas mais de 30 segundos no futuro são marcadas `invalid_timestamp`; `available`/`healthy` efetivos ficam falsos, mantendo os valores originalmente reportados para auditoria.
 - No arranque, checkpoints de missão `CREATED`/`QUEUED` são reconciliados com ações `MISSION_EXECUTION`: uma ação em falta é criada sem aprovação, uma ação existente pode ser ligada novamente, e ações duplicadas são sinalizadas sem escolha automática.
-- PR #102, PR #103, PR #105, PR #107, PR #109, PR #111 e PR #113 passaram todos os jobs do Backend Phase Gate e o resumo obrigatório. A compilação remota passou também nos sete PRs.
+- PR #102, PR #103, PR #105, PR #107, PR #109, PR #111, PR #113 e PR #115 passaram todos os jobs do Backend Phase Gate e o resumo obrigatório. A compilação remota passou também nos oito PRs.
+- Os métodos de intervenção humana relêem agora o checkpoint antes de criar ou resolver handoffs, preservando missões terminais e decisões ainda não consumidas quando o estado persistido já mudou.
 - `GET /runtime/missions` atualiza agora o estado a partir dos ficheiros duráveis antes de apresentar o cockpit/API; checkpoints ausentes ou inválidos não são apresentados como se estivessem atuais.
 - O scheduler atualiza os checkpoints das missões `CREATED`, `RUNNING`, `APPROVAL_PENDING` e `WAITING_FOR_USER` antes de executar transições. A regressão simula memória `RUNNING` obsoleta contra um checkpoint durável `COMPLETED`.
 - `decompose_mission` agora relê o checkpoint durável antes de criar subtarefas e só permite os estados `CREATED`, `QUEUED`, `APPROVAL_PENDING` e `RUNNING`; estados terminais e `WAITING_FOR_USER` não são reabertos.
@@ -61,7 +63,7 @@ PR #71 — modelo de mensagens e conhecimento baseado em evidências — também
 
 1. Continuar a auditar a reconciliação de missões em estados terminais e a consistência dos resultados entre ficheiros, fila e API.
 2. Auditar os restantes caminhos de aprovação, cancelamento e conclusão sob concorrência, procurando transições tardias que possam alterar estados terminais ou duplicar resultados.
-3. Continuar a verificar se todos os pontos de entrada e leitura de missão usam os mesmos contratos duráveis, com especial atenção à consistência entre checkpoint, fila e resultados.
+3. Continuar a verificar se todos os pontos de entrada e leitura de missão usam os mesmos contratos duráveis, com especial atenção à consistência entre checkpoint, fila, handoffs e resultados.
 3. Verificar a integridade de observações de providers, incluindo relógios inválidos, evidência ausente e estados de registo vs. disponibilidade.
 4. Confirmar que os resultados de pesquisa, aprendizagem e evolução são persistentes e nunca simulam sucesso.
 5. Quando o PC estiver disponível, sincronizar e testar o clone local sem descartar alterações locais nem reescrever o histórico sem inspeção.
