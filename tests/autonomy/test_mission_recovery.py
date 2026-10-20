@@ -230,6 +230,57 @@ def test_queued_and_approval_pending_missions_do_not_timeout_from_creation_time(
     assert engine.active_missions["waiting-queued-timeout-regression"].status is MissionStatus.QUEUED
     assert engine.active_missions["waiting-approval_pending-timeout-regression"].status is MissionStatus.APPROVAL_PENDING
 
+def test_queue_handler_refreshes_terminal_checkpoint_before_execution(tmp_path, monkeypatch):
+    import pytest
+
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    mission_id = "terminal-checkpoint-execution-guard"
+    persisted = Mission(
+        mission_id=mission_id,
+        goal="Do not resurrect a terminal mission",
+        description="Persisted terminal state must win over stale memory",
+        status=MissionStatus.CANCELLED,
+    )
+    engine.save_mission(persisted)
+
+    # Simulate another process holding an old RUNNING snapshot.
+    stale = Mission(
+        mission_id=mission_id,
+        goal=persisted.goal,
+        description=persisted.description,
+        status=MissionStatus.RUNNING,
+    )
+    engine.active_missions[mission_id] = stale
+
+    with pytest.raises(ValueError, match=r"is terminal \(CANCELLED\)"):
+        engine._handle_queue_execution({"mission_id": mission_id})
+
+    assert engine.active_missions[mission_id].status is MissionStatus.CANCELLED
+    assert stale.status is MissionStatus.RUNNING
+
+
+def test_queue_handler_refuses_missing_checkpoint_instead_of_using_stale_cache(tmp_path, monkeypatch):
+    import pytest
+
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    stale = Mission(
+        mission_id="missing-durable-checkpoint",
+        goal="Do not use stale cache",
+        description="Checkpoint was removed or unavailable",
+        status=MissionStatus.QUEUED,
+    )
+    engine.active_missions[stale.mission_id] = stale
+
+    with pytest.raises(ValueError, match="checkpoint unavailable"):
+        engine._handle_queue_execution({"mission_id": stale.mission_id})
+
+    assert stale.mission_id not in engine.active_missions
+
+
 def test_queue_execution_starts_execution_clock_for_non_repository_mission(tmp_path, monkeypatch):
     engine = MissionEngine()
     engine.missions_path = tmp_path
@@ -244,6 +295,7 @@ def test_queue_execution_starts_execution_clock_for_non_repository_mission(tmp_p
         updated_at=created_at,
     )
     engine.active_missions[mission.mission_id] = mission
+    engine.save_mission(mission)
 
     def observe_decomposition(mission_id):
         assert mission_id == mission.mission_id
