@@ -43,18 +43,24 @@ def _extract_section(lines: list[str], expected_heading: str) -> dict[str, Any] 
             end_index = index
             break
 
-    body = lines[start_index + 1:end_index]
+    body_start = start_index + 1
+    body_end = end_index
+    while body_start < body_end and not lines[body_start].strip():
+        body_start += 1
+    while body_end > body_start and not lines[body_end - 1].strip():
+        body_end -= 1
+    body = lines[body_start:body_end]
     # Bound the returned excerpt by physical source lines, preserving exact provenance.
     excerpt_lines = body[:MAX_SECTION_LINES]
-    content = "\n".join(excerpt_lines).strip()
-    if not content:
+    content = "\n".join(excerpt_lines)
+    if not content.strip():
         return None
     if len(body) > MAX_SECTION_LINES:
         content += "\n… [excerpt truncated; consult the cited source for the complete section]"
     return {
         "heading": expected_heading,
-        "start_line": start_index + 2,
-        "end_line": start_index + 1 + len(excerpt_lines),
+        "start_line": body_start + 1,
+        "end_line": body_start + len(excerpt_lines),
         "content": content,
     }
 
