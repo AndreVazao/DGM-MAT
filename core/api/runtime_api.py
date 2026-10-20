@@ -325,10 +325,25 @@ def reject_queue_action(action_id: int, rejection: QueueRejection, request: Requ
     if not updated or updated.get("status") != "REJECTED":
         raise HTTPException(status_code=503, detail="Queue rejection could not be persisted")
     mission_id = (action.get("payload") or {}).get("mission_id")
-    mission = mission_engine.active_missions.get(mission_id) if mission_id else None
-    if mission and mission.status not in {MissionStatus.COMPLETED, MissionStatus.CANCELLED, MissionStatus.FAILED}:
-        mission.metadata["queue_rejection"] = {"action_id": action_id, "operator": operator, "reason": rejection.reason.strip()}
-        mission_engine._update_status(mission, MissionStatus.CANCELLED, {"error": "Mission rejected by operator: " + rejection.reason.strip()})
+    if action.get("action_type") == "MISSION_EXECUTION" and isinstance(mission_id, str) and mission_id:
+        # Queue state and mission checkpoints are separate durable stores. Refresh
+        # the checkpoint so a stale API cache cannot overwrite a terminal mission.
+        mission = mission_engine._reload_mission_checkpoint(mission_id)
+        if mission and mission.status not in {MissionStatus.COMPLETED, MissionStatus.CANCELLED, MissionStatus.FAILED}:
+            queue_rejection = {
+                "action_id": action_id,
+                "operator": operator,
+                "reason": rejection.reason.strip(),
+            }
+            mission.metadata["queue_rejection"] = queue_rejection
+            mission_engine._update_status(
+                mission,
+                MissionStatus.CANCELLED,
+                {
+                    "error": "Mission rejected by operator: " + rejection.reason.strip(),
+                    "queue_rejection": queue_rejection,
+                },
+            )
     return {"status": "rejected", "action_id": action_id, "mission_id": mission_id, "rejected_by": operator, "reason": rejection.reason.strip()}
 
 
