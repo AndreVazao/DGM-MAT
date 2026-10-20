@@ -795,6 +795,12 @@ class MissionEngine:
     def process_missions(self):
         """Consumer loop called by CognitionLoop."""
         for mission_id, mission in list(self.active_missions.items()):
+            # Refresh states that the scheduler may transition. A separate API or
+            # queue process may have completed/cancelled this mission since our last tick.
+            if mission.status not in {MissionStatus.QUEUED}:
+                mission = self._reload_mission_checkpoint(mission_id)
+                if mission is None:
+                    continue
             if mission.status in {MissionStatus.COMPLETED, MissionStatus.CANCELLED, MissionStatus.FAILED}:
                 continue
             if mission.status == MissionStatus.WAITING_FOR_USER:
