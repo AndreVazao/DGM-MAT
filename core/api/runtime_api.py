@@ -244,25 +244,29 @@ def create_mission(mission_data: MissionCreate):
 
 @router.get("/missions")
 def list_missions():
-    return [
-        {
-            "mission_id": m.mission_id,
-            "goal": m.goal,
-            "status": m.status.value,
-            "created_at": getattr(m, 'created_at', None).isoformat() if hasattr(m, 'created_at') and m.created_at else None,
-            "progress": m.progress,
-            "logs": m.logs,
-            "error": m.error,
-            "metadata": m.metadata,
-            "action_id": m.metadata.get("action_id"),
-            "action_status": (
-                SafeActionQueue().get_action(m.metadata.get("action_id")) or {}
-            ).get("status") if m.metadata.get("action_id") else None,
-            "result": m.metadata.get("result"),
-            "output": m.metadata.get("output")
-        }
-        for m in mission_engine.active_missions.values()
-    ]
+    """Return mission status from durable checkpoints, not a potentially stale process cache."""
+    missions = []
+    for mission_id in list(mission_engine.active_missions):
+        mission = mission_engine._reload_mission_checkpoint(mission_id)
+        if mission is None:
+            continue
+        action_id = mission.metadata.get("action_id")
+        action = SafeActionQueue().get_action(action_id) if action_id else None
+        missions.append({
+            "mission_id": mission.mission_id,
+            "goal": mission.goal,
+            "status": mission.status.value,
+            "created_at": mission.created_at.isoformat() if mission.created_at else None,
+            "progress": mission.progress,
+            "logs": mission.logs,
+            "error": mission.error,
+            "metadata": mission.metadata,
+            "action_id": action_id,
+            "action_status": action.get("status") if action else None,
+            "result": mission.metadata.get("result"),
+            "output": mission.metadata.get("output"),
+        })
+    return missions
 
 @router.post("/approvals/{request_id}")
 def judge_approval(request_id: str, decision: ApprovalDecision):

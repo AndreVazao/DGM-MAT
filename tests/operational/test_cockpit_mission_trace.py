@@ -57,6 +57,33 @@ def test_failed_mission_trace():
     assert truth.missions[mission_id]["status"] == "FAILED"
 
 
+def test_mission_list_refreshes_durable_status_over_stale_cache():
+    response = client.post(
+        "/runtime/missions",
+        headers=_headers(),
+        json={"goal": "summarize durable list state", "description": "durable list regression"},
+    )
+    assert response.status_code == 200
+    mission_id = response.json()["mission_id"]
+    cached = mission_engine.active_missions[mission_id]
+
+    terminal_checkpoint = Mission(
+        mission_id=mission_id,
+        goal=cached.goal,
+        description=cached.description,
+        status=MissionStatus.COMPLETED,
+        metadata=dict(cached.metadata),
+        created_at=cached.created_at,
+    )
+    mission_engine.save_mission(terminal_checkpoint)
+
+    listed = client.get("/runtime/missions", headers=_headers())
+    assert listed.status_code == 200
+    item = next(row for row in listed.json() if row["mission_id"] == mission_id)
+    assert item["status"] == "COMPLETED"
+    assert mission_engine.active_missions[mission_id].status is MissionStatus.COMPLETED
+
+
 def test_operator_can_approve_queue_action():
     response = client.post('/runtime/missions', headers=_headers(), json={'goal': 'summarize a test repository', 'description': 'approval API test'})
     assert response.status_code == 200
