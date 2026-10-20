@@ -286,20 +286,28 @@ class MissionEngine:
 
     def _reload_mission_checkpoint(self, mission_id: str) -> Optional[Mission]:
         """Refresh one mission from durable storage; never fall back to a stale cache."""
-        self.active_missions.pop(mission_id, None)
+        existing = self.active_missions.get(mission_id)
         mission_file = self.missions_path / f"{mission_id}.json"
         if not mission_file.is_file():
+            self.active_missions.pop(mission_id, None)
             return None
         try:
             with open(mission_file, "r", encoding="utf-8") as handle:
                 data = json.load(handle)
             if data.get("mission_id") != mission_id:
                 raise ValueError("Mission checkpoint identity mismatch")
-            mission = self._mission_from_checkpoint_data(data)
+            refreshed = self._mission_from_checkpoint_data(data)
+            if existing is not None:
+                # Preserve references held by API/cockpit callers while refreshing every field.
+                existing.__dict__.update(refreshed.__dict__)
+                mission = existing
+            else:
+                mission = refreshed
             self.active_missions[mission_id] = mission
             self._sync_state(mission)
             return mission
         except Exception as exc:
+            self.active_missions.pop(mission_id, None)
             dgm_logger.error(
                 f"MissionEngine: Refusing execution because checkpoint could not be refreshed: "
                 f"{mission_id} ({type(exc).__name__})"
