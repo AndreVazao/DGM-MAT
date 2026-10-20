@@ -6,10 +6,10 @@
 ## Estado GitHub verificado
 
 - Repositório: `AndreVazao/DGM-MAT`
-- `main` no baseline de código desta atualização: `096af7422fdc0a05db7818dbc33a10580e4658d2`
+- `main` após integrar o PR #117: `da52127957a3b358dd3640a91ab5aff7396e00af`
 - Branch de trabalho: `fixing/operational-reality-audit-2026-10-19`
 - A branch de auditoria original foi criada a partir de `ab216c67248cac83eb71c2b2bc48c8f27ed657aa`.
-- PRs #97, #98, #100, #102, #103, #105, #107, #109, #111, #113 e #115 estão integrados.
+- PRs #97, #98, #100, #102, #103, #105, #107, #109, #111, #113, #115 e #117 estão integrados.
 - A atualização deste checkpoint é documental e não altera o código de runtime.
 
 ## PRs consolidados nesta fase
@@ -53,7 +53,9 @@ PR #71 — modelo de mensagens e conhecimento baseado em evidências — também
 - Na recuperação de missões antigas, ações `MISSION_EXECUTION` que ficaram `RUNNING` após interrupção são marcadas `FAILED` para revisão, sem replay automático.
 - O enforcement de política e a promoção de autoevolução agora falham fechados enquanto os respetivos mecanismos reais não estiverem implementados.
 
-### Ainda não validado
+#| #117 — proteger decisões de aprovação com checkpoint durável | Integrado por squash | `da52127957a3b358dd3640a91ab5aff7396e00af` | Backend Phase Gate e resumo obrigatório passaram; Snyk e CodeRabbit reportaram sucesso. A decisão de aprovação/rejeição relê primeiro o checkpoint associado e recusa missões terminais ou checkpoints indisponíveis; testes cobrem estado terminal, atualização de missão não terminal e decisão inválida. |
+
+## Ainda não validado
 - Sincronização do clone local em `C:\ProgramasGodMode\DGM-MAT` com o SHA remoto atual; o PC local não foi inspecionado nesta operação.
 - Estado do histórico Git local/remoto de `C:\AndreOS-Memory`; a sincronização desse histórico tinha ficado pendente devido a autenticação.
 - Execução funcional real do runtime no PC, interface cockpit ligada ao backend, persistência após reinício e acesso remoto a partir do Android.
@@ -62,11 +64,11 @@ PR #71 — modelo de mensagens e conhecimento baseado em evidências — também
 ## Próxima fase — auditoria operacional baseada em evidências
 
 1. Continuar a auditar a reconciliação de missões em estados terminais e a consistência dos resultados entre ficheiros, fila e API.
-2. Auditar os restantes caminhos de aprovação, cancelamento e conclusão sob concorrência, procurando transições tardias que possam alterar estados terminais ou duplicar resultados.
+2. Auditar os restantes caminhos de cancelamento, conclusão e persistência de resultados sob concorrência, procurando transições tardias que possam alterar estados terminais ou duplicar resultados.
 3. Continuar a verificar se todos os pontos de entrada e leitura de missão usam os mesmos contratos duráveis, com especial atenção à consistência entre checkpoint, fila, handoffs e resultados.
-3. Verificar a integridade de observações de providers, incluindo relógios inválidos, evidência ausente e estados de registo vs. disponibilidade.
-4. Confirmar que os resultados de pesquisa, aprendizagem e evolução são persistentes e nunca simulam sucesso.
-5. Quando o PC estiver disponível, sincronizar e testar o clone local sem descartar alterações locais nem reescrever o histórico sem inspeção.
-6. Preservar `DGM-MAT-FULL-MIRROR` como arquivo imutável e não clonar repositórios satélite para dentro do DGM-MAT.
+4. Verificar a integridade de observações de providers, incluindo relógios inválidos, evidência ausente e estados de registo vs. disponibilidade.
+5. Confirmar que os resultados de pesquisa, aprendizagem e evolução são persistentes e nunca simulam sucesso.
+6. Quando o PC estiver disponível, sincronizar e testar o clone local sem descartar alterações locais nem reescrever o histórico sem inspeção.
+7. Preservar `DGM-MAT-FULL-MIRROR` como arquivo imutável e não clonar repositórios satélite para dentro do DGM-MAT.
 
 **Regra de governação:** integridade Git, testes automatizados e funcionamento real são três resultados distintos. Um não substitui os outros.
