@@ -155,3 +155,66 @@ def test_stale_completed_subtasks_cannot_overwrite_terminal_mission(tmp_path, mo
     persisted = json.loads((tmp_path / f"{mission_id}.json").read_text(encoding="utf-8"))
     assert persisted["status"] == MissionStatus.COMPLETED.value
     assert persisted["metadata"]["result"] == existing_result
+
+
+
+def test_success_finalizer_returns_result_only_after_persisting_terminal_state(tmp_path, monkeypatch):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    monkeypatch.setattr(engine, "_emit_mission_result", lambda mission, result: None)
+    monkeypatch.setattr(engine, "_record_execution_observation", lambda mission, result, status: None)
+    mission = Mission(
+        mission_id="success-finalizer-result-contract",
+        goal="List repositories",
+        description="Successful finalization must return the persisted result",
+        status=MissionStatus.RUNNING,
+    )
+    engine.active_missions[mission.mission_id] = mission
+    engine.save_mission(mission)
+    result = {
+        "status": "completed",
+        "mission_id": mission.mission_id,
+        "output": "Repository listing verified",
+    }
+
+    returned = engine._finish_mission_success(mission, result)
+
+    assert returned is result
+    assert mission.status is MissionStatus.COMPLETED
+    import json
+    persisted = json.loads(
+        (tmp_path / f"{mission.mission_id}.json").read_text(encoding="utf-8")
+    )
+    assert persisted["status"] == MissionStatus.COMPLETED.value
+    assert persisted["metadata"]["result"] == result
+
+
+def test_queue_handler_does_not_return_success_when_finalization_is_refused(
+    tmp_path, monkeypatch
+):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    monkeypatch.setattr(
+        engine,
+        "_execute_list_repositories_mission",
+        lambda mission: {
+            "status": "completed",
+            "mission_id": mission.mission_id,
+            "output": "simulated result for finalization-contract test",
+        },
+    )
+    monkeypatch.setattr(engine, "_finish_mission_success", lambda mission, result: None)
+    monkeypatch.setattr(engine, "_finish_mission_failure", lambda mission, exc: None)
+    mission = Mission(
+        mission_id="queue-finalization-refused",
+        goal="List repositories",
+        description="A refused finalizer must not be reported as successful queue work",
+        status=MissionStatus.RUNNING,
+    )
+    engine.active_missions[mission.mission_id] = mission
+    engine.save_mission(mission)
+
+    with pytest.raises(RuntimeError, match="Mission finalization was refused"):
+        engine._handle_queue_execution({"mission_id": mission.mission_id})
