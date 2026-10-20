@@ -1,21 +1,9 @@
 name: Backend Phase Gate
 
+# Full seven-job gate is retained for deliberate/manual milestone validation.
+# Routine PRs use targeted-pr-validation.yml to avoid repeating all historical suites.
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
-    paths:
-      - "core/**"
-      - "shared/**"
-      - "cockpit/**"
-      - "tests/**"
-      - "docs/architecture/DGM-MAT-BACKEND-END-TO-END-STABILIZATION-GATE-2026-10-17.md"
-      - "docs/architecture/DGM-MAT-CAPABILITY-EVIDENCE-MATRIX-2026-10-17.md"
-      - "requirements*.txt"
-      - "requirements/**"
-      - "pyproject.toml"
-      - "pytest.ini"
-      - ".github/workflows/backend-phase-gate.yml"
 
 permissions:
   contents: read
