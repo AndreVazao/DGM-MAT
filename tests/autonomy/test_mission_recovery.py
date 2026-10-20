@@ -256,6 +256,7 @@ def test_queued_and_approval_pending_missions_do_not_timeout_from_creation_time(
             updated_at=old,
         )
         engine.active_missions[mission_id] = mission
+        engine.save_mission(mission)
 
     monkeypatch.setattr(
         engine,
@@ -300,6 +301,46 @@ def test_decompose_refuses_terminal_or_user_paused_durable_state(tmp_path, monke
         assert engine.decompose_mission(mission_id) == []
         assert stale.status is status
         assert stale.subtasks == []
+
+
+def test_scheduler_refreshes_terminal_checkpoint_before_timeout(tmp_path, monkeypatch):
+    import pytest
+
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    old = datetime.now() - timedelta(minutes=10)
+    mission_id = "scheduler-terminal-refresh"
+    persisted = Mission(
+        mission_id=mission_id,
+        goal="Preserve completed mission",
+        description="A stale scheduler snapshot must not time out completed work",
+        status=MissionStatus.COMPLETED,
+        created_at=old,
+        updated_at=datetime.now(),
+    )
+    engine.save_mission(persisted)
+
+    stale = Mission(
+        mission_id=mission_id,
+        goal=persisted.goal,
+        description=persisted.description,
+        status=MissionStatus.RUNNING,
+        metadata={"execution_started_at": old.isoformat()},
+        created_at=old,
+        updated_at=old,
+    )
+    engine.active_missions[mission_id] = stale
+    monkeypatch.setattr(
+        engine,
+        "_timeout_mission",
+        lambda mission, reason: pytest.fail("scheduler attempted to time out a terminal mission"),
+    )
+
+    engine.process_missions()
+
+    assert stale.status is MissionStatus.COMPLETED
+    assert stale.metadata == persisted.metadata
 
 
 def test_queue_handler_refreshes_terminal_checkpoint_before_execution(tmp_path, monkeypatch):
