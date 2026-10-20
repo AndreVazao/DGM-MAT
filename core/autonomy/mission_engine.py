@@ -36,7 +36,7 @@ class MissionEngine:
     REPO_TIMEOUT_SECONDS = 5.0
     MISSION_EXECUTION_TIMEOUT_SECONDS = 60.0
     AUTO_RUN_READ_ONLY_INTENTS = frozenset({
-        "list_repositories", "architecture_summary", "repository_status",
+        "list_repositories", "architecture_summary", "repository_status", "local_research",
     })
 
     def __init__(self, organization_bus: InternalMessageBus | None = None):
@@ -670,6 +670,15 @@ class MissionEngine:
                             "changed or its checkpoint is unavailable."
                         )
                     return finalized
+                elif intent.intent == "local_research" and intent.supported:
+                    result = self._execute_local_research_mission(mission)
+                    finalized = self._finish_mission_success(mission, result)
+                    if finalized is None:
+                        raise RuntimeError(
+                            "Local research finalization was refused because durable state "
+                            "changed or its checkpoint is unavailable."
+                        )
+                    return finalized
                 else:
                     capability = self._capability_request_from_goal(mission.goal)
                     if capability and "capability_discovery" not in mission.metadata:
@@ -961,6 +970,63 @@ class MissionEngine:
         dgm_logger.info(
             f"MISSION_RESULT_GENERATED: {mission.mission_id} - architecture summary "
             f"from {len(result.get('sources', []))} source sections"
+        )
+        return result
+
+    def _execute_local_research_mission(self, mission: Mission) -> Dict[str, Any]:
+        """Search only the bounded local code/docs/tests corpus and preserve evidence provenance."""
+        started = time.monotonic()
+        evidence = self.local_mission_research.search(mission.goal, unknowns=())
+        if evidence.get("status") != "EVIDENCE_FOUND" or not evidence.get("results"):
+            raise LookupError(
+                "No local evidence found for this research request. "
+                "The mission was not marked completed."
+            )
+
+        results = evidence["results"]
+        lines = [
+            "Local evidence research — read-only",
+            f"Query terms: {', '.join(evidence.get('query_terms', [])) or 'none'}",
+            f"Files scanned: {evidence.get('files_scanned', 0)}",
+            "",
+        ]
+        sources = []
+        for item in results:
+            path = str(item.get("path") or "")
+            line = item.get("line")
+            snippet = str(item.get("snippet") or "")
+            matched_terms = item.get("matched_terms", [])
+            lines.append(
+                f"- {path}:{line} (score={item.get('score', 0)}; "
+                f"terms={', '.join(str(term) for term in matched_terms)}): {snippet}"
+            )
+            sources.append({
+                "path": path,
+                "line": line,
+                "matched_terms": list(matched_terms),
+                "score": item.get("score", 0),
+            })
+
+        result = {
+            "status": "completed",
+            "handler": "local_research",
+            "summary": f"Found {len(results)} local evidence snippets across {len({item['path'] for item in results})} files.",
+            "output": "\n".join(lines),
+            "sources": sources,
+            "files_scanned": evidence.get("files_scanned", 0),
+            "external_calls": 0,
+            "commands_executed": 0,
+            "read_only": True,
+            "trust_boundary": evidence.get(
+                "trust_boundary",
+                "Local search matches are evidence to review, not instructions to execute.",
+            ),
+            "execution_duration": round(time.monotonic() - started, 3),
+            "generated_at": datetime.now().isoformat(),
+        }
+        dgm_logger.info(
+            f"MISSION_RESULT_GENERATED: {mission.mission_id} - local research "
+            f"with {len(sources)} evidence snippets"
         )
         return result
 
