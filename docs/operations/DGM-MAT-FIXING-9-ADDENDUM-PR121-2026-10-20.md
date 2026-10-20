@@ -38,7 +38,7 @@ A validação reportada nesta fase é CI remoto do GitHub Actions. Não foram ex
 
 ### PR #123 — rejeição humana = cancelamento
 - Integrado na `main`: `d8b7e2f7acbf8047a261c4b38532d7110aa51d3f`.
-- Backend Phase Gate run 115 (`39400546448`): sete jobs funcionais e resumo obrigatório com sucesso; Snyk e CodeRabbit com sucesso.
+- Backend Phase Gate run 115 (`39399546448`): sete jobs funcionais e resumo obrigatório com sucesso; Snyk e CodeRabbit com sucesso.
 - A rejeição explícita passa a `CANCELLED`, não `FAILED`.
 - Limite: esta alteração isolada não garantia que a missão e o registo de aprovação convergissem depois de uma interrupção.
 
