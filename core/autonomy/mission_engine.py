@@ -35,7 +35,9 @@ class MissionEngine:
     BRANCH_SCAN_LIMIT = 20
     REPO_TIMEOUT_SECONDS = 5.0
     MISSION_EXECUTION_TIMEOUT_SECONDS = 60.0
-    AUTO_RUN_READ_ONLY_INTENTS = frozenset({"list_repositories", "architecture_summary"})
+    AUTO_RUN_READ_ONLY_INTENTS = frozenset({
+        "list_repositories", "architecture_summary", "repository_status",
+    })
 
     def __init__(self, organization_bus: InternalMessageBus | None = None):
         self.missions_path = storage_manager.get_path("missions")
@@ -659,6 +661,15 @@ class MissionEngine:
                             "changed or its checkpoint is unavailable."
                         )
                     return finalized
+                elif intent.intent == "repository_status" and intent.supported:
+                    result = self._execute_repository_status_mission(mission)
+                    finalized = self._finish_mission_success(mission, result)
+                    if finalized is None:
+                        raise RuntimeError(
+                            "Repository status finalization was refused because durable state "
+                            "changed or its checkpoint is unavailable."
+                        )
+                    return finalized
                 else:
                     capability = self._capability_request_from_goal(mission.goal)
                     if capability and "capability_discovery" not in mission.metadata:
@@ -951,6 +962,39 @@ class MissionEngine:
             f"MISSION_RESULT_GENERATED: {mission.mission_id} - architecture summary "
             f"from {len(result.get('sources', []))} source sections"
         )
+        return result
+
+    def _execute_repository_status_mission(self, mission: Mission) -> Dict[str, Any]:
+        """Run one fixed read-only Git status command against the DGM-MAT root."""
+        started = time.monotonic()
+        repo_root = Path(__file__).resolve().parents[2]
+        completed = subprocess.run(
+            ["git", "-C", str(repo_root), "status", "--short", "--branch"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+            shell=False,
+        )
+        if completed.returncode != 0:
+            detail = (completed.stderr or completed.stdout or "git status failed").strip()[:500]
+            raise RuntimeError(f"Read-only repository status failed: {detail}")
+
+        output = completed.stdout.strip() or "Working tree clean."
+        result = {
+            "status": "completed",
+            "summary": "Read-only Git status captured for the DGM-MAT repository.",
+            "output": output,
+            "handler": "repository_status",
+            "repository": repo_root.name,
+            "source": "git status --short --branch",
+            "read_only": True,
+            "commands_executed": 1,
+            "external_calls": 0,
+            "execution_duration": round(time.monotonic() - started, 3),
+            "generated_at": datetime.now().isoformat(),
+        }
+        dgm_logger.info(f"MISSION_RESULT_GENERATED: {mission.mission_id} - repository status")
         return result
 
     def _execute_list_repositories_mission(self, mission: Mission) -> Dict[str, Any]:

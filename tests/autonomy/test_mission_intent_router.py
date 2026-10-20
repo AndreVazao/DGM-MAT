@@ -52,3 +52,23 @@ def test_architecture_summary_never_overrides_a_mutating_request():
         assert decision.intent == "unsupported"
         assert decision.supported is False
         assert decision.requires_approval is True
+
+
+def test_repository_status_is_recognized_in_portuguese_and_english():
+    for goal in [
+        "check git status",
+        "show repository status",
+        "mostra o estado do repositório",
+        "status do repo",
+    ]:
+        decision = classify_mission_intent(goal)
+        assert decision.intent == "repository_status"
+        assert decision.supported is True
+        assert decision.requires_approval is False
+
+
+def test_repository_status_does_not_override_mutating_requests():
+    decision = classify_mission_intent("update git status")
+    assert decision.intent == "unsupported"
+    assert decision.supported is False
+    assert decision.requires_approval is True
