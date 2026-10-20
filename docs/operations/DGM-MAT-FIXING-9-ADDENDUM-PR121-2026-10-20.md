@@ -57,3 +57,33 @@ A validação reportada nesta fase é CI remoto do GitHub Actions. Não foram ex
 - Não existe transação atómica entre a base de dados da fila e o ficheiro de checkpoint da missão. A estratégia é persistir primeiro a decisão autoritativa e reconciliar o checkpoint a partir dela após reinício.
 - Próximo foco técnico: auditar a recuperação completa da ação `MISSION_EXECUTION` e o ciclo de vida `APPROVED → RUNNING → terminal`, incluindo interrupções e garantia de não repetição automática de efeitos externos.
 
+## Seguimento — missão de arquitetura, telemetria do escritório e APK (2026-10-20)
+
+### PR #126 — primeira capacidade real além da listagem de repositórios
+- Integrado na `main`: `b1bf9899de37791e91b69087498e3bfa6f2a3ddd`.
+- Validação direcionada: run `39410818568`, sucesso; Snyk e CodeRabbit também passaram.
+- A missão `architecture_summary` resume secções delimitadas do README e da Constituição arquitetural local, com intervalos de linhas, limites de tamanho e falha segura quando falta evidência.
+- Não executa shell, não chama serviços externos e não altera documentos. Só intenções explicitamente registadas como leitura podem autoaprovar-se; pedidos mutativos continuam bloqueados.
+
+### PR #127 — telemetria real para o escritório virtual
+- Integrado na `main`: `fad039e198abe26dce86c25e27d0ae56c964c129`.
+- Validação direcionada: run `39411666593`, sucesso; Snyk e CodeRabbit também passaram.
+- Novo endpoint `GET /runtime/office/telemetry`, autenticado para clientes locais.
+- Lê checkpoints persistidos e estados duráveis da fila; expõe contagens e eventos recentes limitados, sem goals, conteúdo de conversas ou payloads completos.
+- Investigação, memória e atividade por agente continuam `unknown` até existirem fontes de eventos reais.
+
+### Escritório digital — cockpit
+- PR #3 integrado: primeira vista visual responsiva com a referência do CEO e estados sem telemetria explícitos.
+- PR #4 integrado: liga os indicadores de missões, decisões pendentes, ações em execução e worker ao endpoint de telemetria; consulta apenas enquanto a vista do escritório está aberta, com atualização de 30 segundos.
+- Teste de contrato do cockpit passou no run `39411786744`. O cockpit continua a ser apresentação; não é autoridade de execução.
+
+### APK Android
+- Build bem-sucedido e artefacto registado na secção de evidência deste documento de orçamento.
+- Workflow desativado automaticamente depois do upload. Não reativar para builds repetidos sem pedido explícito.
+- Falta instalar o APK num dispositivo Android e verificar pairing, autenticação e conectividade real ao PC. Não há evidência de teste no dispositivo ou no PC.
+
+### Próximas verificações, sem repetir suites históricas
+1. Validar a ligação da vista do escritório ao backend real quando o cockpit e o DGM-MAT estiverem publicados/instalados no PC.
+2. Instalar o APK num Android e testar pairing/autenticação; manter o workflow desativado salvo se for necessário corrigir e reconstruir.
+3. Continuar a implementar executores específicos com contratos e testes próprios; não voltar a tratar um plano de subtarefas como prova de execução.
+
