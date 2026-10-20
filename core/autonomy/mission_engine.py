@@ -384,7 +384,7 @@ class MissionEngine:
 
     def _reconcile_mission_queue_links(self) -> Dict[str, int]:
         """Repair the mission-file/queue write gap without approving or replaying work."""
-        counts = {"linked_existing": 0, "enqueued_missing": 0, "conflicts": 0}
+        counts = {"linked_existing": 0, "enqueued_missing": 0, "conflicts": 0, "reconciled_rejections": 0}
         actions_by_mission: Dict[str, List[Dict[str, Any]]] = {}
         for action in self.action_queue.list_mission_execution_actions():
             payload = action.get("payload")
@@ -411,7 +411,39 @@ class MissionEngine:
                 continue
 
             if len(actions) == 1:
-                action_id = actions[0]["id"]
+                action = actions[0]
+                if action.get("status") == ActionStatus.REJECTED.value:
+                    audit = action.get("audit_trail", [])
+                    rejection_event = next(
+                        (
+                            entry for entry in reversed(audit)
+                            if isinstance(entry, dict) and entry.get("status") == ActionStatus.REJECTED.value
+                        ),
+                        {},
+                    )
+                    reason = action.get("error_message") or rejection_event.get("reason") or "Rejected by operator"
+                    rejection = {
+                        "action_id": action["id"],
+                        "operator": rejection_event.get("operator", "manual"),
+                        "reason": reason,
+                        "reconciled_after_restart": True,
+                    }
+                    mission.metadata["queue_rejection"] = rejection
+                    mission.logs.append(
+                        "Recovered operator rejection from the durable queue; mission was cancelled without execution."
+                    )
+                    self._update_status(
+                        mission,
+                        MissionStatus.CANCELLED,
+                        {
+                            "error": "Mission rejected by operator: " + reason,
+                            "queue_rejection": rejection,
+                        },
+                    )
+                    counts["reconciled_rejections"] += 1
+                    continue
+
+                action_id = action["id"]
                 if mission.metadata.get("action_id") != action_id:
                     mission.metadata["action_id"] = action_id
                     mission.metadata["queue_reconciliation"] = {

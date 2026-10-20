@@ -58,7 +58,7 @@ def test_reconciliation_enqueues_missing_action_without_approval(tmp_path, monke
 
     report = engine._reconcile_mission_queue_links()
 
-    assert report == {"linked_existing": 0, "enqueued_missing": 1, "conflicts": 0}
+    assert report == {"linked_existing": 0, "enqueued_missing": 1, "conflicts": 0, "reconciled_rejections": 0}
     assert mission.status is MissionStatus.QUEUED
     assert mission.metadata["action_id"] == 901
     assert mission.metadata["queue_reconciliation"]["status"] == "MISSING_ACTION_CREATED_UNAPPROVED"
@@ -91,7 +91,7 @@ def test_reconciliation_restores_existing_action_link_without_duplicate(tmp_path
 
     report = engine._reconcile_mission_queue_links()
 
-    assert report == {"linked_existing": 1, "enqueued_missing": 0, "conflicts": 0}
+    assert report == {"linked_existing": 1, "enqueued_missing": 0, "conflicts": 0, "reconciled_rejections": 0}
     assert mission.status is MissionStatus.QUEUED
     assert mission.metadata["action_id"] == 321
     assert len(queue.actions) == 1
@@ -120,11 +120,49 @@ def test_reconciliation_flags_duplicate_actions_without_choosing_or_approving(tm
 
     report = engine._reconcile_mission_queue_links()
 
-    assert report == {"linked_existing": 0, "enqueued_missing": 0, "conflicts": 1}
+    assert report == {"linked_existing": 0, "enqueued_missing": 0, "conflicts": 1, "reconciled_rejections": 0}
     assert mission.metadata["queue_reconciliation"]["status"] == "MULTIPLE_ACTIONS_REQUIRES_REVIEW"
     assert mission.metadata["queue_reconciliation"]["automatic_replay"] is False
     assert len(queue.actions) == 2
     assert all(not action["is_approved"] for action in queue.actions)
+
+
+def test_reconciliation_cancels_mission_when_durable_queue_action_was_rejected(tmp_path, monkeypatch):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    engine.active_missions = {}
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    mission = Mission(
+        mission_id="rejected-action-crash-window",
+        goal="Do not execute rejected work",
+        description="Process may stop after queue rejection before mission save",
+        status=MissionStatus.QUEUED,
+        metadata={"action_id": 501},
+    )
+    action = {
+        "id": 501,
+        "action_type": "MISSION_EXECUTION",
+        "payload": {"mission_id": mission.mission_id, "goal": mission.goal},
+        "status": "REJECTED",
+        "is_approved": False,
+        "error_message": "Operator rejected this mission",
+        "audit_trail": [{
+            "status": "REJECTED",
+            "operator": "reviewer-1",
+            "reason": "Operator rejected this mission",
+        }],
+    }
+    engine.action_queue = _FakeMissionActionQueue([action])
+    engine.active_missions[mission.mission_id] = mission
+
+    report = engine._reconcile_mission_queue_links()
+
+    assert report == {"linked_existing": 0, "enqueued_missing": 0, "conflicts": 0, "reconciled_rejections": 1}
+    assert mission.status is MissionStatus.CANCELLED
+    assert mission.metadata["queue_rejection"]["reconciled_after_restart"] is True
+    assert mission.metadata["queue_rejection"]["operator"] == "reviewer-1"
+    assert mission.error == "Mission rejected by operator: Operator rejected this mission"
+    assert engine.action_queue.actions[0]["status"] == "REJECTED"
 
 
 def test_stale_running_mission_with_unapproved_action_returns_to_queue(tmp_path):
