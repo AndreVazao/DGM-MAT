@@ -1588,8 +1588,20 @@ class MissionEngine:
             return None
 
     def decompose_mission(self, mission_id: str) -> List[SubTask]:
-        mission = self.active_missions.get(mission_id)
-        if not mission or mission.status == MissionStatus.FAILED:
+        # This method is also used by legacy approval paths; do not trust a cached
+        # mission status or allow planning to reopen terminal/user-paused work.
+        mission = self._reload_mission_checkpoint(mission_id)
+        if not mission:
+            return []
+        if mission.status not in {
+            MissionStatus.CREATED,
+            MissionStatus.QUEUED,
+            MissionStatus.APPROVAL_PENDING,
+            MissionStatus.RUNNING,
+        }:
+            dgm_logger.warning(
+                f"MISSION_DECOMPOSITION_REFUSED: {mission_id} is {mission.status.value}"
+            )
             return []
 
         subtasks = self._build_local_subtasks(mission) or [

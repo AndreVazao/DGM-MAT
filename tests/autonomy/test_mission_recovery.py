@@ -268,6 +268,40 @@ def test_queued_and_approval_pending_missions_do_not_timeout_from_creation_time(
     assert engine.active_missions["waiting-queued-timeout-regression"].status is MissionStatus.QUEUED
     assert engine.active_missions["waiting-approval_pending-timeout-regression"].status is MissionStatus.APPROVAL_PENDING
 
+def test_decompose_refuses_terminal_or_user_paused_durable_state(tmp_path, monkeypatch):
+    import pytest
+
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+
+    for status in (
+        MissionStatus.COMPLETED,
+        MissionStatus.CANCELLED,
+        MissionStatus.FAILED,
+        MissionStatus.WAITING_FOR_USER,
+    ):
+        mission_id = f"decompose-refusal-{status.value.lower()}"
+        persisted = Mission(
+            mission_id=mission_id,
+            goal="Do not reopen closed work",
+            description="Terminal-state monotonicity regression",
+            status=status,
+        )
+        engine.save_mission(persisted)
+        stale = Mission(
+            mission_id=mission_id,
+            goal=persisted.goal,
+            description=persisted.description,
+            status=MissionStatus.QUEUED,
+        )
+        engine.active_missions[mission_id] = stale
+
+        assert engine.decompose_mission(mission_id) == []
+        assert stale.status is status
+        assert stale.subtasks == []
+
+
 def test_queue_handler_refreshes_terminal_checkpoint_before_execution(tmp_path, monkeypatch):
     import pytest
 
