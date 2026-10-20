@@ -78,9 +78,9 @@ jobs:
           tests.update(path for path in changed if path.startswith("tests/") and path.endswith(".py"))
           existing = sorted(path for path in tests if pathlib.Path(path).is_file())
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write("has_tests=" + ("true" if existing else "false") + "\\n")
+              output.write("has_tests=" + ("true" if existing else "false") + "\n")
           (pathlib.Path(os.environ["RUNNER_TEMP"]) / "selected-tests.txt").write_text(
-              "\\n".join(existing) + ("\\n" if existing else ""), encoding="utf-8"
+              "\n".join(existing) + ("\n" if existing else ""), encoding="utf-8"
           )
           print("Selected regressions: " + (", ".join(existing) if existing else "none; no historical suites will be rerun"))
           PY
