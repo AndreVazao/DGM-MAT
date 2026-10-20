@@ -1,0 +1,93 @@
+name: Focused PR Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "core/**"
+      - "shared/**"
+      - "cockpit/**"
+      - "tests/**"
+      - "requirements*.txt"
+      - "requirements/**"
+      - "pyproject.toml"
+      - "pytest.ini"
+      - ".github/workflows/targeted-pr-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: focused-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  focused:
+    name: Compile and run only affected regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout reviewed revision and base
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements/runtime.txt
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest
+      - name: Compile Python sources
+        run: python -m compileall -q core cockpit shared tests
+      - name: Select and run affected regression tests only
+        shell: bash
+        env:
+          PYTHONPATH: .
+          DGM_COMMAND_AUDIT_PATH: ${{ runner.temp }}/dgm-command-audit.jsonl
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --name-only "origin/${GITHUB_BASE_REF}...HEAD" > "${RUNNER_TEMP}/changed-files.txt"
+          else
+            git diff --name-only HEAD~1 HEAD > "${RUNNER_TEMP}/changed-files.txt" || true
+          fi
+          cat "${RUNNER_TEMP}/changed-files.txt"
+          python - <<'PY'
+          import os, pathlib, subprocess, sys
+          changed_file = pathlib.Path(os.environ["RUNNER_TEMP"]) / "changed-files.txt"
+          changed = set(changed_file.read_text(encoding="utf-8").splitlines())
+          tests = set()
+          def any_changed(*paths):
+              return any(path in changed for path in paths)
+          if any_changed("core/runtime/safe_action_queue.py", "tests/runtime/test_safe_action_queue.py"):
+              tests.add("tests/runtime/test_safe_action_queue.py")
+          if any_changed("core/autonomy/mission_engine.py", "core/execution/approval_manager.py",
+                         "tests/autonomy/test_mission_approval_checkpoint_guard.py"):
+              tests.update({
+                  "tests/autonomy/test_mission_approval_checkpoint_guard.py",
+                  "tests/autonomy/test_mission_system.py",
+                  "tests/autonomy/test_mission_recovery.py",
+              })
+          if any_changed("core/self_healing/self_repair_engine.py"):
+              tests.add("tests/self_healing/test_self_repair_engine.py")
+          if any_changed("core/self_healing/self_repair_engine.py", "core/self_healing/approval_gate.py"):
+              tests.add("tests/self_healing/test_self_repair_approval_gate.py")
+          if any_changed("core/security/", "core/api/security.py"):
+              tests.update(path for path in changed if path.startswith("tests/security/") and path.endswith(".py"))
+          tests.update(path for path in changed if path.startswith("tests/") and path.endswith(".py"))
+          existing = sorted(path for path in tests if pathlib.Path(path).is_file())
+          if not existing:
+              print("No mapped regression tests changed; syntax compilation passed. No historical suite rerun.")
+              sys.exit(0)
+          print("Running affected tests only:")
+          print("\n".join(existing))
+          sys.exit(subprocess.call([sys.executable, "-m", "pytest", "-q", *existing]))
+          PY
