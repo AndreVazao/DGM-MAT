@@ -671,9 +671,9 @@ class MissionEngine:
         ttl_seconds: int = 900,
     ) -> Dict[str, Any]:
         """Persist a mission checkpoint and pause only this mission for a human."""
-        mission = self.active_missions.get(mission_id)
+        mission = self._reload_mission_checkpoint(mission_id)
         if mission is None:
-            raise KeyError(f"Unknown mission: {mission_id}")
+            raise KeyError(f"Unknown or unavailable mission checkpoint: {mission_id}")
         if mission.status in {MissionStatus.COMPLETED, MissionStatus.CANCELLED, MissionStatus.FAILED}:
             raise ValueError("A terminal mission cannot request human intervention")
         existing = mission.metadata.get("human_intervention", {})
@@ -717,9 +717,9 @@ class MissionEngine:
         This method does not inspect or control a browser. verified=True must only
         be supplied by a trusted local verifier after checking the actual external state.
         """
-        mission = self.active_missions.get(mission_id)
+        mission = self._reload_mission_checkpoint(mission_id)
         if mission is None:
-            raise KeyError(f"Unknown mission: {mission_id}")
+            raise KeyError(f"Unknown or unavailable mission checkpoint: {mission_id}")
         handoff = mission.metadata.get("human_intervention", {})
         if mission.status != MissionStatus.WAITING_FOR_USER or handoff.get("request_id") != request_id:
             raise ValueError("The request is not the active handoff for this waiting mission")
