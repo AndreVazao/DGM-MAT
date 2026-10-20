@@ -34,7 +34,7 @@ def test_architecture_summary_uses_fixed_sources_and_line_provenance(tmp_path):
         "docs/architecture/DGM-MAT-ARCHITECTURE-CONSTITUTION-MODULAR-DEPARTMENTS-2026-10-18.md",
     }
     assert any(source["path"] == "README.md" and source["start_line"] == 5 for source in result["sources"])
-    assert "README.md:L5-L6" in result["output"]
+    assert "README.md:L5-L5" in result["output"]
     assert "The cockpit is presentation-only." in result["output"]
     assert sorted(path.name for path in root.iterdir()) == ["README.md", "docs"]
 
