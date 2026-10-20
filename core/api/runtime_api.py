@@ -287,7 +287,10 @@ def get_office_telemetry():
             status = data.get("status")
             if isinstance(status, dict):
                 status = status.get("value")
-            if not isinstance(mission_id, str) or not mission_id or status not in status_counts:
+            if (
+                not isinstance(mission_id, str) or not mission_id
+                or not isinstance(status, str) or status not in status_counts
+            ):
                 raise ValueError("checkpoint identity/status is invalid")
             metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
             result = metadata.get("result") if isinstance(metadata.get("result"), dict) else {}
