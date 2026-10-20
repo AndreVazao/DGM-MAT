@@ -876,9 +876,19 @@ class MissionEngine:
             mission.progress = len(completed_tasks) / len(mission.subtasks)
 
             if len(completed_tasks) == len(mission.subtasks):
-                dgm_logger.info(f"MISSION_COMPLETED: {mission.mission_id}")
-                mission.logs.append("All subtasks completed.")
-                self._update_status(mission, MissionStatus.COMPLETED)
+                # Subtask status flags alone are not a verified mission-level result.
+                # Until a generic executor/result contract exists, fail closed instead
+                # of declaring success without output or execution evidence.
+                dgm_logger.warning(
+                    f"MISSION_SUBTASKS_COMPLETE_WITHOUT_RESULT: {mission.mission_id}"
+                )
+                self._finish_mission_failure(
+                    mission,
+                    NotImplementedError(
+                        "All subtasks are marked completed, but no verified mission-level "
+                        "result or registered generic executor is available."
+                    ),
+                )
                 return
 
         # Execute directly for specific goals that do not need subtasks.

@@ -1,7 +1,7 @@
 import pytest
 
 from core.autonomy.mission_engine import MissionEngine
-from core.autonomy.mission_models import Mission, MissionStatus
+from core.autonomy.mission_models import Mission, MissionStatus, SubTask
 
 
 @pytest.mark.parametrize(
@@ -67,4 +67,91 @@ def test_finalizer_refuses_stale_cache_when_checkpoint_is_terminal(
     import json
     persisted = json.loads((tmp_path / f"{mission_id}.json").read_text(encoding="utf-8"))
     assert persisted["status"] == terminal_status.value
+    assert persisted["metadata"]["result"] == existing_result
+
+
+
+def _completed_subtask():
+    return SubTask(
+        subtask_id="st_completed",
+        title="Work item",
+        description="A task whose status alone is not mission-level result evidence",
+        status="completed",
+    )
+
+
+def test_all_completed_subtask_flags_do_not_claim_mission_success(tmp_path, monkeypatch):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    failures = []
+    monkeypatch.setattr(
+        engine,
+        "_finish_mission_failure",
+        lambda mission, exc: failures.append((mission, exc)),
+    )
+    mission = Mission(
+        mission_id="subtasks-without-result",
+        goal="Complete a generic mission",
+        description="Regression: completed flags are not a verified aggregate result",
+        status=MissionStatus.RUNNING,
+        subtasks=[_completed_subtask()],
+    )
+    engine.active_missions[mission.mission_id] = mission
+    engine.save_mission(mission)
+
+    engine._handle_running(mission)
+
+    assert len(failures) == 1
+    assert isinstance(failures[0][1], NotImplementedError)
+    assert "no verified mission-level result" in str(failures[0][1])
+    assert mission.status is MissionStatus.RUNNING
+    import json
+    persisted = json.loads((tmp_path / f"{mission.mission_id}.json").read_text(encoding="utf-8"))
+    assert persisted["status"] == MissionStatus.RUNNING.value
+    assert "result" not in persisted["metadata"]
+
+
+def test_stale_completed_subtasks_cannot_overwrite_terminal_mission(tmp_path, monkeypatch):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    emitted = []
+    observed = []
+    monkeypatch.setattr(engine, "_emit_mission_result", lambda mission, result: emitted.append(result))
+    monkeypatch.setattr(
+        engine,
+        "_record_execution_observation",
+        lambda mission, result, status: observed.append((result, status)),
+    )
+    mission_id = "stale-subtasks-terminal"
+    existing_result = {"status": "completed", "output": "verified prior result"}
+    durable = Mission(
+        mission_id=mission_id,
+        goal="Preserve a terminal mission",
+        description="Regression: stale completed flags cannot rewrite terminal state",
+        status=MissionStatus.COMPLETED,
+        metadata={"result": existing_result, "output": existing_result["output"]},
+        subtasks=[_completed_subtask()],
+    )
+    engine.active_missions[mission_id] = durable
+    engine.save_mission(durable)
+
+    stale = Mission(
+        mission_id=mission_id,
+        goal=durable.goal,
+        description=durable.description,
+        status=MissionStatus.RUNNING,
+        subtasks=[_completed_subtask()],
+    )
+    engine.active_missions[mission_id] = stale
+    engine._handle_running(stale)
+
+    assert stale.status is MissionStatus.COMPLETED
+    assert stale.metadata["result"] == existing_result
+    assert emitted == []
+    assert observed == []
+    import json
+    persisted = json.loads((tmp_path / f"{mission_id}.json").read_text(encoding="utf-8"))
+    assert persisted["status"] == MissionStatus.COMPLETED.value
     assert persisted["metadata"]["result"] == existing_result
