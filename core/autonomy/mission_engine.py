@@ -1077,6 +1077,8 @@ class MissionEngine:
             )
 
     def _finish_mission_success(self, mission: Mission, result: Dict[str, Any]):
+        if not self._refresh_mission_for_finalization(mission):
+            return None
         self._store_mission_result(mission, result)
         self._record_execution_observation(mission, result, MissionStatus.COMPLETED)
         self._emit_mission_result(mission, result)
@@ -1342,7 +1344,9 @@ class MissionEngine:
         """Read only validated lessons from the local institutional learning ledger."""
         return self.validated_lesson_store.list_lessons(project=project)
 
-    def _finish_mission_failure(self, mission: Mission, exc: Exception) -> Dict[str, Any]:
+    def _finish_mission_failure(self, mission: Mission, exc: Exception) -> Dict[str, Any] | None:
+        if not self._refresh_mission_for_finalization(mission):
+            return None
         output = f"Mission execution failed: {exc}"
         # Record a truthful, zero-cost next-step recommendation. This is advisory:
         # no retry, provider call, message dispatch, or spending occurs here.
@@ -1462,6 +1466,24 @@ class MissionEngine:
         self._update_status(mission, MissionStatus.FAILED, {"error": str(exc), "completed_at": datetime.now().isoformat()})
         dgm_logger.error(f"MISSION_EXECUTION_FAILED: {mission.mission_id} - {exc}")
         return result
+
+    def _refresh_mission_for_finalization(self, mission: Mission) -> bool:
+        """Refuse to write or emit a result from a stale or unavailable checkpoint."""
+        refreshed = self._reload_mission_checkpoint(mission.mission_id)
+        if refreshed is None:
+            dgm_logger.warning(
+                f"MISSION_FINALIZATION_REFUSED: {mission.mission_id} has no valid durable checkpoint."
+            )
+            return False
+        if refreshed.status in {
+            MissionStatus.COMPLETED, MissionStatus.CANCELLED, MissionStatus.FAILED,
+        }:
+            dgm_logger.warning(
+                f"MISSION_FINALIZATION_REFUSED: {mission.mission_id} is already terminal "
+                f"({refreshed.status.value}); result was not rewritten or emitted."
+            )
+            return False
+        return True
 
     def _store_mission_result(self, mission: Mission, result: Dict[str, Any]):
         mission.metadata["result"] = result
