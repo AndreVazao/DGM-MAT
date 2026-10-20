@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from core.autonomy.mission_engine import MissionEngine
-from core.autonomy.mission_models import MissionStatus
+from core.autonomy.mission_models import Mission, MissionStatus
 from core.organization.human_intervention_queue import HumanInterventionQueue
 
 
@@ -48,6 +48,71 @@ def test_subtasks_survive_engine_recreation(tmp_path):
     restored = recovered.active_missions[mission.mission_id]
     assert [item.subtask_id for item in restored.subtasks] == expected_ids
     assert [item.status for item in restored.subtasks] == expected_statuses
+
+
+def test_request_human_intervention_refreshes_terminal_checkpoint(tmp_path):
+    engine = isolated_engine(tmp_path)
+    mission = engine.create_mission("Terminal intervention request", "Must not reopen completed work")
+    terminal = Mission(
+        mission_id=mission.mission_id,
+        goal=mission.goal,
+        description=mission.description,
+        status=MissionStatus.COMPLETED,
+        metadata=dict(mission.metadata),
+        created_at=mission.created_at,
+    )
+    engine.save_mission(terminal)
+
+    with pytest.raises(ValueError, match="terminal mission"):
+        engine.request_human_intervention(
+            mission.mission_id,
+            step_id="should-not-open",
+            reason="Mission is already complete",
+            instructions="No action should be requested",
+        )
+
+    assert mission.status is MissionStatus.COMPLETED
+    assert engine.human_intervention_queue.list_pending(limit=10) == []
+
+
+def test_resolve_human_intervention_refuses_stale_waiting_cache_over_terminal_checkpoint(tmp_path):
+    engine = isolated_engine(tmp_path)
+    mission = engine.create_mission("Terminal handoff resolution", "Do not resume completed work")
+    request = engine.request_human_intervention(
+        mission.mission_id,
+        step_id="terminal-resolution",
+        reason="Confirm an external state",
+        instructions="No resolution should occur after terminal completion",
+    )
+    request_id = request["request_id"]
+    assert engine.human_intervention_queue.submit_decision(
+        request_id,
+        mission_id=mission.mission_id,
+        step_id="terminal-resolution",
+        decision="APPROVE",
+        actor_id="test-local-operator",
+    )
+    terminal = Mission(
+        mission_id=mission.mission_id,
+        goal=mission.goal,
+        description=mission.description,
+        status=MissionStatus.COMPLETED,
+        metadata=dict(mission.metadata),
+        created_at=mission.created_at,
+    )
+    engine.save_mission(terminal)
+
+    with pytest.raises(ValueError, match="active handoff"):
+        engine.resolve_human_intervention(
+            mission.mission_id,
+            request_id,
+            verified=True,
+            verification_evidence="The durable mission is already complete.",
+            actor_id="test-local-operator",
+        )
+
+    assert mission.status is MissionStatus.COMPLETED
+    assert engine.human_intervention_queue.get_request(request_id)["status"] == "RESPONSE_RECEIVED"
 
 
 def test_resume_requires_accepted_decision_and_verified_real_state(tmp_path):
