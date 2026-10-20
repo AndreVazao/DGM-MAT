@@ -5,6 +5,8 @@ import time
 from typing import Any, Dict, Optional
 
 PROVIDER_OBSERVATION_STALE_AFTER_SECONDS = 300
+# Permit minor clock skew, but never trust health evidence dated far in the future.
+PROVIDER_OBSERVATION_FUTURE_SKEW_SECONDS = 30
 
 
 def provider_freshness(
@@ -28,14 +30,19 @@ def provider_freshness(
     if (
         record.get("availability_observed") is True
         and isinstance(health_observed_at, (int, float))
+        and not isinstance(health_observed_at, bool)
         and health_observed_at > 0
     ):
-        health_age = max(0, int(current_time - health_observed_at))
-        freshness_status = (
-            "stale"
-            if health_age > PROVIDER_OBSERVATION_STALE_AFTER_SECONDS
-            else "fresh"
-        )
+        if health_observed_at > current_time + PROVIDER_OBSERVATION_FUTURE_SKEW_SECONDS:
+            # A materially future-dated observation is invalid evidence, not fresh health.
+            freshness_status = "invalid_timestamp"
+        else:
+            health_age = max(0, int(current_time - health_observed_at))
+            freshness_status = (
+                "stale"
+                if health_age > PROVIDER_OBSERVATION_STALE_AFTER_SECONDS
+                else "fresh"
+            )
     else:
         freshness_status = "unobserved"
 
@@ -51,7 +58,7 @@ def provider_freshness(
 
     if freshness_status == "stale":
         record["status"] = "stale"
-    elif freshness_status == "unobserved" and reported_status in {"ok", "active", "degraded"}:
+    elif freshness_status in {"unobserved", "invalid_timestamp"} and reported_status in {"ok", "active", "degraded"}:
         record["status"] = "unknown"
 
     return record
