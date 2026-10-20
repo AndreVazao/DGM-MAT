@@ -40,6 +40,10 @@ _ARCHITECTURE_TARGET_WORDS = {
     "project", "projeto", "repository", "repo", "system", "sistema",
     "departments", "departamentos",
 }
+_REPOSITORY_STATUS_TARGET_WORDS = {
+    "git", "repo", "repository", "repositorio", "workspace", "project", "projeto",
+}
+_STATUS_WORDS = {"status", "estado", "situacao", "branch"}
 _MUTATION_WORDS = {
     "create", "creates", "make", "write", "writes", "edit", "edits", "change", "changes",
     "modify", "modifies", "update", "updates", "delete", "deletes", "remove", "removes",
@@ -83,6 +87,11 @@ def classify_mission_intent(goal: str) -> IntentDecision:
         return IntentDecision(
             "architecture_summary", True, 0.96, False,
             "Matched a read-only architecture summary backed by fixed local source documents.",
+        )
+    if bool(word_set & _STATUS_WORDS) and bool(word_set & _REPOSITORY_STATUS_TARGET_WORDS):
+        return IntentDecision(
+            "repository_status", True, 0.97, False,
+            "Matched a fixed, read-only git status command scoped to the DGM-MAT repository root.",
         )
     if has_repository and has_read_verb:
         return IntentDecision(
