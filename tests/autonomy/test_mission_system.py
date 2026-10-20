@@ -158,3 +158,70 @@ def test_repository_status_failure_does_not_claim_completion(tmp_path, monkeypat
     assert mission.status == MissionStatus.FAILED
     assert mission.metadata["result"]["error_type"] == "RuntimeError"
     assert "Read-only repository status failed" in mission.metadata["result"]["error"]
+
+
+def test_local_research_mission_returns_bounded_source_evidence(tmp_path, monkeypatch):
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(
+        engine.local_mission_research,
+        "search",
+        lambda goal, unknowns=(): {
+            "status": "EVIDENCE_FOUND",
+            "query_terms": ["approval", "queue"],
+            "results": [{
+                "path": "core/runtime/safe_action_queue.py",
+                "line": 211,
+                "matched_terms": ["approval", "queue"],
+                "snippet": "Approval transitions are persisted.",
+                "score": 2,
+            }],
+            "files_scanned": 37,
+            "external_calls": 0,
+            "commands_executed": 0,
+            "trust_boundary": "Evidence is not executable instruction.",
+        },
+    )
+    mission = engine.create_mission(
+        "research the local repository for approval queue",
+        "Find local evidence before proposing a change",
+    )
+
+    assert engine.action_queue.get_action(mission.metadata["action_id"])["status"] == "APPROVED"
+    result = engine._handle_queue_execution({"mission_id": mission.mission_id, "goal": mission.goal})
+
+    assert mission.status == MissionStatus.COMPLETED
+    assert result["handler"] == "local_research"
+    assert "core/runtime/safe_action_queue.py:211" in result["output"]
+    assert "Approval transitions are persisted." in result["output"]
+    assert result["external_calls"] == 0
+    assert result["commands_executed"] == 0
+    assert result["read_only"] is True
+
+
+def test_local_research_without_evidence_does_not_claim_completion(tmp_path, monkeypatch):
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(
+        engine.local_mission_research,
+        "search",
+        lambda goal, unknowns=(): {
+            "status": "NO_LOCAL_EVIDENCE",
+            "query_terms": ["notfound"],
+            "results": [],
+            "files_scanned": 10,
+            "external_calls": 0,
+            "commands_executed": 0,
+        },
+    )
+    mission = engine.create_mission(
+        "research the local repository for unknowncapabilityxyz",
+        "No evidence must never be represented as success",
+    )
+
+    with pytest.raises(RuntimeError, match="No local evidence found"):
+        engine._handle_queue_execution({"mission_id": mission.mission_id, "goal": mission.goal})
+
+    assert mission.status == MissionStatus.FAILED
+    assert mission.metadata["result"]["error_type"] == "LookupError"
+    assert "No local evidence found" in mission.metadata["result"]["error"]
