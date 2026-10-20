@@ -1681,7 +1681,10 @@ class MissionEngine:
         mission = self.active_missions.get(mission_id)
         if mission:
             mission.metadata["approval_request_id"] = request_id
-            mission.metadata["approval_action_id"] = approval.get("action_id") if isinstance(approval, dict) else None
+            mission.metadata["approval_action_id"] = (
+                approval.get("action_id", approval.get("id"))
+                if isinstance(approval, dict) else None
+            )
             self.save_mission(mission)
             self._sync_state(mission)
         dgm_logger.info(f"APPROVAL_CREATED: {request_id} for mission {mission_id}")
