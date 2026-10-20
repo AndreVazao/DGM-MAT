@@ -70,3 +70,9 @@ def test_bearer_matches_exact_configured_token():
     assert not bearer_matches("Bearer abc123", "")
     assert not bearer_matches("Bearer  abc123", "abc123")
     assert not bearer_matches("Bearer abc123 ", "abc123")
+
+
+def test_office_telemetry_is_read_only_local_client_scope():
+    telemetry = classify_route("/runtime/office/telemetry", ("GET",))
+    assert telemetry is not None
+    assert telemetry.scope is SecurityScope.LOCAL_CLIENT
