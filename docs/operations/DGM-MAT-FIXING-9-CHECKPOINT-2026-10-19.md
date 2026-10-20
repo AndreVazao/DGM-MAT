@@ -6,10 +6,10 @@
 ## Estado GitHub verificado
 
 - Repositório: `AndreVazao/DGM-MAT`
-- `main` após integrar o PR #117: `da52127957a3b358dd3640a91ab5aff7396e00af`
+- `main` após integrar o PR #118: `d305c797520970978c99a170a248a01d8e7f7311`
 - Branch de trabalho: `fixing/operational-reality-audit-2026-10-19`
 - A branch de auditoria original foi criada a partir de `ab216c67248cac83eb71c2b2bc48c8f27ed657aa`.
-- PRs #97, #98, #100, #102, #103, #105, #107, #109, #111, #113, #115 e #117 estão integrados.
+- PRs #97, #98, #100, #102, #103, #105, #107, #109, #111, #113, #115, #117 e #118 estão integrados.
 - A atualização deste checkpoint é documental e não altera o código de runtime.
 
 ## PRs consolidados nesta fase
@@ -36,8 +36,8 @@ PR #71 — modelo de mensagens e conhecimento baseado em evidências — também
 ## O que está validado e o que não está
 
 ### Validado por evidência remota
-- Os PRs #94, #95, #96, #97, #98, #100, #102, #103, #105, #107, #109, #111, #113 e #115 estão fechados e integrados.
-- O baseline de código mais recente é o PR #115 (`096af7422fdc0a05db7818dbc33a10580e4658d2`).
+- Os PRs #94, #95, #96, #97, #98, #100, #102, #103, #105, #107, #109, #111, #113, #115, #117 e #118 estão fechados e integrados.
+- O baseline de código mais recente inclui o PR #118 (`d305c797520970978c99a170a248a01d8e7f7311`).
 - Os workflows de PR #94, #95, #97, #98 e #100 terminaram com sucesso; os jobs funcionais e os resumos obrigatórios foram reportados como `success`.
 - Os checks Snyk e CodeRabbit reportaram sucesso nos heads de PR #97, #98, #102 e #103.
 - Observações de saúde de providers datadas mais de 30 segundos no futuro são marcadas `invalid_timestamp`; `available`/`healthy` efetivos ficam falsos, mantendo os valores originalmente reportados para auditoria.
@@ -52,8 +52,11 @@ PR #71 — modelo de mensagens e conhecimento baseado em evidências — também
 - A fila só permite que o consumidor que ganha a atualização condicional para `RUNNING` execute a ação; a decisão de aprovação continua explícita.
 - Na recuperação de missões antigas, ações `MISSION_EXECUTION` que ficaram `RUNNING` após interrupção são marcadas `FAILED` para revisão, sem replay automático.
 - O enforcement de política e a promoção de autoevolução agora falham fechados enquanto os respetivos mecanismos reais não estiverem implementados.
+- PR #117 protege decisões de aprovação/rejeição com leitura do checkpoint durável e validação de decisão.
+- PR #118 protege os finalizadores de sucesso/falha contra checkpoints ausentes/inválidos e estados terminais; todos os jobs do Backend Phase Gate e o resumo obrigatório passaram no head do PR.
 
-#| #117 — proteger decisões de aprovação com checkpoint durável | Integrado por squash | `da52127957a3b358dd3640a91ab5aff7396e00af` | Backend Phase Gate e resumo obrigatório passaram; Snyk e CodeRabbit reportaram sucesso. A decisão de aprovação/rejeição relê primeiro o checkpoint associado e recusa missões terminais ou checkpoints indisponíveis; testes cobrem estado terminal, atualização de missão não terminal e decisão inválida. |
+| #117 — proteger decisões de aprovação com checkpoint durável | Integrado por squash | `da52127957a3b358dd3640a91ab5aff7396e00af` | Backend Phase Gate e resumo obrigatório passaram; Snyk e CodeRabbit reportaram sucesso. A decisão de aprovação/rejeição relê primeiro o checkpoint associado e recusa missões terminais ou checkpoints indisponíveis; testes cobrem estado terminal, atualização de missão não terminal e decisão inválida. |
+| #118 — impedir workers obsoletos de sobrescrever resultados terminais | Integrado por squash | `d305c797520970978c99a170a248a01d8e7f7311` | Backend Phase Gate run 111 (`39374226733`), todos os sete jobs funcionais e o resumo obrigatório passaram; Snyk e CodeRabbit reportaram sucesso. Os finalizadores de sucesso/falha atualizam o checkpoint antes de guardar, aprender ou emitir resultado e recusam checkpoints ausentes/inválidos ou missões já terminais. |
 
 ## Ainda não validado
 - Sincronização do clone local em `C:\ProgramasGodMode\DGM-MAT` com o SHA remoto atual; o PC local não foi inspecionado nesta operação.
@@ -64,7 +67,7 @@ PR #71 — modelo de mensagens e conhecimento baseado em evidências — também
 ## Próxima fase — auditoria operacional baseada em evidências
 
 1. Continuar a auditar a reconciliação de missões em estados terminais e a consistência dos resultados entre ficheiros, fila e API.
-2. Auditar os restantes caminhos de cancelamento, conclusão e persistência de resultados sob concorrência, procurando transições tardias que possam alterar estados terminais ou duplicar resultados.
+2. Corrigir/auditar o caminho `_handle_running`: quando todas as subtarefas aparecem como `completed`, ainda existe uma transição direta para `COMPLETED` via `_update_status`, fora dos finalizadores protegidos pelo PR #118 e sem resultado de missão agregado. Definir uma solução fail-closed baseada em evidência e testes antes de alterar o comportamento.
 3. Continuar a verificar se todos os pontos de entrada e leitura de missão usam os mesmos contratos duráveis, com especial atenção à consistência entre checkpoint, fila, handoffs e resultados.
 4. Verificar a integridade de observações de providers, incluindo relógios inválidos, evidência ausente e estados de registo vs. disponibilidade.
 5. Confirmar que os resultados de pesquisa, aprendizagem e evolução são persistentes e nunca simulam sucesso.
