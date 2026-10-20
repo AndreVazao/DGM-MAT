@@ -41,11 +41,16 @@ _ARCHITECTURE_TARGET_WORDS = {
     "departments", "departamentos",
 }
 _MUTATION_WORDS = {
-    "create", "make", "write", "edit", "change", "modify", "update", "delete",
-    "remove", "install", "run", "execute", "fix", "repair", "implement",
-    "deploy", "commit", "push", "merge", "criar", "cria", "escrever",
-    "editar", "alterar", "modificar", "atualizar", "apagar", "remover",
-    "instalar", "executar", "corrigir", "reparar", "implementar", "publicar",
+    "create", "creates", "make", "write", "writes", "edit", "edits", "change", "changes",
+    "modify", "modifies", "update", "updates", "delete", "deletes", "remove", "removes",
+    "install", "installs", "run", "runs", "execute", "executes", "fix", "fixes",
+    "repair", "repairs", "implement", "implements", "deploy", "deploys", "commit", "commits",
+    "push", "pushes", "merge", "merges", "criar", "cria", "crie", "escrever", "escreve",
+    "editar", "edita", "edite", "alterar", "altera", "altere", "modificar", "modifica",
+    "modifique", "atualizar", "atualiza", "atualize", "apagar", "apaga", "apague",
+    "remover", "remove", "remova", "instalar", "instala", "instale", "executar",
+    "executa", "execute", "corrigir", "corrige", "corrija", "reparar", "repara",
+    "repare", "implementar", "implementa", "implemente", "publicar", "publica", "publique",
 }
 
 
