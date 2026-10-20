@@ -312,6 +312,14 @@ class SafeActionQueue:
             )
             return True
 
+    def list_mission_execution_actions(self) -> List[Dict[str, Any]]:
+        """List durable mission actions so startup can reconcile checkpoint links."""
+        with SessionLocal() as session:
+            actions = session.query(ActionRecord).filter(
+                ActionRecord.action_type == "MISSION_EXECUTION"
+            ).order_by(ActionRecord.created_at.asc()).all()
+            return [self._to_dict(action) for action in actions]
+
     def get_action(self, action_id: int) -> Optional[Dict[str, Any]]:
         with SessionLocal() as session:
             action = session.get(ActionRecord, action_id)
