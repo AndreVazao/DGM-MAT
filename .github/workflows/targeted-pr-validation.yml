@@ -70,7 +70,12 @@ jobs:
               tests.add("tests/self_healing/test_self_repair_engine.py")
           if any_changed("core/self_healing/self_repair_engine.py", "core/self_healing/approval_gate.py"):
               tests.add("tests/self_healing/test_self_repair_approval_gate.py")
-          if any(path.startswith("core/security/") or path == "core/api/security.py" for path in changed):
+          if any(
+              path.startswith("core/security/") or path in {
+                  "core/api/security.py", "core/api/runtime_api.py",
+              }
+              for path in changed
+          ):
               tests.update({
                   "tests/security/test_api_global_auth_enforcement.py",
                   "tests/security/test_api_security_policy.py",

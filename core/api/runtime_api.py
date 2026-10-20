@@ -3,6 +3,7 @@
 import json
 import os
 import time
+from datetime import datetime
 import psutil
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field, field_validator
@@ -267,6 +268,127 @@ def list_missions():
             "output": mission.metadata.get("output"),
         })
     return missions
+
+@router.get("/office/telemetry")
+def get_office_telemetry():
+    """Read-only, content-minimized telemetry for the virtual office projection."""
+    status_counts = {status.value: 0 for status in MissionStatus}
+    recent_missions = []
+    invalid_checkpoints = 0
+
+    # Read durable mission checkpoints directly; this endpoint must not refresh or
+    # mutate mission state merely because the visual cockpit opened.
+    for checkpoint in mission_engine.missions_path.glob("*.json"):
+        try:
+            data = json.loads(checkpoint.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                raise ValueError("checkpoint must be an object")
+            mission_id = data.get("mission_id", checkpoint.stem)
+            status = data.get("status")
+            if isinstance(status, dict):
+                status = status.get("value")
+            if (
+                not isinstance(mission_id, str) or not mission_id
+                or not isinstance(status, str) or status not in status_counts
+            ):
+                raise ValueError("checkpoint identity/status is invalid")
+            metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+            result = metadata.get("result") if isinstance(metadata.get("result"), dict) else {}
+            updated_at = data.get("updated_at") or data.get("created_at")
+            action_id = metadata.get("action_id")
+            if isinstance(action_id, bool) or not isinstance(action_id, int):
+                action_id = None
+            status_counts[status] += 1
+            recent_missions.append({
+                "mission_id": mission_id,
+                "status": status,
+                "updated_at": updated_at if isinstance(updated_at, str) else None,
+                "action_id": action_id,
+                "handler": result.get("handler") if isinstance(result.get("handler"), str) else None,
+            })
+        except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
+            invalid_checkpoints += 1
+
+    recent_missions.sort(key=lambda item: item.get("updated_at") or "", reverse=True)
+    recent_missions = recent_missions[:8]
+
+    queue = SafeActionQueue()
+    action_telemetry = queue.get_mission_execution_telemetry(limit=8)
+    queue_health = queue.get_health()
+    snapshot = state_store.get_snapshot()
+    active_missions = status_counts.get(MissionStatus.RUNNING.value, 0)
+    waiting_missions = sum(status_counts.get(status, 0) for status in (
+        MissionStatus.QUEUED.value, MissionStatus.APPROVAL_PENDING.value,
+        MissionStatus.WAITING_FOR_USER.value,
+    ))
+    action_counts = action_telemetry.get("counts", {})
+    queued_actions = int(action_counts.get("QUEUED", 0))
+    approved_actions = int(action_counts.get("APPROVED", 0))
+    running_actions = int(action_counts.get("RUNNING", 0))
+
+    engineering_state = "active" if active_missions else ("waiting" if waiting_missions else "idle")
+    approvals_state = "waiting" if queued_actions else ("active" if approved_actions or running_actions else "idle")
+    worker_alive = queue_health.get("worker_alive") is True
+
+    return {
+        "schema": "dgm-mat.office-telemetry.v1",
+        "generated_at": datetime.now().isoformat(),
+        "source": "durable_mission_checkpoints+safe_action_queue+runtime_state_store",
+        "runtime": {
+            "status": getattr(snapshot, "runtime_status", "unknown"),
+            "is_degraded": bool(getattr(snapshot, "is_degraded", False)),
+        },
+        "missions": {
+            "total": sum(status_counts.values()),
+            "counts": status_counts,
+            "invalid_checkpoints": invalid_checkpoints,
+            "recent": recent_missions,
+        },
+        "actions": action_telemetry,
+        "queue_worker": {
+            "worker_alive": worker_alive,
+            "last_heartbeat": queue_health.get("last_heartbeat"),
+            "registered_handler_count": len(queue_health.get("handlers", [])),
+        },
+        "departments": {
+            "engineering": {
+                "state": engineering_state,
+                "active_missions": active_missions,
+                "waiting_missions": waiting_missions,
+                "reason": "Derived from persisted mission checkpoint states.",
+            },
+            "approvals": {
+                "state": approvals_state,
+                "waiting_decisions": queued_actions,
+                "approved_actions": approved_actions,
+                "running_actions": running_actions,
+                "reason": "Derived from durable MISSION_EXECUTION queue states.",
+            },
+            "operations": {
+                "state": "active" if worker_alive else "unknown",
+                "worker_alive": worker_alive,
+                "reason": "Worker state is unknown when no live consumer heartbeat is available.",
+            },
+            "research": {
+                "state": "unknown",
+                "reason": "No department-specific research event feed is registered yet.",
+            },
+            "memory": {
+                "state": "unknown",
+                "reason": "No department-specific memory event feed is registered yet.",
+            },
+            "agents": {
+                "state": "unknown",
+                "reason": "No per-agent activity event feed is registered yet.",
+            },
+        },
+        "limitations": [
+            "This endpoint is observational and does not authorize, approve, execute, or mutate missions.",
+            "Mission goals, conversation content, credentials, and full action payloads are intentionally omitted.",
+            "Unknown departments remain unknown until a real event source is registered.",
+        ],
+    }
+
 
 @router.post("/approvals/{request_id}")
 def judge_approval(request_id: str, decision: ApprovalDecision):

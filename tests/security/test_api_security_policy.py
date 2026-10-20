@@ -32,6 +32,7 @@ def test_sensitive_routes_are_not_public():
         ("/runtime/approvals/{request_id}", "POST"),
         ("/runtime/queue/actions/{action_id}/approve", "POST"),
         ("/runtime/queue/actions/{action_id}/reject", "POST"),
+        ("/runtime/office/telemetry", "GET"),
         ("/runtime/workspace/scan", "GET"),
         ("/mobile/threads/{thread_id}/messages", "POST"),
         ("/governance/repair/self/apply", "POST"),
@@ -69,3 +70,9 @@ def test_bearer_matches_exact_configured_token():
     assert not bearer_matches("Bearer abc123", "")
     assert not bearer_matches("Bearer  abc123", "abc123")
     assert not bearer_matches("Bearer abc123 ", "abc123")
+
+
+def test_office_telemetry_is_read_only_local_client_scope():
+    telemetry = classify_route("/runtime/office/telemetry", ("GET",))
+    assert telemetry is not None
+    assert telemetry.scope is SecurityScope.LOCAL_CLIENT
