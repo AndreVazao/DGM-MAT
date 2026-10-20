@@ -1693,6 +1693,9 @@ class MissionEngine:
         normalized = decision.strip().lower()
         if normalized not in {"approve", "approved", "reject", "rejected"}:
             return False
+        # Store one canonical decision vocabulary so legacy lifecycle consumers
+        # treat both API spellings ("reject"/"rejected") identically.
+        normalized = "approve" if normalized in {"approve", "approved"} else "reject"
 
         # A cached mission may have become terminal in another process. Refresh it
         # before deciding the separate durable approval action, so a late click cannot
