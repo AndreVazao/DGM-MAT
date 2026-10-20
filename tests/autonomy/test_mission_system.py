@@ -152,8 +152,9 @@ def test_repository_status_failure_does_not_claim_completion(tmp_path, monkeypat
     )
     mission = engine.create_mission("check git status", "Read-only diagnostic failure regression")
 
-    result = engine._handle_queue_execution({"mission_id": mission.mission_id, "goal": mission.goal})
+    with pytest.raises(RuntimeError, match="Read-only repository status failed"):
+        engine._handle_queue_execution({"mission_id": mission.mission_id, "goal": mission.goal})
 
     assert mission.status == MissionStatus.FAILED
-    assert result["error_type"] == "RuntimeError"
-    assert "Read-only repository status failed" in result["error"]
+    assert mission.metadata["result"]["error_type"] == "RuntimeError"
+    assert "Read-only repository status failed" in mission.metadata["result"]["error"]
