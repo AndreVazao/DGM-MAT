@@ -645,6 +645,15 @@ class MissionEngine:
                             "changed or its checkpoint is unavailable."
                         )
                     return finalized
+                elif intent.intent == "architecture_summary" and intent.supported:
+                    result = self._execute_architecture_summary_mission(mission)
+                    finalized = self._finish_mission_success(mission, result)
+                    if finalized is None:
+                        raise RuntimeError(
+                            "Architecture summary finalization was refused because durable state "
+                            "changed or its checkpoint is unavailable."
+                        )
+                    return finalized
                 else:
                     capability = self._capability_request_from_goal(mission.goal)
                     if capability and "capability_discovery" not in mission.metadata:
@@ -919,6 +928,25 @@ class MissionEngine:
                 self._finish_mission_success(mission, result)
             except Exception as exc:
                 self._finish_mission_failure(mission, exc)
+
+    def _execute_architecture_summary_mission(self, mission: Mission) -> Dict[str, Any]:
+        """Build a bounded, read-only architecture summary from fixed local documents."""
+        from core.autonomy.mission_capabilities import build_architecture_summary
+
+        started = time.monotonic()
+        repo_root = Path(__file__).resolve().parents[2]
+        result = build_architecture_summary(repo_root)
+        result.update({
+            "mission_id": mission.mission_id,
+            "handler": "architecture_summary",
+            "execution_duration": round(time.monotonic() - started, 3),
+            "generated_at": datetime.now().isoformat(),
+        })
+        dgm_logger.info(
+            f"MISSION_RESULT_GENERATED: {mission.mission_id} - architecture summary "
+            f"from {len(result.get('sources', []))} source sections"
+        )
+        return result
 
     def _execute_list_repositories_mission(self, mission: Mission) -> Dict[str, Any]:
         dgm_logger.info(f"MISSION_HANDLER_SELECTED: {mission.mission_id} - list_repositories")
