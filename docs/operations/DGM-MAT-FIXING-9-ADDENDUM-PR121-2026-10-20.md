@@ -87,3 +87,24 @@ A validação reportada nesta fase é CI remoto do GitHub Actions. Não foram ex
 2. Instalar o APK num Android e testar pairing/autenticação; manter o workflow desativado salvo se for necessário corrigir e reconstruir.
 3. Continuar a implementar executores específicos com contratos e testes próprios; não voltar a tratar um plano de subtarefas como prova de execução.
 
+### PR #128 — estado real do repositório
+- Integrado na `main`: `b56ad0845c46c5d69e8161fc7e9d359c5244af08`.
+- Validação direcionada: run `39412244158`, sucesso; Snyk e CodeRabbit também passaram.
+- A missão `repository_status` executa apenas `git -C <raiz-DGM-MAT> status --short --branch`, com `shell=False`, timeout de cinco segundos e sem operações de rede ou escrita.
+- Se o Git devolver erro, a missão falha; nunca apresenta um relatório vazio como sucesso.
+
+### PR #129 — pesquisa de evidência local
+- Integrado na `main`: `b1c807cb34b2673ec3c13b009f880c2460314a8b`.
+- Validação direcionada: run `39412590933`, sucesso; Snyk e CodeRabbit também passaram.
+- A missão `local_research` reutiliza o pesquisador local com limites de tempo, ficheiros e resultados, redacção de segredos e referências a ficheiros/linhas.
+- Não usa web, shell, rede nem escrita. Se não encontrar evidência, falha sem declarar conclusão.
+- A intenção só é autoaprovada quando identifica explicitamente um contexto local (repo, código, documentação, workspace ou DGM-MAT). Pesquisa web e pedidos que misturam pesquisa com alterações continuam bloqueados.
+
+### Capacidades read-only atualmente registadas
+1. `list_repositories` — listagem local de repositórios.
+2. `architecture_summary` — resumo com proveniência de documentos arquiteturais fixos.
+3. `repository_status` — estado Git do próprio DGM-MAT.
+4. `local_research` — pesquisa limitada em código/documentação local com evidência.
+
+Estas quatro capacidades não equivalem a um executor genérico. O próximo passo é um contrato explícito de pedido de esclarecimento/ajuda e continuação da missão sem divergência entre checkpoint e fila; depois, novos executores específicos com testes próprios.
+
