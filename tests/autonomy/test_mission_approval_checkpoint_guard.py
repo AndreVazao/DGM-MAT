@@ -212,3 +212,51 @@ def test_legacy_scheduler_recovers_durable_rejection_after_checkpoint_gap(tmp_pa
         (tmp_path / f"{mission.mission_id}.json").read_text(encoding="utf-8")
     )
     assert persisted["status"] == MissionStatus.CANCELLED.value
+
+
+def test_legacy_rejection_is_persisted_before_mission_is_cancelled(tmp_path, monkeypatch):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    request_id = "approval-rejection-durable-first"
+    mission = _mission("mission-rejection-durable-first", request_id, MissionStatus.APPROVAL_PENDING)
+    mission.metadata["last_decision"] = "reject"
+    engine.save_mission(mission)
+    engine.active_missions = {mission.mission_id: mission}
+
+    class _DurableApprovalManager(_FakeApprovalManager):
+        def reject(self, request_id):
+            self.decisions.append((request_id, "reject"))
+            self.approvals[request_id]["status"] = "rejected"
+            return True
+
+    approvals = _DurableApprovalManager(request_id)
+    engine.approval_manager = approvals
+    engine._handle_approval_pending(mission)
+
+    assert approvals.approvals[request_id]["status"] == "rejected"
+    assert approvals.decisions == [(request_id, "reject")]
+    assert mission.status is MissionStatus.CANCELLED
+
+
+def test_durable_approval_wins_over_stale_legacy_rejection(tmp_path, monkeypatch):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    request_id = "approval-approved-wins-stale-reject"
+    mission = _mission("mission-approved-wins-stale-reject", request_id, MissionStatus.APPROVAL_PENDING)
+    mission.metadata["last_decision"] = "reject"
+    engine.save_mission(mission)
+    engine.active_missions = {mission.mission_id: mission}
+
+    approvals = _FakeApprovalManager(request_id)
+    approvals.approvals[request_id]["status"] = "approved"
+    engine.approval_manager = approvals
+    monkeypatch.setattr(engine, "_mark_execution_started", lambda current: setattr(current, "status", MissionStatus.RUNNING))
+    engine._handle_approval_pending(mission)
+
+    # The durable approval wins; this unsupported generic mission still fails
+    # closed in the existing executor contract, but it is not cancelled as rejected.
+    assert mission.status is MissionStatus.FAILED
+    assert mission.error != "User rejected mission."
+    assert approvals.decisions == []

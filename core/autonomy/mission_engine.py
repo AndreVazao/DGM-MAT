@@ -892,36 +892,72 @@ class MissionEngine:
         self._update_status(mission, MissionStatus.QUEUED)
 
     def _handle_approval_pending(self, mission: Mission):
-        # Legacy approval logic, keeping for compatibility but SafeActionQueue is now preferred
+        # Compatibility path: the durable approval record is authoritative.
+        # A cached mission decision must never override an accepted opposite decision.
         req_id = mission.metadata.get("approval_request_id")
-        if req_id:
-            approval = self.approval_manager.approvals.get(req_id)
-            # Check durable approval decision
-            decision = mission.metadata.get("last_decision")
-            raw_approval_status = approval.get("status") if approval else None
-            approval_status = getattr(raw_approval_status, "value", raw_approval_status)
-            if decision == "approve" or approval_status == "approved":
-                dgm_logger.info(f"MISSION_STARTED: {mission.mission_id}")
-                mission.logs.append("User approved mission via legacy interface.")
-                intent = classify_mission_intent(mission.goal)
-                if intent.intent == "list_repositories" and intent.supported:
-                    self._mark_execution_started(mission)
-                else:
-                    self.decompose_mission(mission.mission_id)
-                    self._finish_mission_failure(
-                        mission,
-                        NotImplementedError(
-                            "Mission was planned, but no generic task executor is registered. "
-                            "The subtasks are proposals only and were not executed."
-                        ),
-                    )
-            elif decision == "reject" or approval_status == "rejected":
-                dgm_logger.warning(f"MISSION_CANCELLED: {mission.mission_id} - Rejected by user")
-                mission.logs.append("Mission rejected by user.")
-                # A deliberate operator rejection is cancellation, not execution failure.
-                # The queue consumer refreshes this terminal checkpoint before acting and
-                # therefore refuses any later approval of a stale queued action.
-                self._update_status(mission, MissionStatus.CANCELLED, {"error": "User rejected mission."})
+        if not req_id:
+            return
+
+        approval = self.approval_manager.approvals.get(req_id)
+        if not approval:
+            dgm_logger.warning(
+                f"MISSION_APPROVAL_RECONCILIATION_DEFERRED: {mission.mission_id} "
+                "has no durable approval record"
+            )
+            return
+
+        decision = mission.metadata.get("last_decision")
+        raw_approval_status = approval.get("status")
+        approval_status = getattr(raw_approval_status, "value", raw_approval_status)
+        approval_status = str(approval_status or "").casefold()
+
+        # Persist a legacy decision into the durable approval queue before changing
+        # the mission checkpoint. The manager transitions only a still-queued request.
+        if approval_status in {"awaiting_approval", "pending", "queued"}:
+            if decision == "reject":
+                if self.approval_manager.reject(req_id) is not True:
+                    refreshed = self.approval_manager.approvals.get(req_id) or {}
+                    refreshed_status = getattr(refreshed.get("status"), "value", refreshed.get("status"))
+                    if str(refreshed_status or "").casefold() != "rejected":
+                        dgm_logger.warning(
+                            f"MISSION_APPROVAL_RECONCILIATION_DEFERRED: {mission.mission_id} "
+                            "durable rejection was not accepted"
+                        )
+                        return
+                approval_status = "rejected"
+            elif decision == "approve":
+                if self.approval_manager.approve(req_id) is not True:
+                    refreshed = self.approval_manager.approvals.get(req_id) or {}
+                    refreshed_status = getattr(refreshed.get("status"), "value", refreshed.get("status"))
+                    if str(refreshed_status or "").casefold() != "approved":
+                        dgm_logger.warning(
+                            f"MISSION_APPROVAL_RECONCILIATION_DEFERRED: {mission.mission_id} "
+                            "durable approval was not accepted"
+                        )
+                        return
+                approval_status = "approved"
+
+        # Durable approval state wins over stale mission metadata.
+        if approval_status == "approved":
+            dgm_logger.info(f"MISSION_STARTED: {mission.mission_id}")
+            mission.logs.append("User approved mission via legacy interface.")
+            intent = classify_mission_intent(mission.goal)
+            if intent.intent == "list_repositories" and intent.supported:
+                self._mark_execution_started(mission)
+            else:
+                self.decompose_mission(mission.mission_id)
+                self._finish_mission_failure(
+                    mission,
+                    NotImplementedError(
+                        "Mission was planned, but no generic task executor is registered. "
+                        "The subtasks are proposals only and were not executed."
+                    ),
+                )
+        elif approval_status == "rejected":
+            dgm_logger.warning(f"MISSION_CANCELLED: {mission.mission_id} - Rejected by user")
+            mission.logs.append("Mission rejected by user.")
+            # The durable approval rejection is recorded before this terminal checkpoint.
+            self._update_status(mission, MissionStatus.CANCELLED, {"error": "User rejected mission."})
 
     def _handle_running(self, mission: Mission):
         # Monitor subtasks if they exist
