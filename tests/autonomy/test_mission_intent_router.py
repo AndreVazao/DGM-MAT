@@ -28,3 +28,27 @@ def test_invalid_goal_is_never_supported():
     decision = classify_mission_intent(' x ')
     assert decision.intent == 'invalid'
     assert decision.supported is False
+
+
+def test_read_only_architecture_summary_is_recognized_in_portuguese_and_english():
+    for goal in [
+        "Prepare a summary of the repository architecture",
+        "summarize the project structure",
+        "resumo da arquitetura do projeto",
+        "faz um resumo da estrutura do sistema",
+    ]:
+        decision = classify_mission_intent(goal)
+        assert decision.intent == "architecture_summary"
+        assert decision.supported is True
+        assert decision.requires_approval is False
+
+
+def test_architecture_summary_never_overrides_a_mutating_request():
+    for goal in [
+        "summarize the architecture and update the README",
+        "resume a arquitetura e corrige o código",
+    ]:
+        decision = classify_mission_intent(goal)
+        assert decision.intent == "unsupported"
+        assert decision.supported is False
+        assert decision.requires_approval is True

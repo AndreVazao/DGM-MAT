@@ -35,6 +35,7 @@ class MissionEngine:
     BRANCH_SCAN_LIMIT = 20
     REPO_TIMEOUT_SECONDS = 5.0
     MISSION_EXECUTION_TIMEOUT_SECONDS = 60.0
+    AUTO_RUN_READ_ONLY_INTENTS = frozenset({"list_repositories", "architecture_summary"})
 
     def __init__(self, organization_bus: InternalMessageBus | None = None):
         self.missions_path = storage_manager.get_path("missions")
@@ -536,8 +537,12 @@ class MissionEngine:
             # Transition to QUEUED immediately
             self._update_status(mission, MissionStatus.QUEUED)
 
-            # Only a positively classified, read-only registered handler may auto-run.
-            if intent_decision.intent == "list_repositories" and intent_decision.supported and not intent_decision.requires_approval:
+            # Only explicitly allowlisted, read-only registered handlers may auto-run.
+            if (
+                intent_decision.intent in self.AUTO_RUN_READ_ONLY_INTENTS
+                and intent_decision.supported
+                and not intent_decision.requires_approval
+            ):
                 dgm_logger.info(f"MissionEngine: Auto-approving {mission_id} in queue.")
                 self.action_queue.approve(action_id, operator="system_auto")
 
@@ -642,6 +647,15 @@ class MissionEngine:
                     if finalized is None:
                         raise RuntimeError(
                             "Mission success finalization was refused because durable state "
+                            "changed or its checkpoint is unavailable."
+                        )
+                    return finalized
+                elif intent.intent == "architecture_summary" and intent.supported:
+                    result = self._execute_architecture_summary_mission(mission)
+                    finalized = self._finish_mission_success(mission, result)
+                    if finalized is None:
+                        raise RuntimeError(
+                            "Architecture summary finalization was refused because durable state "
                             "changed or its checkpoint is unavailable."
                         )
                     return finalized
@@ -919,6 +933,25 @@ class MissionEngine:
                 self._finish_mission_success(mission, result)
             except Exception as exc:
                 self._finish_mission_failure(mission, exc)
+
+    def _execute_architecture_summary_mission(self, mission: Mission) -> Dict[str, Any]:
+        """Build a bounded, read-only architecture summary from fixed local documents."""
+        from core.autonomy.mission_capabilities import build_architecture_summary
+
+        started = time.monotonic()
+        repo_root = Path(__file__).resolve().parents[2]
+        result = build_architecture_summary(repo_root)
+        result.update({
+            "mission_id": mission.mission_id,
+            "handler": "architecture_summary",
+            "execution_duration": round(time.monotonic() - started, 3),
+            "generated_at": datetime.now().isoformat(),
+        })
+        dgm_logger.info(
+            f"MISSION_RESULT_GENERATED: {mission.mission_id} - architecture summary "
+            f"from {len(result.get('sources', []))} source sections"
+        )
+        return result
 
     def _execute_list_repositories_mission(self, mission: Mission) -> Dict[str, Any]:
         dgm_logger.info(f"MISSION_HANDLER_SELECTED: {mission.mission_id} - list_repositories")

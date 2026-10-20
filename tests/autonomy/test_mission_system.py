@@ -27,24 +27,30 @@ def test_objective_generation_with_missions():
     assert mission_tasks[0]["mission_id"] == mission.mission_id
     assert mission_tasks[0]["approval_required"] is True
 
-def test_approved_generic_mission_does_not_claim_execution_without_executor():
+def test_read_only_architecture_summary_mission_executes_with_source_evidence(tmp_path):
     engine = MissionEngine(organization_bus=InternalMessageBus())
+    engine.missions_path = tmp_path
     mission = engine.create_mission(
         "Prepare a summary of the repository architecture",
-        "Regression: generic planning must not masquerade as execution",
+        "A bounded, read-only capability backed by local architecture documents",
     )
+
+    assert mission.status == MissionStatus.QUEUED
+    assert engine.action_queue.get_action(mission.metadata["action_id"])["status"] == "APPROVED"
 
     result = engine._handle_queue_execution({
         "mission_id": mission.mission_id,
         "goal": mission.goal,
     })
 
-    assert mission.status == MissionStatus.FAILED
-    assert result["error_type"] == "NotImplementedError"
-    assert "no generic task executor is registered" in result["error"]
-    assert mission.subtasks
-    assert all(task.status != "completed" for task in mission.subtasks)
-    assert mission.metadata["result"]["error_type"] == "NotImplementedError"
+    assert mission.status == MissionStatus.COMPLETED
+    assert result["handler"] == "architecture_summary"
+    assert result["sources"]
+    assert "README.md:L" in result["output"]
+    assert "Authority and architecture boundaries" in result["output"]
+    assert result["execution_duration"] >= 0
+    assert mission.metadata["result"]["handler"] == "architecture_summary"
+    assert mission.subtasks == []
 
 def test_failed_mission_surfaces_local_research_evidence(tmp_path, monkeypatch):
     engine = MissionEngine(organization_bus=InternalMessageBus())
@@ -92,3 +98,16 @@ def test_failed_mission_surfaces_local_research_evidence(tmp_path, monkeypatch):
     assert "No generic executor is registered." in result["output"]
     assert mission.metadata["learning_observation"]["promotion_status"] == "OBSERVATION_ONLY"
 
+
+
+def test_unsupported_mission_does_not_auto_approve_its_queue_action():
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    mission = engine.create_mission(
+        "Implement a new autonomous code mutator",
+        "Mutating and unsupported work must stay behind human approval",
+    )
+
+    action = engine.action_queue.get_action(mission.metadata["action_id"])
+    assert mission.status == MissionStatus.QUEUED
+    assert action["status"] == "QUEUED"
+    assert action["is_approved"] is False
