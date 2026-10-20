@@ -170,3 +170,13 @@ def test_queue_decision_routes_require_operator_session(client):
         json={"reason": "reject for security test"},
     ).status_code == 403
 
+
+
+def test_office_telemetry_requires_operator_session(client):
+    assert client.get("/runtime/office/telemetry").status_code == 401
+
+    read_only_token = _session({"local-client"})
+    assert client.get(
+        "/runtime/office/telemetry",
+        headers={"Authorization": f"Bearer {read_only_token}"},
+    ).status_code == 403
