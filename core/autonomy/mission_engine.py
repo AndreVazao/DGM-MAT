@@ -881,9 +881,12 @@ class MissionEngine:
                         ),
                     )
             elif decision == "reject":
-                dgm_logger.warning(f"MISSION_FAILED: {mission.mission_id} - Rejected by user")
+                dgm_logger.warning(f"MISSION_CANCELLED: {mission.mission_id} - Rejected by user")
                 mission.logs.append("Mission rejected by user.")
-                self._update_status(mission, MissionStatus.FAILED, {"error": "User rejected mission."})
+                # A deliberate operator rejection is cancellation, not execution failure.
+                # The queue consumer refreshes this terminal checkpoint before acting and
+                # therefore refuses any later approval of a stale queued action.
+                self._update_status(mission, MissionStatus.CANCELLED, {"error": "User rejected mission."})
 
     def _handle_running(self, mission: Mission):
         # Monitor subtasks if they exist
