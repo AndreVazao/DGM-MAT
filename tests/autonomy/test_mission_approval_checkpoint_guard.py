@@ -85,3 +85,29 @@ def test_invalid_approval_decision_does_not_mutate_durable_approval(tmp_path, mo
 
     assert engine.handle_approval_decision(request_id, "maybe") is False
     assert approvals.decisions == []
+
+
+def test_legacy_rejection_cancels_mission_instead_of_marking_execution_failed(tmp_path, monkeypatch):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    request_id = "approval-rejection-cancel-regression"
+    mission = _mission(
+        "mission-rejected-by-user",
+        request_id,
+        MissionStatus.APPROVAL_PENDING,
+    )
+    mission.metadata["last_decision"] = "reject"
+    engine.save_mission(mission)
+    engine.active_missions = {mission.mission_id: mission}
+    engine.approval_manager = _FakeApprovalManager(request_id)
+
+    engine._handle_approval_pending(mission)
+
+    assert mission.status is MissionStatus.CANCELLED
+    assert mission.error == "User rejected mission."
+    persisted = __import__("json").loads(
+        (tmp_path / f"{mission.mission_id}.json").read_text(encoding="utf-8")
+    )
+    assert persisted["status"] == MissionStatus.CANCELLED.value
+    assert persisted["error"] == "User rejected mission."
