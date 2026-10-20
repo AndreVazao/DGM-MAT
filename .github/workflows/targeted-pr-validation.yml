@@ -80,7 +80,7 @@ jobs:
               tests.add("tests/self_healing/test_self_repair_engine.py")
           if any_changed("core/self_healing/self_repair_engine.py", "core/self_healing/approval_gate.py"):
               tests.add("tests/self_healing/test_self_repair_approval_gate.py")
-          if any_changed("core/security/", "core/api/security.py"):
+          if any(path.startswith("core/security/") or path == "core/api/security.py" for path in changed):
               tests.update(path for path in changed if path.startswith("tests/security/") and path.endswith(".py"))
           tests.update(path for path in changed if path.startswith("tests/") and path.endswith(".py"))
           existing = sorted(path for path in tests if pathlib.Path(path).is_file())
