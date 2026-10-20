@@ -1637,23 +1637,47 @@ class MissionEngine:
         return request_id
 
     def handle_approval_decision(self, request_id: str, decision: str):
-        """Compatibility entry point delegating the decision to durable storage."""
+        """Apply a legacy approval only when its associated mission checkpoint is current."""
+        normalized = decision.strip().lower()
+        if normalized not in {"approve", "approved", "reject", "rejected"}:
+            return False
+
+        # A cached mission may have become terminal in another process. Refresh it
+        # before deciding the separate durable approval action, so a late click cannot
+        # accept/reject work whose mission has already completed, failed, or been cancelled.
+        associated_mission = next(
+            (
+                mission for mission in self.active_missions.values()
+                if mission.metadata.get("approval_request_id") == request_id
+            ),
+            None,
+        )
+        if associated_mission is not None:
+            mission = self._reload_mission_checkpoint(associated_mission.mission_id)
+            if mission is None:
+                return False
+            if mission.status in {
+                MissionStatus.COMPLETED, MissionStatus.CANCELLED, MissionStatus.FAILED,
+            }:
+                dgm_logger.warning(
+                    f"MISSION_APPROVAL_REFUSED: {mission.mission_id} is terminal "
+                    f"({mission.status.value}); approval decision ignored."
+                )
+                return False
+
         approval = self.approval_manager.approvals.get(request_id)
         if not approval:
             return False
-        normalized = decision.lower()
         if normalized in {"approve", "approved"}:
             self.approval_manager.approve(request_id)
-        elif normalized in {"reject", "rejected"}:
-            self.approval_manager.reject(request_id)
         else:
-            return False
-        for mission in self.active_missions.values():
-            if mission.metadata.get("approval_request_id") == request_id:
-                mission.metadata["last_decision"] = decision
-                self.save_mission(mission)
-                self._sync_state(mission)
-                break
+            self.approval_manager.reject(request_id)
+
+        if associated_mission is not None:
+            # _reload_mission_checkpoint preserves object identity and refreshed status.
+            associated_mission.metadata["last_decision"] = normalized
+            self.save_mission(associated_mission)
+            self._sync_state(associated_mission)
         return True
 
     def _sync_missions_snapshot(self):
