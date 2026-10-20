@@ -6,10 +6,10 @@
 ## Estado GitHub verificado
 
 - Repositório: `AndreVazao/DGM-MAT`
-- `main` após integrar o PR #118: `d305c797520970978c99a170a248a01d8e7f7311`
+- `main` após integrar o PR #119: `5524143d8d8b0b252d7f798285ecba20be75b233`
 - Branch de trabalho: `fixing/operational-reality-audit-2026-10-19`
 - A branch de auditoria original foi criada a partir de `ab216c67248cac83eb71c2b2bc48c8f27ed657aa`.
-- PRs #97, #98, #100, #102, #103, #105, #107, #109, #111, #113, #115, #117 e #118 estão integrados.
+- PRs #97, #98, #100, #102, #103, #105, #107, #109, #111, #113, #115, #117, #118 e #119 estão integrados.
 - A atualização deste checkpoint é documental e não altera o código de runtime.
 
 ## PRs consolidados nesta fase
@@ -36,8 +36,9 @@ PR #71 — modelo de mensagens e conhecimento baseado em evidências — também
 ## O que está validado e o que não está
 
 ### Validado por evidência remota
-- Os PRs #94, #95, #96, #97, #98, #100, #102, #103, #105, #107, #109, #111, #113, #115, #117 e #118 estão fechados e integrados.
-- O baseline de código mais recente inclui o PR #118 (`d305c797520970978c99a170a248a01d8e7f7311`).
+- Os PRs #94, #95, #96, #97, #98, #100, #102, #103, #105, #107, #109, #111, #113, #115, #117, #118 e #119 estão fechados e integrados.
+- O baseline de código mais recente inclui o PR #119 (`5524143d8d8b0b252d7f798285ecba20be75b233`); o Backend Phase Gate run 112 (`39375485075`) terminou com sucesso em todos os sete jobs funcionais e no resumo obrigatório.
+- O PR #119 remove a transição direta para `COMPLETED` baseada apenas em flags de subtarefas; quando falta um resultado agregado comprovado, o caminho termina explicitamente em `FAILED` com `NotImplementedError`, e regressões cobrem a falsa conclusão e a proteção de estado terminal.
 - Os workflows de PR #94, #95, #97, #98 e #100 terminaram com sucesso; os jobs funcionais e os resumos obrigatórios foram reportados como `success`.
 - Os checks Snyk e CodeRabbit reportaram sucesso nos heads de PR #97, #98, #102 e #103.
 - Observações de saúde de providers datadas mais de 30 segundos no futuro são marcadas `invalid_timestamp`; `available`/`healthy` efetivos ficam falsos, mantendo os valores originalmente reportados para auditoria.
@@ -54,6 +55,8 @@ PR #71 — modelo de mensagens e conhecimento baseado em evidências — também
 - O enforcement de política e a promoção de autoevolução agora falham fechados enquanto os respetivos mecanismos reais não estiverem implementados.
 - PR #117 protege decisões de aprovação/rejeição com leitura do checkpoint durável e validação de decisão.
 - PR #118 protege os finalizadores de sucesso/falha contra checkpoints ausentes/inválidos e estados terminais; todos os jobs do Backend Phase Gate e o resumo obrigatório passaram no head do PR.
+- PR #119 impede declarar sucesso só com base em flags `completed` das subtarefas. O Backend Phase Gate run 112 (`39375485075`) passou em todos os sete jobs funcionais e no resumo obrigatório; Snyk e CodeRabbit reportaram sucesso.
+- A referência canónica do CEO do escritório virtual está documentada em [`VIRTUAL-OFFICE-CEO-CHARACTER-REFERENCE-2026-10-20.md`](../architecture/VIRTUAL-OFFICE-CEO-CHARACTER-REFERENCE-2026-10-20.md); a imagem `1792476724975.jpg` na raiz do repositório é a referência visual oficial. É apenas referência de design, não prova de escritório operacional ligado ao runtime.
 
 | #117 — proteger decisões de aprovação com checkpoint durável | Integrado por squash | `da52127957a3b358dd3640a91ab5aff7396e00af` | Backend Phase Gate e resumo obrigatório passaram; Snyk e CodeRabbit reportaram sucesso. A decisão de aprovação/rejeição relê primeiro o checkpoint associado e recusa missões terminais ou checkpoints indisponíveis; testes cobrem estado terminal, atualização de missão não terminal e decisão inválida. |
 | #118 — impedir workers obsoletos de sobrescrever resultados terminais | Integrado por squash | `d305c797520970978c99a170a248a01d8e7f7311` | Backend Phase Gate run 111 (`39374226733`), todos os sete jobs funcionais e o resumo obrigatório passaram; Snyk e CodeRabbit reportaram sucesso. Os finalizadores de sucesso/falha atualizam o checkpoint antes de guardar, aprender ou emitir resultado e recusam checkpoints ausentes/inválidos ou missões já terminais. |
@@ -67,7 +70,7 @@ PR #71 — modelo de mensagens e conhecimento baseado em evidências — também
 ## Próxima fase — auditoria operacional baseada em evidências
 
 1. Continuar a auditar a reconciliação de missões em estados terminais e a consistência dos resultados entre ficheiros, fila e API.
-2. Corrigir/auditar o caminho `_handle_running`: quando todas as subtarefas aparecem como `completed`, ainda existe uma transição direta para `COMPLETED` via `_update_status`, fora dos finalizadores protegidos pelo PR #118 e sem resultado de missão agregado. Definir uma solução fail-closed baseada em evidência e testes antes de alterar o comportamento.
+2. Continuar a auditoria de transições de missão: o caminho `_handle_running` já não marca `COMPLETED` apenas porque todas as subtarefas têm `completed`; verificar agora se os restantes caminhos de sucesso exigem resultado agregado verificável e se o caminho de falha preserva coerência entre checkpoint, fila, estado e resultado.
 3. Continuar a verificar se todos os pontos de entrada e leitura de missão usam os mesmos contratos duráveis, com especial atenção à consistência entre checkpoint, fila, handoffs e resultados.
 4. Verificar a integridade de observações de providers, incluindo relógios inválidos, evidência ausente e estados de registo vs. disponibilidade.
 5. Confirmar que os resultados de pesquisa, aprendizagem e evolução são persistentes e nunca simulam sucesso.
