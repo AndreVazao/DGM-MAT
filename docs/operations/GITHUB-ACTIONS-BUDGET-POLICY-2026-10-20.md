@@ -18,3 +18,15 @@ Preserve meaningful validation while avoiding repeated execution of the entire h
 
 ## Evidence boundaries
 GitHub Actions results are remote CI evidence only. They do not establish local PC runtime health or prove the user's machine can launch the generated package.
+
+## Execution evidence — first Android APK (2026-10-20)
+
+- Repository: `AndreVazao/DGM-MAT-Mobile`.
+- Successful one-shot build: [GitHub Actions run 39409853967](https://github.com/AndreVazao/DGM-MAT-Mobile/actions/runs/39409853967).
+- APK artifact: `DGM-MAT-Mobile-Android-APK`, 3,698,457 bytes (about 3.53 MiB), artifact ID `12259215772`.
+- SHA-256: `ee075ac10ddd967aeb57b053b2f1563e03453d1fffe0f98a4a83d0002e7b50be`.
+- Artifact retention expiry reported by GitHub: 2026-11-19 10:44 UTC.
+- The job log confirms that the workflow disabled itself after successful APK build and artifact upload. Do not re-enable unless a new APK build is explicitly needed.
+- Attempt 1 failed in Android SDK setup because the action tried to install the removed `tools` package. The workflow was corrected to use the runner's SDK manager directly; attempt 2 passed the client contract tests, SDK installation, Capacitor wrapper generation, Gradle debug build, artifact upload and workflow disable step.
+- This is a debug APK. No Android-device installation or live PC pairing/authentication test has been claimed.
+
