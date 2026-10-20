@@ -111,3 +111,49 @@ def test_unsupported_mission_does_not_auto_approve_its_queue_action():
     assert mission.status == MissionStatus.QUEUED
     assert action["status"] == "QUEUED"
     assert action["is_approved"] is False
+
+
+def test_read_only_repository_status_uses_fixed_git_command(tmp_path, monkeypatch):
+    from pathlib import Path
+    from subprocess import CompletedProcess
+
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    engine.missions_path = tmp_path
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append((args, kwargs))
+        return CompletedProcess(args=args, returncode=0, stdout="## feature/test\n M README.md\n", stderr="")
+
+    monkeypatch.setattr("core.autonomy.mission_engine.subprocess.run", fake_run)
+    mission = engine.create_mission("check git status", "Read-only repository diagnostic")
+
+    assert engine.action_queue.get_action(mission.metadata["action_id"])["status"] == "APPROVED"
+    result = engine._handle_queue_execution({"mission_id": mission.mission_id, "goal": mission.goal})
+
+    assert mission.status == MissionStatus.COMPLETED
+    assert result["handler"] == "repository_status"
+    assert result["read_only"] is True
+    assert "M README.md" in result["output"]
+    assert calls[0][0][-3:] == ["status", "--short", "--branch"]
+    assert calls[0][1]["shell"] is False
+    assert calls[0][1]["timeout"] == 5
+    assert calls[0][1]["check"] is False
+
+
+def test_repository_status_failure_does_not_claim_completion(tmp_path, monkeypatch):
+    from subprocess import CompletedProcess
+
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(
+        "core.autonomy.mission_engine.subprocess.run",
+        lambda args, **kwargs: CompletedProcess(args=args, returncode=128, stdout="", stderr="not a repository"),
+    )
+    mission = engine.create_mission("check git status", "Read-only diagnostic failure regression")
+
+    result = engine._handle_queue_execution({"mission_id": mission.mission_id, "goal": mission.goal})
+
+    assert mission.status == MissionStatus.FAILED
+    assert result["error_type"] == "RuntimeError"
+    assert "Read-only repository status failed" in result["error"]
