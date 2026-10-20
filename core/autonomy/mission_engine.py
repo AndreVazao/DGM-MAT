@@ -864,7 +864,8 @@ class MissionEngine:
             approval = self.approval_manager.approvals.get(req_id)
             # Check durable approval decision
             decision = mission.metadata.get("last_decision")
-            approval_status = getattr(approval.get("status"), "value", None) if approval else None
+            raw_approval_status = approval.get("status") if approval else None
+            approval_status = getattr(raw_approval_status, "value", raw_approval_status)
             if decision == "approve" or approval_status == "approved":
                 dgm_logger.info(f"MISSION_STARTED: {mission.mission_id}")
                 mission.logs.append("User approved mission via legacy interface.")
@@ -880,7 +881,7 @@ class MissionEngine:
                             "The subtasks are proposals only and were not executed."
                         ),
                     )
-            elif decision == "reject":
+            elif decision == "reject" or approval_status == "rejected":
                 dgm_logger.warning(f"MISSION_CANCELLED: {mission.mission_id} - Rejected by user")
                 mission.logs.append("Mission rejected by user.")
                 # A deliberate operator rejection is cancellation, not execution failure.
@@ -1681,7 +1682,10 @@ class MissionEngine:
         mission = self.active_missions.get(mission_id)
         if mission:
             mission.metadata["approval_request_id"] = request_id
-            mission.metadata["approval_action_id"] = approval.get("action_id") if isinstance(approval, dict) else None
+            mission.metadata["approval_action_id"] = (
+                approval.get("action_id", approval.get("id"))
+                if isinstance(approval, dict) else None
+            )
             self.save_mission(mission)
             self._sync_state(mission)
         dgm_logger.info(f"APPROVAL_CREATED: {request_id} for mission {mission_id}")
@@ -1693,6 +1697,9 @@ class MissionEngine:
         normalized = decision.strip().lower()
         if normalized not in {"approve", "approved", "reject", "rejected"}:
             return False
+        # Store one canonical decision vocabulary so legacy lifecycle consumers
+        # treat both API spellings ("reject"/"rejected") identically.
+        normalized = "approve" if normalized in {"approve", "approved"} else "reject"
 
         # A cached mission may have become terminal in another process. Refresh it
         # before deciding the separate durable approval action, so a late click cannot
@@ -1720,10 +1727,28 @@ class MissionEngine:
         approval = self.approval_manager.approvals.get(request_id)
         if not approval:
             return False
+
+        # Treat an already-persisted identical decision as idempotent, but never
+        # update the mission checkpoint when the durable decision transition loses
+        # a race (for example, reject racing with approve).
+        raw_approval_status = approval.get("status")
+        approval_status = getattr(raw_approval_status, "value", raw_approval_status)
         if normalized in {"approve", "approved"}:
-            self.approval_manager.approve(request_id)
+            if str(approval_status).casefold() == "approved":
+                decision_recorded = True
+            else:
+                decision_recorded = self.approval_manager.approve(request_id) is True
         else:
-            self.approval_manager.reject(request_id)
+            if str(approval_status).casefold() == "rejected":
+                decision_recorded = True
+            else:
+                decision_recorded = self.approval_manager.reject(request_id) is True
+
+        if not decision_recorded:
+            dgm_logger.warning(
+                f"MISSION_APPROVAL_DECISION_REFUSED: {request_id} durable decision was not accepted"
+            )
+            return False
 
         if associated_mission is not None:
             # _reload_mission_checkpoint preserves object identity and refreshed status.
