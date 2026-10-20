@@ -49,11 +49,13 @@ class ApprovalManager:
         self.queue.request_approval(task_id, diff, risk_score, impact)
         return self.queue.get_approval(task_id) or {}
 
-    def approve(self, task_id: str):
-        self.queue.approve_approval(task_id, operator="manual")
+    def approve(self, task_id: str) -> bool:
+        """Return whether the durable approval transition was accepted."""
+        return self.queue.approve_approval(task_id, operator="manual")
 
-    def reject(self, task_id: str, reason: str = ""):
-        self.queue.reject_approval(task_id, reason, operator="manual")
+    def reject(self, task_id: str, reason: str = "") -> bool:
+        """Return whether the durable rejection transition was accepted."""
+        return self.queue.reject_approval(task_id, reason, operator="manual")
 
     def get_pending_approvals(self) -> List[Dict[str, Any]]:
         return [
