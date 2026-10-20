@@ -339,6 +339,89 @@ class MissionEngine:
         except Exception as exc:
             dgm_logger.error(f"MissionEngine: Human handoff reconciliation failed: {type(exc).__name__}")
 
+        try:
+            queue_report = self._reconcile_mission_queue_links()
+            if any(queue_report.values()):
+                dgm_logger.warning(f"MISSION_QUEUE_LINK_RECONCILIATION: {queue_report}")
+        except Exception as exc:
+            # Preserve startup availability; expose the failure without claiming repair.
+            dgm_logger.error(f"MissionEngine: Queue link reconciliation failed: {type(exc).__name__}")
+
+    def _reconcile_mission_queue_links(self) -> Dict[str, int]:
+        """Repair the mission-file/queue write gap without approving or replaying work."""
+        counts = {"linked_existing": 0, "enqueued_missing": 0, "conflicts": 0}
+        actions_by_mission: Dict[str, List[Dict[str, Any]]] = {}
+        for action in self.action_queue.list_mission_execution_actions():
+            payload = action.get("payload")
+            mission_id = payload.get("mission_id") if isinstance(payload, dict) else None
+            if isinstance(mission_id, str) and mission_id:
+                actions_by_mission.setdefault(mission_id, []).append(action)
+
+        for mission in list(self.active_missions.values()):
+            if mission.status not in {MissionStatus.CREATED, MissionStatus.QUEUED}:
+                continue
+            actions = actions_by_mission.get(mission.mission_id, [])
+            if len(actions) > 1:
+                mission.metadata["queue_reconciliation"] = {
+                    "status": "MULTIPLE_ACTIONS_REQUIRES_REVIEW",
+                    "action_ids": [action["id"] for action in actions],
+                    "automatic_replay": False,
+                }
+                mission.logs.append(
+                    "Queue reconciliation found multiple durable execution actions; no action was approved or replayed."
+                )
+                self.save_mission(mission)
+                self._sync_state(mission)
+                counts["conflicts"] += 1
+                continue
+
+            if len(actions) == 1:
+                action_id = actions[0]["id"]
+                if mission.metadata.get("action_id") != action_id:
+                    mission.metadata["action_id"] = action_id
+                    mission.metadata["queue_reconciliation"] = {
+                        "status": "EXISTING_ACTION_LINK_RESTORED",
+                        "action_id": action_id,
+                        "automatic_replay": False,
+                    }
+                    mission.logs.append(
+                        f"Restored durable queue link to existing action {action_id}; no approval or replay was performed."
+                    )
+                    self.save_mission(mission)
+                    self._sync_state(mission)
+                if mission.status == MissionStatus.CREATED:
+                    self._update_status(mission, MissionStatus.QUEUED)
+                counts["linked_existing"] += 1
+                continue
+
+            action_id = self.action_queue.enqueue(
+                "MISSION_EXECUTION",
+                {"mission_id": mission.mission_id, "goal": mission.goal},
+            )
+            mission.metadata["action_id"] = action_id
+            mission.metadata["queue_reconciliation"] = {
+                "status": "MISSING_ACTION_CREATED_UNAPPROVED",
+                "action_id": action_id,
+                "automatic_replay": False,
+            }
+            mission.logs.append(
+                f"Restored missing durable queue action {action_id} in unapproved state; no execution was started."
+            )
+            if mission.status == MissionStatus.CREATED:
+                self._update_status(mission, MissionStatus.QUEUED)
+            else:
+                self.save_mission(mission)
+                self._sync_state(mission)
+            actions_by_mission[mission.mission_id] = [{
+                "id": action_id,
+                "action_type": "MISSION_EXECUTION",
+                "payload": {"mission_id": mission.mission_id, "goal": mission.goal},
+                "status": ActionStatus.QUEUED.value,
+                "is_approved": False,
+            }]
+            counts["enqueued_missing"] += 1
+        return counts
+
     def create_mission(self, goal: str, description: str) -> Mission:
         mission_id = f"mission_{uuid4().hex[:8]}"
 
