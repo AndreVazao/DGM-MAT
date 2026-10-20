@@ -44,6 +44,18 @@ _REPOSITORY_STATUS_TARGET_WORDS = {
     "git", "repo", "repository", "repositorio", "workspace", "project", "projeto",
 }
 _STATUS_WORDS = {"status", "estado", "situacao", "branch"}
+_LOCAL_RESEARCH_VERBS = {
+    "research", "search", "investigate", "look", "find", "explore",
+    "pesquisa", "pesquisar", "procura", "procurar", "investiga",
+    "investigar", "encontra", "encontrar", "explora", "explorar",
+    "consulta", "consultar",
+}
+_LOCAL_RESEARCH_TARGET_WORDS = {
+    "local", "repository", "repo", "repositorio", "code", "codebase",
+    "codigo", "docs", "documentation", "documentacao", "workspace",
+    "project", "projeto", "dgm", "system", "sistema",
+}
+_EXTERNAL_RESEARCH_WORDS = {"web", "internet", "online", "external", "externo", "externa"}
 _MUTATION_WORDS = {
     "create", "creates", "make", "write", "writes", "edit", "edits", "change", "changes",
     "modify", "modifies", "update", "updates", "delete", "deletes", "remove", "removes",
@@ -92,6 +104,15 @@ def classify_mission_intent(goal: str) -> IntentDecision:
         return IntentDecision(
             "repository_status", True, 0.97, False,
             "Matched a fixed, read-only git status command scoped to the DGM-MAT repository root.",
+        )
+    if (
+        bool(word_set & _LOCAL_RESEARCH_VERBS)
+        and bool(word_set & _LOCAL_RESEARCH_TARGET_WORDS)
+        and not bool(word_set & _EXTERNAL_RESEARCH_WORDS)
+    ):
+        return IntentDecision(
+            "local_research", True, 0.94, False,
+            "Matched bounded local-only code/documentation research with source locations.",
         )
     if has_repository and has_read_verb:
         return IntentDecision(
