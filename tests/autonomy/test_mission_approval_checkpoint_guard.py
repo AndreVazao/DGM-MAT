@@ -9,9 +9,11 @@ class _FakeApprovalManager:
 
     def approve(self, request_id):
         self.decisions.append((request_id, "approve"))
+        return True
 
     def reject(self, request_id):
         self.decisions.append((request_id, "reject"))
+        return True
 
 
 def _mission(mission_id, request_id, status):
@@ -111,3 +113,36 @@ def test_legacy_rejection_cancels_mission_instead_of_marking_execution_failed(tm
     )
     assert persisted["status"] == MissionStatus.CANCELLED.value
     assert persisted["error"] == "User rejected mission."
+
+
+def test_rejected_durable_transition_does_not_mutate_mission_checkpoint(tmp_path, monkeypatch):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    request_id = "approval-rejection-race-regression"
+    mission = _mission(
+        "mission-rejection-race",
+        request_id,
+        MissionStatus.APPROVAL_PENDING,
+    )
+    engine.save_mission(mission)
+    engine.active_missions = {mission.mission_id: mission}
+
+    class _DecisionRaceManager(_FakeApprovalManager):
+        def reject(self, request_id):
+            self.decisions.append((request_id, "reject"))
+            return False
+
+    approvals = _DecisionRaceManager(request_id)
+    engine.approval_manager = approvals
+
+    assert engine.handle_approval_decision(request_id, "reject") is False
+    assert mission.status is MissionStatus.APPROVAL_PENDING
+    assert "last_decision" not in mission.metadata
+    assert approvals.decisions == [(request_id, "reject")]
+
+    persisted = __import__("json").loads(
+        (tmp_path / f"{mission.mission_id}.json").read_text(encoding="utf-8")
+    )
+    assert persisted["status"] == MissionStatus.APPROVAL_PENDING.value
+    assert "last_decision" not in persisted["metadata"]
