@@ -6,10 +6,10 @@
 ## Estado GitHub verificado
 
 - Repositório: `AndreVazao/DGM-MAT`
-- `main` no baseline de código desta atualização: `3785f62199a5925d6d71267bb5b8af905ccb9d0f`
+- `main` no baseline de código desta atualização: `56fe2e6963afb983d655367ae25c1ceca5dd5444`
 - Branch de trabalho: `fixing/operational-reality-audit-2026-10-19`
 - A branch de auditoria original foi criada a partir de `ab216c67248cac83eb71c2b2bc48c8f27ed657aa`.
-- PRs #97, #98, #100, #102, #103, #105, #107 e #109 estão integrados.
+- PRs #97, #98, #100, #102, #103, #105, #107, #109 e #111 estão integrados.
 - A atualização deste checkpoint é documental e não altera o código de runtime.
 
 ## PRs consolidados nesta fase
@@ -27,19 +27,21 @@
 | #105 — impedir execução com estado terminal/desatualizado | Integrado por squash | `97148c3249f7df1935470805e4006442b6194a1f` | Backend Phase Gate, resumo obrigatório, Snyk e CodeRabbit passaram. O handler relê o checkpoint durável imediatamente antes da execução e recusa checkpoints ausentes/inválidos ou missões `COMPLETED`, `CANCELLED` ou `FAILED`. Preserva a identidade do objeto em memória para atualizar referências existentes. |
 | #107 — manter rejeições da fila coerentes com o estado da missão | Integrado por squash | `08b3dcdd265844698c386df1c2de043366b1c9a2` | Backend Phase Gate, resumo obrigatório, Snyk e CodeRabbit passaram. O endpoint relê o checkpoint antes de cancelar e não sobrescreve missões terminais; no arranque, uma ação durável `REJECTED` cancela a missão pendente, recuperando a janela de falha sem executar trabalho rejeitado. |
 | #109 — impedir decomposição de reabrir missões terminais | Integrado por squash | `3785f62199a5925d6d71267bb5b8af905ccb9d0f` | Backend Phase Gate, resumo obrigatório, Snyk e CodeRabbit passaram. `decompose_mission` relê o checkpoint e recusa estados `COMPLETED`, `CANCELLED`, `FAILED` e `WAITING_FOR_USER`, sem criar subtarefas nem reabrir a missão. |
+| #111 — atualizar o estado durável antes das transições do scheduler | Integrado por squash | `56fe2e6963afb983d655367ae25c1ceca5dd5444` | Backend Phase Gate, resumo obrigatório, Snyk e CodeRabbit passaram. Antes de timeout/transições, o scheduler atualiza do checkpoint os estados que pode alterar, evitando que uma cópia antiga em memória faça falhar ou reabra uma missão já terminalizada por outro processo. |
 
 PR #71 — modelo de mensagens e conhecimento baseado em evidências — também foi confirmado como integrado anteriormente, no commit de merge `ad333bdc95f9e930445c2177d6685c6487f07ec1`.
 
 ## O que está validado e o que não está
 
 ### Validado por evidência remota
-- Os PRs #94, #95, #96, #97, #98, #100, #102, #103, #105, #107 e #109 estão fechados e integrados.
-- O baseline de código mais recente é o PR #109 (`3785f62199a5925d6d71267bb5b8af905ccb9d0f`).
+- Os PRs #94, #95, #96, #97, #98, #100, #102, #103, #105, #107, #109 e #111 estão fechados e integrados.
+- O baseline de código mais recente é o PR #111 (`56fe2e6963afb983d655367ae25c1ceca5dd5444`).
 - Os workflows de PR #94, #95, #97, #98 e #100 terminaram com sucesso; os jobs funcionais e os resumos obrigatórios foram reportados como `success`.
 - Os checks Snyk e CodeRabbit reportaram sucesso nos heads de PR #97, #98, #102 e #103.
 - Observações de saúde de providers datadas mais de 30 segundos no futuro são marcadas `invalid_timestamp`; `available`/`healthy` efetivos ficam falsos, mantendo os valores originalmente reportados para auditoria.
 - No arranque, checkpoints de missão `CREATED`/`QUEUED` são reconciliados com ações `MISSION_EXECUTION`: uma ação em falta é criada sem aprovação, uma ação existente pode ser ligada novamente, e ações duplicadas são sinalizadas sem escolha automática.
-- PR #102, PR #103, PR #105, PR #107 e PR #109 passaram todos os jobs do Backend Phase Gate e o resumo obrigatório. A compilação remota passou também nos cinco PRs.
+- PR #102, PR #103, PR #105, PR #107, PR #109 e PR #111 passaram todos os jobs do Backend Phase Gate e o resumo obrigatório. A compilação remota passou também nos seis PRs.
+- O scheduler atualiza os checkpoints das missões `CREATED`, `RUNNING`, `APPROVAL_PENDING` e `WAITING_FOR_USER` antes de executar transições. A regressão simula memória `RUNNING` obsoleta contra um checkpoint durável `COMPLETED`.
 - `decompose_mission` agora relê o checkpoint durável antes de criar subtarefas e só permite os estados `CREATED`, `QUEUED`, `APPROVAL_PENDING` e `RUNNING`; estados terminais e `WAITING_FOR_USER` não são reabertos.
 - Rejeição da fila e estado da missão são agora reconciliados após falhas entre os dois stores: o checkpoint terminal não é sobrescrito e uma ação `REJECTED` não fica associada a uma missão pendente para sempre.
 - A execução de uma ação de missão agora exige reler o checkpoint durável; o handler recusa missão terminal ou checkpoint ausente/inválido antes de entrar no bloco que poderia alterar o estado da missão.
@@ -57,6 +59,7 @@ PR #71 — modelo de mensagens e conhecimento baseado em evidências — também
 
 1. Continuar a auditar a reconciliação de missões em estados terminais e a consistência dos resultados entre ficheiros, fila e API.
 2. Auditar os restantes caminhos de aprovação, cancelamento e conclusão sob concorrência, procurando transições tardias que possam alterar estados terminais ou duplicar resultados.
+3. Verificar se todos os pontos de entrada de missão usam os mesmos contratos duráveis e se as atualizações da API/cockpit refletem o checkpoint atual sem cache obsoleta.
 3. Verificar a integridade de observações de providers, incluindo relógios inválidos, evidência ausente e estados de registo vs. disponibilidade.
 4. Confirmar que os resultados de pesquisa, aprendizagem e evolução são persistentes e nunca simulam sucesso.
 5. Quando o PC estiver disponível, sincronizar e testar o clone local sem descartar alterações locais nem reescrever o histórico sem inspeção.
