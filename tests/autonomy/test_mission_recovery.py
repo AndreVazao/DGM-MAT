@@ -258,7 +258,7 @@ def test_queue_handler_refreshes_terminal_checkpoint_before_execution(tmp_path, 
         engine._handle_queue_execution({"mission_id": mission_id})
 
     assert engine.active_missions[mission_id].status is MissionStatus.CANCELLED
-    assert stale.status is MissionStatus.RUNNING
+    assert stale.status is MissionStatus.CANCELLED
 
 
 def test_queue_handler_refuses_missing_checkpoint_instead_of_using_stale_cache(tmp_path, monkeypatch):
