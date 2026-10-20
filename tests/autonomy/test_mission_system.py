@@ -35,6 +35,9 @@ def test_read_only_architecture_summary_mission_executes_with_source_evidence(tm
         "A bounded, read-only capability backed by local architecture documents",
     )
 
+    assert mission.status == MissionStatus.QUEUED
+    assert engine.action_queue.get_action(mission.metadata["action_id"])["status"] == "APPROVED"
+
     result = engine._handle_queue_execution({
         "mission_id": mission.mission_id,
         "goal": mission.goal,
@@ -95,3 +98,16 @@ def test_failed_mission_surfaces_local_research_evidence(tmp_path, monkeypatch):
     assert "No generic executor is registered." in result["output"]
     assert mission.metadata["learning_observation"]["promotion_status"] == "OBSERVATION_ONLY"
 
+
+
+def test_unsupported_mission_does_not_auto_approve_its_queue_action():
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    mission = engine.create_mission(
+        "Implement a new autonomous code mutator",
+        "Mutating and unsupported work must stay behind human approval",
+    )
+
+    action = engine.action_queue.get_action(mission.metadata["action_id"])
+    assert mission.status == MissionStatus.QUEUED
+    assert action["status"] == "QUEUED"
+    assert action["is_approved"] is False
