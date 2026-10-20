@@ -864,7 +864,8 @@ class MissionEngine:
             approval = self.approval_manager.approvals.get(req_id)
             # Check durable approval decision
             decision = mission.metadata.get("last_decision")
-            approval_status = getattr(approval.get("status"), "value", None) if approval else None
+            raw_approval_status = approval.get("status") if approval else None
+            approval_status = getattr(raw_approval_status, "value", raw_approval_status)
             if decision == "approve" or approval_status == "approved":
                 dgm_logger.info(f"MISSION_STARTED: {mission.mission_id}")
                 mission.logs.append("User approved mission via legacy interface.")
