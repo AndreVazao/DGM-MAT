@@ -146,3 +146,42 @@ def test_rejected_durable_transition_does_not_mutate_mission_checkpoint(tmp_path
     )
     assert persisted["status"] == MissionStatus.APPROVAL_PENDING.value
     assert "last_decision" not in persisted["metadata"]
+
+
+def test_rejected_alias_is_stored_as_canonical_legacy_decision(tmp_path, monkeypatch):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    request_id = "approval-rejected-alias"
+    mission = _mission(
+        "mission-rejected-alias",
+        request_id,
+        MissionStatus.APPROVAL_PENDING,
+    )
+    engine.save_mission(mission)
+    engine.active_missions = {mission.mission_id: mission}
+    approvals = _FakeApprovalManager(request_id)
+    engine.approval_manager = approvals
+
+    assert engine.handle_approval_decision(request_id, "rejected") is True
+    assert mission.metadata["last_decision"] == "reject"
+    assert approvals.decisions == [(request_id, "reject")]
+
+
+def test_approval_action_id_is_recovered_from_legacy_id_field(tmp_path, monkeypatch):
+    engine = MissionEngine()
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    mission = _mission("mission-approval-link", "unused", MissionStatus.APPROVAL_PENDING)
+    engine.active_missions = {mission.mission_id: mission}
+
+    class _ApprovalWithLegacyId:
+        def request_approval(self, request_id, description, risk_score, impact):
+            return {"id": 73}
+
+    engine.approval_manager = _ApprovalWithLegacyId()
+
+    request_id = engine.request_approval(mission.mission_id, "Needs approval")
+    assert request_id == mission.metadata["approval_request_id"]
+    assert mission.metadata["approval_action_id"] == 73
+    assert mission.metadata["approval_action_id"] == 73
