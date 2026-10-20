@@ -9,16 +9,18 @@ def test_failed_mission_records_help_recommendation_without_spending(tmp_path, m
     from core.organization.specialist_collaboration import SpecialistCollaborationStore
 
     engine = MissionEngine(organization_bus=InternalMessageBus())
+    engine.missions_path = tmp_path
     engine.collaboration_store = SpecialistCollaborationStore(tmp_path / "failed-mission-handoffs")
-    monkeypatch.setattr(engine, "save_mission", lambda mission: None)
-    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
     mission = Mission(
         mission_id="mission_help_policy_test",
         goal="Investigate a failing operation",
         description="Test failure handling",
+        status=MissionStatus.RUNNING,
     )
-
     engine.active_missions[mission.mission_id] = mission
+    engine.save_mission(mission)
+    monkeypatch.setattr(engine, "save_mission", lambda mission: None)
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
     result = engine._finish_mission_failure(
         mission, RuntimeError("provider adapter unavailable")
     )
