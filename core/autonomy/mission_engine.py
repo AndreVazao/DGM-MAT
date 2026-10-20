@@ -35,6 +35,7 @@ class MissionEngine:
     BRANCH_SCAN_LIMIT = 20
     REPO_TIMEOUT_SECONDS = 5.0
     MISSION_EXECUTION_TIMEOUT_SECONDS = 60.0
+    AUTO_RUN_READ_ONLY_INTENTS = frozenset({"list_repositories", "architecture_summary"})
 
     def __init__(self, organization_bus: InternalMessageBus | None = None):
         self.missions_path = storage_manager.get_path("missions")
@@ -536,8 +537,12 @@ class MissionEngine:
             # Transition to QUEUED immediately
             self._update_status(mission, MissionStatus.QUEUED)
 
-            # Only a positively classified, read-only registered handler may auto-run.
-            if intent_decision.intent == "list_repositories" and intent_decision.supported and not intent_decision.requires_approval:
+            # Only explicitly allowlisted, read-only registered handlers may auto-run.
+            if (
+                intent_decision.intent in self.AUTO_RUN_READ_ONLY_INTENTS
+                and intent_decision.supported
+                and not intent_decision.requires_approval
+            ):
                 dgm_logger.info(f"MissionEngine: Auto-approving {mission_id} in queue.")
                 self.action_queue.approve(action_id, operator="system_auto")
 
