@@ -255,39 +255,74 @@ class MissionEngine:
             self._loading_missions = False
             self._sync_missions_snapshot()
 
+    def _mission_from_checkpoint_data(self, data: Dict[str, Any]) -> Mission:
+        """Deserialize one durable mission checkpoint into the canonical model."""
+        return Mission(
+            mission_id=data["mission_id"],
+            goal=data["goal"],
+            description=data.get("description", ""),
+            status=MissionStatus(data["status"]),
+            metadata=data.get("metadata", {}),
+            created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat())),
+            updated_at=datetime.fromisoformat(data.get("updated_at", datetime.now().isoformat())),
+            progress=data.get("progress", 0.0),
+            logs=data.get("logs", []),
+            error=data.get("error"),
+            subtasks=[
+                SubTask(
+                    subtask_id=item["subtask_id"],
+                    title=item["title"],
+                    description=item["description"],
+                    status=item.get("status", "pending"),
+                    assigned_agent=item.get("assigned_agent"),
+                    task_id=item.get("task_id"),
+                    created_at=datetime.fromisoformat(item["created_at"]) if item.get("created_at") else datetime.now(),
+                    completed_at=datetime.fromisoformat(item["completed_at"]) if item.get("completed_at") else None,
+                )
+                for item in data.get("subtasks", [])
+                if isinstance(item, dict) and item.get("subtask_id") and item.get("title") and item.get("description")
+            ],
+        )
+
+    def _reload_mission_checkpoint(self, mission_id: str) -> Optional[Mission]:
+        """Refresh one mission from durable storage; never fall back to a stale cache."""
+        existing = self.active_missions.get(mission_id)
+        mission_file = self.missions_path / f"{mission_id}.json"
+        if not mission_file.is_file():
+            self.active_missions.pop(mission_id, None)
+            return None
+        try:
+            with open(mission_file, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+            if data.get("mission_id") != mission_id:
+                raise ValueError("Mission checkpoint identity mismatch")
+            refreshed = self._mission_from_checkpoint_data(data)
+            if existing is not None:
+                # Preserve references held by API/cockpit callers while refreshing every field.
+                existing.__dict__.update(refreshed.__dict__)
+                mission = existing
+            else:
+                mission = refreshed
+            self.active_missions[mission_id] = mission
+            self._sync_state(mission)
+            return mission
+        except Exception as exc:
+            self.active_missions.pop(mission_id, None)
+            dgm_logger.error(
+                f"MissionEngine: Refusing execution because checkpoint could not be refreshed: "
+                f"{mission_id} ({type(exc).__name__})"
+            )
+            return None
+
     def _load_missions_from_disk(self):
         """Read mission checkpoints without broadcasting every row while importing."""
         for mission_file in self.missions_path.glob("*.json"):
             try:
-                with open(mission_file, "r") as f:
-                    data = json.load(f)
-                    mission = Mission(
-                        mission_id=data["mission_id"],
-                        goal=data["goal"],
-                        description=data.get("description", ""),
-                        status=MissionStatus(data["status"]),
-                        metadata=data.get("metadata", {}),
-                        created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat())),
-                        progress=data.get("progress", 0.0),
-                        logs=data.get("logs", []),
-                        error=data.get("error"),
-                        subtasks=[
-                            SubTask(
-                                subtask_id=item["subtask_id"],
-                                title=item["title"],
-                                description=item["description"],
-                                status=item.get("status", "pending"),
-                                assigned_agent=item.get("assigned_agent"),
-                                task_id=item.get("task_id"),
-                                created_at=datetime.fromisoformat(item["created_at"]) if item.get("created_at") else datetime.now(),
-                                completed_at=datetime.fromisoformat(item["completed_at"]) if item.get("completed_at") else None,
-                            )
-                            for item in data.get("subtasks", [])
-                            if isinstance(item, dict) and item.get("subtask_id") and item.get("title") and item.get("description")
-                        ]
-                    )
-                    self.active_missions[mission.mission_id] = mission
-                    self._sync_state(mission)
+                with open(mission_file, "r", encoding="utf-8") as handle:
+                    data = json.load(handle)
+                mission = self._mission_from_checkpoint_data(data)
+                self.active_missions[mission.mission_id] = mission
+                self._sync_state(mission)
             except Exception as e:
                 dgm_logger.error(f"MissionEngine: Failed to load mission {mission_file}: {e}")
 
@@ -542,15 +577,22 @@ class MissionEngine:
     def _handle_queue_execution(self, payload: Dict[str, Any]):
         """Callback from SafeActionQueue when MISSION_EXECUTION is APPROVED."""
         mission_id = payload.get("mission_id")
-        mission = self.active_missions.get(mission_id)
+        if not isinstance(mission_id, str) or not mission_id:
+            raise ValueError("Mission execution action requires a valid mission_id")
+
+        # The API and queue consumer may hold different in-memory snapshots. Read
+        # the atomic checkpoint immediately before acting; never trust stale cache.
+        mission = self._reload_mission_checkpoint(mission_id)
         if not mission:
-            # Queue consumers may run in a different process from the API/creator.
-            # Reload persisted missions before declaring the action invalid.
-            self._load_missions()
-            mission = self.active_missions.get(mission_id)
-        if not mission:
-            dgm_logger.error(f"MISSION_EXECUTION_FAILED: {mission_id} - mission not found")
-            raise ValueError(f"Mission not found: {mission_id}")
+            dgm_logger.error(f"MISSION_EXECUTION_FAILED: {mission_id} - durable checkpoint missing or invalid")
+            raise ValueError(f"Mission checkpoint unavailable: {mission_id}")
+
+        if mission.status in {
+            MissionStatus.COMPLETED, MissionStatus.CANCELLED, MissionStatus.FAILED,
+        }:
+            raise ValueError(
+                f"Mission {mission_id} is terminal ({mission.status.value}); execution refused."
+            )
 
         if mission:
             try:
