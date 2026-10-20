@@ -113,6 +113,30 @@ def test_provider_freshness_marks_old_observation_stale_and_blocks_current_avail
     assert record["status"] == "stale"
 
 
+def test_provider_freshness_rejects_materially_future_dated_observation():
+    record = runtime_api._provider_freshness(
+        {
+            "name": "future-provider",
+            "status": "ok",
+            "healthy": True,
+            "available": True,
+            "availability_observed": True,
+            "health_observed_at": 5000.0,
+            "snapshot_observed_at": 990.0,
+        },
+        now=1000.0,
+    )
+
+    assert record["freshness_status"] == "invalid_timestamp"
+    assert record["health_observation_age_seconds"] is None
+    assert record["reported_available"] is True
+    assert record["available"] is False
+    assert record["reported_healthy"] is True
+    assert record["healthy"] is False
+    assert record["reported_status"] == "ok"
+    assert record["status"] == "unknown"
+
+
 def test_provider_freshness_does_not_promote_unobserved_available_flag():
     record = runtime_api._provider_freshness(
         {

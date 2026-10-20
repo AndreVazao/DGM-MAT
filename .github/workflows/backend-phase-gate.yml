@@ -76,6 +76,8 @@ jobs:
           tests/autonomy/test_mission_system.py
           tests/autonomy/test_mission_recovery.py
           tests/contracts/test_cross_process_mission.py
+          tests/runtime/test_provider_state_reconciliation.py
+          tests/unit/test_provider_api_truth.py
           tests/self_healing/test_self_repair_engine.py
           tests/self_healing/test_self_repair_approval_gate.py
 
