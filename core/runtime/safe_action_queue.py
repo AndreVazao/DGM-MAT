@@ -5,6 +5,7 @@ import traceback
 from enum import Enum
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Callable
+from sqlalchemy import func
 from core.storage.database import SessionLocal
 from core.storage.models import ActionRecord
 from core.storage.init_db import init_database
@@ -319,6 +320,58 @@ class SafeActionQueue:
                 ActionRecord.action_type == "MISSION_EXECUTION"
             ).order_by(ActionRecord.created_at.asc()).all()
             return [self._to_dict(action) for action in actions]
+
+    def get_mission_execution_telemetry(self, limit: int = 8) -> Dict[str, Any]:
+        """Return bounded, content-minimized counts and recent audit events for mission actions."""
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 50:
+            raise ValueError("limit must be an integer between 1 and 50")
+
+        with SessionLocal() as session:
+            grouped = session.query(
+                ActionRecord.status, func.count(ActionRecord.id)
+            ).filter(
+                ActionRecord.action_type == "MISSION_EXECUTION"
+            ).group_by(ActionRecord.status).all()
+            counts = {
+                str(getattr(status, "value", status)): int(count)
+                for status, count in grouped
+            }
+            actions = session.query(ActionRecord).filter(
+                ActionRecord.action_type == "MISSION_EXECUTION"
+            ).order_by(
+                ActionRecord.created_at.desc(), ActionRecord.id.desc()
+            ).limit(limit).all()
+
+            recent = []
+            for action in actions:
+                try:
+                    payload = json.loads(action.payload)
+                except (TypeError, json.JSONDecodeError):
+                    payload = {}
+                try:
+                    audit = json.loads(action.audit_trail)
+                except (TypeError, json.JSONDecodeError):
+                    audit = []
+                last_event = next(
+                    (entry for entry in reversed(audit) if isinstance(entry, dict)),
+                    {},
+                )
+                recent.append({
+                    "action_id": action.id,
+                    "mission_id": payload.get("mission_id") if isinstance(payload, dict) else None,
+                    "status": str(getattr(action.status, "value", action.status)),
+                    "created_at": action.created_at.isoformat() if action.created_at else None,
+                    "last_event": str(last_event.get("event") or last_event.get("status") or "UNKNOWN"),
+                    "last_event_at": last_event.get("timestamp"),
+                })
+
+            return {
+                "total": sum(counts.values()),
+                "counts": counts,
+                "recent": recent,
+                "source": "safe_action_queue.sqlite",
+                "content_minimized": True,
+            }
 
     def get_action(self, action_id: int) -> Optional[Dict[str, Any]]:
         with SessionLocal() as session:
