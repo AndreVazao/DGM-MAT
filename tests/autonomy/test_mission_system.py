@@ -65,13 +65,7 @@ def test_failed_mission_surfaces_local_research_evidence(tmp_path, monkeypatch):
             "commands_executed": 0,
         }},
     )()
-    monkeypatch.setattr(engine, "save_mission", lambda mission: None)
-    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
-    monkeypatch.setattr(engine, "_emit_mission_result", lambda mission, result: None)
-    monkeypatch.setattr(
-        engine, "prepare_specialist_collaboration",
-        lambda mission_id, context="": {"status": "PREPARED"},
-    )
+    engine.missions_path = tmp_path
     mission = Mission(
         mission_id="mission_research_test",
         goal="Inspect executor routing",
@@ -79,6 +73,14 @@ def test_failed_mission_surfaces_local_research_evidence(tmp_path, monkeypatch):
         status=MissionStatus.RUNNING,
     )
     engine.active_missions[mission.mission_id] = mission
+    engine.save_mission(mission)
+    monkeypatch.setattr(engine, "save_mission", lambda mission: None)
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    monkeypatch.setattr(engine, "_emit_mission_result", lambda mission, result: None)
+    monkeypatch.setattr(
+        engine, "prepare_specialist_collaboration",
+        lambda mission_id, context="": {"status": "PREPARED"},
+    )
 
     result = engine._finish_mission_failure(
         mission, NotImplementedError("No generic executor is registered")
