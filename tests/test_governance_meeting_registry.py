@@ -19,7 +19,7 @@ class GovernanceMeetingRegistryTests(unittest.TestCase):
     def create(self, **overrides):
         values = {
             "title": "Proposta de novo departamento",
-            "meeting_type": "create_department",
+            "meeting_type": "structural_department_change",
             "requested_by": "Laboratório",
             "participants": ["CEO", "Laboratório", "Programação"],
             "agenda": ["Necessidade", "Riscos", "Recursos"],
@@ -57,9 +57,16 @@ class GovernanceMeetingRegistryTests(unittest.TestCase):
         approved = self.registry.approve_decision(
             meeting_id, actor="CEO", approved=True, rationale="Aprovado para avançar para planeamento."
         )
-        self.assertEqual(approved["status"], "approved")
-        self.assertEqual(approved["action_dispatch"]["status"], "awaiting_explicit_dispatch")
-        self.assertIn("meeting.ceo_approval_recorded", [event["event"] for event in approved["history"]])
+        self.assertEqual(approved["status"], "decision_pending")
+        self.assertEqual(approved["owner_approval"]["status"], "pending")
+        self.assertEqual(approved["action_dispatch"]["status"], "awaiting_owner_approval")
+        owner_approved = self.registry.approve_by_owner(
+            meeting_id, actor="André", approved=True, rationale="OK final do André."
+        )
+        self.assertEqual(owner_approved["status"], "approved")
+        self.assertEqual(owner_approved["action_dispatch"]["status"], "ready_for_governed_execution")
+        self.assertIn("meeting.ceo_approval_recorded", [event["event"] for event in owner_approved["history"]])
+        self.assertIn("meeting.owner_approval_recorded", [event["event"] for event in owner_approved["history"]])
 
     def test_non_ceo_cannot_approve(self):
         meeting = self.create()
@@ -81,6 +88,18 @@ class GovernanceMeetingRegistryTests(unittest.TestCase):
             )
         self.assertEqual(self.path.read_text(encoding="utf-8"), "{broken")
 
+
+    def test_agent_hiring_is_not_automatically_a_human_approval_gate(self):
+        meeting = self.create(meeting_type="hire_agent", participants=["CEO", "RH"])
+        self.assertFalse(meeting["high_impact"])
+        self.assertEqual(meeting["owner_approval"]["status"], "not_required")
+
+    def test_owner_cannot_approve_before_ceo_endorsement(self):
+        meeting = self.create()
+        with self.assertRaisesRegex(ValueError, "CEO endorsement"):
+            self.registry.approve_by_owner(
+                meeting["meeting_id"], actor="André", approved=True, rationale="OK"
+            )
 
 if __name__ == "__main__":
     unittest.main()
