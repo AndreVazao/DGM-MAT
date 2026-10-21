@@ -236,16 +236,34 @@ def add_governance_meeting_contribution(meeting_id: str, payload: MeetingContrib
 
 
 @router.post("/meetings/{meeting_id}/decision")
-def decide_governance_meeting(meeting_id: str, payload: MeetingDecisionRequest):
+def decide_governance_meeting(meeting_id: str, payload: MeetingDecisionRequest, request: Request):
     try:
-        return _meeting_registry().record_decision(meeting_id, **payload.model_dump())
+        principal = getattr(request.state, "dgm_principal", {}) or {}
+        if not isinstance(principal, dict):
+            raise HTTPException(status_code=401, detail="Authenticated principal is unavailable.")
+        role = str(principal.get("governance_role") or principal.get("role") or "").casefold()
+        # Never trust a client-supplied actor label to establish CEO authority.
+        actor = "CEO" if role == "ceo" else str(principal.get("actor") or principal.get("username") or principal.get("session_id") or "")
+        if not actor:
+            raise HTTPException(status_code=401, detail="Authenticated actor identity is unavailable.")
+        values = payload.model_dump()
+        values["actor"] = actor
+        return _meeting_registry().record_decision(meeting_id, **values)
     except (KeyError, ValueError, RuntimeError) as exc:
         raise _meeting_http_error(exc) from exc
 
 
 @router.post("/meetings/{meeting_id}/approval")
-def approve_governance_meeting(meeting_id: str, payload: MeetingApprovalRequest):
+def approve_governance_meeting(meeting_id: str, payload: MeetingApprovalRequest, request: Request):
     try:
-        return _meeting_registry().approve_decision(meeting_id, **payload.model_dump())
+        principal = getattr(request.state, "dgm_principal", {}) or {}
+        if not isinstance(principal, dict):
+            raise HTTPException(status_code=401, detail="Authenticated principal is unavailable.")
+        role = str(principal.get("governance_role") or principal.get("role") or "").casefold()
+        if role != "ceo":
+            raise HTTPException(status_code=403, detail="Only an authenticated CEO principal may approve governance decisions.")
+        values = payload.model_dump()
+        values["actor"] = "CEO"
+        return _meeting_registry().approve_decision(meeting_id, **values)
     except (KeyError, ValueError, RuntimeError) as exc:
         raise _meeting_http_error(exc) from exc
