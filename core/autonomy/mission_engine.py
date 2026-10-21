@@ -28,6 +28,7 @@ from core.organization.specialist_collaboration import SpecialistCollaborationSt
 from core.organization.validated_learning import ValidatedLessonStore
 from core.providers.browser.governed_browser_session import GovernedBrowserSession
 from core.learning.learning_engine import LearningEngine
+from core.operations.command_executor import CommandExecutor
 
 class MissionEngine:
     REPO_SCAN_ROOTS = [Path("C:/ProgramasGodMode"), Path("C:/DevopGodMode")]
@@ -37,6 +38,7 @@ class MissionEngine:
     MISSION_EXECUTION_TIMEOUT_SECONDS = 60.0
     AUTO_RUN_READ_ONLY_INTENTS = frozenset({
         "list_repositories", "architecture_summary", "repository_status", "local_research",
+        "system_summary", "engines_inventory", "ollama_status", "claude_status",
     })
 
     def __init__(self, organization_bus: InternalMessageBus | None = None):
@@ -68,6 +70,8 @@ class MissionEngine:
         )
         self.learning_engine = LearningEngine()
         self.local_mission_research = LocalMissionResearch()
+        # Only the fixed, bounded, read-only command catalog is exposed to missions.
+        self.command_executor = CommandExecutor()
         self.qa_review_coordinator = QAReviewCoordinator(
             self.qa_review_queue, self.collaboration_store, self.validated_lesson_store,
             Path(__file__).resolve().parents[2],
@@ -679,6 +683,15 @@ class MissionEngine:
                             "changed or its checkpoint is unavailable."
                         )
                     return finalized
+                elif intent.intent in {"system_summary", "engines_inventory", "ollama_status", "claude_status"} and intent.supported:
+                    result = self._execute_read_only_command_mission(mission, intent.intent)
+                    finalized = self._finish_mission_success(mission, result)
+                    if finalized is None:
+                        raise RuntimeError(
+                            "Diagnostic mission finalization was refused because durable state "
+                            "changed or its checkpoint is unavailable."
+                        )
+                    return finalized
                 else:
                     capability = self._capability_request_from_goal(mission.goal)
                     if capability and "capability_discovery" not in mission.metadata:
@@ -1007,6 +1020,59 @@ class MissionEngine:
             f"MISSION_RESULT_GENERATED: {mission.mission_id} - architecture summary "
             f"from {len(result.get('sources', []))} source sections"
         )
+        return result
+
+    def _execute_read_only_command_mission(self, mission: Mission, intent_name: str) -> Dict[str, Any]:
+        """Execute one fixed read-only diagnostic; never accepts command text from a mission."""
+        command_by_intent = {
+            "system_summary": "system.summary",
+            "engines_inventory": "engines.inventory",
+            "ollama_status": "ollama.status",
+            "claude_status": "claude.status",
+        }
+        command_id = command_by_intent.get(intent_name)
+        if command_id is None:
+            raise ValueError(f"No diagnostic command is registered for intent: {intent_name}")
+
+        started = time.monotonic()
+        observation = self.command_executor.execute(command_id)
+        if not isinstance(observation, dict):
+            raise RuntimeError(f"Read-only diagnostic {command_id} returned an invalid observation.")
+
+        # Do not let a malformed or substituted executor response become a
+        # successful mission merely because it reports returncode=0.
+        if (
+            observation.get("schema") != "dgm-mat.command-result.v1"
+            or observation.get("command_id") != command_id
+            or observation.get("risk") != "READ"
+            or observation.get("elevated") is not False
+        ):
+            raise RuntimeError(
+                f"Read-only diagnostic {command_id} returned an invalid safety/evidence envelope."
+            )
+
+        status = str(observation.get("status", "unknown")).lower()
+        if status != "passed" or observation.get("returncode") != 0:
+            detail = str(observation.get("stderr") or observation.get("stdout") or status).strip()[:500]
+            raise RuntimeError(f"Read-only diagnostic {command_id} did not pass ({status}): {detail}")
+
+        output = str(observation.get("stdout") or "Command completed with no output.").strip()
+        result = {
+            "status": "completed",
+            "summary": f"Read-only diagnostic completed: {command_id}.",
+            "output": output,
+            "handler": intent_name,
+            "command_id": command_id,
+            "read_only": True,
+            "risk": "READ",
+            "returncode": observation.get("returncode"),
+            "duration_ms": observation.get("duration_ms"),
+            "execution_duration": round(time.monotonic() - started, 3),
+            "generated_at": datetime.now().isoformat(),
+            "external_calls": 0,
+            "elevated": False,
+        }
+        dgm_logger.info(f"MISSION_RESULT_GENERATED: {mission.mission_id} - {command_id}")
         return result
 
     def _execute_local_research_mission(self, mission: Mission) -> Dict[str, Any]:
