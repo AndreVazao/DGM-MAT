@@ -253,6 +253,25 @@ def decide_governance_meeting(meeting_id: str, payload: MeetingDecisionRequest, 
         raise _meeting_http_error(exc) from exc
 
 
+
+@router.post("/meetings/{meeting_id}/owner-approval")
+def approve_governance_meeting_as_owner(meeting_id: str, payload: MeetingApprovalRequest, request: Request):
+    """Human final gate for critical structural changes; approval is not direct execution."""
+    try:
+        principal = getattr(request.state, "dgm_principal", {}) or {}
+        if not isinstance(principal, dict):
+            raise HTTPException(status_code=401, detail="Authenticated principal is unavailable.")
+        role = str(principal.get("governance_role") or principal.get("role") or "").casefold()
+        username = str(principal.get("username") or principal.get("actor") or "").casefold()
+        if role not in {"owner", "system_owner", "admin"} and username not in {"andre", "andré", "andrevazao"}:
+            raise HTTPException(status_code=403, detail="Only the authenticated system owner may give final approval.")
+        values = payload.model_dump()
+        values["actor"] = "André"
+        return _meeting_registry().approve_by_owner(meeting_id, **values)
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise _meeting_http_error(exc) from exc
+
+
 @router.post("/meetings/{meeting_id}/approval")
 def approve_governance_meeting(meeting_id: str, payload: MeetingApprovalRequest, request: Request):
     try:
