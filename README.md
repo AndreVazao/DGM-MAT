@@ -6,6 +6,8 @@ Constituição arquitetural: [DGM-MAT Architecture Constitution — Modular Depa
 
 Inventário documental da recuperação e arquitetura: [DGM-MAT Recovery & Unification Inventory — 2026-10-18](docs/architecture/DGM-MAT-RECOVERY-UNIFICATION-INVENTORY-2026-10-18.md).
 
+Modelo operacional canónico para end-to-end, departamentos multi-agent, especialização por linguagem, recuperação de conversas e expansão multi-PC: [Modelo Canónico de Operação, Departamentos e End-to-End (2026-10-21)](docs/architecture/DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md). Este aditamento complementa — não substitui — a Constituição Arquitetural e a Diretiva Primária de Missão/Verdade.
+
 DGM-MAT is the central engineering intelligence and orchestration system of the DevOps God Mode ecosystem.
 
 ## Current role
