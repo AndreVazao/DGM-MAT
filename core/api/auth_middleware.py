@@ -75,7 +75,8 @@ class LocalSessionAuthMiddleware:
         if route_type == "http":
             path = scope.get("path", "")
             method = scope.get("method", "GET").upper()
-            if path == "/auth/session" and method == "POST":
+            if (path == "/auth/session" and method == "POST") or (path == "/auth/pairing-code" and method == "GET") or (path == "/auth/pair" and method == "POST"):
+                # Each bootstrap handler performs its own strict loopback or one-time-code validation.
                 await self.app(scope, receive, send)
                 return
             if method == "OPTIONS":
