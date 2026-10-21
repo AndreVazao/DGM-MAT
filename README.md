@@ -8,6 +8,8 @@ Inventário documental da recuperação e arquitetura: [DGM-MAT Recovery & Unifi
 
 Modelo operacional canónico para end-to-end, departamentos multi-agent, especialização por linguagem, recuperação de conversas e expansão multi-PC: [Modelo Canónico de Operação, Departamentos e End-to-End (2026-10-21)](docs/architecture/DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md). Este aditamento complementa — não substitui — a Constituição Arquitetural e a Diretiva Primária de Missão/Verdade.
 
+Esquemática integral do escritório virtual, cockpit, pisos lógicos, contratos e avatar CEO: [Blueprint do Escritório Virtual (2026-10-21)](docs/architecture/DGM-MAT-VIRTUAL-OFFICE-SYSTEM-SCHEMATIC-2026-10-21.md) · [Diagrama SVG](docs/architecture/assets/dgm-mat-virtual-office-system-schematic.svg). A fotografia de referência do CEO é `1792476724975.jpg`; o avatar careca derivado permanece pendente de criação e aprovação.
+
 DGM-MAT is the central engineering intelligence and orchestration system of the DevOps God Mode ecosystem.
 
 ## Current role
