@@ -53,3 +53,8 @@ A auditoria documental de 2026-10-17 confirmou a presença dos materiais concept
 ## Autoridade arquitetural vinculativa — 2026-10-18
 
 A modularidade e a distinção entre recuperação PC + GitHub e fusão de repositórios são regidas pela [Constituição arquitetural do DGM-MAT](DGM-MAT-ARCHITECTURE-CONSTITUTION-MODULAR-DEPARTMENTS-2026-10-18.md). O inventário da revisão está em [DGM-MAT Recovery & Unification Inventory](DGM-MAT-RECOVERY-UNIFICATION-INVENTORY-2026-10-18.md).
+
+
+## Modelo operacional canónico — 2026-10-21
+
+Consultar [Modelo Canónico de Operação, Departamentos e End-to-End (2026-10-21)](docs/architecture/DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md). Este documento consolida o ciclo obrigatório desde a receção do pedido até à resposta final, o organograma inicial, os especialistas prioritários, a separação entre investigação e laboratório de avaliação, a recuperação de conversas com proveniência e a expansão multi-PC. É um aditamento operacional; a Constituição Arquitetural de 2026-10-18 continua a governar modularidade e fronteiras de repositórios. A documentação não comprova que as capacidades já estejam implementadas.
