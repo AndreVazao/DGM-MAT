@@ -113,6 +113,7 @@ class GovernanceMeetingRegistry:
             "contributions": [],
             "decision": None,
             "approval": None,
+            "owner_approval": {"status": "not_required", "required_from": "André", "requested_at": None},
             "action_dispatch": {"status": "not_dispatched", "note": "No action is executed by the meeting registry."},
             "created_at": now,
             "updated_at": now,
@@ -163,6 +164,11 @@ class GovernanceMeetingRegistry:
             elif meeting["high_impact"] and actor.casefold() not in {"ceo", "chief executive officer"}:
                 meeting["status"] = "decision_pending"
                 meeting["approval"] = {"status": "pending", "required_from": "CEO", "requested_at": now}
+            elif outcome == "approved" and meeting["high_impact"]:
+                meeting["status"] = "decision_pending"
+                meeting["approval"] = {"status": "approved", "required_from": "CEO", "approved_by": actor, "decided_at": now}
+                meeting["owner_approval"] = {"status": "pending", "required_from": "André", "requested_at": now}
+                meeting["action_dispatch"] = {"status": "awaiting_owner_approval", "note": "CEO has prepared and endorsed the plan; no structural action may run before André's approval."}
             else:
                 meeting["status"] = outcome
                 meeting["approval"] = {"status": "not_required", "required_from": None, "requested_at": None}
@@ -185,10 +191,40 @@ class GovernanceMeetingRegistry:
                 raise ValueError("there is no pending CEO approval")
             now = _now()
             meeting["approval"] = {"status": "approved" if approved else "rejected", "actor": actor, "rationale": rationale, "decided_at": now}
-            meeting["status"] = "approved" if approved else "rejected"
+            if approved:
+                meeting["owner_approval"] = {"status": "pending", "required_from": "André", "requested_at": now}
+                meeting["status"] = "decision_pending"
+                meeting["action_dispatch"] = {"status": "awaiting_owner_approval", "note": "CEO endorsed the proposal; André's explicit approval is required before structural execution."}
+            else:
+                meeting["status"] = "rejected"
+                meeting["owner_approval"] = {"status": "not_required", "required_from": "André", "requested_at": None}
+                meeting["action_dispatch"] = {"status": "blocked", "note": "CEO rejected the decision."}
             meeting["updated_at"] = now
             meeting["history"].append({"event": "meeting.ceo_approval_recorded", "at": now, "actor": actor, "approved": approved})
-            # Deliberately do not dispatch or execute the action plan automatically.
-            meeting["action_dispatch"] = {"status": "awaiting_explicit_dispatch", "note": "Approval is not execution; a separate governed action must be created."} if approved else {"status": "blocked", "note": "CEO rejected the decision."}
+            self._write(data)
+            return meeting
+
+
+    def approve_by_owner(self, meeting_id: str, *, actor: str, approved: bool, rationale: str) -> dict[str, Any]:
+        """Record the human owner's final gate after the CEO has endorsed a critical plan."""
+        actor = _clean_text(actor, "actor", 120)
+        rationale = _clean_text(rationale, "rationale")
+        if actor.casefold() not in {"andré", "andre", "owner", "system owner"}:
+            raise ValueError("only the authenticated system owner may give the final approval")
+        with _LOCK:
+            data = self._read()
+            meeting = data["meetings"].get(meeting_id)
+            if meeting is None:
+                raise KeyError(meeting_id)
+            if meeting.get("owner_approval", {}).get("status") != "pending":
+                raise ValueError("there is no pending owner approval")
+            if meeting.get("approval", {}).get("status") != "approved":
+                raise ValueError("CEO endorsement is required before owner approval")
+            now = _now()
+            meeting["owner_approval"] = {"status": "approved" if approved else "rejected", "actor": actor, "rationale": rationale, "decided_at": now}
+            meeting["status"] = "approved" if approved else "rejected"
+            meeting["updated_at"] = now
+            meeting["history"].append({"event": "meeting.owner_approval_recorded", "at": now, "actor": actor, "approved": approved})
+            meeting["action_dispatch"] = {"status": "ready_for_governed_execution", "note": "Human approval recorded. Execution must still use the governed action runner and verify the approved plan."} if approved else {"status": "blocked", "note": "André rejected the proposal."}
             self._write(data)
             return meeting
