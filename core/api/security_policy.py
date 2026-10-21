@@ -82,6 +82,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("GET",), "/governance/commands/catalog", SecurityScope.OPERATOR, "Lists allowlisted read-only local diagnostics."),
     RouteClassification(("POST",), "/governance/commands/run", SecurityScope.OPERATOR, "Runs one allowlisted read-only local diagnostic."),
     RouteClassification(("GET",), "/governance/meetings", SecurityScope.OPERATOR, "Lists persistent central governance meetings."),
+    RouteClassification(("GET",), "/governance/approvals/pending", SecurityScope.OPERATOR, "Lists durable pending governance approvals for the cockpit."),
     RouteClassification(("POST",), "/governance/meetings", SecurityScope.OPERATOR, "Creates a governance meeting record."),
     RouteClassification(("GET",), "/governance/meetings/{meeting_id}", SecurityScope.OPERATOR, "Reads one governance meeting and its audit history."),
     RouteClassification(("POST",), "/governance/meetings/{meeting_id}/contributions", SecurityScope.OPERATOR, "Records a participant contribution, risk, alternative, or evidence."),
