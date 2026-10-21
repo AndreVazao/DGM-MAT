@@ -301,3 +301,16 @@ What is missing?
 What must DGM-MAT do next?
 
 If it cannot answer these from durable state, context recovery is not finished.
+
+
+## Canonical operating model link — 2026-10-21
+
+The end-to-end organizational contract is defined in [DGM-MAT Canonical Operating Model — End-to-End and Departments](architecture/DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md). This protocol remains the detailed recovery procedure and must be read with the primary mission/evolving-truth directive and the architecture constitution.
+
+Additional mandatory outcomes for each recovery cycle:
+- produce or incrementally update a concise, provenance-linked summary of the user's actual requests by project;
+- compare AI answers/proposals against those requests and against verified repository/runtime reality, without deciding by model majority;
+- record superseded requests/solutions as history instead of silently deleting them;
+- expose provider coverage, inaccessible sources and incomplete imports explicitly;
+- rename a conversation inside its source provider only after the operation is supported, authorized and confirmed; otherwise report the proposed title and that the rename was not performed;
+- do not mark the overall recovery mission complete while known provider sources, project relationships or import gaps remain unreported.
