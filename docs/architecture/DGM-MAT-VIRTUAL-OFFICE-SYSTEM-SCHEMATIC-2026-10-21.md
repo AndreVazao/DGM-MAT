@@ -197,7 +197,9 @@ Requisitos vinculativos para o avatar do escritório:
 
 ### Fase A — Verdade operacional (API/contrato implementado; runtime real pendente)
 - Contrato estável para missão, agente, departamento, eventos e resultado.
-- O chat passa a acompanhar o `mission_id` até ao estado persistido terminal ou declarar desconhecido.
+- [Implementado no código] `GET /runtime/missions/{mission_id}` consulta um checkpoint persistido específico, com validação estrita do ID e do checkpoint; não executa nem altera estado.
+- [Implementado no cockpit] mensagens com `metadata.mission_id` permitem consultar estado, progresso, timestamp, handler e resultado/saída quando disponíveis.
+- [Ainda pendente] E2E no Windows real e verificação da transição completa de uma missão com worker ativo.
 - Testes para API aceita ≠ execução concluída; perda de ligação; heartbeat expirado; cancelamento; aprovação; recuperação de checkpoint.
 - **Aceitação:** nenhuma mensagem de sucesso sem estado/resultados persistidos que a sustentem.
 
