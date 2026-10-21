@@ -89,6 +89,16 @@ class GovernanceMeetingRegistryTests(unittest.TestCase):
         self.assertEqual(self.path.read_text(encoding="utf-8"), "{broken")
 
 
+    def test_critical_proposal_is_detected_even_if_labeled_routine(self):
+        meeting = self.create(
+            meeting_type="routine_review",
+            title="Routine review",
+            proposal="The actual proposal is a major technology migration affecting the platform.",
+            participants=["CEO", "Programming"],
+        )
+        self.assertTrue(meeting["high_impact"])
+        self.assertEqual(meeting["owner_approval"]["status"], "pending")
+
     def test_agent_hiring_is_not_automatically_a_human_approval_gate(self):
         meeting = self.create(meeting_type="hire_agent", participants=["CEO", "RH"])
         self.assertFalse(meeting["high_impact"])
