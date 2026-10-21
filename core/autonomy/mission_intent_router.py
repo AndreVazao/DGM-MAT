@@ -120,18 +120,19 @@ def classify_mission_intent(goal: str) -> IntentDecision:
             "Matched the bounded process-name/PID inventory for known AI engines.",
         )
 
-    if has_summary and has_architecture_target:
-        return IntentDecision(
-            "architecture_summary", True, 0.96, False,
-            "Matched a read-only architecture summary backed by fixed local source documents.",
-        )
     if (
         bool(word_set & {"system", "host", "windows", "pc", "computador", "sistema"})
         and bool(word_set & (_SUMMARY_WORDS | _STATUS_WORDS | {"informacao", "informacoes", "info"}))
+        and not bool(word_set & {"architecture", "arquitetura", "structure", "estrutura", "departments", "departamentos"})
     ):
         return IntentDecision(
             "system_summary", True, 0.94, False,
             "Matched the fixed read-only host/system summary command.",
+        )
+    if has_summary and has_architecture_target:
+        return IntentDecision(
+            "architecture_summary", True, 0.96, False,
+            "Matched a read-only architecture summary backed by fixed local source documents.",
         )
     if bool(word_set & _STATUS_WORDS) and bool(word_set & _REPOSITORY_STATUS_TARGET_WORDS):
         return IntentDecision(
