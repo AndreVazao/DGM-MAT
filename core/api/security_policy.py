@@ -60,6 +60,8 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("POST",), "/runtime/queue/actions/{action_id}/approve", SecurityScope.OPERATOR, "Explicit operator approval of one durable queue action."),
     RouteClassification(("POST",), "/runtime/queue/actions/{action_id}/reject", SecurityScope.OPERATOR, "Explicit operator rejection of one durable queue action."),
     RouteClassification(("GET",), "/mobile/status", SecurityScope.LOCAL_CLIENT, "Mobile service status."),
+    RouteClassification(("GET",), "/mobile/usb-recovery/diagnose", SecurityScope.OPERATOR, "Read-only USB/ADB device diagnostics."),
+    RouteClassification(("POST",), "/mobile/usb-recovery/repair", SecurityScope.OPERATOR, "Allowlisted USB/ADB recovery; APK reinstall requires explicit confirmation."),
     RouteClassification(("GET",), "/mobile/threads", SecurityScope.LOCAL_CLIENT, "Conversation list."),
     RouteClassification(("POST",), "/mobile/threads", SecurityScope.OPERATOR, "Creates a conversation."),
     RouteClassification(("GET",), "/mobile/threads/{thread_id}", SecurityScope.LOCAL_CLIENT, "Conversation content/history."),
