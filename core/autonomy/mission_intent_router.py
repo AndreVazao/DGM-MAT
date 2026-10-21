@@ -94,10 +94,44 @@ def classify_mission_intent(goal: str) -> IntentDecision:
     has_read_verb = bool(word_set & _READ_VERBS)
     has_summary = bool(word_set & _SUMMARY_WORDS) or {"visao", "geral"}.issubset(word_set)
     has_architecture_target = bool(word_set & _ARCHITECTURE_TARGET_WORDS)
+    # Host diagnostics map only to fixed, read-only command IDs in CommandExecutor.
+    # A mission can never supply arbitrary command text through this router.
+    if "ollama" in word_set and bool(word_set & {
+        "status", "estado", "model", "models", "modelo", "modelos",
+        "version", "versao", "list", "lista", "listar", "ver", "mostrar", "mostra",
+    }):
+        return IntentDecision(
+            "ollama_status", True, 0.98, False,
+            "Matched the fixed read-only Ollama status/model inventory command.",
+        )
+    if "claude" in word_set and bool(word_set & {
+        "code", "status", "estado", "version", "versao", "instalado", "instalacao",
+    }):
+        return IntentDecision(
+            "claude_status", True, 0.97, False,
+            "Matched the fixed read-only Claude Code availability/version command.",
+        )
+    if bool(word_set & {"engine", "engines", "motor", "motores"}) and bool(word_set & {
+        "active", "ativos", "ativo", "running", "processos", "inventory", "inventario",
+        "quais", "what", "which", "que",
+    }):
+        return IntentDecision(
+            "engines_inventory", True, 0.94, False,
+            "Matched the bounded process-name/PID inventory for known AI engines.",
+        )
+
     if has_summary and has_architecture_target:
         return IntentDecision(
             "architecture_summary", True, 0.96, False,
             "Matched a read-only architecture summary backed by fixed local source documents.",
+        )
+    if (
+        bool(word_set & {"system", "host", "windows", "pc", "computador", "sistema"})
+        and bool(word_set & (_SUMMARY_WORDS | _STATUS_WORDS | {"informacao", "informacoes", "info"}))
+    ):
+        return IntentDecision(
+            "system_summary", True, 0.94, False,
+            "Matched the fixed read-only host/system summary command.",
         )
     if bool(word_set & _STATUS_WORDS) and bool(word_set & _REPOSITORY_STATUS_TARGET_WORDS):
         return IntentDecision(
