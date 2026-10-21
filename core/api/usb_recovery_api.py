@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.operator.usb_recovery import usb_recovery_service
+from core.operator.usb_recovery import get_usb_recovery_monitor_state, usb_recovery_service
 
 router = APIRouter(prefix="/mobile/usb-recovery", tags=["mobile-usb-recovery"])
 
@@ -20,7 +20,15 @@ class UsbRepairRequest(BaseModel):
 @router.get("/diagnose")
 def diagnose_usb_connection():
     """Read-only inspection of ADB and the connected Android device."""
-    return usb_recovery_service.diagnose()
+    report = usb_recovery_service.diagnose()
+    report["automatic_monitor"] = get_usb_recovery_monitor_state()
+    return report
+
+
+@router.get("/state")
+def usb_recovery_state():
+    """Report the automatic recovery monitor without running any repair."""
+    return get_usb_recovery_monitor_state()
 
 
 @router.post("/repair")
