@@ -62,3 +62,9 @@ Esta Constituição governa a separação dos repositórios, a hierarquia centra
 Completar o inventário; ler documentos em conflito; consolidar memória mestre, decisões, arquitetura e backlog; implementar recuperação incremental com proveniência e estados de cobertura; só depois retomar engenharia não urgente.
 
 Este registo é parcial. Documentos ainda não revistos mantêm estado UNKNOWN/UNREVIEWED; não se afirma que todas as fontes ou conversas foram lidas.
+
+
+## Aditamento canónico operacional — 2026-10-21
+
+- **ADITAMENTO CANÓNICO DE EXECUÇÃO:** [DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md](architecture/DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md). Governa o modelo operacional end-to-end, departamentos e agentes, especialização de programação, escritórios fiéis ao runtime, recuperação de conversas e expansão modular multi-PC. Complementa a Constituição Arquitetural de 2026-10-18 e a Diretiva Primária de Missão/Verdade de 2026-10-10; não as substitui nem declara a implementação concluída.
+- A revisão documental de 2026-10-21 foi **dirigida/parcial**: os documentos enumerados no aditamento foram abertos e revistos, mas não foram lidos todos os ficheiros, branches locais, repositórios satélite ou conversas externas. O inventário global permanece parcial e deve continuar com classificação REVIEWED / UNREVIEWED / CONFLICT / SUPERSEDED.
