@@ -105,7 +105,8 @@ def classify_mission_intent(goal: str) -> IntentDecision:
             "Matched the fixed read-only Ollama status/model inventory command.",
         )
     if "claude" in word_set and bool(word_set & {
-        "code", "status", "estado", "version", "versao", "instalado", "instalacao",
+        "status", "estado", "version", "versao", "instalado", "instalacao",
+        "available", "availability", "disponivel",
     }):
         return IntentDecision(
             "claude_status", True, 0.97, False,
