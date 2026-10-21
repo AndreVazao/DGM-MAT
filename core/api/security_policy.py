@@ -55,6 +55,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("GET",), "/runtime/obsidian/index", SecurityScope.OPERATOR, "Indexes local vault."),
     RouteClassification(("POST",), "/runtime/missions", SecurityScope.OPERATOR, "Creates a mission."),
     RouteClassification(("GET",), "/runtime/missions", SecurityScope.LOCAL_CLIENT, "Mission details/logs."),
+    RouteClassification(("GET",), "/runtime/missions/{mission_id}", SecurityScope.LOCAL_CLIENT, "One durable mission checkpoint and result; read-only."),
     RouteClassification(("GET",), "/runtime/office/telemetry", SecurityScope.LOCAL_CLIENT, "Content-minimized read-only mission/queue telemetry for the virtual office."),
     RouteClassification(("POST",), "/runtime/approvals/{request_id}", SecurityScope.OPERATOR, "Mission approval decision."),
     RouteClassification(("GET",), "/runtime/approvals", SecurityScope.OPERATOR, "Pending approvals."),

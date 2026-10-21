@@ -76,3 +76,9 @@ def test_office_telemetry_is_read_only_local_client_scope():
     telemetry = classify_route("/runtime/office/telemetry", ("GET",))
     assert telemetry is not None
     assert telemetry.scope is SecurityScope.LOCAL_CLIENT
+
+
+def test_exact_mission_detail_is_read_only_local_client_scope():
+    detail = classify_route("/runtime/missions/{mission_id}", ("GET",))
+    assert detail is not None
+    assert detail.scope is SecurityScope.LOCAL_CLIENT

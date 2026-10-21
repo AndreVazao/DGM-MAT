@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import time
 from datetime import datetime
 import psutil
@@ -268,6 +269,75 @@ def list_missions():
             "output": mission.metadata.get("output"),
         })
     return missions
+
+
+@router.get("/missions/{mission_id}")
+def get_mission_detail(mission_id: str):
+    """Return one durable mission checkpoint without mutating runtime state."""
+    if not re.fullmatch(r"mission_[0-9a-f]{8}", mission_id):
+        raise HTTPException(status_code=404, detail="Mission checkpoint not found")
+
+    mission_file = mission_engine.missions_path / f"{mission_id}.json"
+    try:
+        data = json.loads(mission_file.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        raise HTTPException(status_code=404, detail="Mission checkpoint not found")
+
+    if not isinstance(data, dict) or data.get("mission_id") != mission_id:
+        raise HTTPException(status_code=404, detail="Mission checkpoint not found")
+
+    status = data.get("status")
+    if isinstance(status, dict):
+        status = status.get("value")
+    valid_statuses = {item.value for item in MissionStatus}
+    if not isinstance(status, str) or status not in valid_statuses:
+        raise HTTPException(status_code=404, detail="Mission checkpoint is invalid")
+
+    metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+    result = metadata.get("result")
+    output = metadata.get("output")
+    result_truncated = False
+    output_truncated = False
+
+    def bound_value(value, limit=24000):
+        nonlocal result_truncated, output_truncated
+        if value is None:
+            return None
+        try:
+            encoded = json.dumps(value, ensure_ascii=False, default=str)
+        except (TypeError, ValueError):
+            encoded = str(value)
+        if len(encoded) <= limit:
+            return value
+        preview = encoded[:limit]
+        if value is result:
+            result_truncated = True
+        if value is output:
+            output_truncated = True
+        return {"truncated": True, "preview": preview}
+
+    action_id = metadata.get("action_id")
+    if isinstance(action_id, bool) or not isinstance(action_id, int):
+        action_id = None
+    action = SafeActionQueue().get_action(action_id) if action_id is not None else None
+    result_data = result if isinstance(result, dict) else {}
+    return {
+        "mission_id": mission_id,
+        "status": status,
+        "progress": data.get("progress"),
+        "created_at": data.get("created_at"),
+        "updated_at": data.get("updated_at"),
+        "action_id": action_id,
+        "action_status": action.get("status") if action else None,
+        "handler": result_data.get("handler") if isinstance(result_data.get("handler"), str) else None,
+        "result": bound_value(result),
+        "output": bound_value(output),
+        "result_truncated": result_truncated,
+        "output_truncated": output_truncated,
+        "error": data.get("error") if isinstance(data.get("error"), str) else None,
+        "source": "durable_mission_checkpoint",
+    }
+
 
 @router.get("/office/telemetry")
 def get_office_telemetry():
