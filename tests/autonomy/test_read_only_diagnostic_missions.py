@@ -30,6 +30,14 @@ def test_claude_code_task_request_is_not_misclassified_as_a_version_check():
     assert decision.requires_approval is True
 
 
+def test_mutating_clause_prevents_read_only_auto_approval():
+    decision = classify_mission_intent("check Ollama status and install updates")
+
+    assert decision.intent == "unsupported"
+    assert decision.supported is False
+    assert decision.requires_approval is True
+
+
 def _make_test_engine(tmp_path, monkeypatch):
     engine = MissionEngine()
     engine.missions_path = tmp_path
