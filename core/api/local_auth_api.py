@@ -2,8 +2,10 @@
 """Loopback-only bootstrap-to-session endpoint; existing routes are not yet enforced."""
 from __future__ import annotations
 
+import hashlib
 import hmac
 import os
+import secrets
 import threading
 import time
 from pathlib import Path
@@ -23,6 +25,7 @@ _MAX_ATTEMPTS_PER_WINDOW = 8
 _ALLOWED_ORIGINS = {
     "http://127.0.0.1:8181",
     "http://localhost:8181",
+    "https://localhost",
 }
 
 
@@ -30,6 +33,18 @@ class SessionRequest(BaseModel):
     client_id: constr(strip_whitespace=True, min_length=1, max_length=64)
 
     model_config = ConfigDict(extra="forbid")
+
+class PairingRequest(BaseModel):
+    code: constr(strip_whitespace=True, min_length=8, max_length=64)
+    client_id: constr(strip_whitespace=True, min_length=1, max_length=64)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+_pairing_lock = threading.Lock()
+_pairing_digest: bytes | None = None
+_pairing_expires_at = 0.0
+_PAIRING_TTL_SECONDS = 300
 
 
 def _bootstrap_path() -> Path:
@@ -99,6 +114,60 @@ def create_local_session(
         raise HTTPException(status_code=401, detail="Invalid bootstrap credential.")
 
     # Scope is chosen by server policy, never supplied by the caller.
+    token, principal = session_manager.create_session(
+        subject=payload.client_id,
+        scopes={"local-client", "operator"},
+    )
+    return {
+        "access_token": token,
+        "token_type": "Bearer",
+        "expires_in": int(principal.expires_at - principal.issued_at),
+        "expires_at": principal.expires_at,
+        "session_id": principal.session_id,
+        "scopes": sorted(principal.scopes),
+    }
+
+
+@router.get("/pairing-code")
+def create_pairing_code(request: Request):
+    """Issue a one-time code only to a browser on the PC itself."""
+    global _pairing_digest, _pairing_expires_at
+    if not _is_loopback(request):
+        raise HTTPException(status_code=403, detail="Pairing code can only be created on the DGM-MAT PC.")
+    _check_origin(request)
+    client_key = "pairing-code:" + (request.client.host if request.client else "unknown")
+    _rate_limit(client_key)
+    code = secrets.token_urlsafe(12)
+    digest = hashlib.sha256(code.encode("utf-8")).digest()
+    with _pairing_lock:
+        _pairing_digest = digest
+        _pairing_expires_at = time.monotonic() + _PAIRING_TTL_SECONDS
+    return {
+        "pairing_code": code,
+        "expires_in": _PAIRING_TTL_SECONDS,
+        "instructions": "Introduz este código na aplicação DGM-MAT no telemóvel. Só pode ser usado uma vez.",
+    }
+
+
+@router.post("/pair", status_code=201)
+def pair_mobile_client(payload: PairingRequest, request: Request):
+    """Exchange a short-lived PC-local pairing code for a short-lived operator session."""
+    global _pairing_digest, _pairing_expires_at
+    client_key = "pair:" + (request.client.host if request.client else "unknown")
+    _rate_limit(client_key)
+    supplied_digest = hashlib.sha256(payload.code.encode("utf-8")).digest()
+    with _pairing_lock:
+        valid = (
+            _pairing_digest is not None
+            and time.monotonic() < _pairing_expires_at
+            and hmac.compare_digest(supplied_digest, _pairing_digest)
+        )
+        if valid:
+            _pairing_digest = None
+            _pairing_expires_at = 0.0
+    if not valid:
+        raise HTTPException(status_code=401, detail="Código de emparelhamento inválido, expirado ou já utilizado.")
+
     token, principal = session_manager.create_session(
         subject=payload.client_id,
         scopes={"local-client", "operator"},
