@@ -17,6 +17,7 @@ A recuperação integra alterações e história de trabalho do PC e do GitHub. 
 
 | Documento | Classificação após esta revisão | Papel e tratamento |
 |---|---|---|
+| `docs/architecture/DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md` | **ADITAMENTO CANÓNICO OPERACIONAL** | Consolida o ciclo end-to-end, departamentos, especialização por linguagem, recuperação de conversas e escala multi-PC; complementa, não substitui, a Constituição e a Diretiva Primária. |
 | `docs/architecture/DGM-MAT-ARCHITECTURE-CONSTITUTION-MODULAR-DEPARTMENTS-2026-10-18.md` | **NORMATIVO — arquitetura** | Prevalece em modularidade, hierarquia, contratos, independência do core e política de recuperação. Alteração apenas por aditamento explicitamente autorizado. |
 | `docs/DGM-MAT_PRIMARY_MISSION_AND_EVOLVING_TRUTH_2026-10-10.md` | **NORMATIVO — missão/proveniência** | Governa a prioridade operacional, evolução de intenção e distinção entre pedido, proposta, decisão e verdade verificada. Complementa a Constituição. |
 | `docs/DGM-MAT_DOCUMENT_AUTHORITY_REGISTER_2026-10-10.md` | **REGISTO DE AUTORIDADE** | Catálogo e classificação de documentos; atualizado para apontar à Constituição e registar os limites desta auditoria. |
@@ -108,3 +109,8 @@ Na branch de recuperação foram lidos os seguintes ficheiros:
 - **NÃO ENCONTRADO** não significa **NUNCA EXISTIU**.
 - Qualquer conclusão que não tenha sido verificada deve permanecer marcada como pendente.
 
+
+
+## Atualização do inventário — 2026-10-21
+
+Foi criado e ligado o [Modelo Canónico de Operação, Departamentos e End-to-End](DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md). A revisão foi dirigida e parcial: os documentos listados no novo modelo foram consultados quando acessíveis, mas não foram auditados linha a linha todos os documentos, branches locais, repositórios satélite ou conversas de providers. O inventário geral continua **PARCIAL**; manter por rever qualquer fonte não inspecionada. Nenhum documento histórico foi apagado.
