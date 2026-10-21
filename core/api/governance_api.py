@@ -286,3 +286,107 @@ def approve_governance_meeting(meeting_id: str, payload: MeetingApprovalRequest,
         return _meeting_registry().approve_decision(meeting_id, **values)
     except (KeyError, ValueError, RuntimeError) as exc:
         raise _meeting_http_error(exc) from exc
+
+
+
+# Progressive trust: feedback is evidence, while delegation remains owner-controlled.
+from core.governance.progressive_trust import ProgressiveTrustRegistry
+
+
+class TrustFeedbackRequest(BaseModel):
+    category: str = Field(min_length=1, max_length=200)
+    scope: str = Field(min_length=1, max_length=200)
+    outcome: str
+    rationale: str = Field(min_length=1, max_length=2000)
+    risk: str
+    reversible: bool
+    verified_success: bool = False
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class TrustDelegationRequest(BaseModel):
+    category: str = Field(min_length=1, max_length=200)
+    scope: str = Field(min_length=1, max_length=200)
+    max_risk: str
+    min_verified_successes: int = Field(default=3, ge=3, le=20)
+    rationale: str = Field(min_length=1, max_length=2000)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class TrustRevocationRequest(BaseModel):
+    rationale: str = Field(min_length=1, max_length=2000)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class TrustEvaluationRequest(BaseModel):
+    category: str = Field(min_length=1, max_length=200)
+    scope: str = Field(min_length=1, max_length=200)
+    risk: str
+    protected_boundaries: list[str] = Field(default_factory=list, max_length=30)
+    materially_changed: bool = False
+
+    model_config = ConfigDict(extra="forbid")
+
+
+def _trust_owner_actor(request: Request) -> str:
+    principal = getattr(request.state, "dgm_principal", {}) or {}
+    if not isinstance(principal, dict):
+        raise HTTPException(status_code=401, detail="Authenticated principal is unavailable.")
+    role = str(principal.get("governance_role") or principal.get("role") or "").casefold()
+    username = str(principal.get("username") or principal.get("actor") or "").casefold()
+    if role not in {"owner", "system_owner"} and username not in {"andre", "andré", "andrevazao"}:
+        raise HTTPException(status_code=403, detail="Only the authenticated system owner may change trust policy.")
+    return "André"
+
+
+def _trust_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, KeyError):
+        return HTTPException(status_code=404, detail="Trust delegation not found.")
+    if isinstance(exc, ValueError):
+        return HTTPException(status_code=400, detail=str(exc))
+    if isinstance(exc, RuntimeError):
+        return HTTPException(status_code=503, detail=str(exc))
+    raise exc
+
+
+@router.post("/trust/feedback")
+def record_progressive_trust_feedback(payload: TrustFeedbackRequest, request: Request):
+    """Record owner-attributed decision feedback; only verified outcomes count as successes."""
+    try:
+        actor = _trust_owner_actor(request)
+        return ProgressiveTrustRegistry().record_feedback(actor=actor, **payload.model_dump())
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise _trust_error(exc) from exc
+
+
+@router.post("/trust/delegations")
+def grant_progressive_trust_delegation(payload: TrustDelegationRequest, request: Request):
+    """Explicitly delegate a narrow low/medium-risk decision category; never execute actions."""
+    try:
+        actor = _trust_owner_actor(request)
+        return ProgressiveTrustRegistry().grant_delegation(actor=actor, **payload.model_dump())
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise _trust_error(exc) from exc
+
+
+@router.post("/trust/delegations/{delegation_id}/revoke")
+def revoke_progressive_trust_delegation(delegation_id: str, payload: TrustRevocationRequest, request: Request):
+    try:
+        actor = _trust_owner_actor(request)
+        return ProgressiveTrustRegistry().revoke_delegation(
+            actor=actor, delegation_id=delegation_id, rationale=payload.rationale
+        )
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise _trust_error(exc) from exc
+
+
+@router.post("/trust/evaluate")
+def evaluate_progressive_trust(payload: TrustEvaluationRequest):
+    """Read-only policy check; an allowed decision does not grant execution permission."""
+    try:
+        return ProgressiveTrustRegistry().evaluate(**payload.model_dump())
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise _trust_error(exc) from exc
