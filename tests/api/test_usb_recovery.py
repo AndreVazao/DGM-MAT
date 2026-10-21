@@ -51,3 +51,13 @@ def test_apk_install_requires_explicit_confirmation(monkeypatch, tmp_path):
     result = usb_recovery.UsbRecoveryService(runner=runner).repair("install-apk")
     assert result["status"] == "confirmation_required"
     assert calls == []
+
+
+
+def test_usb_recovery_api_paths_have_explicit_security_classification():
+    from core.api.security_policy import SecurityScope, classify_request_path
+
+    assert classify_request_path("/mobile/usb-recovery/diagnose", "GET").scope is SecurityScope.OPERATOR
+    assert classify_request_path("/mobile/usb-recovery/state", "GET").scope is SecurityScope.OPERATOR
+    assert classify_request_path("/mobile/usb-recovery/repair", "POST").scope is SecurityScope.OPERATOR
+    assert classify_request_path("/mobile/usb-recovery/repair", "GET") is None
