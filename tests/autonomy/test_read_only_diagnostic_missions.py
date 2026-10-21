@@ -22,6 +22,14 @@ def test_read_only_diagnostic_intents_are_explicitly_allowlisted(goal, expected_
     assert decision.requires_approval is False
 
 
+def test_claude_code_task_request_is_not_misclassified_as_a_version_check():
+    decision = classify_mission_intent("I want to use Claude Code for this task")
+
+    assert decision.intent == "unsupported"
+    assert decision.supported is False
+    assert decision.requires_approval is True
+
+
 def test_system_summary_mission_executes_fixed_command_and_persists_result(tmp_path, monkeypatch):
     engine = MissionEngine()
     engine.missions_path = tmp_path
