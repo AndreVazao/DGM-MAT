@@ -203,6 +203,15 @@ def _meeting_http_error(exc: Exception) -> HTTPException:
     raise exc
 
 
+@router.get("/approvals/pending")
+def list_pending_governance_approvals():
+    """Read durable approval requests for the PC/mobile cockpit; does not deliver or approve them."""
+    try:
+        return {"approvals": _meeting_registry().list_pending_approvals()}
+    except RuntimeError as exc:
+        raise _meeting_http_error(exc) from exc
+
+
 @router.get("/meetings")
 def list_governance_meetings():
     try:
