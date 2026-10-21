@@ -30,7 +30,7 @@ app = FastAPI(title="DGM-MAT API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:8181", "http://localhost:8181"],
+    allow_origins=["http://127.0.0.1:8181", "http://localhost:8181", "https://localhost"],
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
