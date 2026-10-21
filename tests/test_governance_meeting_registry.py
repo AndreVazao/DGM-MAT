@@ -141,7 +141,7 @@ class GovernanceMeetingRegistryTests(unittest.TestCase):
         self.assertIsNone(updated["decision"])
         self.assertIsNone(updated["approval"])
         self.assertEqual(updated["action_dispatch"]["status"], "not_dispatched")
-        with self.assertRaisesRegex(ValueError, "CEO endorsement"):
+        with self.assertRaisesRegex(ValueError, "no pending owner approval"):
             self.registry.approve_by_owner(
                 meeting_id, actor="André", approved=True, rationale="Old approval must not apply."
             )
@@ -157,7 +157,7 @@ class GovernanceMeetingRegistryTests(unittest.TestCase):
 
     def test_owner_cannot_approve_before_ceo_endorsement(self):
         meeting = self.create()
-        with self.assertRaisesRegex(ValueError, "CEO endorsement"):
+        with self.assertRaisesRegex(ValueError, "no pending owner approval"):
             self.registry.approve_by_owner(
                 meeting["meeting_id"], actor="André", approved=True, rationale="OK"
             )
