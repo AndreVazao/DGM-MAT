@@ -17,6 +17,7 @@ from core.realtime.websocket_manager import manager
 from core.api.runtime_api import router as runtime_router
 from core.api.mobile_bridge import router as mobile_router
 from core.api.usb_recovery_api import router as usb_recovery_router
+from core.operator.usb_recovery import start_usb_recovery_monitor
 from core.api.governance_api import router as governance_router
 from core.api.provider_execution_api import router as provider_execution_router
 from core.api.local_auth_api import router as local_auth_router, session_manager
@@ -137,6 +138,12 @@ def start_rendezvous_heartbeat() -> None:
         daemon=True,
     )
     thread.start()
+
+
+@app.on_event("startup")
+def start_usb_recovery() -> None:
+    # The monitor only performs safe ADB reconnection; it never wipes app/device data.
+    start_usb_recovery_monitor()
 
 
 def _mobile_ui_directory() -> Path | None:
