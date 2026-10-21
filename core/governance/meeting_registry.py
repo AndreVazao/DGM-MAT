@@ -90,8 +90,8 @@ class GovernanceMeetingRegistry:
             meetings = self._read()["meetings"].values()
             pending = [
                 item for item in meetings
-                if item.get("approval", {}).get("status") == "pending"
-                or item.get("owner_approval", {}).get("status") == "pending"
+                if (item.get("approval") or {}).get("status") == "pending"
+                or (item.get("owner_approval") or {}).get("status") == "pending"
             ]
             return sorted(pending, key=lambda item: item["updated_at"], reverse=True)
 
