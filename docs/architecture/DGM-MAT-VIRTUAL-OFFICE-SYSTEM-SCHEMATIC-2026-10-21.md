@@ -175,14 +175,23 @@ Os pisos são áreas lógicas configuráveis, não processos nem máquinas obrig
 **Imagem de referência canónica no repositório DGM-MAT, branch `main`:** `1792476724975.jpg` (raiz do repositório).
 
 Requisitos vinculativos para o avatar do escritório:
-1. Usar a fotografia como referência de identidade facial e semelhança; não substituir por uma pessoa genérica.
-2. A fotografia existente foi alterada por IA para mostrar cabelo. A representação oficial do CEO no escritório deve respeitar a descrição do proprietário: **careca**, mantendo semelhança facial com a fotografia.
-3. Não inferir nem inventar idade, origem, uniforme, estatuto ou traços não sustentados pela referência.
-4. Manter o ficheiro original intacto. Qualquer avatar derivado deve ser um novo asset versionado, por exemplo `docs/future/assets/ceo-avatar-dgm-mat-v1.webp`, com nota de proveniência e revisão do proprietário.
-5. A UI deve usar um asset local/versionado quando aprovado, com fallback se a imagem não carregar; não depender de uma transformação remota em cada abertura.
-6. A representação visual não confere autoridade ao avatar. Aprovações continuam a exigir a sessão autenticada do proprietário e ações explícitas.
+1. Usar esta fotografia como modelo de identidade e semelhança; não substituir por uma pessoa genérica. O proprietário confirmou que esta imagem, incluindo o cabelo que nela aparece, é a referência visual pretendida.
+2. **O avatar do CEO deve ter cabelo, tal como aparece na fotografia carregada.** A aparência naturalmente careca do proprietário não é uma instrução para retirar o cabelo ao avatar. Não gerar uma versão careca nem alterar este requisito sem nova indicação explícita do proprietário.
+3. Preservar a identidade facial e o cabelo da referência. Só estilizar a representação como personagem/avatar; não alterar a fotografia original.
+4. Não inventar traços identitários não sustentados pela imagem. Roupa, estilo artístico e acabamento podem ser adaptados ao escritório, sem perder a semelhança aprovada.
+5. Manter o ficheiro original intacto. Qualquer avatar derivado deve ser um novo asset versionado, por exemplo `docs/future/assets/ceo-avatar-dgm-mat-v1.webp`, com nota de proveniência e revisão do proprietário.
+6. A UI deve usar um asset local/versionado quando aprovado, com fallback se a imagem não carregar; não depender de uma transformação remota em cada abertura.
+7. A representação visual não confere autoridade ao avatar. Aprovações continuam a exigir a sessão autenticada do proprietário e ações explícitas.
 
-**Estado atual:** o cockpit mostra a fotografia original num cartão de referência. Ainda não existe neste documento prova de que um avatar careca derivado tenha sido produzido ou aprovado.
+### Convenção visual de pessoas e agentes
+
+- **Pessoas/agentes existentes:** representados por personagens humanos (avatares), com diversidade natural de género, idade aparente, altura, corpo e aparência, sem estereótipos.
+- **Agentes criados pelo DGM-MAT:** representados visualmente como robôs, em todos os departamentos e interfaces do escritório. Devem continuar ligados a um registo real de agente; o aspeto de robô não prova que o agente esteja ativo.
+- **CEO:** exceção visual pessoal, baseada na fotografia canónica com cabelo; não converter a personagem do CEO em robô.
+- Esta convenção é uma camada de apresentação: não altera identidade técnica, permissões, capacidades, estados ou proveniência.
+- A mesma regra deve ser aplicada ao cockpit PC, aplicação móvel, diretório de agentes, vistas por piso e futuras versões 2D/2.5D/3D.
+
+**Estado atual:** o cockpit mostra a fotografia original num cartão de referência. Ainda não existe prova de que um avatar derivado tenha sido produzido ou aprovado. A produção do avatar final fica pendente de um fluxo de geração/edição que possa usar a fotografia de referência corretamente; não criar um rosto genérico nem substituir a imagem original.
 
 ## 8. Renderização adaptativa e acessibilidade
 
