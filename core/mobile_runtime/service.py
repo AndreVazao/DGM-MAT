@@ -126,7 +126,12 @@ class MobileConversationService:
         return "Percebi. Mantive a mensagem e o contexto nesta conversa para que o próximo pedido continue exatamente daqui."
 
     def _try_local_llm(self, thread: Any, intent: IntentResult) -> str | None:
-        if os.getenv("DGM_MOBILE_LOCAL_LLM", "auto").lower() == "off":
+        # Fail safe: local inference may use an already-running Ollama instance,
+        # but must not start a background process unless explicitly opted in.
+        mode = os.getenv("DGM_MOBILE_LOCAL_LLM", "manual").strip().lower()
+        if mode not in {"off", "manual", "auto"}:
+            mode = "manual"
+        if mode == "off":
             return None
 
         # The current PC has only ~3 GB RAM. Do not start/load Ollama when the
@@ -146,6 +151,8 @@ class MobileConversationService:
 
         try:
             if not self._ollama_available():
+                if mode != "auto":
+                    return None
                 self._start_ollama()
             if not self._ollama_available():
                 return None
