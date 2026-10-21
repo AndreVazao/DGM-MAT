@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, constr
 
 from core.api.local_sessions import LocalSessionManager
@@ -129,8 +129,10 @@ def create_local_session(
 
 
 @router.get("/pairing-code")
-def create_pairing_code(request: Request):
+def create_pairing_code(request: Request, response: Response):
     """Issue a one-time code only to a browser on the PC itself."""
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
     global _pairing_digest, _pairing_expires_at
     if not _is_loopback(request):
         raise HTTPException(status_code=403, detail="Pairing code can only be created on the DGM-MAT PC.")
