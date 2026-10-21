@@ -104,7 +104,11 @@ class GovernanceMeetingRegistryTests(unittest.TestCase):
         self.assertEqual(decided["approval"]["status"], "pending")
 
     def test_agent_hiring_is_not_automatically_a_human_approval_gate(self):
-        meeting = self.create(meeting_type="hire_agent", participants=["CEO", "RH"])
+        meeting = self.create(
+            meeting_type="hire_agent", title="Contratar agente especializado",
+            proposal="Contratar um agente para documentação de rotina.",
+            participants=["CEO", "RH"], related_departments=["RH"],
+        )
         self.assertFalse(meeting["high_impact"])
         self.assertEqual(meeting["owner_approval"]["status"], "not_required")
 
