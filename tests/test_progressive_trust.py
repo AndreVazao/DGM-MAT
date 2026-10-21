@@ -30,7 +30,7 @@ class ProgressiveTrustRegistryTests(unittest.TestCase):
     def add_successes(self, count=3):
         for index in range(count):
             self.registry.record_feedback(
-                category="routine_documentation", scope="programming",
+                actor="André", category="routine_documentation", scope="programming",
                 outcome="approved", rationale=f"Resultado revisto {index}",
                 risk="low", reversible=True, verified_success=True,
             )
@@ -61,7 +61,7 @@ class ProgressiveTrustRegistryTests(unittest.TestCase):
         self.delegate()
         self.add_successes(3)
         self.registry.record_feedback(
-            category="routine_documentation", scope="programming",
+            actor="André", category="routine_documentation", scope="programming",
             outcome="changed", rationale="André pediu uma alteração",
             risk="low", reversible=True,
         )
@@ -114,7 +114,7 @@ class ProgressiveTrustRegistryTests(unittest.TestCase):
         self.registry.path.write_text("{broken", encoding="utf-8")
         with self.assertRaises(RuntimeError):
             self.registry.record_feedback(
-                category="routine_documentation", scope="programming",
+                actor="André", category="routine_documentation", scope="programming",
                 outcome="approved", rationale="Test", risk="low",
                 reversible=True, verified_success=True,
             )
