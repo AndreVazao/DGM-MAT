@@ -4,24 +4,52 @@ Status: implementation contract, 2026-10-21
 
 ## Operating principle
 
-The CEO may continuously investigate, propose, prepare and carry out routine improvements within already granted policy, budget, permissions and safety boundaries. A human approval request must not freeze unrelated missions or departments.
+The CEO and every department must keep working and improving continuously within their granted authority. Human approval gates apply to the specific action or plan that needs approval, never as a reason to pause unrelated missions, departments, research or preparation.
+
+The long-term goal is progressive autonomy: the CEO adapts to André's established preferences and decisions, and can take more decisions independently when a reliable, auditable pattern has been demonstrated and explicitly falls within delegated boundaries. The system must not make André a permanent bottleneck.
 
 ## Autonomous by default
 
-Unless a policy explicitly classifies an action as critical, the CEO may:
+Unless a policy explicitly classifies an action as critical, the CEO and departments may:
 - identify weak or degraded departments and investigate the cause;
 - recruit, create, configure and retire specialist agents within approved limits;
 - distribute work and coordinate departments;
 - prepare and apply routine, reversible improvements;
-- run tests and report evidence of the result.
+- run tests and report evidence of the result;
+- improve their own workflows and propose further improvements, while respecting shared interfaces and security boundaries.
 
-Every change remains subject to existing access controls, resource limits, audit logging, backups/reversibility and the rule to investigate before changing. "Autonomous" is not permission to bypass security, erase evidence, spend unapproved money, expose credentials, or make irreversible changes.
+The CEO coordinates cross-department work and endorses decisions within the authority granted to it. Departments retain autonomy for work inside their own remit; they should not need CEO or owner approval for every ordinary task.
+
+Every change remains subject to access controls, resource limits, audit logging, backups/reversibility and the rule to investigate before changing. "Autonomous" is not permission to bypass security, erase evidence, spend unapproved money, expose credentials, or make irreversible changes.
+
+## Progressive trust and delegated decision authority
+
+The CEO should learn from André's approvals, rejections, requested changes, stated reasons and the verified outcomes of decisions. The purpose is to reduce repetitive approval requests for genuinely equivalent, low-risk decisions.
+
+Trust must be evidence-based and scoped, not a single opaque confidence score:
+- Record the decision category, context, affected scope, risk level, André's choice and rationale when available.
+- Compare new cases against prior decisions by substance and risk, not merely by matching task titles or keywords.
+- Promote a decision category to autonomous handling only when there is sufficient repeated evidence of consistent outcomes and the authority policy explicitly allows delegation for that category.
+- Start with narrow scope and reversible actions; expand scope gradually only when results support it.
+- Keep a clear audit trail explaining why a decision was handled autonomously and which prior decisions/policy boundaries supported it.
+- Learn from rejections and corrections as well as approvals. An approval for one department, environment, budget or risk level does not automatically generalise to another.
+- Treat changed circumstances, novel risks, conflicting examples or materially different plans as reasons to lower confidence and reassess.
+- André must be able to inspect, correct, narrow or revoke a delegation. Never silently infer unlimited authority from repeated approvals.
+- Confidence alone must never override an explicit human-approval requirement, security rule, legal constraint, budget limit or protected boundary.
+
+Suggested maturity levels:
+1. **Unfamiliar:** investigate and prepare; request approval if outside current authority.
+2. **Observed pattern:** use previous decisions as guidance but keep the existing approval gate.
+3. **Consistent and verified:** autonomously handle equivalent cases only inside a documented, delegated scope.
+4. **Exception or drift:** pause only the affected action, explain what differs and escalate when the difference crosses a protected boundary.
 
 ## Human final approval required
 
 A proposal must be marked critical when it entails a major architecture/platform change, a structural reorganisation affecting multiple departments, a major technology migration, a change to security/trust boundaries, or an irreversible/high-blast-radius change. Classification must be recorded with a rationale; it must not depend only on an agent's self-description.
 
 Creating or hiring an agent is not, by itself, a human approval trigger. If its actual plan crosses one of the critical boundaries above, the critical plan needs approval even if the task title says "hire agent" or "improve department".
+
+Explicitly protected structural changes remain subject to André's approval even if similar changes were approved before, unless André has specifically delegated that exact decision category and scope through a recorded policy change. The CEO may recommend such a delegation but cannot grant it to itself.
 
 ## Two-stage approval flow
 
@@ -41,7 +69,8 @@ Creating or hiring an agent is not, by itself, a human approval trigger. If its 
 - A timeout must never silently become approval.
 - Rejecting a proposal closes that version; a materially revised proposal may be resubmitted.
 - If the cockpit is offline, the request stays durable and queued; the system must not treat missing UI delivery as approval.
+- The blocked task must not hold a department-wide lock or prevent unrelated work from being scheduled.
 
 ## Implementation status
 
-The current governance-meeting PR introduces durable meeting records and an initial two-stage approval state. It does not yet implement the cockpit popup, cross-device push delivery, approval-bound execution dispatch, or end-to-end runtime tests. Those are explicit follow-up work and must not be represented as completed.
+The current governance-meeting PR introduces durable meeting records and an initial two-stage approval state. This document now also specifies progressive, evidence-based delegation. The PR does not yet implement the cockpit popup, cross-device push delivery, approval-bound execution dispatch, the adaptive-trust decision engine, or end-to-end runtime tests. Those are explicit follow-up work and must not be represented as completed.
