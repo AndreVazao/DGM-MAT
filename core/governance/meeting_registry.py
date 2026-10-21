@@ -203,7 +203,7 @@ class GovernanceMeetingRegistry:
                 meeting["approval"] = {"status": "pending", "required_from": "CEO", "requested_at": now}
             elif outcome == "approved" and meeting["high_impact"]:
                 meeting["status"] = "decision_pending"
-                meeting["approval"] = {"status": "approved", "required_from": "CEO", "approved_by": actor, "decided_at": now}
+                meeting["approval"] = {"status": "approved", "required_from": "CEO", "approved_by": actor, "decided_at": now, "plan_digest": meeting["decision"]["plan_digest"]}
                 meeting["owner_approval"] = {"status": "pending", "required_from": "André", "requested_at": now}
                 meeting["action_dispatch"] = {"status": "awaiting_owner_approval", "note": "CEO has prepared and endorsed the plan; no structural action may run before André's approval."}
             else:
