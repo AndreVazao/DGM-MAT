@@ -208,7 +208,8 @@ Requisitos vinculativos para o avatar do escritório:
 - **Aceitação:** utilizador envia um pedido, acompanha o ID, vê transições reais e recebe resultado verificável; refresh não perde o estado.
 
 ### Fase C — Escritório 2D/2.5D
-- Planta navegável, pisos, departamentos e feed recente com entidades reais.
+- [Implementado parcialmente] Planta arquitetural estática e diretório visual dos nove pisos lógicos; os estados só usam telemetria existente e os pisos sem feed permanecem desconhecidos.
+- [Pendente] Navegação interativa entre pisos/salas, fichas de departamento/agente e feeds específicos de eventos.
 - **Aceitação:** cada item visual aponta para uma entidade/estado real; sem telemetria, apresenta `unknown`.
 
 ### Fase D — Agentes e comunicações
@@ -259,6 +260,7 @@ Esta secção regista código efetivamente integrado e validação observada, se
 | Validação API/security | [Focused PR Validation — run 26](https://github.com/AndreVazao/DGM-MAT/actions/runs/39588171090) | Compilação e regressões selecionadas passaram |
 | UI de acompanhamento de missão | [PR #9](https://github.com/AndreVazao/DGM-Cockpit-Frontend/pull/9) | Integrada; primeiro estado conservador e consulta explícita |
 | UI de estado/resultado persistido | [PR #10](https://github.com/AndreVazao/DGM-Cockpit-Frontend/pull/10) | Integrada; consulta endpoint exato por ID |
+| Diretório visual dos nove pisos lógicos | [PR #11](https://github.com/AndreVazao/DGM-Cockpit-Frontend/pull/11) | Integrado; estados vêm de telemetria existente; pisos sem feed continuam desconhecidos; navegação interativa por piso continua pendente |
 | Testes focados do cockpit | [Cockpit Contract Tests — run 14](https://github.com/AndreVazao/DGM-Cockpit-Frontend/actions/runs/39588215721) | Sintaxe JavaScript e contratos passaram |
 | Avatar careca semelhante ao proprietário | Fotografia canónica `1792476724975.jpg` | Requisito documentado; avatar derivado ainda não produzido/aprovado |
 | E2E com PC Windows real | Requer PC e acesso de runtime | Pendente; Actions não confirma worker, serviços, Ollama ou persistência local |
