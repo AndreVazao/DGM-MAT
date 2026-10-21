@@ -63,3 +63,48 @@ def test_usb_recovery_api_paths_have_explicit_security_classification():
     assert classify_request_path("/mobile/usb-recovery/repair", "GET") is None
     assert classify_request_path("/auth/pairing-code", "GET").scope is SecurityScope.OPERATOR
     assert classify_request_path("/auth/pair", "POST").scope is SecurityScope.OPERATOR
+
+
+
+def test_pairing_code_is_one_time_and_issues_scoped_session(monkeypatch):
+    from types import SimpleNamespace
+
+    import pytest
+    from fastapi import HTTPException, Response
+    from core.api import local_auth_api
+
+    monkeypatch.setattr(local_auth_api, "_attempts", {})
+    pc_request = SimpleNamespace(
+        client=SimpleNamespace(host="127.0.0.1"),
+        headers={},
+    )
+    response = Response()
+    issued = local_auth_api.create_pairing_code(pc_request, response)
+    assert response.headers["cache-control"] == "no-store"
+    assert issued["expires_in"] == 300
+
+    phone_request = SimpleNamespace(
+        client=SimpleNamespace(host="100.64.0.2"),
+        headers={"origin": "https://localhost"},
+    )
+    paired = local_auth_api.pair_mobile_client(
+        local_auth_api.PairingRequest(
+            code=issued["pairing_code"],
+            client_id="dgm-mat-mobile-test",
+        ),
+        phone_request,
+    )
+    principal = local_auth_api.session_manager.authenticate(paired["access_token"])
+    assert principal is not None
+    assert "operator" in principal.scopes
+    assert "local-client" in principal.scopes
+
+    with pytest.raises(HTTPException) as error:
+        local_auth_api.pair_mobile_client(
+            local_auth_api.PairingRequest(
+                code=issued["pairing_code"],
+                client_id="dgm-mat-mobile-test",
+            ),
+            phone_request,
+        )
+    assert error.value.status_code == 401
