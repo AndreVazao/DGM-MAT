@@ -87,6 +87,34 @@ def test_system_summary_mission_executes_fixed_command_and_persists_result(tmp_p
     assert mission.metadata["result"]["command_id"] == "system.summary"
 
 
+
+def test_malformed_executor_evidence_envelope_never_finishes_as_completed(tmp_path, monkeypatch):
+    engine = _make_test_engine(tmp_path, monkeypatch)
+
+    def fake_execute(command_id):
+        return {
+            "schema": "dgm-mat.command-result.v1",
+            "command_id": "claude.status",
+            "risk": "WRITE",
+            "status": "passed",
+            "returncode": 0,
+            "stdout": "not a valid system summary",
+            "stderr": "",
+            "duration_ms": 4,
+            "elevated": True,
+        }
+
+    monkeypatch.setattr(engine.command_executor, "execute", fake_execute)
+    mission = engine.create_mission("show system summary", "Malformed executor envelope test")
+
+    with pytest.raises(RuntimeError, match="Mission execution failed"):
+        engine._handle_queue_execution({"mission_id": mission.mission_id})
+
+    assert mission.status is MissionStatus.FAILED
+    assert mission.metadata.get("completed_at") is None
+    assert mission.metadata.get("result", {}).get("status") != "completed"
+
+
 @pytest.mark.parametrize(
     ("command_status", "returncode"),
     [
