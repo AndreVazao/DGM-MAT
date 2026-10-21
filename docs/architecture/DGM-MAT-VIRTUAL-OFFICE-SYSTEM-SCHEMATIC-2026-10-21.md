@@ -195,9 +195,11 @@ Requisitos vinculativos para o avatar do escritório:
 
 ## 9. Plano de entrega e critérios de aceitação
 
-### Fase A — Verdade operacional
+### Fase A — Verdade operacional (API/contrato implementado; runtime real pendente)
 - Contrato estável para missão, agente, departamento, eventos e resultado.
-- O chat passa a acompanhar o `mission_id` até ao estado persistido terminal ou declarar desconhecido.
+- [Implementado no código] `GET /runtime/missions/{mission_id}` consulta um checkpoint persistido específico, com validação estrita do ID e do checkpoint; não executa nem altera estado.
+- [Implementado no cockpit] mensagens com `metadata.mission_id` permitem consultar estado, progresso, timestamp, handler e resultado/saída quando disponíveis.
+- [Ainda pendente] E2E no Windows real e verificação da transição completa de uma missão com worker ativo.
 - Testes para API aceita ≠ execução concluída; perda de ligação; heartbeat expirado; cancelamento; aprovação; recuperação de checkpoint.
 - **Aceitação:** nenhuma mensagem de sucesso sem estado/resultados persistidos que a sustentem.
 
@@ -244,3 +246,23 @@ GitHub Actions pode validar código e testes no runner, mas não comprova o esta
 - [Plano de escritório adaptativo](DGM-MAT_ADAPTIVE_VIRTUAL_OFFICE_AND_CORE_REQUIREMENTS_2026-10-14.md)
 - [Independência do core e plano de implementação](DGM-MAT_CORE_INDEPENDENCE_AND_VIRTUAL_OFFICE_IMPLEMENTATION_PLAN_2026-10-14.md)
 - [Contrato de telemetria do cockpit](https://github.com/AndreVazao/DGM-Cockpit-Frontend/blob/main/docs/COCKPIT-RUNTIME-STATUS-CONTRACT-2026-10-21.md)
+
+
+## 12. Estado real de implementação (atualização 2026-10-21)
+
+Esta secção regista código efetivamente integrado e validação observada, sem converter CI em prova de runtime local.
+
+| Entrega | Evidência | Estado / limite |
+|---|---|---|
+| Esquemática integral e SVG | [PR #134](https://github.com/AndreVazao/DGM-MAT/pull/134) | Integrada em `main`; artefactos estáticos, não telemetria |
+| Lookup read-only de missão por ID | [PR #135](https://github.com/AndreVazao/DGM-MAT/pull/135) | Integrado em `main`; rota classificada como `LOCAL_CLIENT`; checkpoint, ID inválido e checkpoint ausente cobertos por testes focados |
+| Validação API/security | [Focused PR Validation — run 26](https://github.com/AndreVazao/DGM-MAT/actions/runs/39588171090) | Compilação e regressões selecionadas passaram |
+| UI de acompanhamento de missão | [PR #9](https://github.com/AndreVazao/DGM-Cockpit-Frontend/pull/9) | Integrada; primeiro estado conservador e consulta explícita |
+| UI de estado/resultado persistido | [PR #10](https://github.com/AndreVazao/DGM-Cockpit-Frontend/pull/10) | Integrada; consulta endpoint exato por ID |
+| Testes focados do cockpit | [Cockpit Contract Tests — run 14](https://github.com/AndreVazao/DGM-Cockpit-Frontend/actions/runs/39588215721) | Sintaxe JavaScript e contratos passaram |
+| Avatar careca semelhante ao proprietário | Fotografia canónica `1792476724975.jpg` | Requisito documentado; avatar derivado ainda não produzido/aprovado |
+| E2E com PC Windows real | Requer PC e acesso de runtime | Pendente; Actions não confirma worker, serviços, Ollama ou persistência local |
+
+### Critério antes de declarar a ligação completa
+
+Quando o PC estiver acessível, enviar um pedido de teste autorizado e registar: mensagem/turno, `mission_id`, checkpoint inicial, transições persistidas, estado final, resultado/saída, resposta visível no cockpit e comportamento após refresh. Se não houver checkpoint, heartbeat ou resultado suficiente, o cliente deve mostrar estado desconhecido/não confirmado, nunca inventar conclusão.
