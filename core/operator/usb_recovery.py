@@ -192,4 +192,90 @@ class UsbRecoveryService:
         return {"status": "blocked", "action": action, "reason": "Ação não permitida."}
 
 
+_monitor_lock = __import__("threading").RLock()
+_monitor_state: dict[str, Any] = {
+    "enabled": False,
+    "status": "not_started",
+    "last_checked_at": None,
+    "last_action": None,
+    "last_error": None,
+}
+
+
+def get_usb_recovery_monitor_state() -> dict[str, Any]:
+    with _monitor_lock:
+        return dict(_monitor_state)
+
+
+def _monitor_loop(service: UsbRecoveryService, interval_seconds: int) -> None:
+    while True:
+        try:
+            report = service.diagnose()
+            actions: list[dict[str, Any]] = []
+            offline = [device for device in report.get("devices", []) if device.get("state") == "offline"]
+            if offline:
+                repaired = service.repair("reconnect-offline")
+                actions.append(repaired)
+                # Re-check after the attempted recovery so status reflects observed reality.
+                report = service.diagnose()
+            authorized = [device for device in report.get("devices", []) if device.get("state") == "device"]
+            unauthorized = [device for device in report.get("devices", []) if device.get("state") == "unauthorized"]
+            if unauthorized:
+                status = "waiting_for_phone_authorization"
+            elif actions and any(item.get("status") == "success" for item in actions):
+                status = "repaired_transient_issue"
+            elif authorized:
+                status = "device_connected"
+            elif report.get("adb_found"):
+                status = "waiting_for_usb_device"
+            else:
+                status = "adb_not_found"
+            with _monitor_lock:
+                _monitor_state.update({
+                    "enabled": True,
+                    "status": status,
+                    "last_checked_at": report.get("checked_at"),
+                    "last_report": report,
+                    "last_action": actions[-1] if actions else None,
+                    "last_error": None,
+                })
+        except Exception as exc:
+            with _monitor_lock:
+                _monitor_state.update({
+                    "enabled": True,
+                    "status": "error",
+                    "last_checked_at": datetime.now(timezone.utc).isoformat(),
+                    "last_error": str(exc)[:500],
+                })
+        time.sleep(interval_seconds)
+
+
+def start_usb_recovery_monitor() -> bool:
+    """Start a low-frequency monitor; only transient ADB reconnection is automatic."""
+    import threading
+
+    enabled = os.getenv("DGM_USB_AUTO_RECOVERY_ENABLED", "1").strip().casefold() not in {"0", "false", "no", "off"}
+    if not enabled:
+        with _monitor_lock:
+            _monitor_state.update({"enabled": False, "status": "disabled"})
+        return False
+    with _monitor_lock:
+        if _monitor_state.get("thread_started"):
+            return True
+        _monitor_state.update({"enabled": True, "status": "starting", "thread_started": True})
+    try:
+        interval = int(os.getenv("DGM_USB_AUTO_RECOVERY_INTERVAL_SECONDS", "30"))
+    except (TypeError, ValueError):
+        interval = 30
+    interval = max(15, min(interval, 300))
+    thread = threading.Thread(
+        target=_monitor_loop,
+        args=(usb_recovery_service, interval),
+        name="dgm-usb-adb-recovery",
+        daemon=True,
+    )
+    thread.start()
+    return True
+
+
 usb_recovery_service = UsbRecoveryService()
