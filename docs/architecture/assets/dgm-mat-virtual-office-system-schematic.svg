@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc">
+<title id="title">DGM-MAT — esquema integral do escritório virtual e cockpit</title>
+<desc id="desc">Diagrama estático de camadas: proprietário e interfaces, cérebro DGM-MAT, departamentos, contratos e repositórios satélite. Não representa estado em direto.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0b1020"/><stop offset="1" stop-color="#132744"/></linearGradient>
+  <linearGradient id="core" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#244f80"/><stop offset="1" stop-color="#14263f"/></linearGradient>
+  <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1b304c"/><stop offset="1" stop-color="#111d30"/></linearGradient>
+  <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#80b9ff"/></marker>
+  <style>
+    .title{font:700 30px system-ui,sans-serif;fill:#edf5ff}.subtitle{font:14px system-ui,sans-serif;fill:#9fb5d4}
+    .section{font:700 16px system-ui,sans-serif;fill:#8fc0ff;letter-spacing:1.6px}
+    .head{font:700 17px system-ui,sans-serif;fill:#e6f0ff}.body{font:13px system-ui,sans-serif;fill:#a9bedb}
+    .small{font:11px system-ui,sans-serif;fill:#8fa7c9}.tile{fill:url(#tile);stroke:#355578;stroke-width:1.5}
+    .line{stroke:#80b9ff;stroke-width:2;fill:none;marker-end:url(#arrow)}.dash{stroke:#80b9ff;stroke-width:1.5;stroke-dasharray:6 7;fill:none;marker-end:url(#arrow)}
+  </style>
+</defs>
+<rect width="1600" height="1100" rx="28" fill="url(#bg)"/>
+<path d="M0 130H1600M0 390H1600M0 700H1600M0 1000H1600" stroke="#8cb8ef" stroke-opacity=".08"/>
+<text x="60" y="62" class="title">DGM-MAT · Esquemática integral</text>
+<text x="60" y="92" class="subtitle">Arquitetura estática · as linhas representam contratos previstos, não conectividade validada</text>
+<rect x="60" y="120" width="1480" height="215" rx="22" fill="#101c2d" stroke="#324e70"/>
+<text x="85" y="153" class="section">01 · PROPRIETÁRIO E CLIENTES</text>
+<rect x="90" y="177" width="240" height="112" rx="15" class="tile"/>
+<text x="210" y="212" text-anchor="middle" class="head">André</text><text x="210" y="237" text-anchor="middle" class="body">Proprietário · autoridade final</text><text x="210" y="260" text-anchor="middle" class="small">Sessão autenticada / aprovações</text>
+<rect x="405" y="177" width="260" height="112" rx="15" class="tile"/><text x="535" y="210" text-anchor="middle" class="head">Cockpit PC</text><text x="535" y="235" text-anchor="middle" class="body">Chat · pedidos · anexos · missão</text><text x="535" y="258" text-anchor="middle" class="small">Prioridade: interface funcional</text>
+<rect x="700" y="177" width="260" height="112" rx="15" class="tile"/><text x="830" y="210" text-anchor="middle" class="head">Escritório virtual</text><text x="830" y="235" text-anchor="middle" class="body">2D → 2.5D → 3D adaptativo</text><text x="830" y="258" text-anchor="middle" class="small">Só projeta eventos/estados reais</text>
+<rect x="995" y="177" width="240" height="112" rx="15" class="tile"/><text x="1115" y="210" text-anchor="middle" class="head">App mobile</text><text x="1115" y="235" text-anchor="middle" class="body">Mesmo cérebro e permissões</text><text x="1115" y="258" text-anchor="middle" class="small">Sem estado local autoritativo</text>
+<rect x="1270" y="177" width="235" height="112" rx="15" fill="#15243a" stroke="#6e8fb8"/><text x="1387" y="208" text-anchor="middle" class="head">CEO / identidade</text><text x="1387" y="232" text-anchor="middle" class="body">Foto canónica: 1792476724975.jpg</text><text x="1387" y="255" text-anchor="middle" class="small">Avatar futuro: careca, semelhante</text>
+<path d="M330 233H405M665 233H700M960 233H995" class="line"/>
+<path d="M1387 289V365H830V335" class="dash"/>
+<rect x="60" y="365" width="1480" height="285" rx="22" fill="#0d192a" stroke="#3d6590"/>
+<text x="85" y="400" class="section">02 · DGM-MAT CENTRAL — CÉREBRO SOBERANO</text>
+<rect x="90" y="425" width="220" height="82" rx="13" class="tile"/><text x="200" y="456" text-anchor="middle" class="head">Intake</text><text x="200" y="480" text-anchor="middle" class="body">Pedido + correlação</text>
+<rect x="350" y="425" width="220" height="82" rx="13" class="tile"/><text x="460" y="456" text-anchor="middle" class="head">Política</text><text x="460" y="480" text-anchor="middle" class="body">Permissões / aprovação</text>
+<rect x="610" y="425" width="220" height="82" rx="13" class="tile"/><text x="720" y="456" text-anchor="middle" class="head">Planeamento</text><text x="720" y="480" text-anchor="middle" class="body">Plano / dependências</text>
+<rect x="870" y="425" width="220" height="82" rx="13" class="tile"/><text x="980" y="456" text-anchor="middle" class="head">Missões</text><text x="980" y="480" text-anchor="middle" class="body">Estado persistente</text>
+<rect x="1130" y="425" width="220" height="82" rx="13" class="tile"/><text x="1240" y="456" text-anchor="middle" class="head">Verificação</text><text x="1240" y="480" text-anchor="middle" class="body">Evidência / resultado</text>
+<path d="M310 466H350M570 466H610M830 466H870M1090 466H1130" class="line"/>
+<rect x="350" y="545" width="740" height="70" rx="13" fill="#112c3b" stroke="#387e81"/><text x="720" y="573" text-anchor="middle" class="head">Eventos e telemetria observacional</text><text x="720" y="595" text-anchor="middle" class="body">ID · timestamp · fonte · estado persistido · limitações · sem conteúdo sensível</text>
+<path d="M1240 507V530H1090M720 507V545" class="dash"/>
+<path d="M535 289V350H200V425M830 289V350H980V425M1115 289V350H200V425" class="line"/>
+<rect x="60" y="680" width="1480" height="220" rx="22" fill="#101b2c" stroke="#324e70"/>
+<text x="85" y="715" class="section">03 · DEPARTAMENTOS LÓGICOS</text>
+<g>
+<rect x="90" y="742" width="215" height="115" rx="13" class="tile"/><text x="197" y="774" text-anchor="middle" class="head">Chief of Staff</text><text x="197" y="799" text-anchor="middle" class="body">Ligação ao proprietário</text><text x="197" y="822" text-anchor="middle" class="small">Clarificação / escalamento</text>
+<rect x="330" y="742" width="215" height="115" rx="13" class="tile"/><text x="437" y="774" text-anchor="middle" class="head">Engenharia / QA</text><text x="437" y="799" text-anchor="middle" class="body">Código · testes · integração</text><text x="437" y="822" text-anchor="middle" class="small">Revisão independente</text>
+<rect x="570" y="742" width="215" height="115" rx="13" class="tile"/><text x="677" y="774" text-anchor="middle" class="head">Investigação</text><text x="677" y="799" text-anchor="middle" class="body">Fontes · providers · laboratório</text><text x="677" y="822" text-anchor="middle" class="small">Evidência / proveniência</text>
+<rect x="810" y="742" width="215" height="115" rx="13" class="tile"/><text x="917" y="774" text-anchor="middle" class="head">Memória</text><text x="917" y="799" text-anchor="middle" class="body">Conhecimento canónico</text><text x="917" y="822" text-anchor="middle" class="small">Histórico / decisões</text>
+<rect x="1050" y="742" width="215" height="115" rx="13" class="tile"/><text x="1157" y="774" text-anchor="middle" class="head">Segurança / governação</text><text x="1157" y="799" text-anchor="middle" class="body">Permissões · auditoria</text><text x="1157" y="822" text-anchor="middle" class="small">Sem autoaprovação</text>
+<rect x="1290" y="742" width="215" height="115" rx="13" class="tile"/><text x="1397" y="774" text-anchor="middle" class="head">Design / RH / Ops</text><text x="1397" y="799" text-anchor="middle" class="body">UI/UX · agentes · expedição</text><text x="1397" y="822" text-anchor="middle" class="small">Catálogo real / tarefas reais</text>
+</g>
+<path d="M720 615V665H197V742M720 665H1397V742" class="line"/>
+<rect x="60" y="930" width="1480" height="125" rx="22" fill="#0d1726" stroke="#324e70"/>
+<text x="85" y="964" class="section">04 · CONTRATOS E REPOSITÓRIOS SATÉLITE</text>
+<rect x="90" y="982" width="250" height="50" rx="10" class="tile"/><text x="215" y="1012" text-anchor="middle" class="head">DGM-MAT-Agents</text>
+<rect x="375" y="982" width="250" height="50" rx="10" class="tile"/><text x="500" y="1012" text-anchor="middle" class="head">DGM-Contracts</text>
+<rect x="660" y="982" width="250" height="50" rx="10" class="tile"/><text x="785" y="1012" text-anchor="middle" class="head">DGM-MAT-Runtime</text>
+<rect x="945" y="982" width="250" height="50" rx="10" class="tile"/><text x="1070" y="1012" text-anchor="middle" class="head">DGM-MAT-Orchestrator</text>
+<rect x="1230" y="982" width="275" height="50" rx="10" fill="#1d2532" stroke="#796f59"/><text x="1367" y="1003" text-anchor="middle" class="head">VAZÃO Sovereign Trader</text><text x="1367" y="1020" text-anchor="middle" class="small">Separado</text>
+<path d="M197 857V916H215V982M437 857V916H500V982M677 857V916H785V982M917 857V916H1070V982" class="dash"/>
+<text x="1535" y="1080" text-anchor="end" class="small">Abertura do escritório ≠ execução · unknown ≠ idle · UI ≠ fonte de verdade</text>
+</svg>
