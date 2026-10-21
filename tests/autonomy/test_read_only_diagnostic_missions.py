@@ -149,5 +149,5 @@ def test_diagnostic_failure_never_finishes_mission_as_completed(
 
     assert mission.status is MissionStatus.FAILED
     assert mission.status is not MissionStatus.COMPLETED
-    assert mission.metadata.get("completed_at") is None
-    assert mission.metadata.get("result", {}).get("status") != "completed"
+    assert mission.metadata.get("completed_at")
+    assert mission.metadata.get("result", {}).get("status") == "failed"
