@@ -15,7 +15,7 @@ from typing import Any
 
 _LOCK = threading.RLock()
 _STATES = {"scheduled", "in_progress", "decision_pending", "approved", "rejected", "closed"}
-_HIGH_IMPACT = {"create_department", "hire_agent", "cross_department_change", "architecture_change"}
+_HIGH_IMPACT = {"cross_department_change", "architecture_change", "structural_department_change", "major_technology_change", "critical_reorganization"}
 
 
 def _now() -> str:
