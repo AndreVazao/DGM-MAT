@@ -5,6 +5,7 @@ records proposals and decisions but never executes the resulting actions.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import threading
@@ -65,6 +66,34 @@ class GovernanceMeetingRegistry:
         with _LOCK:
             data = self._read()
             return sorted(data["meetings"].values(), key=lambda item: item["created_at"], reverse=True)
+
+    def list_pending_approvals(self) -> list[dict[str, Any]]:
+        """Return durable approval requests that still require a human/CEO decision."""
+        with _LOCK:
+            meetings = self._read()["meetings"].values()
+            pending = [
+                item for item in meetings
+                if item.get("approval", {}).get("status") == "pending"
+                or item.get("owner_approval", {}).get("status") == "pending"
+            ]
+            return sorted(pending, key=lambda item: item["updated_at"], reverse=True)
+
+    @staticmethod
+    def _plan_digest(meeting: dict[str, Any]) -> str:
+        decision = meeting.get("decision") or {}
+        plan = {
+            "meeting_id": meeting.get("meeting_id"),
+            "meeting_type": meeting.get("meeting_type"),
+            "proposal": meeting.get("proposal"),
+            "agenda": meeting.get("agenda"),
+            "participants": meeting.get("participants"),
+            "related_departments": meeting.get("related_departments"),
+            "contributions": meeting.get("contributions"),
+            "outcome": decision.get("outcome"),
+            "action_plan": decision.get("action_plan", ""),
+        }
+        canonical = json.dumps(plan, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def get_meeting(self, meeting_id: str) -> dict[str, Any]:
         with _LOCK:
@@ -138,7 +167,14 @@ class GovernanceMeetingRegistry:
             if meeting["status"] not in {"scheduled", "in_progress", "decision_pending"}:
                 raise ValueError("contributions are not accepted after a final decision")
             now = _now()
+            invalidated = meeting.get("decision") is not None
             meeting["contributions"].append({"contribution_id": str(uuid.uuid4()), "actor": actor, "kind": kind, "content": content, "created_at": now})
+            if invalidated:
+                meeting["decision"] = None
+                meeting["approval"] = None
+                meeting["owner_approval"] = {"status": "not_required", "required_from": "André", "requested_at": None}
+                meeting["action_dispatch"] = {"status": "not_dispatched", "note": "New evidence invalidated the previous decision; a fresh decision and approval are required."}
+                meeting["history"].append({"event": "meeting.plan_invalidated", "at": now, "actor": actor, "reason": "new_contribution"})
             meeting["status"] = "in_progress"
             meeting["updated_at"] = now
             meeting["history"].append({"event": "meeting.contribution_added", "at": now, "actor": actor})
@@ -159,6 +195,7 @@ class GovernanceMeetingRegistry:
                 raise ValueError("meeting already has a final state")
             now = _now()
             meeting["decision"] = {"outcome": outcome, "actor": actor, "rationale": rationale, "action_plan": action_plan.strip()[:4000], "created_at": now}
+            meeting["decision"]["plan_digest"] = self._plan_digest(meeting)
             if outcome == "deferred":
                 meeting["status"] = "decision_pending"
             elif meeting["high_impact"] and actor.casefold() not in {"ceo", "chief executive officer"}:
@@ -189,8 +226,10 @@ class GovernanceMeetingRegistry:
                 raise KeyError(meeting_id)
             if meeting["status"] != "decision_pending" or not meeting.get("approval") or meeting["approval"].get("status") != "pending":
                 raise ValueError("there is no pending CEO approval")
+            if not meeting.get("decision") or meeting["decision"].get("plan_digest") != self._plan_digest(meeting):
+                raise ValueError("the reviewed plan changed; a fresh decision is required")
             now = _now()
-            meeting["approval"] = {"status": "approved" if approved else "rejected", "actor": actor, "rationale": rationale, "decided_at": now}
+            meeting["approval"] = {"status": "approved" if approved else "rejected", "actor": actor, "rationale": rationale, "decided_at": now, "plan_digest": meeting["decision"]["plan_digest"]}
             if approved:
                 meeting["owner_approval"] = {"status": "pending", "required_from": "André", "requested_at": now}
                 meeting["status"] = "decision_pending"
@@ -220,8 +259,15 @@ class GovernanceMeetingRegistry:
                 raise ValueError("there is no pending owner approval")
             if meeting.get("approval", {}).get("status") != "approved":
                 raise ValueError("CEO endorsement is required before owner approval")
+            current_digest = self._plan_digest(meeting)
+            if (
+                not meeting.get("decision")
+                or meeting["decision"].get("plan_digest") != current_digest
+                or meeting["approval"].get("plan_digest") != current_digest
+            ):
+                raise ValueError("the reviewed plan changed; CEO and owner approval must be requested again")
             now = _now()
-            meeting["owner_approval"] = {"status": "approved" if approved else "rejected", "actor": actor, "rationale": rationale, "decided_at": now}
+            meeting["owner_approval"] = {"status": "approved" if approved else "rejected", "actor": actor, "rationale": rationale, "decided_at": now, "plan_digest": current_digest}
             meeting["status"] = "approved" if approved else "rejected"
             meeting["updated_at"] = now
             meeting["history"].append({"event": "meeting.owner_approval_recorded", "at": now, "actor": actor, "approved": approved})
