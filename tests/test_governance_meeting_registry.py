@@ -94,6 +94,33 @@ class GovernanceMeetingRegistryTests(unittest.TestCase):
         self.assertFalse(meeting["high_impact"])
         self.assertEqual(meeting["owner_approval"]["status"], "not_required")
 
+    def test_new_evidence_invalidates_prior_decision_and_approval(self):
+        meeting = self.create()
+        meeting_id = meeting["meeting_id"]
+        self.registry.record_decision(
+            meeting_id, actor="Director", outcome="approved", rationale="Proceed.", action_plan="Exact plan v1"
+        )
+        self.registry.approve_decision(meeting_id, actor="CEO", approved=True, rationale="Endorsed.")
+        updated = self.registry.add_contribution(
+            meeting_id, actor="Security", content="New security risk discovered.", kind="risk"
+        )
+        self.assertEqual(updated["status"], "in_progress")
+        self.assertIsNone(updated["decision"])
+        self.assertIsNone(updated["approval"])
+        self.assertEqual(updated["action_dispatch"]["status"], "not_dispatched")
+        with self.assertRaisesRegex(ValueError, "CEO endorsement"):
+            self.registry.approve_by_owner(
+                meeting_id, actor="André", approved=True, rationale="Old approval must not apply."
+            )
+
+    def test_pending_approvals_are_listed_durably(self):
+        meeting = self.create()
+        self.registry.record_decision(
+            meeting["meeting_id"], actor="Director", outcome="approved", rationale="Proceed."
+        )
+        pending = self.registry.list_pending_approvals()
+        self.assertEqual([item["meeting_id"] for item in pending], [meeting["meeting_id"]])
+
     def test_owner_cannot_approve_before_ceo_endorsement(self):
         meeting = self.create()
         with self.assertRaisesRegex(ValueError, "CEO endorsement"):
