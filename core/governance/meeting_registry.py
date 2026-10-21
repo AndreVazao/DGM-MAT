@@ -17,6 +17,23 @@ from typing import Any
 _LOCK = threading.RLock()
 _STATES = {"scheduled", "in_progress", "decision_pending", "approved", "rejected", "closed"}
 _HIGH_IMPACT = {"cross_department_change", "architecture_change", "structural_department_change", "major_technology_change", "critical_reorganization"}
+# Conservative content signals catch critical plans even when the requester uses a routine label.
+_HIGH_IMPACT_TEXT = (
+    "major architecture", "architecture change", "architectural change", "major technology migration",
+    "cross-department change", "cross department change", "critical reorganization", "structural change",
+    "security boundary", "trust boundary", "irreversible change", "high-blast-radius",
+    "mudança estrutural", "alteração estrutural", "reorganização crítica", "migração tecnológica",
+    "mudança de arquitetura", "alteração de arquitetura", "fronteira de segurança",
+    "fronteira de confiança", "irreversível", "alto impacto", "novo departamento", "criar departamento",
+    "eliminar departamento", "extinguir departamento",
+)
+
+
+def _is_high_impact(meeting_type: str, title: str, proposal: str, agenda: list[str]) -> bool:
+    if meeting_type.casefold().replace("-", "_").replace(" ", "_") in _HIGH_IMPACT:
+        return True
+    content = " ".join([title, proposal, *agenda]).casefold()
+    return any(signal in content for signal in _HIGH_IMPACT_TEXT)
 
 
 def _now() -> str:
@@ -122,7 +139,8 @@ class GovernanceMeetingRegistry:
         if not agenda or not all(isinstance(item, str) and item.strip() for item in agenda):
             raise ValueError("agenda must contain at least one item")
         participants = list(dict.fromkeys(p.strip()[:120] for p in participants))
-        high_impact = meeting_type in _HIGH_IMPACT
+        clean_agenda = [_clean_text(item, "agenda item", 500) for item in agenda[:30]]
+        high_impact = _is_high_impact(meeting_type, title, proposal, clean_agenda)
         # High-impact governance must explicitly include the CEO as a participant.
         if high_impact and not any(p.casefold() in {"ceo", "chief executive officer"} for p in participants):
             raise ValueError("CEO participation is required for high-impact governance meetings")
@@ -135,7 +153,7 @@ class GovernanceMeetingRegistry:
             "requested_by": requested_by,
             "participants": participants,
             "related_departments": list(dict.fromkeys((related_departments or [])[:30])),
-            "agenda": [_clean_text(item, "agenda item", 500) for item in agenda[:30]],
+            "agenda": clean_agenda,
             "proposal": proposal,
             "high_impact": high_impact,
             "status": "scheduled",
