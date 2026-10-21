@@ -45,11 +45,11 @@ def test_service_keeps_continuous_conversation(tmp_path: Path):
     assert len(response["thread"]["messages"]) == 2
 
 
-def test_local_llm_defaults_to_manual_and_never_starts_ollama_implicitly(monkeypatch):
+def test_local_llm_defaults_to_manual_and_never_starts_ollama_implicitly(tmp_path, monkeypatch):
     from types import SimpleNamespace
     import sys
 
-    service = MobileConversationService(ConversationStore())
+    service = MobileConversationService(ConversationStore(tmp_path / "conversations.json"))
     monkeypatch.delenv("DGM_MOBILE_LOCAL_LLM", raising=False)
     monkeypatch.setitem(
         sys.modules,
@@ -68,11 +68,11 @@ def test_local_llm_defaults_to_manual_and_never_starts_ollama_implicitly(monkeyp
     start_ollama.assert_not_called()
 
 
-def test_local_llm_auto_start_requires_explicit_opt_in(monkeypatch):
+def test_local_llm_auto_start_requires_explicit_opt_in(tmp_path, monkeypatch):
     from types import SimpleNamespace
     import sys
 
-    service = MobileConversationService(ConversationStore())
+    service = MobileConversationService(ConversationStore(tmp_path / "conversations.json"))
     monkeypatch.setenv("DGM_MOBILE_LOCAL_LLM", "auto")
     monkeypatch.setitem(
         sys.modules,
