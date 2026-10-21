@@ -91,6 +91,7 @@ Mensagens interdepartamentais são estruturadas, correlacionadas, auditáveis e 
 ## 3. Escritórios virtuais como espelho fiel
 - Cada departamento tem escritório/sala e balcão de consulta próprios, identificados pelo departamento real.
 - Cada agente mostrado corresponde a registo real do catálogo/runtime. Agentes indisponíveis, simulados ou não implementados não podem ser apresentados como trabalhadores ativos.
+- **Convenção visual obrigatória:** pessoas/agentes existentes são personagens humanos; agentes criados pelo DGM-MAT são representados como robôs em todas as interfaces e departamentos. O CEO usa avatar humano baseado na fotografia canónica com cabelo. A forma visual não altera permissões nem estado operacional.
 - Animações de conversa, reuniões, movimento, execução, enfermaria, produção, controlo de qualidade ou expedição só são emitidas a partir de eventos/estados reais.
 - Estado desconhecido aparece como desconhecido; ausência de evento não significa inatividade nem sucesso.
 - A UI é uma projeção substituível. Primeiro lista/chat/2D económico; 2D avançado/3D apenas quando o hardware medido suporta. O perfil visual não altera permissões ou capacidades.
