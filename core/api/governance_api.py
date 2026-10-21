@@ -11,6 +11,7 @@ from core.self_healing.self_repair_engine import SelfRepairEngine
 from core.governance.runtime_capability_profile import collect_runtime_capability_profile
 from core.operations.command_executor import CommandDenied, CommandExecutor
 from core.operations.operation_audit import AuditWriteError, append_command_audit
+from core.governance.meeting_registry import GovernanceMeetingRegistry
 
 
 router = APIRouter(prefix="/governance", tags=["governance"])
@@ -147,3 +148,104 @@ def run_governed_command(payload: CommandRunRequest, request: Request):
             detail="Command may have run, but its completion audit could not be persisted; verify before retrying.",
         )
     return result
+
+
+
+# Central governance meetings: persistent records and approval gates.
+class MeetingCreateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    meeting_type: str = Field(min_length=1, max_length=80)
+    requested_by: str = Field(min_length=1, max_length=120)
+    participants: list[str] = Field(min_length=1, max_length=50)
+    agenda: list[str] = Field(min_length=1, max_length=30)
+    proposal: str = Field(min_length=1, max_length=4000)
+    related_departments: list[str] = Field(default_factory=list, max_length=30)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class MeetingContributionRequest(BaseModel):
+    actor: str = Field(min_length=1, max_length=120)
+    content: str = Field(min_length=1, max_length=4000)
+    kind: str = "contribution"
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class MeetingDecisionRequest(BaseModel):
+    actor: str = Field(min_length=1, max_length=120)
+    outcome: str
+    rationale: str = Field(min_length=1, max_length=4000)
+    action_plan: str = Field(default="", max_length=4000)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class MeetingApprovalRequest(BaseModel):
+    actor: str = Field(min_length=1, max_length=120)
+    approved: bool
+    rationale: str = Field(min_length=1, max_length=4000)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+def _meeting_registry() -> GovernanceMeetingRegistry:
+    return GovernanceMeetingRegistry()
+
+
+def _meeting_http_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, KeyError):
+        return HTTPException(status_code=404, detail="Governance meeting not found.")
+    if isinstance(exc, ValueError):
+        return HTTPException(status_code=400, detail=str(exc))
+    if isinstance(exc, RuntimeError):
+        return HTTPException(status_code=503, detail=str(exc))
+    raise exc
+
+
+@router.get("/meetings")
+def list_governance_meetings():
+    try:
+        return {"meetings": _meeting_registry().list_meetings()}
+    except RuntimeError as exc:
+        raise _meeting_http_error(exc) from exc
+
+
+@router.post("/meetings")
+def create_governance_meeting(payload: MeetingCreateRequest):
+    try:
+        return _meeting_registry().create_meeting(**payload.model_dump())
+    except (ValueError, RuntimeError) as exc:
+        raise _meeting_http_error(exc) from exc
+
+
+@router.get("/meetings/{meeting_id}")
+def get_governance_meeting(meeting_id: str):
+    try:
+        return _meeting_registry().get_meeting(meeting_id)
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise _meeting_http_error(exc) from exc
+
+
+@router.post("/meetings/{meeting_id}/contributions")
+def add_governance_meeting_contribution(meeting_id: str, payload: MeetingContributionRequest):
+    try:
+        return _meeting_registry().add_contribution(meeting_id, **payload.model_dump())
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise _meeting_http_error(exc) from exc
+
+
+@router.post("/meetings/{meeting_id}/decision")
+def decide_governance_meeting(meeting_id: str, payload: MeetingDecisionRequest):
+    try:
+        return _meeting_registry().record_decision(meeting_id, **payload.model_dump())
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise _meeting_http_error(exc) from exc
+
+
+@router.post("/meetings/{meeting_id}/approval")
+def approve_governance_meeting(meeting_id: str, payload: MeetingApprovalRequest):
+    try:
+        return _meeting_registry().approve_decision(meeting_id, **payload.model_dump())
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise _meeting_http_error(exc) from exc
