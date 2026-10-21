@@ -94,6 +94,21 @@ class GovernanceMeetingRegistryTests(unittest.TestCase):
         self.assertFalse(meeting["high_impact"])
         self.assertEqual(meeting["owner_approval"]["status"], "not_required")
 
+    def test_ceo_direct_decision_binds_owner_approval_to_plan(self):
+        meeting = self.create()
+        decided = self.registry.record_decision(
+            meeting["meeting_id"], actor="CEO", outcome="approved", rationale="CEO endorsed.",
+            action_plan="Version 1 reviewed plan",
+        )
+        self.assertEqual(decided["approval"]["status"], "approved")
+        approved = self.registry.approve_by_owner(
+            meeting["meeting_id"], actor="André", approved=True, rationale="I approve this exact plan."
+        )
+        self.assertEqual(approved["owner_approval"]["status"], "approved")
+        self.assertEqual(
+            approved["owner_approval"]["plan_digest"], approved["decision"]["plan_digest"]
+        )
+
     def test_new_evidence_invalidates_prior_decision_and_approval(self):
         meeting = self.create()
         meeting_id = meeting["meeting_id"]
