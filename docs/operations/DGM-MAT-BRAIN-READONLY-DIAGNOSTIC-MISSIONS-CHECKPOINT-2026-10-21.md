@@ -12,8 +12,8 @@ Dar ao cérebro um conjunto adicional de missões pequenas, reais e seguras que 
 ## Alterações preparadas
 
 - `core/autonomy/mission_intent_router.py`: reconhece pedidos explícitos de resumo do sistema, inventário limitado de motores de IA, estado/modelos do Ollama e disponibilidade/versão do Claude Code.
-- `core/autonomy/mission_engine.py`: liga esses intents ao catálogo existente `CommandExecutor`; não aceita comandos arbitrários do texto do utilizador.
-- `tests/autonomy/test_read_only_diagnostic_missions.py`: cobre classificação dos quatro intents, rejeição de um pedido genérico de Claude Code, rejeição de uma frase que mistura diagnóstico com instalação, caminho de sucesso com executor falso e resultados de falha/indisponibilidade/timeout sem sucesso falso.
+- `core/autonomy/mission_engine.py`: liga esses intents ao catálogo existente `CommandExecutor`; valida também o envelope de evidência (schema, ID de comando, risco READ e ausência de elevação) antes de aceitar sucesso; não aceita comandos arbitrários do texto do utilizador.
+- `tests/autonomy/test_read_only_diagnostic_missions.py`: cobre classificação dos quatro intents, rejeição de um pedido genérico de Claude Code, rejeição de uma frase que mistura diagnóstico com instalação, caminho de sucesso com executor falso, resultados de falha/indisponibilidade/timeout sem sucesso falso e rejeição de envelopes de resultado malformados.
 - Nenhum provider é ativado implicitamente. Nenhum comando de escrita, instalação, elevação, arranque/paragem de processos ou shell livre foi adicionado.
 
 ## Auditoria de código posterior à implementação
@@ -32,7 +32,7 @@ Esta leitura é estática. Não foi executado o processo Windows, não foi inici
 ## Limites e validação
 
 - **Os testes não foram executados nesta sessão.** Não foi usado GitHub Actions, para preservar minutos.
-- A nova cobertura de falhas foi escrita, mas ainda precisa de execução local: indisponibilidade, erro de comando e timeout devem produzir missão terminal FAILED e nunca COMPLETED.
+- A nova cobertura de falhas foi escrita, mas ainda precisa de execução local: indisponibilidade, erro de comando, timeout, pedido misto mutável e envelope de resultado malformado devem impedir sucesso falso.
 - Os testes com executor falso não provam a disponibilidade de PowerShell/Ollama/Claude Code na máquina real.
 - A execução real depende do runtime instalado, de os caminhos autorizados existirem e do comando concreto estar disponível. Falhas devem terminar como falha explícita, nunca como sucesso.
 - Esta alteração não resolve o executor genérico para programação arbitrária. Pedidos de alteração de código, instalação, deploy ou ações mutáveis continuam sem executor de missão genérico e não devem ser declarados concluídos.
