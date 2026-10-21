@@ -263,7 +263,7 @@ def approve_governance_meeting_as_owner(meeting_id: str, payload: MeetingApprova
             raise HTTPException(status_code=401, detail="Authenticated principal is unavailable.")
         role = str(principal.get("governance_role") or principal.get("role") or "").casefold()
         username = str(principal.get("username") or principal.get("actor") or "").casefold()
-        if role not in {"owner", "system_owner", "admin"} and username not in {"andre", "andré", "andrevazao"}:
+        if role not in {"owner", "system_owner"} and username not in {"andre", "andré", "andrevazao"}:
             raise HTTPException(status_code=403, detail="Only the authenticated system owner may give final approval.")
         values = payload.model_dump()
         values["actor"] = "André"
