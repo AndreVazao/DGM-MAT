@@ -16,6 +16,7 @@ from shared.config.settings import API_HOST, API_PORT
 from core.realtime.websocket_manager import manager
 from core.api.runtime_api import router as runtime_router
 from core.api.mobile_bridge import router as mobile_router
+from core.api.usb_recovery_api import router as usb_recovery_router
 from core.api.governance_api import router as governance_router
 from core.api.provider_execution_api import router as provider_execution_router
 from core.api.local_auth_api import router as local_auth_router, session_manager
@@ -36,6 +37,7 @@ app.add_middleware(
 
 app.include_router(runtime_router)
 app.include_router(mobile_router)
+app.include_router(usb_recovery_router)
 app.include_router(governance_router)
 app.include_router(provider_execution_router)
 app.include_router(local_auth_router)
