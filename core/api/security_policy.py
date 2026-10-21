@@ -87,6 +87,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("POST",), "/governance/meetings/{meeting_id}/contributions", SecurityScope.OPERATOR, "Records a participant contribution, risk, alternative, or evidence."),
     RouteClassification(("POST",), "/governance/meetings/{meeting_id}/decision", SecurityScope.OPERATOR, "Records a decision; high-impact changes require CEO approval."),
     RouteClassification(("POST",), "/governance/meetings/{meeting_id}/approval", SecurityScope.OPERATOR, "Records explicit CEO approval or rejection; does not execute actions."),
+    RouteClassification(("POST",), "/governance/meetings/{meeting_id}/owner-approval", SecurityScope.OPERATOR, "Records authenticated system-owner final approval for critical structural changes."),
     RouteClassification(("POST",), "/provider-execution/requests", SecurityScope.PROVIDER_API, "Provider request intake."),
     RouteClassification(("GET",), "/provider-execution/approvals", SecurityScope.PROVIDER_OPERATOR, "Provider approvals."),
     RouteClassification(("POST",), "/provider-execution/approvals/{approval_task_id}/decision", SecurityScope.PROVIDER_OPERATOR, "Provider approval decision."),
