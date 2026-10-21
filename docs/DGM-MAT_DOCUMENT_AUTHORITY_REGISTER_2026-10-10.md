@@ -68,3 +68,17 @@ Este registo é parcial. Documentos ainda não revistos mantêm estado UNKNOWN/U
 
 - **ADITAMENTO CANÓNICO DE EXECUÇÃO:** [DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md](architecture/DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md). Governa o modelo operacional end-to-end, departamentos e agentes, especialização de programação, escritórios fiéis ao runtime, recuperação de conversas e expansão modular multi-PC. Complementa a Constituição Arquitetural de 2026-10-18 e a Diretiva Primária de Missão/Verdade de 2026-10-10; não as substitui nem declara a implementação concluída.
 - A revisão documental de 2026-10-21 foi **dirigida/parcial**: os documentos enumerados no aditamento foram abertos e revistos, mas não foram lidos todos os ficheiros, branches locais, repositórios satélite ou conversas externas. O inventário global permanece parcial e deve continuar com classificação REVIEWED / UNREVIEWED / CONFLICT / SUPERSEDED.
+
+## Limpeza documental controlada — 2026-10-21
+
+### Removido da árvore ativa
+- `SYSTEM_STATUS_REPORT.md`: fotografia de estado antiga, sem autoridade sobre o runtime atual. O conteúdo antigo permanece recuperável no histórico Git; o estado atual deve ser obtido por diagnósticos/runtime observáveis e pelo checkpoint de estabilização E2E.
+- `PHASE_HISTORY.md`: cronologia histórica de fases já representada pela história Git e pelos registos de decisões/commits. Removida da árvore ativa para não ser confundida com plano ou estado atual; o histórico completo permanece no Git.
+
+A remoção é limitada a estes dois documentos explicitamente classificados como históricos. Não foram apagados testes, código de runtime, provas de incidentes, relatórios técnicos de auditoria nem documentos de arquitetura complementares. Os ficheiros de inventário/árvore antigos que ainda referenciam estes caminhos são fotografias históricas e não devem ser tratados como inventário atual.
+
+### Regra de manutenção documental a partir desta data
+- Manter na árvore ativa: normas canónicas, contratos atuais, planos de implementação ainda executáveis, checklists de validação em uso e evidência técnica necessária para decisões em aberto.
+- Remover duplicados apenas depois de confirmar o conteúdo idêntico e procurar referências; manter redirecionadores pequenos quando existirem referências históricas úteis.
+- Não manter relatórios de estado volátil como autoridade atual. Converter conclusões duradouras em registos de decisão/estado e eliminar a fotografia antiga da árvore ativa quando o sucessor estiver definido.
+- A eliminação do ficheiro não apaga o histórico Git; evita apenas que o ficheiro obsoleto apareça como documentação ativa.
