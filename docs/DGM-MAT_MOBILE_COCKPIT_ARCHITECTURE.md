@@ -200,3 +200,13 @@ C:\ProgramasGodMode\DGM-MAT\main.py --headless
 This ensures that after Windows login the DGM-MAT runtime starts without a visible terminal window.
 
 This does not change BIOS/firmware power-loss behavior: the PC itself still needs to be powered on after an outage unless its firmware is configured for automatic power-on after AC restoration.
+
+
+## Ollama startup policy (2026-10-21)
+
+The mobile conversation runtime uses `DGM_MOBILE_LOCAL_LLM=manual` by default:
+- `manual` (default): use Ollama only if it is already listening; never start the process implicitly.
+- `auto`: allow the runtime to attempt starting Ollama when the local model is needed and memory checks pass.
+- `off`: disable local LLM inference.
+
+Unknown values fail safe to `manual`. This default is intentional for the current low-memory PC, where Ollama is normally kept stopped until André starts it manually. GitHub Actions can validate the policy unit tests, but cannot prove the local Windows service/process state.
