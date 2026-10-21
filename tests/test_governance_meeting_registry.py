@@ -147,7 +147,8 @@ class GovernanceMeetingRegistryTests(unittest.TestCase):
             )
 
     def test_pending_approvals_are_listed_durably(self):
-        meeting = self.create()
+        self.create(title="Revisão sem decisão pendente", meeting_type="routine_review", proposal="Rever documentação corrente.", related_departments=["Programação"])
+        meeting = self.create(title="Mudança estrutural pendente")
         self.registry.record_decision(
             meeting["meeting_id"], actor="Director", outcome="approved", rationale="Proceed."
         )
