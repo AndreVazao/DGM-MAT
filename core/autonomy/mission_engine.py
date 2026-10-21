@@ -1036,6 +1036,21 @@ class MissionEngine:
 
         started = time.monotonic()
         observation = self.command_executor.execute(command_id)
+        if not isinstance(observation, dict):
+            raise RuntimeError(f"Read-only diagnostic {command_id} returned an invalid observation.")
+
+        # Do not let a malformed or substituted executor response become a
+        # successful mission merely because it reports returncode=0.
+        if (
+            observation.get("schema") != "dgm-mat.command-result.v1"
+            or observation.get("command_id") != command_id
+            or observation.get("risk") != "READ"
+            or observation.get("elevated") is not False
+        ):
+            raise RuntimeError(
+                f"Read-only diagnostic {command_id} returned an invalid safety/evidence envelope."
+            )
+
         status = str(observation.get("status", "unknown")).lower()
         if status != "passed" or observation.get("returncode") != 0:
             detail = str(observation.get("stderr") or observation.get("stdout") or status).strip()[:500]
