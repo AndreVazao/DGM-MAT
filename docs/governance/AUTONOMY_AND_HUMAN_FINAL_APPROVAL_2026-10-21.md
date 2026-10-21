@@ -43,6 +43,12 @@ Suggested maturity levels:
 3. **Consistent and verified:** autonomously handle equivalent cases only inside a documented, delegated scope.
 4. **Exception or drift:** pause only the affected action, explain what differs and escalate when the difference crosses a protected boundary.
 
+## Progressive-trust implementation boundary
+
+The initial policy engine is implemented in `core/governance/progressive_trust.py` with a separate persistent store. It records owner-attributed feedback, evaluates an exact category/scope against an existing owner-granted delegation, requires a configurable number of verified reversible successes, and resets the success run after rejection/correction/revocation. Delegations are restricted to low/medium risk and cannot remove mandatory protected boundaries. Owner-only API routes create/revoke delegations and record feedback; a read-only evaluation route returns a decision result without permitting execution.
+
+This is deliberately not automatic self-promotion: repeated approvals alone never create a delegation. An explicit owner-granted scope is required. The feedback endpoint trusts only the authenticated owner identity and is intended for verified results; UI integration must not mark a result verified until the outcome has actually been checked. The policy engine is not yet wired into the CEO's live decision scheduler/action runner, and the cockpit does not yet surface the approval/feedback/delegation controls.
+
 ## Human final approval required
 
 A proposal must be marked critical when it entails a major architecture/platform change, a structural reorganisation affecting multiple departments, a major technology migration, a change to security/trust boundaries, or an irreversible/high-blast-radius change. Classification must be recorded with a rationale; it must not depend only on an agent's self-description.
@@ -73,4 +79,4 @@ Explicitly protected structural changes remain subject to André's approval even
 
 ## Implementation status
 
-The current governance-meeting PR introduces durable meeting records and an initial two-stage approval state. This document now also specifies progressive, evidence-based delegation. The PR does not yet implement the cockpit popup, cross-device push delivery, approval-bound execution dispatch, the adaptive-trust decision engine, or end-to-end runtime tests. Those are explicit follow-up work and must not be represented as completed.
+The current governance-meeting PR introduces durable meeting records and an initial two-stage approval state, plus a separate progressive-trust policy module and owner-controlled API. The policy module has focused unit tests, but they have not been executed in this environment. The PR does not yet implement the cockpit popup, cross-device push delivery, approval-bound execution dispatch, live CEO scheduler integration, UI feedback capture, or end-to-end runtime tests. Those remain follow-up work and must not be represented as completed.
