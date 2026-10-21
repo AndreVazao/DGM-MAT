@@ -43,3 +43,49 @@ def test_service_keeps_continuous_conversation(tmp_path: Path):
     assert response["intent"]["intent"] == "sync"
     assert response["mission_id"] == "mission_test"
     assert len(response["thread"]["messages"]) == 2
+
+
+def test_local_llm_defaults_to_manual_and_never_starts_ollama_implicitly(monkeypatch):
+    from types import SimpleNamespace
+    import sys
+
+    service = MobileConversationService(ConversationStore())
+    monkeypatch.delenv("DGM_MOBILE_LOCAL_LLM", raising=False)
+    monkeypatch.setitem(
+        sys.modules,
+        "psutil",
+        SimpleNamespace(virtual_memory=lambda: SimpleNamespace(available=2_000_000_000)),
+    )
+    monkeypatch.setattr(service, "_select_installed_model", lambda intent: "qwen2.5:1.5b")
+    monkeypatch.setattr(service, "_ollama_available", lambda: False)
+    with patch.object(service, "_start_ollama") as start_ollama:
+        answer = service._try_local_llm(
+            SimpleNamespace(messages=[], project=None, repository=None),
+            SimpleNamespace(intent="chat"),
+        )
+
+    assert answer is None
+    start_ollama.assert_not_called()
+
+
+def test_local_llm_auto_start_requires_explicit_opt_in(monkeypatch):
+    from types import SimpleNamespace
+    import sys
+
+    service = MobileConversationService(ConversationStore())
+    monkeypatch.setenv("DGM_MOBILE_LOCAL_LLM", "auto")
+    monkeypatch.setitem(
+        sys.modules,
+        "psutil",
+        SimpleNamespace(virtual_memory=lambda: SimpleNamespace(available=2_000_000_000)),
+    )
+    monkeypatch.setattr(service, "_select_installed_model", lambda intent: "qwen2.5:1.5b")
+    with patch.object(service, "_ollama_available", side_effect=[False, False]):
+        with patch.object(service, "_start_ollama") as start_ollama:
+            answer = service._try_local_llm(
+                SimpleNamespace(messages=[], project=None, repository=None),
+                SimpleNamespace(intent="chat"),
+            )
+
+    assert answer is None
+    start_ollama.assert_called_once()
