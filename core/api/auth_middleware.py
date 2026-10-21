@@ -14,6 +14,7 @@ from core.api.security_policy import SecurityScope, classify_request_path, class
 _ALLOWED_ORIGINS = {
     "http://127.0.0.1:8181",
     "http://localhost:8181",
+    "https://localhost",
 }
 
 
