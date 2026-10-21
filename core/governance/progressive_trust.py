@@ -71,9 +71,10 @@ class ProgressiveTrustRegistry:
                 pass
 
     def record_feedback(
-        self, *, category: str, scope: str, outcome: str, rationale: str,
+        self, *, actor: str, category: str, scope: str, outcome: str, rationale: str,
         risk: str, reversible: bool, verified_success: bool = False,
     ) -> dict[str, Any]:
+        actor = _required(actor, "actor").casefold()
         category = _required(category, "category").casefold()
         scope = _required(scope, "scope").casefold()
         rationale = _required(rationale, "rationale", 2000)
@@ -84,7 +85,7 @@ class ProgressiveTrustRegistry:
         if verified_success and outcome != "approved":
             raise ValueError("verified_success is valid only for approved decisions")
         item = {
-            "feedback_id": str(uuid.uuid4()), "category": category, "scope": scope,
+            "feedback_id": str(uuid.uuid4()), "actor": actor, "category": category, "scope": scope,
             "outcome": outcome, "rationale": rationale, "risk": risk,
             "reversible": bool(reversible), "verified_success": bool(verified_success),
             "created_at": _now(),
