@@ -84,3 +84,10 @@ DGM-MAT pode solicitar revisão a uma IA disponível e autorizada quando a anál
 
 ## 11. Relação com planos anteriores
 Esta diretiva atualiza a prioridade dos planos de recuperação de conversas, browser governado, autonomia e consolidação de projetos. Os detalhes técnicos anteriores continuam válidos apenas quando compatíveis com esta diretiva e com a segurança. O objetivo histórico mantém-se; a prioridade operacional atual é memória e intenção antes de nova engenharia.
+
+
+## Aditamento de execução canónica — 2026-10-21
+
+A prioridade e as regras de proveniência desta diretiva mantêm-se vigentes. O percurso operacional completo, os departamentos, o papel de ligação ao proprietário, a especialização de agentes e os critérios de aceitação encontram-se no [Modelo Canónico de Operação, Departamentos e End-to-End](architecture/DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md). Este aditamento não substitui a diretiva nem altera a distinção entre pedido do utilizador, proposta de IA, decisão confirmada e realidade verificada.
+
+A recuperação de conversas tem de produzir um resumo evolutivo dos pedidos reais do utilizador e compará-lo com propostas das IAs e com a realidade comprovada dos projetos. Cada novo provider indicado pelo proprietário deve ser inventariado e processado incrementalmente, preservando cobertura, lacunas, proveniência e histórico. A renomeação dentro da plataforma só se considera concluída quando a alteração real for confirmada.
