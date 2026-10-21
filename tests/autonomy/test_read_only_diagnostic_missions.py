@@ -111,8 +111,8 @@ def test_malformed_executor_evidence_envelope_never_finishes_as_completed(tmp_pa
         engine._handle_queue_execution({"mission_id": mission.mission_id})
 
     assert mission.status is MissionStatus.FAILED
-    assert mission.metadata.get("completed_at") is None
-    assert mission.metadata.get("result", {}).get("status") != "completed"
+    assert mission.metadata.get("completed_at")
+    assert mission.metadata.get("result", {}).get("status") == "failed"
 
 
 @pytest.mark.parametrize(
