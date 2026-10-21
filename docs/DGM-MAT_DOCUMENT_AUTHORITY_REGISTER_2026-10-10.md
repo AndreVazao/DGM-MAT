@@ -68,3 +68,21 @@ Este registo é parcial. Documentos ainda não revistos mantêm estado UNKNOWN/U
 
 - **ADITAMENTO CANÓNICO DE EXECUÇÃO:** [DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md](architecture/DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md). Governa o modelo operacional end-to-end, departamentos e agentes, especialização de programação, escritórios fiéis ao runtime, recuperação de conversas e expansão modular multi-PC. Complementa a Constituição Arquitetural de 2026-10-18 e a Diretiva Primária de Missão/Verdade de 2026-10-10; não as substitui nem declara a implementação concluída.
 - A revisão documental de 2026-10-21 foi **dirigida/parcial**: os documentos enumerados no aditamento foram abertos e revistos, mas não foram lidos todos os ficheiros, branches locais, repositórios satélite ou conversas externas. O inventário global permanece parcial e deve continuar com classificação REVIEWED / UNREVIEWED / CONFLICT / SUPERSEDED.
+
+## Limpeza documental controlada — 2026-10-21
+
+### Removido da árvore ativa
+- `SYSTEM_STATUS_REPORT.md`: fotografia de estado antiga, sem autoridade sobre o runtime atual.
+- `PHASE_HISTORY.md`: cronologia histórica de fases substituída para efeitos operacionais pela história Git e pelos registos de decisões/commits.
+- `OPERATIONAL_RUNTIME.md`: descrevia uma arquitetura antiga como se fosse um runtime autónomo já operacional; removido para evitar confundir intenção histórica com capacidade atual.
+- `OPERATIONAL_CONVERGENCE_ROADMAP.md`: prioridades antigas (EXE, cockpit, federação e autonomia) já substituídas pela Constituição de 2026-10-18 e pelo modelo canónico de 2026-10-21.
+- `COCKPIT_CONVERGENCE_PLAN.md`: plano antigo de cockpit com pressupostos e estado móvel desatualizados; substituído pela arquitetura canónica e pelos contratos atuais de cockpit.
+- `reports/extraction_plan.md`: plano de extração gerado em 2026-05-30, com inventário e divisão de repositórios já desatualizados.
+
+O conteúdo removido permanece recuperável no histórico Git. Não foram apagados testes, código de runtime, dados persistentes, provas de incidentes nem relatórios técnicos de auditoria. Ficheiros de inventário/árvore antigos que ainda referenciam caminhos removidos são fotografias históricas e não devem ser tratados como inventário atual.
+
+### Regra de manutenção documental a partir desta data
+- Manter na árvore ativa: normas canónicas, contratos atuais, planos de implementação ainda executáveis, checklists de validação em uso e evidência técnica necessária para decisões em aberto.
+- Remover duplicados apenas depois de confirmar o conteúdo idêntico e procurar referências; manter redirecionadores pequenos quando existirem referências históricas úteis.
+- Não manter relatórios de estado volátil como autoridade atual. Converter conclusões duradouras em registos de decisão/estado e eliminar a fotografia antiga da árvore ativa quando o sucessor estiver definido.
+- A eliminação do ficheiro não apaga o histórico Git; evita apenas que o ficheiro obsoleto apareça como documentação ativa.
