@@ -132,3 +132,12 @@ Do not optimize for the number of agents.
 Optimize for:
 
 **correct work + evidence + coordination + recoverability + controlled autonomy.**
+
+
+## Canonical operating contract — 2026-10-21
+
+The [canonical end-to-end operating model](architecture/DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md) is the operational reference for department boundaries, programming specializations, the owner liaison role, Conversation Intelligence, separate Research and Answer Evaluation Lab responsibilities, real office telemetry, and future multi-PC placement.
+
+Update to the build sequence: before expanding the number of agents or visual departments, prove one request through persistent intake → executable plan → policy/approval → real worker → independent validation → durable terminal state → truthful final answer. Planning-only outcomes must never be counted as execution. Start with the smallest useful pilot: HQ/owner liaison, Python engineering, independent QA/bug hunting, Research, and Conversation Intelligence. Add language specialists and separate lab workers only after real demand, contracts, resource limits and tests are demonstrated.
+
+The status labels in this document are historical planning notes. They do not prove current implementation; reconcile every phase against current code, tests and runtime before marking it complete.
