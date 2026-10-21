@@ -30,12 +30,17 @@ def test_claude_code_task_request_is_not_misclassified_as_a_version_check():
     assert decision.requires_approval is True
 
 
-def test_system_summary_mission_executes_fixed_command_and_persists_result(tmp_path, monkeypatch):
+def _make_test_engine(tmp_path, monkeypatch):
     engine = MissionEngine()
     engine.missions_path = tmp_path
     monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
     monkeypatch.setattr(engine, "_emit_mission_result", lambda mission, result: None)
     monkeypatch.setattr(engine, "_record_execution_observation", lambda mission, result, status: None)
+    return engine
+
+
+def test_system_summary_mission_executes_fixed_command_and_persists_result(tmp_path, monkeypatch):
+    engine = _make_test_engine(tmp_path, monkeypatch)
 
     calls = []
 
@@ -72,3 +77,41 @@ def test_system_summary_mission_executes_fixed_command_and_persists_result(tmp_p
     assert result["elevated"] is False
     assert "TEST-PC" in result["output"]
     assert mission.metadata["result"]["command_id"] == "system.summary"
+
+
+@pytest.mark.parametrize(
+    ("command_status", "returncode"),
+    [
+        ("unavailable", 127),
+        ("failed", 1),
+        ("timeout", None),
+    ],
+)
+def test_diagnostic_failure_never_finishes_mission_as_completed(
+    tmp_path, monkeypatch, command_status, returncode
+):
+    engine = _make_test_engine(tmp_path, monkeypatch)
+
+    def fake_execute(command_id):
+        return {
+            "schema": "dgm-mat.command-result.v1",
+            "command_id": command_id,
+            "risk": "READ",
+            "status": command_status,
+            "returncode": returncode,
+            "stdout": "",
+            "stderr": "diagnostic unavailable in test",
+            "duration_ms": 4,
+            "elevated": False,
+        }
+
+    monkeypatch.setattr(engine.command_executor, "execute", fake_execute)
+    mission = engine.create_mission("check Ollama status", "Failure-path diagnostic test")
+
+    with pytest.raises(RuntimeError, match="Mission execution failed"):
+        engine._handle_queue_execution({"mission_id": mission.mission_id})
+
+    assert mission.status is MissionStatus.FAILED
+    assert mission.status is not MissionStatus.COMPLETED
+    assert mission.metadata.get("completed_at") is None
+    assert mission.metadata.get("result", {}).get("status") != "completed"
