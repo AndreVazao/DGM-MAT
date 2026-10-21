@@ -20,7 +20,7 @@ APK reinstall requires {"action":"install-apk","confirm_install":true}, exactly 
 - DGM_MOBILE_APK_PATH — optional full path to the validated APK for an explicitly confirmed reinstall.
 
 ## Security and current limitation
-All recovery endpoints require a valid DGM-MAT operator session. The mobile screen deliberately reports 401/403 errors rather than embedding the PC bootstrap secret or bypassing the session middleware. Complete secure remote pairing is still required before the phone can invoke these controls remotely. The PC-side background monitor does not depend on mobile API authentication and still performs safe transient ADB reconnection.
+All recovery endpoints require a valid DGM-MAT operator session. The mobile app never embeds the PC bootstrap secret. To pair, open http://127.0.0.1:8181/auth/pairing-code in a browser on the PC itself, then enter the one-time code in the mobile app. The code expires after five minutes and is consumed on first successful use; the issued bearer session expires after 30 minutes. The pairing-code endpoint is loopback-only and the pairing endpoint is rate-limited. The PC-side background monitor does not depend on mobile API authentication and still performs safe transient ADB reconnection.
 
 ## Validation
 Tests in tests/api/test_usb_recovery.py cover device-state parsing, missing ADB, blocked arbitrary actions, confirmation before APK reinstall, and route security classification. On a Windows PC with an authorized Android device, validate:
