@@ -61,3 +61,5 @@ def test_usb_recovery_api_paths_have_explicit_security_classification():
     assert classify_request_path("/mobile/usb-recovery/state", "GET").scope is SecurityScope.OPERATOR
     assert classify_request_path("/mobile/usb-recovery/repair", "POST").scope is SecurityScope.OPERATOR
     assert classify_request_path("/mobile/usb-recovery/repair", "GET") is None
+    assert classify_request_path("/auth/pairing-code", "GET").scope is SecurityScope.OPERATOR
+    assert classify_request_path("/auth/pair", "POST").scope is SecurityScope.OPERATOR
