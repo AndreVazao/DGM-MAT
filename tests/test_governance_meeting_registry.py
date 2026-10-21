@@ -97,7 +97,11 @@ class GovernanceMeetingRegistryTests(unittest.TestCase):
             participants=["CEO", "Programming"],
         )
         self.assertTrue(meeting["high_impact"])
-        self.assertEqual(meeting["owner_approval"]["status"], "pending")
+        decided = self.registry.record_decision(
+            meeting["meeting_id"], actor="Director", outcome="approved", rationale="Proceed to CEO review."
+        )
+        self.assertEqual(decided["status"], "decision_pending")
+        self.assertEqual(decided["approval"]["status"], "pending")
 
     def test_agent_hiring_is_not_automatically_a_human_approval_gate(self):
         meeting = self.create(meeting_type="hire_agent", participants=["CEO", "RH"])
