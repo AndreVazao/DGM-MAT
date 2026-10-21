@@ -90,6 +90,11 @@ Mensagens interdepartamentais são estruturadas, correlacionadas, auditáveis e 
 
 ## 3. Escritórios virtuais como espelho fiel
 - Cada departamento tem escritório/sala e balcão de consulta próprios, identificados pelo departamento real.
+- **Ronda do CEO:** por pedido explícito do proprietário, o avatar pode levantar-se da secretária, visitar sequencialmente os departamentos, cumprimentar as equipas e apresentar um check-up de saúde operacional. É uma ação ocasional, não um ciclo automático em segundo plano.
+- A ronda é read-only por defeito: consulta catálogo, telemetria, heartbeat, missões, filas, bloqueios, erros e evidências disponíveis. Cada resultado deve indicar fonte/hora; sem dados suficientes, mostrar **desconhecido**, nunca “OK” inferido.
+- A animação do percurso é apenas apresentação. Não pode criar atividade fictícia, agentes ou departamentos, nem iniciar Ollama, reiniciar serviços, alterar configurações, despachar missões ou mudar permissões.
+- Se o renderizador animado ainda não existir, oferecer fallback em lista/linha temporal com as mesmas verificações e relatório.
+- No fim, produzir relatório persistido por departamento, separar factos de recomendações e pedir autorização normal para qualquer correção posterior.
 - Cada agente mostrado corresponde a registo real do catálogo/runtime. Agentes indisponíveis, simulados ou não implementados não podem ser apresentados como trabalhadores ativos.
 - **Convenção visual obrigatória:** pessoas/agentes existentes são personagens humanos; agentes criados pelo DGM-MAT são representados como robôs em todas as interfaces e departamentos. O CEO usa avatar humano baseado na fotografia canónica com cabelo. A forma visual não altera permissões nem estado operacional.
 - Animações de conversa, reuniões, movimento, execução, enfermaria, produção, controlo de qualidade ou expedição só são emitidas a partir de eventos/estados reais.

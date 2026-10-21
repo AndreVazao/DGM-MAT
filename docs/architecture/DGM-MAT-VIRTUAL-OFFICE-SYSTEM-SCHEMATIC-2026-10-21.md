@@ -193,7 +193,42 @@ Requisitos vinculativos para o avatar do escritório:
 
 **Estado atual:** o cockpit mostra a fotografia original num cartão de referência. Ainda não existe prova de que um avatar derivado tenha sido produzido ou aprovado. A produção do avatar final fica pendente de um fluxo de geração/edição que possa usar a fotografia de referência corretamente; não criar um rosto genérico nem substituir a imagem original.
 
-## 8. Renderização adaptativa e acessibilidade
+## 8. Ronda do CEO — visita guiada e check-up departamental
+
+### Intenção do proprietário
+O proprietário pode pedir por texto ou voz: **«CEO, faz uma ronda pelos departamentos»**, «faz uma ronda de inspeção» ou uma formulação equivalente. É uma funcionalidade voluntária, ocasional e lúdica, com utilidade real de supervisão. Não é um processo contínuo nem deve arrancar só por abrir o escritório.
+
+### Percurso visual
+1. Se o avatar estiver no gabinete/secretária, reproduzir a animação de se levantar e iniciar a ronda.
+2. Percorrer os departamentos e pisos configurados, com pequenas pausas de visita.
+3. Cumprimentar visualmente as equipas/personagens e mostrar o nome do departamento visitado.
+4. Usar o avatar do CEO baseado na fotografia canónica com cabelo; pessoas existentes são personagens humanas e agentes criados pelo DGM-MAT são robôs.
+5. Respeitar o modo gráfico disponível: lista/2D económico primeiro, isométrico/3D apenas se suportado. Se não houver navegação animada implementada, apresentar a ronda como lista/linha temporal em vez de fingir movimento.
+
+### Check-up real por departamento
+Durante cada paragem, consultar apenas fontes observáveis e autorizadas, por exemplo:
+- estado conhecido/desconhecido, disponibilidade e último heartbeat válido;
+- missões em curso, pendentes, bloqueadas, falhadas e concluídas com referência persistida;
+- filas e dependências, aprovações à espera, erros recentes e saúde dos conectores relevantes;
+- testes/entregáveis recentes e evidência verificável, quando esses feeds existirem.
+
+Classificar cada observação como **OK confirmado**, **atenção**, **bloqueado**, **indisponível** ou **desconhecido**, com hora e fonte. Não concluir que um departamento está bem só porque responde, está desenhado no mapa ou tem personagens presentes. Ausência de telemetria deve aparecer como desconhecido. Não criar missões, iniciar modelos locais, alterar configuração, reiniciar serviços, atribuir tarefas ou mudar permissões como parte da ronda.
+
+### Relatório de saída
+No fim, apresentar um resumo curto por departamento: estado, evidência consultada, problemas, itens que exigem decisão do proprietário e ligações para detalhes. Distinguir observações de recomendações. A ronda é read-only por defeito; qualquer correção deve ser proposta separadamente e seguir o fluxo normal de autorização/aprovação.
+
+### Critérios de aceitação
+- O pedido é reconhecido como intenção de ronda e recebe um ID de correlação.
+- A lista de departamentos visitados vem do catálogo real, sem inventar departamentos/agentes.
+- Cada conclusão inclui evidência e timestamp ou é marcada como desconhecida.
+- Cancelar/interromper a animação não cancela nem altera missões reais.
+- A ronda não inicia Ollama nem faz ações destrutivas ou externas.
+- O relatório persiste e pode ser consultado no cockpit PC e, futuramente, no mobile.
+- Sem renderizador animado ou telemetria disponível, existe fallback funcional em texto/lista e o estado em falta é explícito.
+
+**Estado:** requisito de produto aprovado pelo proprietário; implementação e teste em runtime ainda pendentes.
+
+## 9. Renderização adaptativa e acessibilidade
 
 - Modo económico como predefinição no PC de recursos limitados: planta 2D, animações reduzidas, sem sombras/física contínua.
 - Modo equilibrado: isométrico 2.5D com animações acionadas por eventos reais.
@@ -202,7 +237,7 @@ Requisitos vinculativos para o avatar do escritório:
 - Alternativa acessível por árvore/lista de pisos, departamentos, agentes e missões; teclado, foco visível, textos legíveis e estado não comunicado só por cor.
 - A interface não pode iniciar Ollama, criar agentes, despachar trabalho ou alterar permissões apenas porque o utilizador abre o escritório.
 
-## 9. Plano de entrega e critérios de aceitação
+## 10. Plano de entrega e critérios de aceitação
 
 ### Fase A — Verdade operacional (API/contrato implementado; runtime real pendente)
 - Contrato estável para missão, agente, departamento, eventos e resultado.
@@ -238,7 +273,7 @@ Requisitos vinculativos para o avatar do escritório:
 - Só depois de performance, eventos, heartbeat e recuperação estarem comprovados.
 - **Aceitação:** renderização pode desligar sem interromper o core; nó offline é detetado; sem duplicação de execução após reconexão.
 
-## 10. Plano de validação
+## 11. Plano de validação
 
 Testes pequenos e direcionados, sem executar suites redundantes em cada alteração:
 - Contratos/API: payload válido, payload incompleto, estado desconhecido, paginação e privacidade.
@@ -249,7 +284,7 @@ Testes pequenos e direcionados, sem executar suites redundantes em cada alteraç
 
 GitHub Actions pode validar código e testes no runner, mas não comprova o estado real do PC, do worker local, Ollama, rede, credenciais ou serviços Windows.
 
-## 11. Referências canónicas existentes
+## 12. Referências canónicas existentes
 
 - [Constituição arquitetural modular](DGM-MAT-ARCHITECTURE-CONSTITUTION-MODULAR-DEPARTMENTS-2026-10-18.md)
 - [Modelo canónico de operação e departamentos](DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md)
@@ -259,7 +294,7 @@ GitHub Actions pode validar código e testes no runner, mas não comprova o esta
 - [Contrato de telemetria do cockpit](https://github.com/AndreVazao/DGM-Cockpit-Frontend/blob/main/docs/COCKPIT-RUNTIME-STATUS-CONTRACT-2026-10-21.md)
 
 
-## 12. Estado real de implementação (atualização 2026-10-21)
+## 13. Estado real de implementação (atualização 2026-10-21)
 
 Esta secção regista código efetivamente integrado e validação observada, sem converter CI em prova de runtime local.
 
