@@ -157,3 +157,10 @@ This path does **not** call `ValidationEngine.validate_implementation`, does not
 ### Evidence and open gates
 
 Confirmed from inspected source: the methods and behaviors listed above. Not yet confirmed: complete repository-wide caller graph, runtime importability of every legacy module, full test suite, Windows compatibility, toolchain availability on André's PC, and end-to-end patch execution. No PR has been opened for this audit branch; PR #143 remains the sole open PR and remains blocked on its separate security/test gates.
+
+
+## Shared task-result contract — 2026-10-22
+
+Added `core/development/task_result.py` and focused tests in `tests/test_development_task_result.py` on this audit branch. The standard-library contract distinguishes `planned`, `blocked`, `not_implemented`, `running`, `failed`, and `verified`. It does not execute work or persist state; it provides a consistent truthful result shape for future integration.
+
+The contract rejects empty task IDs/summaries, malformed full commit hashes, success flags on non-verified states, and `verified` unless both validation and independent QA are explicitly passed with evidence references. This is a local contract primitive, not yet wired to Mission Engine, Execution Fabric, API routes, durable task storage, or the cockpit. Its new tests have been added but have **not yet been executed**. Existing isolated 19-test result remains separate evidence and does not include these new tests.
