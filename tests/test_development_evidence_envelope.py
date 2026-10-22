@@ -68,9 +68,10 @@ class EvidenceEnvelopeTests(unittest.TestCase):
             verify_evidence(envelope, self.expected, trusted_producers=TRUST)
 
     def test_tampered_artifact_digest_is_rejected(self):
+        envelope = self.envelope()  # Bind the digest before tampering with the artifact.
         self.artifact.write_text("changed\n", encoding="utf-8")
         with self.assertRaisesRegex(EvidenceVerificationError, "digest"):
-            verify_evidence(self.envelope(), self.expected, trusted_producers=TRUST)
+            verify_evidence(envelope, self.expected, trusted_producers=TRUST)
 
     def test_parent_traversal_is_rejected_at_construction(self):
         with self.assertRaisesRegex(ValueError, "relative path"):
