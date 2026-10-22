@@ -68,6 +68,8 @@ Added `core/development/language_catalog.py`, a deterministic, standard-library-
 
 This is a routing/metadata primitive, not a code-generation engine, compiler detector, linter runner or proof of language execution support. It is deliberately safe to integrate later behind the existing programming/organization contracts.
 
+Also added `core/development/toolchain_probe.py`, an explicit, allowlisted version-probe utility for common interpreters, compilers and developer tools. It accepts only fixed tool IDs and fixed argument lists, never uses a shell, clamps the timeout to 0.2–5 seconds, distinguishes unavailable/timeout/failed/available, and does not install packages or execute project source. Probing occurs only when explicitly called; catalogue presence is not an availability assertion.
+
 ## Required architecture before calling the department operational
 
 ### Intake and plan
@@ -105,7 +107,7 @@ Persist plans, task transitions, diffs, tool invocations, test output summaries,
 
 ## Test status and release gate
 
-The seven unit tests were executed against an isolated temporary copy of the catalogue and test module: **7 passed**. This was not a checkout of the full repository and does not replace running the tests on the actual branch/Windows PC. No compiler/linter availability is claimed, and no runtime/build test was run. The branch is intentionally separate from the existing governance PR #143; no second PR has been opened.
+Thirteen unit tests (7 language-catalogue + 6 toolchain-probe tests) were executed against isolated temporary copies of the modules and test files: **13 passed**. This was not a checkout of the full repository and does not replace running the tests on the actual branch/Windows PC. No compiler/linter availability is claimed, and no runtime/build test was run. The branch is intentionally separate from the existing governance PR #143; no second PR has been opened.
 
 Before merge: run the new tests; run focused development/organization tests; verify imports/callers and Python compatibility; test unknown/ambiguous extensions; verify no code execution occurs; then update the roadmap with results. Before declaring the Programming department operational, prove at least one supported language end-to-end from task intake through safe patch, real validation, independent QA, durable result and truthful final report.
 
