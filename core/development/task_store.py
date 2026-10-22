@@ -144,6 +144,10 @@ class TaskStore:
     def create(self, result: DevelopmentTaskResult) -> DevelopmentTaskResult:
         if result.status is not TaskResultStatus.PLANNED:
             raise InvalidTaskTransitionError("New tasks must start in the planned state.")
+        if result.evidence:
+            raise InvalidTaskTransitionError(
+                "New tasks cannot include execution evidence; add evidence through a state transition."
+            )
         now = time.time()
         with self._connection() as connection:
             try:
