@@ -28,6 +28,14 @@ class TaskEvidence:
     reference: str
     detail: str = ""
 
+    def __post_init__(self) -> None:
+        for field_name in ("kind", "outcome", "reference", "detail"):
+            value = getattr(self, field_name)
+            if not isinstance(value, str):
+                raise ValueError(f"evidence {field_name} must be a string.")
+        if not self.kind.strip() or not self.outcome.strip() or not self.reference.strip():
+            raise ValueError("evidence kind, outcome, and reference must be non-empty.")
+
 
 @dataclass(frozen=True)
 class DevelopmentTaskResult:
@@ -60,8 +68,16 @@ class DevelopmentTaskResult:
             required_kinds = {item.kind for item in self.evidence}
             if not {"validation", "independent_qa"}.issubset(required_kinds):
                 raise ValueError("verified status requires validation and independent_qa evidence references.")
-            if any(not item.reference.strip() or not item.outcome.strip() for item in self.evidence):
-                raise ValueError("verified evidence must include a reference and outcome.")
+            required_evidence = {
+                item.kind: item
+                for item in self.evidence
+                if item.kind in {"validation", "independent_qa"}
+            }
+            if any(
+                required_evidence[kind].outcome.strip().casefold() != "passed"
+                for kind in ("validation", "independent_qa")
+            ):
+                raise ValueError("verified status requires both validation and independent QA evidence outcomes to be 'passed'.")
         elif self.validation_passed or self.independent_qa_passed:
             raise ValueError("pass flags may only be set when status is verified.")
 
