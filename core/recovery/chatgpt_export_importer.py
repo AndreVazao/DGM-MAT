@@ -11,6 +11,9 @@ import hashlib
 import json
 import os
 import re
+import zipfile
+from dataclasses import replace
+from tempfile import TemporaryDirectory
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -166,6 +169,8 @@ def import_chatgpt_conversations_json(
     source_file: str | Path,
     archive_root: str | Path,
     ledger: RecoveryLedger,
+    *,
+    original_location: str | None = None,
 ) -> ChatGPTImportReport:
     """Archive each export record and register it without changing/deleting the input."""
     source = Path(source_file).expanduser().resolve()
@@ -261,7 +266,7 @@ def import_chatgpt_conversations_json(
             title=title,
             source_date=_source_date(item.get("create_time") or item.get("created_at")),
             source_url="",
-            original_location=str(source),
+            original_location=original_location or str(source),
             capture_status=state,
             raw_archive_path=str(destination),
             raw_sha256=digest,
@@ -284,3 +289,64 @@ def import_chatgpt_conversations_json(
         failed=failed,
         errors=tuple(errors),
     )
+
+def import_chatgpt_export_zip(
+    zip_file: str | Path,
+    archive_root: str | Path,
+    ledger: RecoveryLedger,
+    *,
+    max_conversations_json_bytes: int = 512 * 1024 * 1024,
+) -> ChatGPTImportReport:
+    """Safely import conversations.json from a ZIP without extracting arbitrary paths.
+
+    The ZIP is opened read-only. Only the uniquely identified conversations.json member
+    is streamed into a private temporary directory; no member-supplied path is written to
+    disk. Attachment files remain unextracted and referenced conversations remain partial.
+    """
+    source_zip = Path(zip_file).expanduser().resolve()
+    if not source_zip.is_file():
+        raise FileNotFoundError(source_zip)
+    if max_conversations_json_bytes < 1:
+        raise ValueError("max_conversations_json_bytes must be positive.")
+
+    try:
+        with zipfile.ZipFile(source_zip, "r") as archive:
+            candidates = [
+                info for info in archive.infolist()
+                if not info.is_dir() and Path(info.filename.replace("\\\\", "/")).name.casefold() == "conversations.json"
+            ]
+            if len(candidates) != 1:
+                raise ChatGPTExportError(
+                    f"Expected exactly one conversations.json member; found {len(candidates)}."
+                )
+            member = candidates[0]
+            if member.file_size > max_conversations_json_bytes:
+                raise ChatGPTExportError(
+                    f"conversations.json exceeds configured size limit ({max_conversations_json_bytes} bytes)."
+                )
+
+            root = Path(archive_root).expanduser().resolve()
+            root.mkdir(parents=True, exist_ok=True)
+            with TemporaryDirectory(prefix="dgm-chatgpt-import-", dir=str(root)) as staging:
+                staged_json = Path(staging) / "conversations.json"
+                copied = 0
+                with archive.open(member, "r") as src, staged_json.open("xb") as dst:
+                    while True:
+                        chunk = src.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        copied += len(chunk)
+                        if copied > max_conversations_json_bytes:
+                            raise ChatGPTExportError("conversations.json exceeded size limit while streaming.")
+                        dst.write(chunk)
+                    dst.flush()
+                    os.fsync(dst.fileno())
+                if copied != member.file_size:
+                    raise ChatGPTExportError("ZIP member size differs from bytes read; archive may be truncated.")
+                report = import_chatgpt_conversations_json(
+                    staged_json, root, ledger, original_location=str(source_zip)
+                )
+                return replace(report, source_file=str(source_zip))
+    except zipfile.BadZipFile as exc:
+        raise ChatGPTExportError("Input is not a valid ZIP archive.") from exc
+\n
