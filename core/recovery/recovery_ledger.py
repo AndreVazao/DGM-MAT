@@ -152,7 +152,7 @@ class RecoveryLedger:
                 cursor = db.execute(
                     "SELECT * FROM recovery_cursor WHERE pipeline=?", (pipeline,)
                 ).fetchone()
-                unfinished = "('verified', 'captured', 'blocked', 'failed')"
+                unfinished = "('verified', 'captured', 'partial', 'blocked', 'failed')"
                 if cursor:
                     row = db.execute(f"""
                         SELECT * FROM recovery_sources
@@ -203,9 +203,9 @@ class RecoveryLedger:
         detail: str = "",
         pipeline: str = "conversation_recovery",
     ) -> None:
-        """Persist progress; completed or explicitly blocked/failed sources let the
-        cursor continue. Failed/blocked items are retried only through request_retry(),
-        avoiding an endless loop on one unavailable source. No deletion is performed.
+        """Persist progress; partial/blocked/failed sources do not trap the cursor.
+        These sources are retried only through request_retry(), avoiding an endless loop.
+        No deletion is performed.
         """
         allowed = {"discovered", "in_progress", "partial", "captured", "verified", "blocked", "failed"}
         if capture_status not in allowed:
@@ -245,8 +245,8 @@ class RecoveryLedger:
                 INSERT INTO recovery_events(provider, source_id, event, detail, occurred_at)
                 VALUES (?, ?, ?, ?, ?)
             """, (provider, source_id, capture_status, detail, now))
-            # Advance only across a contiguous completed prefix. A later source
-            # checkpointed out of order must never cause earlier work to be skipped.
+            # Advance only across a contiguous processed prefix. Partial/blocked/failed
+            # sources are logged and can be retried explicitly without trapping the cursor.
             cursor = db.execute(
                 "SELECT * FROM recovery_cursor WHERE pipeline=?", (pipeline,)
             ).fetchone()
@@ -269,7 +269,7 @@ class RecoveryLedger:
                 """).fetchall()
                 last = None
             for item in completed:
-                if item["capture_status"] not in {"captured", "verified", "blocked", "failed"}:
+                if item["capture_status"] not in {"captured", "verified", "partial", "blocked", "failed"}:
                     break
                 last = (item["provider"], item["source_date"], item["source_id"])
             if last is not None and (cursor is None or last != (
