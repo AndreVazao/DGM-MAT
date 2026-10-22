@@ -23,14 +23,11 @@ def get_recovery_ledger() -> RecoveryLedger:
 def recovery_status():
     """Return aggregate progress only; never inspect provider accounts or delete data."""
     ledger = get_recovery_ledger()
-    sources = ledger.list_sources()
-    counts: dict[str, int] = {}
-    for source in sources:
-        counts[source.capture_status] = counts.get(source.capture_status, 0) + 1
+    counts = ledger.status_counts()
     return {
         "status": "available",
         "component": "recovery-ledger",
-        "source_count": len(sources),
+        "source_count": ledger.source_count(),
         "capture_status_counts": counts,
         "provider_connectors_enabled": False,
         "provider_deletion_enabled": False,
@@ -44,10 +41,11 @@ def list_recovery_sources(
     offset: int = Query(default=0, ge=0),
 ):
     """List registered source metadata without returning transcript contents."""
-    sources = get_recovery_ledger().list_sources()
-    page = sources[offset:offset + limit]
+    ledger = get_recovery_ledger()
+    total = ledger.source_count()
+    page = ledger.list_sources(limit=limit, offset=offset)
     return {
-        "total": len(sources),
+        "total": total,
         "limit": limit,
         "offset": offset,
         "items": [
