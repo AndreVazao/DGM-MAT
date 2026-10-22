@@ -194,8 +194,14 @@ class RecoveryLedger:
             len(raw_sha256) != 64 or any(c not in "0123456789abcdefABCDEF" for c in raw_sha256)
         ):
             raise ValueError("raw_sha256 must be a full SHA-256 hex digest.")
-        if capture_status == "verified" and (not raw_archive_path or not raw_sha256):
-            raise RecoveryLedgerError("verified capture requires archive path and SHA-256.")
+        if capture_status == "verified":
+            if not raw_archive_path or not raw_sha256:
+                raise RecoveryLedgerError("verified capture requires archive path and SHA-256.")
+            archive = Path(raw_archive_path)
+            if not archive.is_file():
+                raise RecoveryLedgerError("verified capture requires an existing local archive file.")
+            if self.sha256_file(archive).casefold() != raw_sha256.casefold():
+                raise RecoveryLedgerError("archive SHA-256 does not match the supplied digest.")
         now = time.time()
         with self._connect() as db:
             row = db.execute(
