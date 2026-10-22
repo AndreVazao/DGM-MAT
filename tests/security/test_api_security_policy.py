@@ -3,6 +3,7 @@ from starlette.routing import Mount, WebSocketRoute
 
 from core.api.api_server import app
 from core.api.security_policy import ROUTE_CLASSIFICATIONS, SecurityScope, bearer_matches, classify_request_path, classify_route
+from core.api.api_server import _pc_cockpit_directory
 
 
 def test_all_registered_routes_are_classified():
@@ -82,3 +83,22 @@ def test_exact_mission_detail_is_read_only_local_client_scope():
     detail = classify_route("/runtime/missions/{mission_id}", ("GET",))
     assert detail is not None
     assert detail.scope is SecurityScope.LOCAL_CLIENT
+
+
+def test_pc_cockpit_mount_is_optional_and_uses_an_explicit_valid_directory(monkeypatch, tmp_path):
+    monkeypatch.setenv("DGM_PC_COCKPIT_PATH", str(tmp_path))
+    (tmp_path / "index.html").write_text("<!doctype html>", encoding="utf-8")
+    (tmp_path / "app.js").write_text("/* test */", encoding="utf-8")
+    (tmp_path / "styles.css").write_text("/* test */", encoding="utf-8")
+
+    assert _pc_cockpit_directory() == tmp_path
+
+    (tmp_path / "styles.css").unlink()
+    assert _pc_cockpit_directory() is None
+
+
+def test_pc_cockpit_static_mount_is_classified_as_local_static_client():
+    cockpit = classify_route("/cockpit", (), "mount")
+    assert cockpit is not None
+    assert cockpit.scope is SecurityScope.LOCAL_STATIC_CLIENT
+    assert cockpit.scope is not SecurityScope.PUBLIC_HEALTH
