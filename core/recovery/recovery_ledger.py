@@ -219,7 +219,36 @@ class RecoveryLedger:
                 INSERT INTO recovery_events(provider, source_id, event, detail, occurred_at)
                 VALUES (?, ?, ?, ?, ?)
             """, (provider, source_id, capture_status, detail, now))
-            if capture_status in {"captured", "verified"}:
+            # Advance only across a contiguous completed prefix. A later source
+            # checkpointed out of order must never cause earlier work to be skipped.
+            cursor = db.execute(
+                "SELECT * FROM recovery_cursor WHERE pipeline=?", (pipeline,)
+            ).fetchone()
+            if cursor:
+                completed = db.execute("""
+                    SELECT provider, source_date, source_id, capture_status
+                    FROM recovery_sources
+                    WHERE (provider, source_date, source_id) >
+                        (?, ?, ?)
+                    ORDER BY provider, source_date, source_id
+                """, (cursor["last_provider"], cursor["last_source_date"],
+                      cursor["last_source_id"])).fetchall()
+                last = (cursor["last_provider"], cursor["last_source_date"],
+                        cursor["last_source_id"])
+            else:
+                completed = db.execute("""
+                    SELECT provider, source_date, source_id, capture_status
+                    FROM recovery_sources
+                    ORDER BY provider, source_date, source_id
+                """).fetchall()
+                last = None
+            for item in completed:
+                if item["capture_status"] not in {"captured", "verified"}:
+                    break
+                last = (item["provider"], item["source_date"], item["source_id"])
+            if last is not None and (cursor is None or last != (
+                cursor["last_provider"], cursor["last_source_date"], cursor["last_source_id"]
+            )):
                 db.execute("""
                     INSERT INTO recovery_cursor(
                         pipeline, last_provider, last_source_date, last_source_id, updated_at
@@ -229,10 +258,7 @@ class RecoveryLedger:
                         last_source_date=excluded.last_source_date,
                         last_source_id=excluded.last_source_id,
                         updated_at=excluded.updated_at
-                    WHERE (excluded.last_provider, excluded.last_source_date, excluded.last_source_id)
-                        > (recovery_cursor.last_provider, recovery_cursor.last_source_date,
-                           recovery_cursor.last_source_id)
-                """, (pipeline, row["provider"], row["source_date"], row["source_id"], now))
+                """, (pipeline, *last, now))
 
     def get(self, provider: str, source_id: str) -> RecoverySource | None:
         with self._connect() as db:
