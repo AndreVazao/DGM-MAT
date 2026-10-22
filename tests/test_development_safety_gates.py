@@ -29,6 +29,10 @@ class DevelopmentSafetyGateTests(unittest.TestCase):
         self.assertFalse(result.success)
         self.assertTrue(any("not implemented" in error for error in result.errors))
 
+    def test_empty_feature_request_is_rejected(self):
+        with self.assertRaises(ValueError):
+            FeaturePlanner().plan_feature("  ")
+
     def test_feature_ids_are_stable_and_plans_remain_planning_only(self):
         planner = FeaturePlanner()
         first = planner.plan_feature("Improve the API")
