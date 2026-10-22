@@ -6,12 +6,10 @@ delete source conversations, or claim that an archive is complete without eviden
 from __future__ import annotations
 
 import hashlib
-import json
 import sqlite3
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 
 class RecoveryLedgerError(RuntimeError):
@@ -97,6 +95,15 @@ class RecoveryLedger:
                     detail TEXT NOT NULL DEFAULT '',
                     occurred_at REAL NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS recovery_retry_queue (
+                    provider TEXT NOT NULL,
+                    source_id TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    requested_at REAL NOT NULL,
+                    PRIMARY KEY (provider, source_id),
+                    FOREIGN KEY (provider, source_id)
+                        REFERENCES recovery_sources(provider, source_id) ON DELETE CASCADE
+                );
             """)
 
     def register(self, source: RecoverySource) -> None:
@@ -130,23 +137,36 @@ class RecoveryLedger:
     def next_source(self, pipeline: str = "conversation_recovery") -> RecoverySource | None:
         """Return the earliest unfinished source after the cursor and record an attempt."""
         with self._connect() as db:
-            cursor = db.execute(
-                "SELECT * FROM recovery_cursor WHERE pipeline=?", (pipeline,)
-            ).fetchone()
-            if cursor:
-                row = db.execute("""
-                    SELECT * FROM recovery_sources
-                    WHERE (provider, source_date, source_id) > (?, ?, ?)
-                      AND capture_status NOT IN ('verified', 'captured')
-                    ORDER BY provider, source_date, source_id LIMIT 1
-                """, (cursor["last_provider"], cursor["last_source_date"],
-                      cursor["last_source_id"])).fetchone()
+            retry = db.execute("""
+                SELECT s.* FROM recovery_retry_queue q
+                JOIN recovery_sources s USING (provider, source_id)
+                ORDER BY q.requested_at, q.provider, q.source_id LIMIT 1
+            """).fetchone()
+            if retry is not None:
+                row = retry
+                db.execute(
+                    "DELETE FROM recovery_retry_queue WHERE provider=? AND source_id=?",
+                    (row["provider"], row["source_id"]),
+                )
             else:
-                row = db.execute("""
-                    SELECT * FROM recovery_sources
-                    WHERE capture_status NOT IN ('verified', 'captured')
-                    ORDER BY provider, source_date, source_id LIMIT 1
-                """).fetchone()
+                cursor = db.execute(
+                    "SELECT * FROM recovery_cursor WHERE pipeline=?", (pipeline,)
+                ).fetchone()
+                unfinished = "('verified', 'captured', 'blocked', 'failed')"
+                if cursor:
+                    row = db.execute(f"""
+                        SELECT * FROM recovery_sources
+                        WHERE (provider, source_date, source_id) > (?, ?, ?)
+                          AND capture_status NOT IN {unfinished}
+                        ORDER BY provider, source_date, source_id LIMIT 1
+                    """, (cursor["last_provider"], cursor["last_source_date"],
+                          cursor["last_source_id"])).fetchone()
+                else:
+                    row = db.execute(f"""
+                        SELECT * FROM recovery_sources
+                        WHERE capture_status NOT IN {unfinished}
+                        ORDER BY provider, source_date, source_id LIMIT 1
+                    """).fetchone()
             if row is None:
                 return None
             now = time.time()
@@ -183,9 +203,9 @@ class RecoveryLedger:
         detail: str = "",
         pipeline: str = "conversation_recovery",
     ) -> None:
-        """Persist progress; only captured/verified advances the cursor.
-
-        Failures and partial captures remain retryable. No deletion is performed here.
+        """Persist progress; completed or explicitly blocked/failed sources let the
+        cursor continue. Failed/blocked items are retried only through request_retry(),
+        avoiding an endless loop on one unavailable source. No deletion is performed.
         """
         allowed = {"discovered", "in_progress", "partial", "captured", "verified", "blocked", "failed"}
         if capture_status not in allowed:
@@ -249,7 +269,7 @@ class RecoveryLedger:
                 """).fetchall()
                 last = None
             for item in completed:
-                if item["capture_status"] not in {"captured", "verified"}:
+                if item["capture_status"] not in {"captured", "verified", "blocked", "failed"}:
                     break
                 last = (item["provider"], item["source_date"], item["source_id"])
             if last is not None and (cursor is None or last != (
@@ -265,6 +285,29 @@ class RecoveryLedger:
                         last_source_id=excluded.last_source_id,
                         updated_at=excluded.updated_at
                 """, (pipeline, *last, now))
+
+    def request_retry(self, provider: str, source_id: str, reason: str) -> None:
+        """Queue a deliberate retry, including for a source behind the forward cursor."""
+        if not reason.strip():
+            raise ValueError("retry reason must be non-empty.")
+        now = time.time()
+        with self._connect() as db:
+            exists = db.execute(
+                "SELECT 1 FROM recovery_sources WHERE provider=? AND source_id=?",
+                (provider, source_id),
+            ).fetchone()
+            if exists is None:
+                raise RecoveryLedgerError("cannot retry an unregistered source.")
+            db.execute("""
+                INSERT INTO recovery_retry_queue(provider, source_id, reason, requested_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(provider, source_id) DO UPDATE SET
+                    reason=excluded.reason, requested_at=excluded.requested_at
+            """, (provider, source_id, reason, now))
+            db.execute("""
+                INSERT INTO recovery_events(provider, source_id, event, detail, occurred_at)
+                VALUES (?, ?, 'retry_requested', ?, ?)
+            """, (provider, source_id, reason, now))
 
     def get(self, provider: str, source_id: str) -> RecoverySource | None:
         with self._connect() as db:
