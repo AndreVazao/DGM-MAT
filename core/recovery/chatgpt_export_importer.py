@@ -313,7 +313,7 @@ def import_chatgpt_export_zip(
         with zipfile.ZipFile(source_zip, "r") as archive:
             candidates = [
                 info for info in archive.infolist()
-                if not info.is_dir() and Path(info.filename.replace("\\\\", "/")).name.casefold() == "conversations.json"
+                if not info.is_dir() and Path(info.filename.replace("\\", "/")).name.casefold() == "conversations.json"
             ]
             if len(candidates) != 1:
                 raise ChatGPTExportError(
