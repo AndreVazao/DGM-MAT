@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import hashlib
 import sqlite3
+from contextlib import contextmanager
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterator
 
 
 class RecoveryLedgerError(RuntimeError):
@@ -52,8 +54,18 @@ class RecoveryLedger:
         connection.execute("PRAGMA foreign_keys = ON")
         return connection
 
+    @contextmanager
+    def _connection(self) -> Iterator[sqlite3.Connection]:
+        """Commit or roll back the operation and always close the SQLite handle."""
+        connection = self._connect()
+        try:
+            with connection:
+                yield connection
+        finally:
+            connection.close()
+
     def _initialize(self) -> None:
-        with self._connect() as db:
+        with self._connection() as db:
             db.execute("PRAGMA journal_mode = WAL")
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS recovery_sources (
@@ -112,7 +124,7 @@ class RecoveryLedger:
         if not source.title.strip() or not source.source_date.strip():
             raise ValueError("title and source_date must be non-empty.")
         now = time.time()
-        with self._connect() as db:
+        with self._connection() as db:
             db.execute("""
                 INSERT INTO recovery_sources (
                     provider, source_id, title, source_date, source_url,
