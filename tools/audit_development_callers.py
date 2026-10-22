@@ -21,8 +21,9 @@ DEFAULT_SYMBOLS = {
     "CodeGenerationEngine": {"generate_code"},
     "DeadCodeDetector": {"find_dead_code"},
     "ValidationEngine": {"validate_implementation"},
-    "TaskStore": {"create", "get", "transition", "list_events"},
+    "TaskStore": {"transition", "list_events"},
 }
+TARGET_METHODS = {method for methods in DEFAULT_SYMBOLS.values() for method in methods}
 EXCLUDED_DIRS = {
     ".git", ".hg", ".svn", ".venv", "venv", "env", "node_modules",
     "__pycache__", "build", "dist", "site-packages",
@@ -47,7 +48,7 @@ def scan_python_files(root: Path) -> list[Path]:
 
 
 def inspect_file(path: Path, root: Path) -> list[dict[str, Any]]:
-    """Collect imports, class declarations, and references to tracked methods."""
+    """Collect relevant imports, class declarations, and tracked method calls."""
     try:
         source = path.read_text(encoding="utf-8", errors="replace")
         tree = ast.parse(source, filename=str(path))
@@ -66,17 +67,20 @@ def inspect_file(path: Path, root: Path) -> list[dict[str, Any]]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                findings.append({
-                    "path": relative, "line": node.lineno, "kind": "import",
-                    "symbol": alias.name, "detail": "import statement",
-                })
+                if "core.development" in alias.name or alias.name.rsplit(".", 1)[-1] in DEFAULT_SYMBOLS:
+                    findings.append({
+                        "path": relative, "line": node.lineno, "kind": "import",
+                        "symbol": alias.name, "detail": "relevant import statement",
+                    })
         elif isinstance(node, ast.ImportFrom):
             module = "." * node.level + (node.module or "")
+            relevant_module = "core.development" in module
             for alias in node.names:
-                findings.append({
-                    "path": relative, "line": node.lineno, "kind": "from_import",
-                    "symbol": f"{module}:{alias.name}", "detail": "from-import statement",
-                })
+                if relevant_module or alias.name in DEFAULT_SYMBOLS:
+                    findings.append({
+                        "path": relative, "line": node.lineno, "kind": "from_import",
+                        "symbol": f"{module}:{alias.name}", "detail": "relevant from-import statement",
+                    })
         elif isinstance(node, ast.ClassDef) and node.name in DEFAULT_SYMBOLS:
             findings.append({
                 "path": relative, "line": node.lineno, "kind": "class_definition",
@@ -84,13 +88,11 @@ def inspect_file(path: Path, root: Path) -> list[dict[str, Any]]:
             })
         elif isinstance(node, ast.Call):
             function = node.func
-            if isinstance(function, ast.Attribute):
-                method = function.attr
-                if any(method in methods for methods in DEFAULT_SYMBOLS.values()):
-                    findings.append({
-                        "path": relative, "line": node.lineno, "kind": "method_call",
-                        "symbol": method, "detail": ast.unparse(function),
-                    })
+            if isinstance(function, ast.Attribute) and function.attr in TARGET_METHODS:
+                findings.append({
+                    "path": relative, "line": node.lineno, "kind": "method_call",
+                    "symbol": function.attr, "detail": ast.unparse(function),
+                })
             elif isinstance(function, ast.Name) and function.id in DEFAULT_SYMBOLS:
                 findings.append({
                     "path": relative, "line": node.lineno, "kind": "class_call",
@@ -116,7 +118,7 @@ def build_report(root: Path) -> dict[str, Any]:
         "limitations": [
             "Static AST results do not prove runtime reachability.",
             "Dynamic imports, reflection, generated code and configuration wiring may be missed.",
-            "Import statements are inventoried broadly; review paths and symbols manually.",
+            "Only imports from core.development and the tracked classes/methods are reported.",
         ],
         "findings": findings,
     }
@@ -136,7 +138,7 @@ def main() -> int:
     else:
         print(f"Root: {report['root']}")
         print(f"Python files scanned: {report['python_files_scanned']}")
-        print(f"Findings: {report['finding_count']}")
+        print(f"Relevant findings: {report['finding_count']}")
         for finding in report["findings"]:
             line = finding["line"] if finding["line"] is not None else "?"
             print(f"{finding['path']}:{line}: {finding['kind']}: {finding['symbol']} — {finding['detail']}")
