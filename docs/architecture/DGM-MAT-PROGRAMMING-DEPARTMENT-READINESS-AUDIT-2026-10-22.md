@@ -199,3 +199,14 @@ Added `core/development/evidence_envelope.py` and focused tests in `tests/test_d
 **Important limits:** the module reads the referenced artifact but does not run the command, authenticate a process, or prove the artifact was honestly produced. The producer capability map must come from a trusted internal adapter; if a caller can supply it, the trust check is not a security boundary. This prototype is deliberately **not wired** to `TaskStore`, the API, Mission Engine, Execution Fabric or cockpit, and must not authorize `VERIFIED` transitions by itself. Further work must add a trusted execution boundary and bind evidence to an immutable run record before integration.
 
 The tests are authored but have **not** been executed against a full repository checkout or on the Windows PC. A GitHub commit is not evidence that Python imports, test discovery, Windows symlink behavior or runtime integration are correct. Next gate: run the focused tests and full relevant development tests in a real checkout, then perform an adversarial review before any integration or PR.
+
+### Conversation code recovery and anti-overengineering gate — 2026-10-22
+
+Added:
+- `core/development/change_scope_review.py`: a small deterministic review helper for declared scope, path safety, untested changes, new dependency justifications and overlapping capabilities.
+- `tests/test_development_change_scope_review.py`: focused unit tests authored for pass, out-of-scope, unsafe path, missing scope/outcome, untested changes, dependency justification and duplicate-capability cases.
+- `docs/architecture/DGM-MAT-CODE-RECOVERY-FILE-ASSEMBLY-AND-SIMPLICITY-GATE-2026-10-22.md`: operating contract for recovering code and decisions from authorized AI conversation exports, preserving provenance, separating user decisions from AI proposals, assembling snippets into existing original files, minimizing diffs, checking callers and preventing overengineering.
+
+The intended recovery pipeline must not assume that every AI response is approved, current or correct. It records source/platform/message metadata where available, distinguishes requirements from suggestions and observed evidence, retains original snippets, maps each fragment to a destination symbol, reconciles conflicts against the current repository and tests, and never replaces an entire file with a partial snippet. It should extend existing sources of truth rather than adding a new database/service without demonstrated need.
+
+The simplicity helper is deliberately limited: it can flag measurable scope risks, but cannot determine whether a design is elegant, prove security, or replace an independent review. It is not connected to the mission runtime yet. Tests are authored but have not been executed in a full checkout/Windows environment. No production integration or PR is authorized by this checkpoint.
