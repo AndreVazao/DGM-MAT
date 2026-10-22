@@ -230,7 +230,7 @@ def import_chatgpt_conversations_json(
         records = _message_records(item)
         messages_path = root / f"{_safe_id(source_id)}.messages.jsonl"
         lines = "".join(
-            json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\\n"
+            json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
             for record in records
         )
         if messages_path.exists():
