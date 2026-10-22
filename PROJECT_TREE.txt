@@ -46,8 +46,9 @@ docs/
                                       [OBSERVED; UPDATED]
 
 KNOWN GAPS — NOT IMPLEMENTED / NOT VERIFIED
-- ZIP export unpacking and safe extraction.
-- Attachment discovery, copying, hashing and association.
+- Full ZIP extraction is intentionally not performed. The adapter safely streams only the unique
+  conversations.json member to private staging; it does not unpack arbitrary archive paths.
+- Attachment discovery, copying, hashing and association; referenced conversations remain partial.
 - Importer integration with the PC cockpit upload flow or application startup.
 - Actual provider-history connectors or browser-session capture.
 - Full-text search index and project/context grouping.
