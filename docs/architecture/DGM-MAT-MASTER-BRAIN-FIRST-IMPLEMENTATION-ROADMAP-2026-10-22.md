@@ -322,7 +322,29 @@ Manter uma tabela de controlo atualizada à medida que cada fase é trabalhada:
 
 **Não marcar estados como concluídos por intenção ou por documentação.** Atualizar a tabela com o commit exato, os testes efetivamente executados, o resultado e a data.
 
-## 20. Referências técnicas externas
+## 20. Checkpoint de implementação — 2026-10-22
+
+O desenvolvimento remoto começou em branches isolados, sem fazer merge nem substituir o código existente.
+
+| Componente | Alteração em preparação | PR | Estado de validação |
+|---|---|---|---|
+| Backend — catálogo do escritório | O endpoint existente `GET /runtime/office/telemetry` acrescenta o catálogo declarado de departamentos/agentes; atividade permanece `unknown` sem evidência direta; permissões internas não são expostas. | [DGM-MAT #145](https://github.com/AndreVazao/DGM-MAT/pull/145) | Testes adicionados; ainda não executados. |
+| Cockpit móvel | Nova vista de escritório com contagens observadas, atividade recente sem objetivos privados e diretório expansível quando o catálogo estiver disponível. | [DGM-MAT-Mobile #2](https://github.com/AndreVazao/DGM-MAT-Mobile/pull/2) | Sintaxe JavaScript verificada; testes de contrato e APK ainda não executados. |
+| Cockpit PC | Diretório expansível de departamentos/agentes, separado dos estados em direto e construído com DOM/`textContent`. | [DGM-Cockpit-Frontend #13](https://github.com/AndreVazao/DGM-Cockpit-Frontend/pull/13) | Sintaxe JavaScript verificada; suíte Node e revisão visual local ainda não executadas. |
+
+### Ordem de integração
+
+1. Rever e validar primeiro o PR de backend #145.
+2. Só depois integrar os PRs de interface #2 e #13; ambos mantêm fallback honesto se o catálogo ainda não existir.
+3. Compilar uma única revisão candidata de APK e EXE depois de confirmar os SHAs integrados.
+4. No PC, executar a suíte Python focada e o cockpit; no telemóvel, instalar o APK e validar emparelhamento, telemetria, perda de rede e expiração de sessão.
+5. Só então ligar atividade de agentes a eventos reais. Não converter papéis declarados em agentes “ativos” sem heartbeat/execução verificável.
+
+**Estado factual deste checkpoint:** os três PRs de implementação estão separados e não foram integrados. Não foi criado nenhum novo APK/EXE, não foram iniciados workflows de CI e os testes de runtime/Python não foram executados. A verificação sintática de JavaScript não equivale à execução da suíte de testes.
+
+O PR [DGM-MAT #143](https://github.com/AndreVazao/DGM-MAT/pull/143), relativo a reuniões de governação e aprovações do proprietário, continua separado e requer a sua própria revisão/validação; não se assume que a interface já está ligada a esses controlos.
+
+## 21. Referências técnicas externas
 
 Estas referências são pontos de comparação, não dependências obrigatórias:
 
