@@ -1,7 +1,5 @@
 # DGM-MAT — Digital Organization Build Order
 
-# DGM-MAT Digital Organization Build Order
-
 ## Objective
 
 Turn DGM-MAT into a functioning digital engineering organization without
@@ -13,7 +11,7 @@ The evidence-based readiness audit is tracked in [DGM-MAT-PROGRAMMING-DEPARTMENT
 
 This pass confirmed source-level placeholders in the default branch: `CodeGenerationEngine.generate_code()` and `DeadCodeDetector.find_dead_code()` return empty lists; `ValidationEngine.validate_implementation()` reports success unconditionally; `ArchitectureValidator` references an unimported `Any` and has no implemented rules; `ImplementationEngine` only backs up `.env`/logs/returns IN_PROGRESS; `ExecutionFabric` is an in-memory list; and `FeaturePlanner` uses process-randomized `hash()` for IDs. These findings are detailed in the readiness audit. Callers and compatibility impact are not fully mapped, so do not wire, delete, or replace the legacy subsystem blindly.
 
-A planning-only language catalogue and unit tests are on branch `audit/programming-department-readiness-2026-10-22`. Nineteen unit tests (language catalogue, allowlisted toolchain probes, and development safety gates) passed against isolated temporary copies; the full repository suite and Windows PC checks remain pending. A fixed-allowlist, no-shell, bounded-time version probe is now available as a separate primitive. The legacy implementation validator and architecture validator now fail closed rather than certifying unchecked work; feature IDs use stable SHA-256 values. It must not be described as an installed-tool detector or a functioning code executor. A side-effect-free shared result contract now exists on the audit branch (`core/development/task_result.py`): `planned`, `blocked`, `not_implemented`, `running`, `failed`, `verified`. `verified` requires explicit validation + independent QA pass flags and evidence references whose outcomes are `passed`; failed evidence cannot be overridden by caller-supplied pass flags. Eleven focused contract tests have been added but not executed. This contract is not yet wired to Mission Engine, Execution Fabric, API, durable storage or cockpit. The next gate remains executing the new tests, completing the local AST/import/caller map, then designing one real Python patch lifecycle with configured checks and independent QA.
+A planning-only language catalogue and unit tests are on branch `audit/programming-department-readiness-2026-10-22`. Nineteen unit tests (language catalogue, allowlisted toolchain probes, and development safety gates) passed against isolated temporary copies; the full repository suite and Windows PC checks remain pending. A fixed-allowlist, no-shell, bounded-time version probe is now available as a separate primitive. The legacy implementation validator and architecture validator now fail closed rather than certifying unchecked work; feature IDs use stable SHA-256 values. It must not be described as an installed-tool detector or a functioning code executor. A side-effect-free shared result contract now exists on the audit branch (`core/development/task_result.py`): `planned`, `blocked`, `not_implemented`, `running`, `failed`, `verified`. `verified` requires explicit validation + independent QA pass flags and evidence references whose outcomes are `passed`; failed evidence cannot be overridden by caller-supplied pass flags. Its focused contract tests are included in the cross-platform validation run linked in the final checkpoint below. This contract is not yet wired to Mission Engine, Execution Fabric, API, durable storage or cockpit. The next gate remains executing the new tests, completing the local AST/import/caller map, then designing one real Python patch lifecycle with configured checks and independent QA.
 
 ## Phase 1 — Organization Kernel
 
@@ -265,7 +263,7 @@ Added a standard-library ChatGPT JSON-export adapter:
 The importer accepts either an already-extracted `conversations.json` or a ZIP containing
 exactly one such member. ZIP handling streams only that JSON member to private staging;
 arbitrary archive members are not extracted. Attachment recovery, full-text search, project
-grouping, project-tree generation, cockpit upload and startup orchestration remain future steps. Tests are authored, not executed.
+grouping, project-tree generation, cockpit upload and startup orchestration remain future steps. The focused regression set subsequently passed in GitHub Actions on Windows and Linux (101 tests plus compile check); see the final validation checkpoint below.
 
 ### Memory and project-tree correction
 
@@ -276,3 +274,8 @@ suited to the target low-memory PC.
 Added root `PROJECT_TREE.txt` as an evidence-backed partial snapshot of the paths
 inspected/changed for this recovery increment. It explicitly states that it is not a full
 repository or Windows filesystem scan, and lists known gaps separately from observed files.
+
+
+## Validation checkpoint — 2026-10-22
+
+The recovery/programming branch passed its targeted GitHub Actions validation on both Windows and Ubuntu with Python 3.12: repository compile check plus 101 focused recovery/programming regression tests. Evidence: https://github.com/AndreVazao/DGM-MAT/actions/runs/39845826169. This does **not** mean the full repository suite passed, does not prove provider/browser integration, and is not a local Windows-PC runtime test. The importer remains limited to authorized ChatGPT JSON exports/ZIP intake; attachment files, provider connectors, startup orchestration, full-text search and cockpit integration remain pending.
