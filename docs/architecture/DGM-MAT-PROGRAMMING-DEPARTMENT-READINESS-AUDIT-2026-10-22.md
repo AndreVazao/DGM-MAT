@@ -1,0 +1,119 @@
+# Programming & Software Engineering Department — Readiness Audit and Technical Contract
+
+**Date:** 2026-10-22  
+**Status:** evidence-based design and partial implementation; not a claim of runtime readiness  
+**Branch:** `audit/programming-department-readiness-2026-10-22`  
+**Repository:** `AndreVazao/DGM-MAT`
+
+## Executive finding
+
+The canonical operating model already defines Programming & Software Engineering, independent QA/Bug Hunting, Research, DevOps, Security/Governance, Data/Memory/Docs, Providers, Product/Cockpit and Hardware/Device Integration. It also names the initial language specialties. The gap is not a missing department name: the next requirement is to connect that design to real task contracts, toolchain detection, safe execution, independent validation and evidence-backed results.
+
+A source review found concrete placeholders in the default branch:
+
+- `core/development/code_generation.py`: `CodeGenerationEngine.generate_code()` unconditionally returns an empty list.
+- `core/autonomous_dev/dead_code_detector.py`: `DeadCodeDetector.find_dead_code()` unconditionally returns an empty list.
+- `core/development/development_models.py` provides basic `CodeChange`, `FeaturePlan`, `SpecializedAgent` and `ValidationResult` models, but these alone do not implement code generation, language-specific validation or a secure patch-application lifecycle.
+- `docs/DGM-MAT_DIGITAL_ORGANIZATION_BUILD_ORDER.md` explicitly places runtime integration, governance, worker lifecycle and the pilot departments ahead of expanding the agent fleet.
+
+These are confirmed source-level observations. This pass did not inspect the entire repository, execute tests, or prove whether other implementations exist elsewhere. Do not remove these legacy placeholders until callers/imports and compatibility needs are mapped.
+
+## Department contract
+
+### Responsibilities
+
+1. Clarify requirements and acceptance criteria without changing the user's intent.
+2. Inspect the target repository, branch, current state, dependencies, callers and tests before editing.
+3. Route tasks to a demonstrated language/toolchain capability, not merely an agent name or prompt.
+4. Produce minimal, reviewable diffs with explicit affected paths and rationale.
+5. Validate syntax, imports/types, lint/static analysis, unit/integration/API/UI tests, security and packaging according to project risk and available tooling.
+6. Ask independent QA/Bug Hunting to reproduce and challenge the result; the author cannot be the only approver of a critical change.
+7. Preserve a recoverable checkpoint, record exact commit/file hashes and test outputs, and update the project documentation/memory.
+8. Report `verified`, `implemented_not_tested`, `partial`, `blocked`, or `not_implemented` truthfully.
+
+### Explicit non-responsibilities
+
+- The programming department does not grant itself permissions, approve its own critical architecture changes, or bypass the CEO/owner governance gates.
+- A plan, generated patch, successful HTTP response, empty error list, or installed compiler does not prove that a change works.
+- Model-generated code is untrusted input. Never execute it before policy checks, path validation, review and an appropriate isolated test boundary.
+- A filename extension is a useful hint, not definitive language identification; project manifests and neighboring files may resolve ambiguity.
+- Do not create a separate worker for every language on the weak PC. Use a small number of logical roles and dispatch only when the capability is needed.
+
+## Language and specialization matrix
+
+| Priority | Specialty | Required responsibilities | Validation gates |
+|---|---|---|---|
+| P0 | Python | Backend, APIs, automation, agents and tests | Parse/compile, imports, lint/type checks when configured, unit/integration/API, security |
+| P0 | JavaScript / TypeScript | Cockpit logic, Node services, client contracts | Syntax/typecheck, lint, unit, build, browser/API integration |
+| P0 | HTML / CSS | Semantics, responsive UI, accessibility | HTML/CSS validation, accessibility, viewport/browser checks |
+| P0 | SQL / data | Schema, queries, migration, persistence | Dialect-aware validation, migration review, integrity/rollback, query plans |
+| P0 | PowerShell / Windows | PC install, diagnostics, services, packaging | Parse/static checks, safe dry-run, Windows integration, privilege review |
+| P0 | Shell / Bash | Linux/CI automation | Syntax, shell static analysis when installed, dry-run, integration |
+| P1 | Java / Kotlin / Android | APK/mobile clients and Android integration | Compile, static checks, unit, emulator/device integration, package signing checks |
+| P1 | Git / CI and configuration | Versioning, YAML/JSON/TOML, workflows | Diff/branch integrity, schema/format checks, secret scan, manual Actions policy |
+| Conditional | C/C++, Rust, Go, C#/.NET and others | Only when a real repository/workload requires them | Toolchain-specific compile, static analysis, tests and packaging |
+
+HTML is markup and CSS is a stylesheet language; both still need dedicated expertise, but should not be mislabeled as general-purpose programming languages. YAML/JSON/TOML are configuration formats, not programming languages. A `.h` file is ambiguous between C and C++ without project context.
+
+## Partial implementation in this branch
+
+Added `core/development/language_catalog.py`, a deterministic, standard-library-only catalogue that:
+
+- distinguishes programming languages, markup, stylesheets, shell, SQL, configuration and ambiguous headers;
+- maps common source/configuration extensions to canonical profiles;
+- provides language-specific *recommended* validation stages;
+- labels all toolchains as `requires_environment_probe`;
+- keeps `execution_enabled=False` and returns a `plan_only` result, never claiming tools were detected or tests executed;
+- fails closed for unknown extensions with `blocked_unknown_language`.
+
+This is a routing/metadata primitive, not a code-generation engine, compiler detector, linter runner or proof of language execution support. It is deliberately safe to integrate later behind the existing programming/organization contracts.
+
+## Required architecture before calling the department operational
+
+### Intake and plan
+Every programming task must include mission/task ID, source request, repository + branch + base SHA, permitted paths, target language, expected output, acceptance criteria, risk/reversibility, dependencies and timeout/resource budget. Missing repository context or an ambiguous destructive change blocks mutation.
+
+### Toolchain and execution
+Use a capability probe that records executable/version/path/exit code/time and whether the tool was actually invoked. Separate detection from execution. Use argument arrays (not shell string concatenation), bounded stdout/stderr, timeouts, allowed working directories and explicit environment. Never execute arbitrary source from an imported conversation.
+
+### Patch lifecycle
+`inspect → plan → snapshot → patch → diff-review → syntax/type/static checks → tests → independent QA → acceptance decision → commit/merge gate`.
+
+A failed check blocks promotion. A test that was unavailable is `not_run`, not `passed`. A generated patch is a proposal until applied and validated. No destructive cleanup without caller/history checks and a recoverable checkpoint.
+
+### Multi-language routing
+A language catalogue maps to capabilities; the capability registry must separately report `available / unavailable / degraded / not_probed`, tool versions and environment constraints. Mixed-language work becomes linked subtasks with explicit contracts; the integration lead checks API/schema compatibility. A file extension alone never grants an executor.
+
+### Independent QA
+QA receives the task intent, diff, base SHA, test evidence and acceptance criteria. It checks regressions, security, imports/callers, persistence, error paths, path portability, Windows compatibility, licensing and the exact output. QA can reject the delivery and request a bounded repair loop; the author cannot silently mark its own work verified.
+
+### Reliability and memory
+Persist plans, task transitions, diffs, tool invocations, test output summaries, artifacts and final evidence. Redact secrets and avoid storing entire sensitive environment dumps. Record lessons only after verified outcomes. Update the canonical roadmap and AndreOS-Memory checkpoint at meaningful milestones.
+
+## Implementation sequence
+
+1. **Catalogue (this branch):** language metadata and planning-only validation profiles.
+2. **Tests (this branch):** pure unit tests for extension resolution, ambiguity, unknown languages, and fail-closed planning semantics.
+3. **Repository/toolchain inventory:** enumerate manifests, lockfiles, compilers/interpreters, linters, test frameworks and existing CI/manual-build constraints. Do not infer installed tools from dependencies alone.
+4. **Programming task contract:** align language selection and patch metadata with the existing mission/organization/task models; avoid creating a competing mission state store.
+5. **Safe toolchain probes:** read-only, bounded probes; no installation or network download without explicit policy.
+6. **Validation adapters:** small adapters for installed tools; structured result schema and timeout/output limits.
+7. **Patch application:** isolated working tree or branch, explicit allowed paths, snapshot/rollback and diff review.
+8. **Independent QA gates:** focused regression suite and negative tests; preserve the one-open-PR policy.
+9. **Runtime integration:** connect to actual worker lifecycle, durable missions, Event Bus and cockpit only after their contracts are verified.
+10. **PC verification:** run tests/builds on André's Windows PC; capture exact command, commit SHA, output, resource impact and recovery behavior.
+
+## Test status and release gate
+
+The unit tests added alongside the catalogue have **not yet been executed** in this environment. No compiler/linter availability is claimed, and no runtime/build test was run. The branch is intentionally separate from the existing governance PR #143; no second PR has been opened.
+
+Before merge: run the new tests; run focused development/organization tests; verify imports/callers and Python compatibility; test unknown/ambiguous extensions; verify no code execution occurs; then update the roadmap with results. Before declaring the Programming department operational, prove at least one supported language end-to-end from task intake through safe patch, real validation, independent QA, durable result and truthful final report.
+
+## Canonical references
+
+- `docs/architecture/DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md`
+- `docs/DGM-MAT_DIGITAL_ORGANIZATION_BUILD_ORDER.md`
+- `docs/architecture/DGM-MAT-MASTER-BRAIN-FIRST-IMPLEMENTATION-ROADMAP-2026-10-22.md`
+- `docs/operations/AGENT_SHELL_GIT_POLICY.md`
+
+The roadmap remains authoritative for overall sequencing. This audit supplements it and does not claim the full repository or all language specialists are already implemented.
