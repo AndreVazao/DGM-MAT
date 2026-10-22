@@ -59,13 +59,17 @@ class DevelopmentTaskResultTests(unittest.TestCase):
                 independent_qa_passed=True,
             )
 
-    def test_verified_requires_nonempty_evidence_references(self):
-        with self.assertRaisesRegex(ValueError, "reference and outcome"):
+    def test_evidence_requires_nonempty_reference(self):
+        with self.assertRaisesRegex(ValueError, "must be non-empty"):
+            TaskEvidence("independent_qa", "passed", " ")
+
+    def test_verified_rejects_failed_evidence_even_when_flags_are_true(self):
+        with self.assertRaisesRegex(ValueError, "outcomes to be 'passed'"):
             DevelopmentTaskResult(
                 "task-1", TaskResultStatus.VERIFIED, "Verified",
                 evidence=(
-                    TaskEvidence("validation", "passed", "test://validation"),
-                    TaskEvidence("independent_qa", "passed", ""),
+                    TaskEvidence("validation", "failed", "test://validation"),
+                    TaskEvidence("independent_qa", "passed", "test://qa"),
                 ),
                 validation_passed=True,
                 independent_qa_passed=True,
