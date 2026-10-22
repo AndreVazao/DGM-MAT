@@ -1,3 +1,5 @@
+# DGM-MAT — Digital Organization Build Order
+
 # DGM-MAT Digital Organization Build Order
 
 ## Objective
@@ -156,3 +158,19 @@ The status labels in this document are historical planning notes. They do not pr
 Targeted searches exposed the legacy call chain but did not prove a complete production caller graph. The current visible `DevelopmentEngine.process_request` path plans a feature, appends a task to an in-memory list, invokes an implementation method that only backs up `.env` and returns `IN_PROGRESS`, records that status and returns a feature ID. It does not generate/apply code or invoke validation. Do not treat it as a working coding pipeline, and do not connect the new language catalogue to it yet. See the audit for exact limitations and the required local AST/import/caller scan.
 
 Security/reliability note: avoid invoking the legacy implementation method merely to obtain a status because it may copy `.env` (potential secrets) into a plain backup file. Do not delete or broadly refactor legacy APIs until callers and compatibility tests are mapped. A shared truthful task-result contract and SQLite-backed task registry now exist on the audit branch, with legal state transitions, revision checks, evidence storage and persistent event history. They are deliberately not wired into the legacy pipeline yet. Next: execute the focused tests in a controlled local environment, complete the local AST/import/caller map, then build one end-to-end Python pilot that produces a real patch, runs configured checks, receives independent QA, and persists truthful evidence. PR #143 remains the only open PR; no new PR or GitHub Actions run was created in this audit pass.
+
+## Follow-up: conversation continuity, Obsidian and adaptive installation — 2026-10-22
+
+The programming department audit now has a dedicated specification: [Conversation memory, Obsidian and adaptive inventory](architecture/DGM-MAT-CONVERSATION-MEMORY-OBSIDIAN-AND-ADAPTIVE-INVENTORY-2026-10-22.md).
+
+Build in this order; do not skip ahead to autonomous self-modification:
+
+1. **Archive before summarizing:** define and test import of authorized full conversation exports, retaining raw message text/order/speaker/attachments metadata, source IDs, capture coverage and checksums. A summary never replaces raw history.
+2. **Context and decisions:** build separate indexed views for user requirements/decisions, AI proposals, observed evidence, superseded choices and the architecture evolution timeline. Link every summary/decision to source messages.
+3. **Reconcile against code:** map current requirements to actual repositories, revisions, files, callers, tests and runtime evidence; report gaps and contradictions without silently inventing intent.
+4. **Obsidian adapter:** inspect the existing Obsidian installation and vault on the PC; identify the supported local write/read interface; perform a harmless round-trip and verify it before declaring shared persistent memory active. Reuse AndreOS-Memory/task storage where appropriate; do not create competing stores or duplicate notes.
+5. **Portable inventory:** generate a dated Markdown and machine-readable environment manifest from one canonical model, including required/optional/conditional dependencies, repository revisions, health checks, recovery steps and detected hardware capability. Export to USB only after verifying the destination and excluding secret values.
+6. **Resource-aware execution:** choose native checks, a connected device, container, emulator/VM or stronger authorized machine based on measured resources and test needs. Do not install an Android emulator on a low-resource PC merely because an APK is being built.
+7. **Bounded autonomy:** allow routine reversible checks within scope; require approval for destructive changes, broad installs, privilege/secrets changes, external sharing, canonical architecture changes and protected merges.
+
+Current status is **specification documented; runtime integration pending**. The current environment has not established a live Obsidian connector or access to the PC's vault, so no claim of a completed Obsidian connection is made. The implementation gate requires a real PC read/write verification.
