@@ -349,13 +349,47 @@ class RecoveryLedger:
             ).fetchone()
         return RecoverySource(**{key: row[key] for key in RecoverySource.__dataclass_fields__}) if row else None
 
-    def list_sources(self) -> list[RecoverySource]:
+    def status_counts(self) -> dict[str, int]:
+        """Return source totals without loading every source record into memory."""
         with self._connection() as db:
             rows = db.execute("""
-                SELECT * FROM recovery_sources
-                ORDER BY provider, source_date, source_id
+                SELECT capture_status, COUNT(*) AS item_count
+                FROM recovery_sources
+                GROUP BY capture_status
+                ORDER BY capture_status
             """).fetchall()
-        return [RecoverySource(**{key: row[key] for key in RecoverySource.__dataclass_fields__}) for row in rows]
+        return {row["capture_status"]: row["item_count"] for row in rows}
+
+    def list_sources(
+        self, *, limit: int | None = None, offset: int = 0
+    ) -> list[RecoverySource]:
+        """List source metadata in stable order; pagination is applied in SQLite."""
+        if offset < 0:
+            raise ValueError("offset must be non-negative.")
+        if limit is not None and limit < 1:
+            raise ValueError("limit must be positive when provided.")
+        query = """
+            SELECT * FROM recovery_sources
+            ORDER BY provider, source_date, source_id
+        """
+        parameters: tuple[int, ...] = ()
+        if limit is not None:
+            query += " LIMIT ? OFFSET ?"
+            parameters = (limit, offset)
+        elif offset:
+            query += " LIMIT -1 OFFSET ?"
+            parameters = (offset,)
+        with self._connection() as db:
+            rows = db.execute(query, parameters).fetchall()
+        return [
+            RecoverySource(**{key: row[key] for key in RecoverySource.__dataclass_fields__})
+            for row in rows
+        ]
+
+    def source_count(self) -> int:
+        with self._connection() as db:
+            row = db.execute("SELECT COUNT(*) AS item_count FROM recovery_sources").fetchone()
+        return int(row["item_count"])
 
     @staticmethod
     def sha256_file(path: str | Path) -> str:
