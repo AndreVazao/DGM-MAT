@@ -105,7 +105,7 @@ Persist plans, task transitions, diffs, tool invocations, test output summaries,
 
 ## Test status and release gate
 
-The unit tests added alongside the catalogue have **not yet been executed** in this environment. No compiler/linter availability is claimed, and no runtime/build test was run. The branch is intentionally separate from the existing governance PR #143; no second PR has been opened.
+The seven unit tests were executed against an isolated temporary copy of the catalogue and test module: **7 passed**. This was not a checkout of the full repository and does not replace running the tests on the actual branch/Windows PC. No compiler/linter availability is claimed, and no runtime/build test was run. The branch is intentionally separate from the existing governance PR #143; no second PR has been opened.
 
 Before merge: run the new tests; run focused development/organization tests; verify imports/callers and Python compatibility; test unknown/ambiguous extensions; verify no code execution occurs; then update the roadmap with results. Before declaring the Programming department operational, prove at least one supported language end-to-end from task intake through safe patch, real validation, independent QA, durable result and truthful final report.
 
