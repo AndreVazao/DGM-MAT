@@ -301,7 +301,7 @@ class RecoveryLedger:
     def recover_interrupted(self, pipeline: str = "conversation_recovery") -> int:
         """Requeue in-progress items after startup, when prior workers are gone."""
         now = time.time()
-        with self._connect() as db:
+        with self._connection() as db:
             rows = db.execute("""
                 SELECT provider, source_id FROM recovery_sources
                 WHERE capture_status='in_progress'
@@ -323,7 +323,7 @@ class RecoveryLedger:
         if not reason.strip():
             raise ValueError("retry reason must be non-empty.")
         now = time.time()
-        with self._connect() as db:
+        with self._connection() as db:
             exists = db.execute(
                 "SELECT 1 FROM recovery_sources WHERE provider=? AND source_id=?",
                 (provider, source_id),
@@ -342,7 +342,7 @@ class RecoveryLedger:
             """, (provider, source_id, reason, now))
 
     def get(self, provider: str, source_id: str) -> RecoverySource | None:
-        with self._connect() as db:
+        with self._connection() as db:
             row = db.execute(
                 "SELECT * FROM recovery_sources WHERE provider=? AND source_id=?",
                 (provider, source_id),
@@ -350,7 +350,7 @@ class RecoveryLedger:
         return RecoverySource(**{key: row[key] for key in RecoverySource.__dataclass_fields__}) if row else None
 
     def list_sources(self) -> list[RecoverySource]:
-        with self._connect() as db:
+        with self._connection() as db:
             rows = db.execute("""
                 SELECT * FROM recovery_sources
                 ORDER BY provider, source_date, source_id
