@@ -77,6 +77,12 @@ Explicitly protected structural changes remain subject to André's approval even
 - If the cockpit is offline, the request stays durable and queued; the system must not treat missing UI delivery as approval.
 - The blocked task must not hold a department-wide lock or prevent unrelated work from being scheduled.
 
+## Privileged governance API credentials
+
+The CEO approval, owner final-approval, and owner progressive-trust endpoints require a separate server-verified credential in the `X-DGM-Governance-Credential` header. Configure two distinct random secrets of at least 32 characters as `DGM_GOVERNANCE_CEO_TOKEN` and `DGM_GOVERNANCE_OWNER_TOKEN`. If either secret is missing, too short, or equal to the other, privileged governance routes fail closed with HTTP 503. An invalid or missing credential is denied; a session's `client_id`, subject, username, request-body actor, or claimed role never establishes CEO/owner authority.
+
+These secrets must remain outside source control, frontend bundles, URLs, request bodies, logs, and browser local storage. The generic local session bearer remains required by the outer API middleware in addition to the dedicated governance header. The current cockpit does not yet provide a secure credential-entry/approval flow, and the CEO scheduler does not yet inject its privileged credential; therefore this change secures the API boundary but does not claim the full approval workflow is end-to-end operational.
+
 ## Implementation status
 
 The current governance-meeting PR introduces durable meeting records, a pending-approval listing endpoint for cockpit polling, conservative content-based critical-plan signals in addition to meeting-type classification, and a SHA-256 digest binding CEO/owner approval to the reviewed proposal, action plan and recorded evidence. New evidence added after a decision invalidates that decision and its approvals. A separate progressive-trust policy module and owner-controlled API are also included. Focused unit tests have been added but have not been executed in this environment. The PR does not yet implement the cockpit popup, cross-device push delivery, approval-bound execution dispatch, live CEO scheduler integration, UI feedback capture, or end-to-end runtime tests. Those remain follow-up work and must not be represented as completed.
