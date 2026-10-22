@@ -61,7 +61,16 @@ class RecoveryLedgerTests(unittest.TestCase):
         saved = self.ledger.get("chatgpt", "a")
         self.assertEqual(saved.capture_status, "failed")
         self.assertEqual(saved.last_error, "source unavailable")
+        self.assertIsNone(self.ledger.next_source())
+        self.ledger.request_retry("chatgpt", "a", "provider access restored")
         self.assertEqual(self.ledger.next_source().source_id, "a")
+
+    def test_retry_requires_a_reason_and_known_source(self) -> None:
+        self.add("a", "2026-01-01")
+        with self.assertRaises(ValueError):
+            self.ledger.request_retry("chatgpt", "a", " ")
+        with self.assertRaises(RecoveryLedgerError):
+            self.ledger.request_retry("chatgpt", "missing", "new evidence")
 
     def test_verified_requires_archive_path_and_digest(self) -> None:
         self.add("a", "2026-01-01")
