@@ -176,6 +176,11 @@ def import_chatgpt_conversations_json(
     source = Path(source_file).expanduser().resolve()
     if not source.is_file():
         raise FileNotFoundError(source)
+    # Validate the entire top-level JSON array before any archive or ledger writes.
+    # The incremental parser keeps memory bounded; the second pass performs ingestion.
+    for _ in _iter_json_array(source):
+        pass
+
     root = Path(archive_root).expanduser().resolve() / "chatgpt"
     root.mkdir(parents=True, exist_ok=True)
 
