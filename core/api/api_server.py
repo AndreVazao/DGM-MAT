@@ -154,10 +154,13 @@ def _pc_cockpit_directory() -> Path | None:
     standard local GodMode layout.
     """
     configured = os.getenv("DGM_PC_COCKPIT_PATH")
-    candidates = [
-        Path(configured) if configured else None,
-        Path(__file__).resolve().parents[3] / "DGM-Cockpit-Frontend",
-    ]
+    # An explicit but invalid path is treated as unavailable; do not silently
+    # switch to a different checkout than the operator configured.
+    candidates = (
+        [Path(configured)]
+        if configured
+        else [Path(__file__).resolve().parents[3] / "DGM-Cockpit-Frontend"]
+    )
     for candidate in candidates:
         if (
             candidate
