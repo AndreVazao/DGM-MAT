@@ -146,6 +146,30 @@ def start_usb_recovery() -> None:
     start_usb_recovery_monitor()
 
 
+def _pc_cockpit_directory() -> Path | None:
+    """Find the optional PC cockpit without making it a backend dependency.
+
+    The backend remains fully usable when the frontend repository is absent.
+    An explicit path wins; otherwise look for the sibling checkout used by the
+    standard local GodMode layout.
+    """
+    configured = os.getenv("DGM_PC_COCKPIT_PATH")
+    candidates = [
+        Path(configured) if configured else None,
+        Path(__file__).resolve().parents[3] / "DGM-Cockpit-Frontend",
+    ]
+    for candidate in candidates:
+        if (
+            candidate
+            and candidate.is_dir()
+            and (candidate / "index.html").is_file()
+            and (candidate / "app.js").is_file()
+            and (candidate / "styles.css").is_file()
+        ):
+            return candidate
+    return None
+
+
 def _mobile_ui_directory() -> Path | None:
     configured = os.getenv("DGM_MOBILE_UI_PATH")
     candidates = [
@@ -161,6 +185,13 @@ def _mobile_ui_directory() -> Path | None:
 mobile_ui = _mobile_ui_directory()
 if mobile_ui:
     app.mount("/app", StaticFiles(directory=str(mobile_ui), html=True), name="mobile-app")
+
+# The PC cockpit is optional and separate from the mobile/PWA shell. If it is
+# missing, the API still starts normally and all backend capabilities remain
+# available to other local clients.
+pc_cockpit = _pc_cockpit_directory()
+if pc_cockpit:
+    app.mount("/cockpit", StaticFiles(directory=str(pc_cockpit), html=True), name="pc-cockpit")
 
 # Enforce the route inventory after all HTTP/WebSocket routes and the optional UI mount are registered.
 # Keep this middleware outermost; it validates sessions before route handlers run.
