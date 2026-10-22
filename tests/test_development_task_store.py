@@ -39,6 +39,16 @@ class TaskStoreTests(unittest.TestCase):
         with self.assertRaises(InvalidTaskTransitionError):
             self.store.create(DevelopmentTaskResult("task-1", TaskResultStatus.RUNNING, "Running"))
 
+    def test_new_planned_task_cannot_smuggle_execution_evidence(self):
+        result = DevelopmentTaskResult(
+            "task-1", TaskResultStatus.PLANNED, "Plan",
+            evidence=(TaskEvidence("validation", "passed", "tests/result.txt"),),
+        )
+        with self.assertRaisesRegex(InvalidTaskTransitionError, "cannot include execution evidence"):
+            self.store.create(result)
+        with self.assertRaises(TaskNotFoundError):
+            self.store.get("task-1")
+
     def test_happy_path_persists_history_and_verification_evidence(self):
         self.store.create(DevelopmentTaskResult("task-1", TaskResultStatus.PLANNED, "Plan"))
         running = self.store.transition(
