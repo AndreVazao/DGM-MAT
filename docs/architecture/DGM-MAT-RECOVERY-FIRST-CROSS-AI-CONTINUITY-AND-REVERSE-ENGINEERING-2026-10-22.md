@@ -225,4 +225,4 @@ Tests authored in `tests/test_chatgpt_export_importer.py` cover original-file pr
 idempotent import, conflicts, attachment incompleteness, malformed input and invalid
 records. These tests have **not yet been executed** in a full local checkout or on the
 target Windows PC. This adapter is not yet connected to a cockpit upload flow or startup
-pipeline, and it currently accepts the JSON file rather than unpacking a provider ZIP.
+pipeline, and it now accepts a provider ZIP by streaming only its unique `conversations.json` member into private staging. Arbitrary members are never extracted; attachment files remain unprocessed.
