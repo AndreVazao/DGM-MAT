@@ -210,3 +210,16 @@ Added:
 The intended recovery pipeline must not assume that every AI response is approved, current or correct. It records source/platform/message metadata where available, distinguishes requirements from suggestions and observed evidence, retains original snippets, maps each fragment to a destination symbol, reconciles conflicts against the current repository and tests, and never replaces an entire file with a partial snippet. It should extend existing sources of truth rather than adding a new database/service without demonstrated need.
 
 The simplicity helper is deliberately limited: it can flag measurable scope risks, but cannot determine whether a design is elegant, prove security, or replace an independent review. It is not connected to the mission runtime yet. Tests are authored but have not been executed in a full checkout/Windows environment. No production integration or PR is authorized by this checkpoint.
+
+### Full conversation context, Obsidian memory and adaptive reinstall inventory — 2026-10-22
+
+Added `docs/architecture/DGM-MAT-CONVERSATION-MEMORY-OBSIDIAN-AND-ADAPTIVE-INVENTORY-2026-10-22.md` as a specification for the user's additional requirements:
+
+- Archive the full authorized conversation transcript before summarizing/extracting code; preserve message order, speaker roles, timestamps, attachments metadata, source references, integrity/deduplication information and explicit capture limitations. A summary must link back to the raw history and never replace it.
+- Separate user requests/decisions from AI responses/proposals and observed evidence; maintain a decision ledger and architecture evolution timeline including superseded choices. Reconcile actual code, tests, callers and runtime state against that context.
+- Use Obsidian as the preferred human-readable persistent memory vault shared by agents through scoped project/role notes. Do not claim it is connected until the actual installed vault/interface has been discovered and a read/write round-trip is verified. Avoid duplicate sources of truth and never put secret values in the vault.
+- Generate a portable, versioned environment/install inventory suitable for USB, including repository revisions, dependencies/toolchains, required/optional/conditional software, health checks, recovery instructions and hardware capability. No credentials on the USB.
+- Adapt test plans to detected CPU/RAM/disk/virtualization/device capacity. Android emulators/VMs are conditional on measured support and expected test value; a weak PC should use native/static/device tests or an authorized stronger machine instead.
+- Learn stable explicit preferences while preserving approval gates for destructive/high-impact changes, installs, secrets, architecture changes and merges.
+
+This is a **specification only**. Full conversation ingestion, runtime Obsidian integration, USB inventory generation, hardware capability probing and autonomy enforcement are not yet end-to-end implemented or verified. Do not claim the existing Obsidian installation is connected: that requires access to the target PC and a tested adapter. The detailed acceptance criteria are in the new document.
