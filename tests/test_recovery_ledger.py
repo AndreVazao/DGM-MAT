@@ -89,6 +89,24 @@ class RecoveryLedgerTests(unittest.TestCase):
         self.assertEqual(saved.raw_sha256, digest)
         self.assertEqual(saved.deletion_status, "not_eligible")
 
+    def test_out_of_order_completion_does_not_skip_earlier_source(self) -> None:
+        self.add("a", "2026-01-01")
+        self.add("b", "2026-01-02")
+        self.ledger.checkpoint("chatgpt", "b", capture_status="captured")
+        self.assertEqual(self.ledger.next_source().source_id, "a")
+        self.ledger.checkpoint("chatgpt", "a", capture_status="captured")
+        self.assertIsNone(self.ledger.next_source())
+
+    def test_verified_rejects_mismatched_archive_digest(self) -> None:
+        self.add("a", "2026-01-01")
+        archive = self.root / "conversation.json"
+        archive.write_text('{"messages":[]}', encoding="utf-8")
+        with self.assertRaises(RecoveryLedgerError):
+            self.ledger.checkpoint(
+                "chatgpt", "a", capture_status="verified",
+                raw_archive_path=str(archive), raw_sha256="0" * 64,
+            )
+
     def test_hash_file_matches_sha256(self) -> None:
         archive = self.root / "archive.bin"
         archive.write_bytes(b"DGM-MAT")
