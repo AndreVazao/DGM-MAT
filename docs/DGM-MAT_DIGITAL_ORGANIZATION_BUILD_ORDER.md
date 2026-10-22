@@ -232,3 +232,19 @@ inventory, or cockpit. It does not access provider history or delete anything.
 7. Only after archive, index, provenance and project reconciliation are independently
    verified, produce a deletion-candidate report. Provider deletion remains disabled
    until explicit user approval and a supported, verifiable provider interface exist.
+
+### Read-only progress API increment
+
+Added the read-only operator endpoints:
+
+- `GET /recovery/status` — aggregate ledger counts and explicit `ledger_only` /
+  provider-connectors-disabled / provider-deletion-disabled state.
+- `GET /recovery/sources?limit=50&offset=0` — paginated source metadata without
+  transcript bodies.
+- Router registered in `core/api/api_server.py`; both paths are classified as
+  operator-only in `core/api/security_policy.py`.
+- Focused API tests are in `tests/api/test_recovery_api.py`.
+
+The endpoint creates/opens the local ledger on first use, but does not import conversations.
+It is not yet a cockpit screen or a working provider importer. Test execution remains
+pending because this work has been made against the GitHub branch, not a full local checkout.
