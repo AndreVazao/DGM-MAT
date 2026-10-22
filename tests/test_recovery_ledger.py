@@ -43,7 +43,24 @@ class RecoveryLedgerTests(unittest.TestCase):
         self.assertEqual(first.source_id, "a")
         second = self.ledger.next_source()
         self.assertIsNotNone(second)
-        self.assertEqual(second.source_id, "a")  # unfinished item is retried first
+        self.assertEqual(second.source_id, "b")
+
+    def test_restart_requeues_interrupted_source_once(self) -> None:
+        self.add("a", "2026-01-01")
+        self.add("b", "2026-01-02")
+        self.assertEqual(self.ledger.next_source().source_id, "a")
+        self.assertIsNone(self.ledger.next_source())
+        self.assertEqual(self.ledger.recover_interrupted(), 1)
+        self.assertEqual(self.ledger.next_source().source_id, "a")
+
+    def test_partial_capture_does_not_trap_cursor_and_requires_explicit_retry(self) -> None:
+        self.add("a", "2026-01-01")
+        self.add("b", "2026-01-02")
+        self.ledger.next_source()
+        self.ledger.checkpoint("chatgpt", "a", capture_status="partial", detail="scroll incomplete")
+        self.assertEqual(self.ledger.next_source().source_id, "b")
+        self.ledger.request_retry("chatgpt", "a", "provider export now available")
+        self.assertEqual(self.ledger.next_source().source_id, "a")
 
     def test_completed_source_advances_cursor_and_does_not_repeat(self) -> None:
         self.add("a", "2026-01-01")
