@@ -6,6 +6,8 @@ from core.development.development_models import FeaturePlan, ImplementationStatu
 
 class FeaturePlanner:
     def plan_feature(self, feature_request: str) -> FeaturePlan:
+        if not isinstance(feature_request, str) or not feature_request.strip():
+            raise ValueError("A non-empty feature request is required.")
         # Stable IDs survive process restarts and are independent of Python hash randomization.
         normalized_request = feature_request.strip()
         digest = hashlib.sha256(normalized_request.encode("utf-8")).hexdigest()[:20]
