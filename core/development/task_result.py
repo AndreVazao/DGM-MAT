@@ -68,16 +68,12 @@ class DevelopmentTaskResult:
             required_kinds = {item.kind for item in self.evidence}
             if not {"validation", "independent_qa"}.issubset(required_kinds):
                 raise ValueError("verified status requires validation and independent_qa evidence references.")
-            required_evidence = {
-                item.kind: item
-                for item in self.evidence
+            required_evidence = [
+                item for item in self.evidence
                 if item.kind in {"validation", "independent_qa"}
-            }
-            if any(
-                required_evidence[kind].outcome.strip().casefold() != "passed"
-                for kind in ("validation", "independent_qa")
-            ):
-                raise ValueError("verified status requires both validation and independent QA evidence outcomes to be 'passed'.")
+            ]
+            if any(item.outcome.strip().casefold() != "passed" for item in required_evidence):
+                raise ValueError("verified status requires all validation and independent QA evidence outcomes to be 'passed'.")
         elif self.validation_passed or self.independent_qa_passed:
             raise ValueError("pass flags may only be set when status is verified.")
 
