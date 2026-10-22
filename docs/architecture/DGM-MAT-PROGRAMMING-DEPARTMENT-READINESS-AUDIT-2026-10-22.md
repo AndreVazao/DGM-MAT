@@ -191,3 +191,11 @@ The current `verified` contract is an accidental-success guard, not an authoriza
 - Add negative tests for fabricated paths, evidence from another task/run, stale source SHA, untrusted caller, and an executor trying to issue its own independent-QA pass before connecting this store to the API or mission engine.
 
 This is a design gate, not a claim that the current store already enforces these controls. The existing `verified` status is safe to use only as a narrowly controlled internal contract until the trusted evidence producer is implemented.
+
+### Evidence-envelope prototype — 2026-10-22
+
+Added `core/development/evidence_envelope.py` and focused tests in `tests/test_development_evidence_envelope.py` on the synchronized audit branch. The prototype checks task/run/source-SHA consistency, repository-root resolution, allowlisted relative artifact paths (including resolved symlink containment), artifact SHA-256, zero exit status, and an explicit producer capability map. It rejects malformed Git SHAs, path traversal, absent allowlists, mismatches, and executor/developer roles claiming validation or independent QA.
+
+**Important limits:** the module reads the referenced artifact but does not run the command, authenticate a process, or prove the artifact was honestly produced. The producer capability map must come from a trusted internal adapter; if a caller can supply it, the trust check is not a security boundary. This prototype is deliberately **not wired** to `TaskStore`, the API, Mission Engine, Execution Fabric or cockpit, and must not authorize `VERIFIED` transitions by itself. Further work must add a trusted execution boundary and bind evidence to an immutable run record before integration.
+
+The tests are authored but have **not** been executed against a full repository checkout or on the Windows PC. A GitHub commit is not evidence that Python imports, test discovery, Windows symlink behavior or runtime integration are correct. Next gate: run the focused tests and full relevant development tests in a real checkout, then perform an adversarial review before any integration or PR.
