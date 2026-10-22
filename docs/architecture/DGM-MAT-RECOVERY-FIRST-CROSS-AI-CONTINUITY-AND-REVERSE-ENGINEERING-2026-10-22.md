@@ -183,7 +183,8 @@ The branch now contains `core/recovery/recovery_ledger.py` and focused tests in
 - deterministic ordering by provider, source date and source ID;
 - a durable forward cursor that advances only over a contiguous prefix of completed
   sources, so an out-of-order checkpoint cannot skip earlier unfinished work;
-- explicit retry behavior for partial, blocked or failed items;
+- explicit retry queue for previously blocked/failed sources, preventing an unavailable
+  conversation from trapping the cursor or causing an endless retry loop;
 - local archive SHA-256 read-back verification before a source can be marked
   `verified`.
 
