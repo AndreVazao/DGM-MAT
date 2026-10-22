@@ -330,7 +330,8 @@ O desenvolvimento remoto começou em branches isolados, sem fazer merge nem subs
 |---|---|---|---|
 | Backend — catálogo do escritório | O endpoint existente `GET /runtime/office/telemetry` acrescenta o catálogo declarado de departamentos/agentes; atividade permanece `unknown` sem evidência direta; permissões internas não são expostas. | [DGM-MAT #145](https://github.com/AndreVazao/DGM-MAT/pull/145) | Testes adicionados; ainda não executados. |
 | Cockpit móvel | Nova vista de escritório com contagens observadas, atividade recente sem objetivos privados e diretório expansível quando o catálogo estiver disponível. | [DGM-MAT-Mobile #2](https://github.com/AndreVazao/DGM-MAT-Mobile/pull/2) | Sintaxe JavaScript verificada; testes de contrato e APK ainda não executados. |
-| Cockpit PC | Diretório expansível de departamentos/agentes, separado dos estados em direto e construído com DOM/`textContent`. | [DGM-Cockpit-Frontend #13](https://github.com/AndreVazao/DGM-Cockpit-Frontend/pull/13) | Sintaxe JavaScript verificada; suíte Node e revisão visual local ainda não executadas. |
+| Montagem opcional do cockpit PC | Serve o frontend PC em `/cockpit/` através do backend, sem substituir `/app/`; o backend arranca mesmo sem o frontend. | [DGM-MAT #146](https://github.com/AndreVazao/DGM-MAT/pull/146) | Testes adicionados; ainda não executados. |
+| Cockpit PC integrado | Mantém Chat + Escritório digital, catálogo organizacional e teste E2E manual de API/runtime/sessão/resposta/histórico, com ping classificado como `chat` e sem `mission_id`. | [DGM-Cockpit-Frontend #15](https://github.com/AndreVazao/DGM-Cockpit-Frontend/pull/15) | Sintaxe JavaScript e verificações estáticas passaram; suíte Node e E2E real ainda não executados. |
 
 ### Ordem de integração
 
@@ -344,7 +345,35 @@ O desenvolvimento remoto começou em branches isolados, sem fazer merge nem subs
 
 O PR [DGM-MAT #143](https://github.com/AndreVazao/DGM-MAT/pull/143), relativo a reuniões de governação e aprovações do proprietário, continua separado e requer a sua própria revisão/validação; não se assume que a interface já está ligada a esses controlos.
 
-## 21. Referências técnicas externas
+## 21. Checkpoint adicional — cockpit local mínimo e teste E2E
+
+### Separação entre cérebro e interface
+
+O cockpit PC é agora preparado para ser servido pelo próprio backend local através de `/cockpit/`, configurado por `DGM_PC_COCKPIT_PATH`. O mount é opcional: se a pasta não existir ou estiver incompleta, o backend continua a arrancar. A rota móvel/legada `/app/` permanece separada. O frontend não recebe autoridade sobre missões, permissões, memória ou aprovações.
+
+### Teste de integridade disponível na interface
+
+O painel novo só corre após clique explícito e verifica:
+1. `GET /health`;
+2. `GET /runtime/health` com sessão;
+3. `GET /mobile/status` e lista de conversas;
+4. criação/reutilização de uma thread de diagnóstico dedicada;
+5. ping neutro, confirmação de intenção `chat`, resposta não vazia e ausência de `mission_id`;
+6. nova leitura da thread para confirmar que mensagem e resposta estão no histórico.
+
+**Limite importante:** isto prova o percurso conversacional API→serviço→armazenamento→leitura, quando passar no PC real. Não prova, por si só, que o executor de missões consegue executar uma tarefa de programação de ponta a ponta. Essa validação deve ser um gate separado, governado e observado, sem criar uma missão de teste automaticamente durante a abertura do dashboard.
+
+### Estado dos PRs relacionados
+
+- [DGM-MAT #145](https://github.com/AndreVazao/DGM-MAT/pull/145): catálogo organizacional declarado.
+- [DGM-MAT #146](https://github.com/AndreVazao/DGM-MAT/pull/146): mount opcional do cockpit PC.
+- [DGM-Cockpit-Frontend #15](https://github.com/AndreVazao/DGM-Cockpit-Frontend/pull/15): cockpit combinado, diretório de funções e teste E2E manual.
+- [DGM-MAT-Mobile #2](https://github.com/AndreVazao/DGM-MAT-Mobile/pull/2): vista móvel de telemetria.
+- [DGM-MAT #143](https://github.com/AndreVazao/DGM-MAT/pull/143): governação, reuniões e aprovações, ainda separado.
+
+Os PRs de interface antigos #13 e #14 no repositório do cockpit foram fechados sem merge porque o trabalho foi consolidado no PR #15. Não foi iniciado CI nem compilado EXE/APK. O próximo gate é rever integração, executar as suites automatizadas quando fizer sentido e depois validar no PC local.
+
+## 22. Referências técnicas externas
 
 Estas referências são pontos de comparação, não dependências obrigatórias:
 
