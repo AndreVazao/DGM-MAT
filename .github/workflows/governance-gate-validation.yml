@@ -1,0 +1,49 @@
+name: Governance Gate Validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/central-governance-meetings-runtime
+
+permissions:
+  contents: read
+
+concurrency:
+  group: governance-gate-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  governance-regressions:
+    name: Governance regressions (${{ matrix.os }}, Python 3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout reviewed branch
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install repository dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Compile core and tests
+        run: python -m compileall -q core tests
+      - name: Run governance and API security regressions
+        env:
+          PYTHONPATH: .
+        run: >
+          python -m pytest -q
+          tests/test_governance_api_auth.py
+          tests/test_governance_meeting_registry.py
+          tests/test_progressive_trust.py
+          tests/security/test_api_global_auth_enforcement.py
+          tests/security/test_api_security_policy.py
