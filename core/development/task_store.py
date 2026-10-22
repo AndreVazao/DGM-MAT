@@ -10,8 +10,9 @@ import json
 import os
 import sqlite3
 import time
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Iterator
 
 from core.development.task_result import (
     DevelopmentTaskResult,
@@ -69,8 +70,18 @@ class TaskStore:
         connection.execute("PRAGMA busy_timeout = 5000")
         return connection
 
+    @contextmanager
+    def _connection(self) -> Iterator[sqlite3.Connection]:
+        """Commit or roll back a connection scope, then always release the handle."""
+        connection = self._connect()
+        try:
+            with connection:
+                yield connection
+        finally:
+            connection.close()
+
     def _initialize(self) -> None:
-        with self._connect() as connection:
+        with self._connection() as connection:
             connection.execute("PRAGMA journal_mode = WAL")
             connection.executescript(
                 """
@@ -134,7 +145,7 @@ class TaskStore:
         if result.status is not TaskResultStatus.PLANNED:
             raise InvalidTaskTransitionError("New tasks must start in the planned state.")
         now = time.time()
-        with self._connect() as connection:
+        with self._connection() as connection:
             try:
                 connection.execute(
                     """INSERT INTO development_tasks
@@ -154,7 +165,7 @@ class TaskStore:
         return self.get(result.task_id)
 
     def get(self, task_id: str) -> DevelopmentTaskResult:
-        with self._connect() as connection:
+        with self._connection() as connection:
             row = connection.execute(
                 "SELECT * FROM development_tasks WHERE task_id = ?", (task_id,)
             ).fetchone()
@@ -194,7 +205,7 @@ class TaskStore:
         if not isinstance(summary, str) or not summary.strip():
             raise ValueError("summary must be a non-empty string.")
         now = time.time()
-        with self._connect() as connection:
+        with self._connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
             row = connection.execute(
                 "SELECT * FROM development_tasks WHERE task_id = ?", (task_id,)
@@ -258,7 +269,7 @@ class TaskStore:
         return self.get(task_id)
 
     def list_events(self, task_id: str) -> list[dict[str, object]]:
-        with self._connect() as connection:
+        with self._connection() as connection:
             exists = connection.execute(
                 "SELECT 1 FROM development_tasks WHERE task_id = ?", (task_id,)
             ).fetchone()
