@@ -349,4 +349,4 @@ def import_chatgpt_export_zip(
                 return replace(report, source_file=str(source_zip))
     except zipfile.BadZipFile as exc:
         raise ChatGPTExportError("Input is not a valid ZIP archive.") from exc
-\n
+
