@@ -14,9 +14,14 @@ A source review found concrete placeholders in the default branch:
 - `core/development/code_generation.py`: `CodeGenerationEngine.generate_code()` unconditionally returns an empty list.
 - `core/autonomous_dev/dead_code_detector.py`: `DeadCodeDetector.find_dead_code()` unconditionally returns an empty list.
 - `core/development/development_models.py` provides basic `CodeChange`, `FeaturePlan`, `SpecializedAgent` and `ValidationResult` models, but these alone do not implement code generation, language-specific validation or a secure patch-application lifecycle.
+- `core/development/validation_engine.py`: `validate_implementation()` returns `ValidationResult(success=True)` unconditionally, with no checks.
+- `core/development/architecture_validator.py`: references `Any` without importing it and currently always builds an empty error list; the import/runtime failure was inferred from source, not executed here.
+- `core/development/implementation_engine.py`: backs up a local `.env` file if present, logs a message and returns `IN_PROGRESS`; it does not apply generated changes. The automatic environment backup also needs a path/retention/secret-handling review before this engine is reused.
+- `core/development/development_engine.py` and `core/development/execution_fabric.py`: the visible implementation dispatches into an in-memory list and returns a feature ID; it does not demonstrate a durable worker lifecycle or completed implementation.
+- `core/development/feature_planner.py`: derives IDs from Python's process-randomized built-in `hash()`, so IDs are not stable across processes/runs.
 - `docs/DGM-MAT_DIGITAL_ORGANIZATION_BUILD_ORDER.md` explicitly places runtime integration, governance, worker lifecycle and the pilot departments ahead of expanding the agent fleet.
 
-These are confirmed source-level observations. This pass did not inspect the entire repository, execute tests, or prove whether other implementations exist elsewhere. Do not remove these legacy placeholders until callers/imports and compatibility needs are mapped.
+These are confirmed source-level observations from the files inspected. Search results did not reveal production callers for the named stubs beyond the legacy/optional development path, but repository-wide caller discovery is not exhaustive. The findings mean this development subsystem must not be treated as a reliable implementation/validation pipeline. Do not wire it into production, remove it, or replace its interfaces until callers/imports and compatibility needs are mapped and tests exist. The unstable IDs and unconditional validation success are explicit blockers.
 
 ## Department contract
 
