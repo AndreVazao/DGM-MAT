@@ -133,6 +133,27 @@ class RecoveryLedgerTests(unittest.TestCase):
                 raw_archive_path=str(archive), raw_sha256="0" * 64,
             )
 
+    def test_sql_pagination_preserves_stable_order(self) -> None:
+        self.add("c", "2026-01-03")
+        self.add("a", "2026-01-01")
+        self.add("b", "2026-01-02")
+        page = self.ledger.list_sources(limit=1, offset=1)
+        self.assertEqual([item.source_id for item in page], ["b"])
+        self.assertEqual(self.ledger.source_count(), 3)
+
+    def test_status_counts_do_not_require_loading_source_objects(self) -> None:
+        self.add("a", "2026-01-01")
+        self.ledger.next_source()
+        self.ledger.checkpoint("chatgpt", "a", capture_status="failed", detail="offline")
+        self.add("b", "2026-01-02")
+        self.assertEqual(self.ledger.status_counts(), {"discovered": 1, "failed": 1})
+
+    def test_invalid_pagination_is_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            self.ledger.list_sources(limit=0)
+        with self.assertRaises(ValueError):
+            self.ledger.list_sources(offset=-1)
+
     def test_hash_file_matches_sha256(self) -> None:
         archive = self.root / "archive.bin"
         archive.write_bytes(b"DGM-MAT")
