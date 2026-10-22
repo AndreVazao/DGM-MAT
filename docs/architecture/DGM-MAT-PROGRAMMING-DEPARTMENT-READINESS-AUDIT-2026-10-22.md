@@ -123,6 +123,10 @@ Nineteen unit tests (7 language-catalogue + 6 toolchain-probe + 6 development sa
 
 Before merge: run the new tests; run focused development/organization tests; verify imports/callers and Python compatibility; test unknown/ambiguous extensions; verify no code execution occurs; then update the roadmap with results. Before declaring the Programming department operational, prove at least one supported language end-to-end from task intake through safe patch, real validation, independent QA, durable result and truthful final report.
 
+## Parallel specialist workstream review — 2026-10-22
+
+The current parallel source-review findings and coordination boundaries are recorded in `docs/architecture/DGM-MAT-PARALLEL-WORKSTREAM-REVIEW-2026-10-22.md`. This report is source review only: it does not claim local test execution, Windows verification, or PR approval.
+
 ## Canonical references
 
 - `docs/architecture/DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md`
