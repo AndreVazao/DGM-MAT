@@ -265,3 +265,13 @@ Added a standard-library ChatGPT JSON-export adapter:
 The importer currently requires an already-extracted `conversations.json`; ZIP unpacking,
 attachment recovery, full-text search, project grouping, project-tree generation, cockpit
 upload and startup orchestration remain future steps. Tests are authored, not executed.
+
+### Memory and project-tree correction
+
+The recovery status endpoint now uses SQL aggregates, and the source inventory applies
+pagination in SQLite instead of loading every source into Python memory. This is better
+suited to the target low-memory PC.
+
+Added root `PROJECT_TREE.txt` as an evidence-backed partial snapshot of the paths
+inspected/changed for this recovery increment. It explicitly states that it is not a full
+repository or Windows filesystem scan, and lists known gaps separately from observed files.
