@@ -9,6 +9,7 @@ import pytest
 
 from core.recovery.chatgpt_export_importer import (
     ChatGPTExportError,
+    _iter_json_array,
     import_chatgpt_conversations_json,
 )
 from core.recovery.recovery_ledger import RecoveryLedger
@@ -18,6 +19,15 @@ def write_export(path: Path, records: list[dict]) -> bytes:
     raw = json.dumps(records, ensure_ascii=False, indent=2).encode("utf-8")
     path.write_bytes(raw)
     return raw
+
+
+def test_incremental_json_array_reader_handles_chunk_boundaries(tmp_path):
+    source = tmp_path / "chunked.json"
+    source.write_text('[{"id":"one","title":"A"},{"id":"two","title":"B"}]', encoding="utf-8")
+    assert list(_iter_json_array(source, chunk_size=5)) == [
+        {"id": "one", "title": "A"},
+        {"id": "two", "title": "B"},
+    ]
 
 
 def test_import_archives_messages_and_leaves_original_unchanged(tmp_path):
