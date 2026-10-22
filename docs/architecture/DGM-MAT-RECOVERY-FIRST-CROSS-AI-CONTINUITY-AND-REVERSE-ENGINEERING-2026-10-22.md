@@ -171,3 +171,30 @@ PROJECT_TREE.txt is a living map, not a one-time report. Every change to project
 - **Project/tree gate:** projects are reconciled with existing repos before new repos are proposed; each project has a tree clearly separating observed files from proposed files.
 - **Deletion gate:** candidate list is exportable/reviewable, and no provider deletion occurs without explicit authorization and verified archive conditions.
 - **Drift gate:** changing the project structure updates PROJECT_TREE.txt and the canonical manifest together.
+
+## Implementation checkpoint — recovery ledger prototype (2026-10-22)
+
+The branch now contains `core/recovery/recovery_ledger.py` and focused tests in
+`tests/test_recovery_ledger.py`. The prototype provides:
+
+- SQLite persistence for provider/source identity, source metadata, capture status,
+  archive path/hash, completeness, indexing/repository status, project-tree revision,
+  retry count and error details;
+- deterministic ordering by provider, source date and source ID;
+- a durable forward cursor that advances only over a contiguous prefix of completed
+  sources, so an out-of-order checkpoint cannot skip earlier unfinished work;
+- explicit retry behavior for partial, blocked or failed items;
+- local archive SHA-256 read-back verification before a source can be marked
+  `verified`.
+
+**Limitations are deliberate:** this is bookkeeping, not a provider connector, importer,
+conversation parser, search index, project-tree generator, or deletion workflow. It does
+not delete conversations and it does not decide that a conversation is eligible for
+deletion. `captured` and `verified` are distinct; deletion eligibility still requires
+the full gates defined above, explicit user authorization and a supported provider
+interface.
+
+The focused tests have been authored but have **not yet been executed** in a complete
+local checkout or on the target Windows PC. The component is not yet wired into the
+Mission Engine, startup flow, API or cockpit. Do not represent the first-run recovery
+pipeline as operational until those integrations and tests are complete.
