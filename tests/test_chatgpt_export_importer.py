@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import zipfile
 
 import pytest
 
@@ -11,6 +12,7 @@ from core.recovery.chatgpt_export_importer import (
     ChatGPTExportError,
     _iter_json_array,
     import_chatgpt_conversations_json,
+    import_chatgpt_export_zip,
 )
 from core.recovery.recovery_ledger import RecoveryLedger
 
@@ -19,6 +21,57 @@ def write_export(path: Path, records: list[dict]) -> bytes:
     raw = json.dumps(records, ensure_ascii=False, indent=2).encode("utf-8")
     path.write_bytes(raw)
     return raw
+
+
+def test_zip_import_reads_only_conversations_json_and_preserves_zip(tmp_path):
+    zip_path = tmp_path / "chatgpt-export.zip"
+    payload = json.dumps([{
+        "id": "zip-conversation",
+        "title": "From ZIP",
+        "mapping": {"n": {"message": {"author": {"role": "user"}, "content": {"parts": ["hello"]}}}},
+    }]).encode("utf-8")
+    with zipfile.ZipFile(zip_path, "w") as archive:
+        archive.writestr("conversations.json", payload)
+        archive.writestr("../../outside.txt", "must never be extracted")
+        archive.writestr("uploads/file.bin", b"attachment")
+    original = zip_path.read_bytes()
+    ledger = RecoveryLedger(tmp_path / "ledger.sqlite3")
+
+    report = import_chatgpt_export_zip(zip_path, tmp_path / "archive", ledger)
+
+    saved = ledger.get("chatgpt", "zip-conversation")
+    assert report.source_file == str(zip_path.resolve())
+    assert report.archived == 1
+    assert zip_path.read_bytes() == original
+    assert saved.original_location == str(zip_path.resolve())
+    assert not (tmp_path / "outside.txt").exists()
+
+
+def test_zip_import_rejects_ambiguous_conversations_json_members(tmp_path):
+    zip_path = tmp_path / "ambiguous.zip"
+    with zipfile.ZipFile(zip_path, "w") as archive:
+        archive.writestr("one/conversations.json", "[]")
+        archive.writestr("two/conversations.json", "[]")
+    ledger = RecoveryLedger(tmp_path / "ledger.sqlite3")
+
+    with pytest.raises(ChatGPTExportError, match="exactly one"):
+        import_chatgpt_export_zip(zip_path, tmp_path / "archive", ledger)
+
+    assert ledger.source_count() == 0
+
+
+def test_zip_import_enforces_conversations_json_size_limit(tmp_path):
+    zip_path = tmp_path / "large.zip"
+    with zipfile.ZipFile(zip_path, "w") as archive:
+        archive.writestr("conversations.json", '[{"id":"x"}]')
+    ledger = RecoveryLedger(tmp_path / "ledger.sqlite3")
+
+    with pytest.raises(ChatGPTExportError, match="size limit"):
+        import_chatgpt_export_zip(
+            zip_path, tmp_path / "archive", ledger, max_conversations_json_bytes=4
+        )
+
+    assert ledger.source_count() == 0
 
 
 def test_incremental_json_array_reader_handles_chunk_boundaries(tmp_path):
