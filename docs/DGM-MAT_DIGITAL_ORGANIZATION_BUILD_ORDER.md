@@ -174,3 +174,21 @@ Build in this order; do not skip ahead to autonomous self-modification:
 7. **Bounded autonomy:** allow routine reversible checks within scope; require approval for destructive changes, broad installs, privilege/secrets changes, external sharing, canonical architecture changes and protected merges.
 
 Current status is **specification documented; runtime integration pending**. The current environment has not established a live Obsidian connector or access to the PC's vault, so no claim of a completed Obsidian connection is made. The implementation gate requires a real PC read/write verification.
+
+## Primary mission update — recovery-first development and cross-AI continuity — 2026-10-22
+
+The new [Recovery-First Development, Cross-AI Continuity and Reverse-Engineering contract](architecture/DGM-MAT-RECOVERY-FIRST-CROSS-AI-CONTINUITY-AND-REVERSE-ENGINEERING-2026-10-22.md) establishes the primary mission order. **Recover and understand existing work before starting new implementation.**
+
+Required sequence:
+
+1. Search authorized local conversation exports/history, project folders, downloads, backups, repositories, scripts and attachments. Preserve originals, source metadata and capture limits.
+2. Group related conversations and artifacts by project/context, detect duplicates and conflicting versions, and propose clear project/folder names. Stage moves/renames reversibly and verify copies before approved changes.
+3. Recover scripts, requirements, decisions and dependency/build instructions with provenance. Separate user-approved decisions, AI suggestions and observed evidence.
+4. When a program exists but its conversation is missing, reverse-document the program from source files, entry points, manifests, tests, Git history, logs and release artifacts; label uncertainty and continue from a recovered project brief.
+5. Reconcile recovered context against actual files and callers; assemble the smallest safe patch into the correct original files, not by replacing complete files with isolated snippets.
+6. Research official web documentation and use the best currently available authorized AI provider. Send versioned context bundles between providers; if one is blocked, unavailable, at quota, or unable to solve the task, log the reason and try another legitimate provider without losing context. Never bypass access controls or quotas, or disclose secrets/private source without approval.
+7. Integrate, test and independently review the change. Mark a task verified only with evidence tied to the actual revision/run.
+
+The Reverse Engineering department/tooling is a **later phase**. First inventory the user's earlier reverse-engineering work and candidate open-source repositories; review maintenance, Windows/resource fit, security and license obligations. Prefer documented CLI/API/plugin integration over copying internals. Reuse source only where the license permits it, preserve notices/attribution, and analyze only software the user is authorized to inspect. Start with a bounded, read-only pilot and explicit tests; do not grant this department unrestricted self-modification authority.
+
+This is a documented requirement and build sequence, not evidence that local conversation discovery, cross-provider browser automation or reverse-engineering tools are already operational. All source discovery and PC-side capabilities must be verified on the target PC before being reported as complete.
