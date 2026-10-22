@@ -248,3 +248,20 @@ Added the read-only operator endpoints:
 The endpoint creates/opens the local ledger on first use, but does not import conversations.
 It is not yet a cockpit screen or a working provider importer. Test execution remains
 pending because this work has been made against the GitHub branch, not a full local checkout.
+
+### First local-export adapter increment
+
+Added a standard-library ChatGPT JSON-export adapter:
+
+- `core/recovery/chatgpt_export_importer.py` reads the top-level JSON array incrementally,
+  preserves the supplied source file, archives each conversation separately, and writes
+  a derived JSONL record for every retained message/mapping node.
+- `tests/test_chatgpt_export_importer.py` contains seven focused tests, including small
+  chunk boundaries, unchanged source bytes, idempotency, conflict preservation, attachment
+  incompleteness and malformed exports.
+- Attachment references are detected but the files are not copied yet. Such records are
+  marked partial; other records remain completeness-unknown. No deletion capability exists.
+
+The importer currently requires an already-extracted `conversations.json`; ZIP unpacking,
+attachment recovery, full-text search, project grouping, project-tree generation, cockpit
+upload and startup orchestration remain future steps. Tests are authored, not executed.
