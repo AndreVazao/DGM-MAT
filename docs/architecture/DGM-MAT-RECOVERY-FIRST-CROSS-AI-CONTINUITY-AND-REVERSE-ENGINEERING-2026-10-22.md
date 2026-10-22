@@ -115,3 +115,59 @@ Only after Gates A–E are operational, one selected open-source tool is evaluat
 ## Truth boundary
 
 This document is a specification, not proof that local conversation discovery, provider browser automation, cross-AI fallback, deleted-conversation recovery or a Reverse Engineering department is already operational. Implement incrementally on the audit branch, inspect existing modules/callers before adding new systems, test locally where possible, and keep the main branch and the single-open-PR policy unchanged until review gates are satisfied.
+
+## 1A. First-run recovery pipeline, project tree and forward-only progress ledger
+
+On first installation/startup on a PC, the first major mission is **conversation and project recovery**, before unrelated autonomous development or department expansion. The user must be able to see progress and resume safely after a restart.
+
+### Required sequential stages
+
+1. **Discover and capture:** enumerate accessible local conversation exports, browser/provider histories, downloads, project directories, repositories, backups and attachments. Scroll-based capture must track which messages/pages were actually captured; use full exports or supported interfaces where possible. Save the raw captured material and a manifest before processing it.
+2. **Inventory and organize:** create a master recovery inventory. Group conversations and artifacts by likely project/context, record duplicates and relationships, and propose consistent project/folder names. Keep original location, proposed destination, provider, conversation/source ID, title, date range, capture completeness, checksum, associated files and current processing status.
+3. **Build conversation maps:** preserve full message order and distinguish user statements/decisions, AI replies/proposals/code, tool output and evidence. Extract requirements, scripts, rejected/superseded alternatives, open questions and decisions into indexed records with links to exact source messages. Do not repeatedly fetch the web for facts already captured and still current; use the local index first, checking the source again only when context is missing, stale or needs verification.
+4. **Reconcile projects and repositories:** map each candidate project to existing local folders, Git repositories/remotes/branches, package manifests and executable artifacts. Classify it as existing repository, existing code without known repository, conversation-only/incomplete project, duplicate/overlapping project, or unresolved. Do not create a new repository until checking for an existing canonical repo and recording the reason a new one is necessary.
+5. **Create the project tree before assembling scripts:** for each project, generate and maintain PROJECT_TREE.txt (or the established equivalent) showing directories/files, intended purpose, status, and missing components. Where appropriate, also maintain a machine-readable tree/manifest from the same canonical data. Label entries as observed-existing, proposed, missing, recovered, generated or unverified. Never present a proposed tree as an actual filesystem listing. Use the tree as the placement contract for recovered scripts, names, modules, tests, documentation and configuration.
+6. **Assemble and validate:** map each recovered snippet to the appropriate tree path and symbol, inspect existing code/callers, then integrate the minimum safe change. Update the tree and inventory in the same work unit as every approved file creation, rename, move or deletion. Check that actual files match the tree and report drift.
+7. **Create a reviewable cleanup queue:** after archival, indexing, project grouping and checksums are verified, produce a per-conversation deletion-candidate list. This list is a record of what has been safely captured, not an instruction to delete automatically.
+
+### Master recovery ledger and forward-only cursor
+
+Maintain one durable, queryable ledger for every discovered conversation/artifact. Suggested fields include a stable source ID, provider, source title/URL, original location, project ID, capture status, completeness, raw archive path/hash, parsed/indexed status, code-extraction status, repository reconciliation status, project-tree revision, deletion eligibility, last processed timestamp and errors/retry count.
+
+Each source moves through explicit states such as:
+
+DISCOVERED -> CAPTURED -> INTEGRITY_CHECKED -> INDEXED -> PROJECT_MAPPED -> CODE_RECONCILED -> REVIEWED -> (OPTIONAL) DELETION_APPROVED -> DELETION_CONFIRMED
+
+A failure must remain visible and retryable without resetting unrelated completed items. The worker must checkpoint progress after each source and stage, resume from the last durable cursor after restart, and continue to the next unprocessed item instead of repeatedly starting from conversation #1. Keep a stable queue/cursor and deterministic ordering (for example provider, date, source ID). Revisit an earlier source only when a concrete trigger exists: a missing dependency, conflicting decision, failed integrity check, new project requirement, stale source, or a user-requested lookup. Record why the revisit happened and return to the forward cursor afterwards.
+
+A source marked processed is not forgotten: it remains searchable locally by project, terms, code symbols and source metadata. The index must make it possible to find a relevant passage without rescanning the entire history or repeatedly opening the provider website.
+
+### Conversation deletion and space-reclamation gate
+
+The objective is to free provider-side storage after successful local recovery, but deletion is a potentially irreversible external action and is separate from local archival. **Never delete a provider conversation merely because scrolling appeared to finish or a summary exists.**
+
+Before marking a conversation eligible, verify all of the following:
+- capture completeness is explicitly recorded; if the source was truncated or only partially scrolled, it is not eligible;
+- the raw transcript and available attachments are stored locally or in the approved persistent memory/archive;
+- the stored transcript can be read back and its checksum/integrity record passes;
+- source metadata and a local index entry exist, and recovered scripts are linked to the exact message(s);
+- user decisions, AI responses, relevant evidence, unresolved questions and superseded options have been indexed;
+- project mapping and relevant repository/tree reconciliation are recorded;
+- a restore/recovery path exists and a deletion manifest identifies the exact provider and conversation ID/title;
+- the user has been shown the deletion-candidate list and has explicitly authorized the relevant deletion scope.
+
+Default behavior is **archive and list, but do not delete**. Provider-side deletion must use an authorized supported interface, one exact conversation at a time or another precisely reviewed scope, and must record success/failure. Never bulk-delete on ambiguous title matches. If deletion is unsupported or cannot be verified, leave the source intact and report that limitation. Local archive integrity must not depend on the provider retaining the conversation; conversely, deleting a provider copy does not replace an independent backup.
+
+### Project tree update contract
+
+PROJECT_TREE.txt is a living map, not a one-time report. Every change to project structure must update the tree and its revision/history, including new scripts, moved/renamed modules, tests, documentation, assets, configs and generated artifacts. Record for each important path: purpose, status, source/provenance, owning component, dependencies and validation coverage where useful. Generate the tree from a canonical inventory where possible; do not let agents independently maintain contradictory copies. Periodically compare declared tree to the actual filesystem and flag drift instead of silently rewriting either side.
+
+### Acceptance gates for the first-run workflow
+
+- **Recovery inventory gate:** every accessible source has a stable ledger entry, including inaccessible/partial sources and known coverage gaps.
+- **Archive gate:** raw capture, metadata and integrity checks can be read back after restart.
+- **Forward-progress gate:** a restart resumes at the next incomplete source without repeating the whole queue.
+- **Context gate:** user messages, AI responses, scripts, decisions and evidence are independently searchable and linked to source positions.
+- **Project/tree gate:** projects are reconciled with existing repos before new repos are proposed; each project has a tree clearly separating observed files from proposed files.
+- **Deletion gate:** candidate list is exportable/reviewable, and no provider deletion occurs without explicit authorization and verified archive conditions.
+- **Drift gate:** changing the project structure updates PROJECT_TREE.txt and the canonical manifest together.
