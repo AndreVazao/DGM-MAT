@@ -198,7 +198,7 @@ def _configured_governance_tokens() -> tuple[str, str]:
     if (
         len(ceo_token) < 32
         or len(owner_token) < 32
-        or hmac.compare_digest(ceo_token, owner_token)
+        or hmac.compare_digest(ceo_token.encode("utf-8"), owner_token.encode("utf-8"))
     ):
         raise HTTPException(
             status_code=503,
@@ -213,9 +213,9 @@ def _governance_credential_role(request: Request, *, required: bool = False) -> 
     if not supplied and not required:
         return None
     ceo_token, owner_token = _configured_governance_tokens()
-    if supplied and hmac.compare_digest(supplied, ceo_token):
+    if supplied and hmac.compare_digest(supplied.encode("utf-8"), ceo_token.encode("utf-8")):
         return "ceo"
-    if supplied and hmac.compare_digest(supplied, owner_token):
+    if supplied and hmac.compare_digest(supplied.encode("utf-8"), owner_token.encode("utf-8")):
         return "owner"
     if required:
         raise HTTPException(status_code=403, detail="A valid privileged governance credential is required.")
