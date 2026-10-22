@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-22  
 **Status:** evidence-based design and partial implementation; not a claim of runtime readiness  
-**Branch:** `audit/programming-department-readiness-2026-10-22`  
+**Branch:** `audit/programming-department-readiness-2026-10-22-synced`  
 **Repository:** `AndreVazao/DGM-MAT`
 
 ## Executive finding
