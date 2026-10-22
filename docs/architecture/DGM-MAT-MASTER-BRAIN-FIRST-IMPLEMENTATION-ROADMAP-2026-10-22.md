@@ -329,6 +329,7 @@ O desenvolvimento remoto começou em branches isolados, sem fazer merge nem subs
 | Componente | Alteração em preparação | PR | Estado de validação |
 |---|---|---|---|
 | Backend — catálogo do escritório | O endpoint existente `GET /runtime/office/telemetry` acrescenta o catálogo declarado de departamentos/agentes; atividade permanece `unknown` sem evidência direta; permissões internas não são expostas. | [DGM-MAT #145](https://github.com/AndreVazao/DGM-MAT/pull/145) | Testes adicionados; ainda não executados. |
+| Teste do ping seguro do cockpit | Confirma que o ping de integridade é classificado como `chat`, não chama `mission_engine.create_mission` e persiste resposta sem depender de Ollama. | [DGM-MAT #147](https://github.com/AndreVazao/DGM-MAT/pull/147) | Teste adicionado; ainda não executado. |
 | Cockpit móvel | Nova vista de escritório com contagens observadas, atividade recente sem objetivos privados e diretório expansível quando o catálogo estiver disponível. | [DGM-MAT-Mobile #2](https://github.com/AndreVazao/DGM-MAT-Mobile/pull/2) | Sintaxe JavaScript verificada; testes de contrato e APK ainda não executados. |
 | Montagem opcional do cockpit PC | Serve o frontend PC em `/cockpit/` através do backend, sem substituir `/app/`; o backend arranca mesmo sem o frontend. | [DGM-MAT #146](https://github.com/AndreVazao/DGM-MAT/pull/146) | Testes adicionados; ainda não executados. |
 | Cockpit PC integrado | Mantém Chat + Escritório digital, catálogo organizacional e teste E2E manual de API/runtime/sessão/resposta/histórico, com ping classificado como `chat` e sem `mission_id`. | [DGM-Cockpit-Frontend #15](https://github.com/AndreVazao/DGM-Cockpit-Frontend/pull/15) | Sintaxe JavaScript e verificações estáticas passaram; suíte Node e E2E real ainda não executados. |
@@ -368,6 +369,7 @@ O painel novo só corre após clique explícito e verifica:
 
 - [DGM-MAT #145](https://github.com/AndreVazao/DGM-MAT/pull/145): catálogo organizacional declarado.
 - [DGM-MAT #146](https://github.com/AndreVazao/DGM-MAT/pull/146): mount opcional do cockpit PC.
+- [DGM-MAT #147](https://github.com/AndreVazao/DGM-MAT/pull/147): teste backend determinístico para o ping E2E sem criação de missão.
 - [DGM-Cockpit-Frontend #15](https://github.com/AndreVazao/DGM-Cockpit-Frontend/pull/15): cockpit combinado, diretório de funções e teste E2E manual.
 - [DGM-MAT-Mobile #2](https://github.com/AndreVazao/DGM-MAT-Mobile/pull/2): vista móvel de telemetria.
 - [DGM-MAT #143](https://github.com/AndreVazao/DGM-MAT/pull/143): governação, reuniões e aprovações, ainda separado.
