@@ -131,3 +131,29 @@ Before merge: run the new tests; run focused development/organization tests; ver
 - `docs/operations/AGENT_SHELL_GIT_POLICY.md`
 
 The roadmap remains authoritative for overall sequencing. This audit supplements it and does not claim the full repository or all language specialists are already implemented.
+
+
+## Follow-up contract/caller audit — 2026-10-22
+
+### Caller-search result and its limits
+
+Targeted repository searches for `DevelopmentEngine.process_request`, `ImplementationEngine.execute_implementation`, `CodeGenerationEngine.generate_code`, `DeadCodeDetector.find_dead_code` and `ValidationEngine.validate_implementation` returned the class/method definitions and the legacy `DevelopmentEngine` internal call chain, but did not establish a broader production call graph. Search-index results are not a substitute for a local repository-wide AST/import scan. Before changing or deleting public interfaces, run a local scan across Python imports, dynamic imports, dependency injection, tests, entry points and configuration.
+
+The visible legacy call chain is:
+
+`process_request → FeaturePlanner.plan_feature → ExecutionFabric.dispatch (in-memory append) → ImplementationEngine.execute_implementation → DevelopmentMemory.record_feature → return feature_id`.
+
+This path does **not** call `ValidationEngine.validate_implementation`, does not call `CodeGenerationEngine.generate_code`, does not apply a patch and does not wait for a worker. `ImplementationEngine.execute_implementation` invokes its `.env` backup side effect before returning `IN_PROGRESS`. Consequently, even though the method returns an identifier and records a status, that is not evidence that source code was changed or validated. Avoid using this path as a live coding endpoint until its contract is replaced or adapted with tests and an explicit migration plan.
+
+### Safe integration decision
+
+- Do not wire the planning-only language catalogue to the legacy implementation path yet.
+- Do not invoke `execute_implementation` merely to obtain a status; its `.env` backup side effect is unrelated to actual implementation and may copy secrets into the working directory.
+- Do not treat an empty result from code generation or dead-code detection as proof that no changes or dead code exist.
+- Preserve legacy modules while mapping callers and writing compatibility tests. No deletion or broad refactor is justified by the current evidence.
+- The next engineering increment should define one explicit result contract shared by planning, patch proposal, execution, validation and durable task state. It must distinguish `planned`, `blocked`, `not_implemented`, `running`, `failed`, and `verified`; only a real configured validator may produce `verified`.
+- Before any source mutation, require repository root/base SHA, allowed paths, a recoverable checkpoint and a diff review. Do not back up `.env` into a plain local file by default; secrets need explicit exclusion/redaction and a controlled backup policy.
+
+### Evidence and open gates
+
+Confirmed from inspected source: the methods and behaviors listed above. Not yet confirmed: complete repository-wide caller graph, runtime importability of every legacy module, full test suite, Windows compatibility, toolchain availability on André's PC, and end-to-end patch execution. No PR has been opened for this audit branch; PR #143 remains the sole open PR and remains blocked on its separate security/test gates.
