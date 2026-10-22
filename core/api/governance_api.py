@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hmac
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -189,6 +191,42 @@ class MeetingApprovalRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+def _configured_governance_tokens() -> tuple[str, str]:
+    """Return distinct server-configured credentials for privileged governance roles."""
+    ceo_token = os.getenv("DGM_GOVERNANCE_CEO_TOKEN", "")
+    owner_token = os.getenv("DGM_GOVERNANCE_OWNER_TOKEN", "")
+    if (
+        len(ceo_token) < 32
+        or len(owner_token) < 32
+        or hmac.compare_digest(ceo_token, owner_token)
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail="Privileged governance is disabled until distinct CEO and owner credentials are configured.",
+        )
+    return ceo_token, owner_token
+
+
+def _governance_credential_role(request: Request, *, required: bool = False) -> str | None:
+    """Verify a separate privileged credential; never infer role from client labels or session IDs."""
+    supplied = request.headers.get("x-dgm-governance-credential", "")
+    if not supplied and not required:
+        return None
+    ceo_token, owner_token = _configured_governance_tokens()
+    if supplied and hmac.compare_digest(supplied, ceo_token):
+        return "ceo"
+    if supplied and hmac.compare_digest(supplied, owner_token):
+        return "owner"
+    if required:
+        raise HTTPException(status_code=403, detail="A valid privileged governance credential is required.")
+    return None
+
+
+def _require_governance_role(request: Request, role: str) -> None:
+    if _governance_credential_role(request, required=True) != role:
+        raise HTTPException(status_code=403, detail=f"Only the configured {role} credential may perform this action.")
+
+
 def _meeting_registry() -> GovernanceMeetingRegistry:
     return GovernanceMeetingRegistry()
 
@@ -250,9 +288,9 @@ def decide_governance_meeting(meeting_id: str, payload: MeetingDecisionRequest, 
         principal = getattr(request.state, "dgm_principal", {}) or {}
         if not isinstance(principal, dict):
             raise HTTPException(status_code=401, detail="Authenticated principal is unavailable.")
-        role = str(principal.get("governance_role") or principal.get("role") or "").casefold()
-        # Never trust a client-supplied actor label to establish CEO authority.
-        actor = "CEO" if role == "ceo" else str(principal.get("actor") or principal.get("username") or principal.get("session_id") or "")
+        # Privileged role comes only from a distinct server-configured credential.
+        role = _governance_credential_role(request)
+        actor = "CEO" if role == "ceo" else str(principal.get("subject") or principal.get("session_id") or "")
         if not actor:
             raise HTTPException(status_code=401, detail="Authenticated actor identity is unavailable.")
         values = payload.model_dump()
@@ -267,13 +305,7 @@ def decide_governance_meeting(meeting_id: str, payload: MeetingDecisionRequest, 
 def approve_governance_meeting_as_owner(meeting_id: str, payload: MeetingApprovalRequest, request: Request):
     """Human final gate for critical structural changes; approval is not direct execution."""
     try:
-        principal = getattr(request.state, "dgm_principal", {}) or {}
-        if not isinstance(principal, dict):
-            raise HTTPException(status_code=401, detail="Authenticated principal is unavailable.")
-        role = str(principal.get("governance_role") or principal.get("role") or "").casefold()
-        username = str(principal.get("username") or principal.get("actor") or "").casefold()
-        if role not in {"owner", "system_owner"} and username not in {"andre", "andré", "andrevazao"}:
-            raise HTTPException(status_code=403, detail="Only the authenticated system owner may give final approval.")
+        _require_governance_role(request, "owner")
         values = payload.model_dump()
         values["actor"] = "André"
         return _meeting_registry().approve_by_owner(meeting_id, **values)
@@ -284,12 +316,7 @@ def approve_governance_meeting_as_owner(meeting_id: str, payload: MeetingApprova
 @router.post("/meetings/{meeting_id}/approval")
 def approve_governance_meeting(meeting_id: str, payload: MeetingApprovalRequest, request: Request):
     try:
-        principal = getattr(request.state, "dgm_principal", {}) or {}
-        if not isinstance(principal, dict):
-            raise HTTPException(status_code=401, detail="Authenticated principal is unavailable.")
-        role = str(principal.get("governance_role") or principal.get("role") or "").casefold()
-        if role != "ceo":
-            raise HTTPException(status_code=403, detail="Only an authenticated CEO principal may approve governance decisions.")
+        _require_governance_role(request, "ceo")
         values = payload.model_dump()
         values["actor"] = "CEO"
         return _meeting_registry().approve_decision(meeting_id, **values)
@@ -341,13 +368,7 @@ class TrustEvaluationRequest(BaseModel):
 
 
 def _trust_owner_actor(request: Request) -> str:
-    principal = getattr(request.state, "dgm_principal", {}) or {}
-    if not isinstance(principal, dict):
-        raise HTTPException(status_code=401, detail="Authenticated principal is unavailable.")
-    role = str(principal.get("governance_role") or principal.get("role") or "").casefold()
-    username = str(principal.get("username") or principal.get("actor") or "").casefold()
-    if role not in {"owner", "system_owner"} and username not in {"andre", "andré", "andrevazao"}:
-        raise HTTPException(status_code=403, detail="Only the authenticated system owner may change trust policy.")
+    _require_governance_role(request, "owner")
     return "André"
 
 
