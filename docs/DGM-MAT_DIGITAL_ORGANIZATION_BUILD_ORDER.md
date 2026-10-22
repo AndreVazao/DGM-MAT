@@ -5,6 +5,14 @@
 Turn DGM-MAT into a functioning digital engineering organization without
 creating a fragile swarm of agents.
 
+## Programming department readiness checkpoint — 2026-10-22
+
+The evidence-based readiness audit is tracked in [DGM-MAT-PROGRAMMING-DEPARTMENT-READINESS-AUDIT-2026-10-22.md](architecture/DGM-MAT-PROGRAMMING-DEPARTMENT-READINESS-AUDIT-2026-10-22.md).
+
+This pass confirmed two source-level placeholders in the default branch: `CodeGenerationEngine.generate_code()` returns an empty list and `DeadCodeDetector.find_dead_code()` returns an empty list. Their callers and compatibility impact have not yet been fully mapped, so neither is deleted or silently replaced.
+
+A planning-only language catalogue and unit tests are being prepared on branch `audit/programming-department-readiness-2026-10-22`. It must not be described as an installed-tool detector or a functioning code executor. The next gate is to run its tests, map callers and existing validation adapters, then integrate safe toolchain probes and patch lifecycle contracts.
+
 ## Phase 1 — Organization Kernel
 
 Status: **started**
