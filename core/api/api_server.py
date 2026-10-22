@@ -146,21 +146,63 @@ def start_usb_recovery() -> None:
     start_usb_recovery_monitor()
 
 
+def _pc_cockpit_directory() -> Path | None:
+    """Find the optional PC cockpit without making it a backend dependency.
+
+    The backend remains fully usable when the frontend repository is absent.
+    An explicit path wins; otherwise look for the sibling checkout used by the
+    standard local GodMode layout.
+    """
+    configured = os.getenv("DGM_PC_COCKPIT_PATH")
+    # An explicit but invalid path is treated as unavailable; do not silently
+    # switch to a different checkout than the operator configured.
+    candidates = (
+        [Path(configured)]
+        if configured
+        else [Path(__file__).resolve().parents[3] / "DGM-Cockpit-Frontend"]
+    )
+    for candidate in candidates:
+        if (
+            candidate
+            and candidate.is_dir()
+            and (candidate / "index.html").is_file()
+            and (candidate / "app.js").is_file()
+            and (candidate / "styles.css").is_file()
+        ):
+            return candidate
+    return None
+
+
 def _mobile_ui_directory() -> Path | None:
     configured = os.getenv("DGM_MOBILE_UI_PATH")
+    pc_configured = os.getenv("DGM_PC_COCKPIT_PATH")
     candidates = [
         Path(configured) if configured else None,
         Path(__file__).resolve().parents[3] / "DGM-MAT-Mobile" / "web",
     ]
+    pc_path = Path(pc_configured).resolve() if pc_configured else None
     for candidate in candidates:
-        if candidate and candidate.is_dir() and (candidate / "index.html").is_file():
-            return candidate
+        if not candidate or not candidate.is_dir() or not (candidate / "index.html").is_file():
+            continue
+        resolved = candidate.resolve()
+        # Migrate the legacy setup where DGM_MOBILE_UI_PATH pointed at the PC
+        # cockpit. Do not mount that same interface at both /app and /cockpit.
+        if candidate.name.casefold() == "dgm-cockpit-frontend" or (pc_path and resolved == pc_path):
+            continue
+        return candidate
     return None
 
 
 mobile_ui = _mobile_ui_directory()
 if mobile_ui:
     app.mount("/app", StaticFiles(directory=str(mobile_ui), html=True), name="mobile-app")
+
+# The PC cockpit is optional and separate from the mobile/PWA shell. If it is
+# missing, the API still starts normally and all backend capabilities remain
+# available to other local clients.
+pc_cockpit = _pc_cockpit_directory()
+if pc_cockpit:
+    app.mount("/cockpit", StaticFiles(directory=str(pc_cockpit), html=True), name="pc-cockpit")
 
 # Enforce the route inventory after all HTTP/WebSocket routes and the optional UI mount are registered.
 # Keep this middleware outermost; it validates sessions before route handlers run.

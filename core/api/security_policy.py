@@ -86,6 +86,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("POST",), "/provider-execution/approvals/{approval_task_id}/decision", SecurityScope.PROVIDER_OPERATOR, "Provider approval decision."),
     RouteClassification(("POST",), "/provider-execution/execute", SecurityScope.PROVIDER_API, "Executes stored approved provider envelope."),
     RouteClassification(("MOUNT",), "/app", SecurityScope.LOCAL_STATIC_CLIENT, "Optional mobile static client."),
+    RouteClassification(("MOUNT",), "/cockpit", SecurityScope.LOCAL_STATIC_CLIENT, "Optional PC chat cockpit; static shell only, API routes remain protected."),
 )
 
 def classify_route(path: str, methods: Iterable[str] | None = None, route_type: str = "http") -> RouteClassification | None:
