@@ -204,3 +204,31 @@ Persist a master ledger and forward-only processing cursor. After each conversat
 Provider-side conversation deletion is irreversible in some services. Default behavior is archive and list candidates, **never automatic deletion**. Require explicit user authorization for the relevant deletion scope, exact source identification, verified complete transcript/attachments, integrity checks and a recovery path; record the provider's result. Partial/truncated capture or ambiguous matches are never eligible. This gate prevents freeing space at the cost of losing the only copy of code or user intent.
 
 This is the required workflow specification; PC-local discovery, actual provider scrolling/deletion, durable cursor and tree generation are not yet claimed as operational. Keep main unchanged and validate each capability on the target PC before reporting completion.
+
+## Recovery implementation checkpoint — 2026-10-22
+
+First implementation increment added on the work branch:
+
+- `core/recovery/recovery_ledger.py`: SQLite source ledger, stable provider/source identity,
+  deterministic ordering, durable cursor, atomic source claiming, restart requeue,
+  explicit retry queue, and local archive SHA-256 verification for `verified` status.
+- `tests/test_recovery_ledger.py`: 14 focused tests covering idempotent registration,
+  ordering, restart, cursor progression, partial/failure retry, and archive integrity.
+
+**Verification boundary:** these tests are authored, not executed. No local checkout or
+Windows runtime test has been performed in this increment. The component is not yet
+connected to the Mission Engine, API, startup recovery flow, search index, project
+inventory, or cockpit. It does not access provider history or delete anything.
+
+### Next implementation sequence
+
+1. Obtain/refresh a full local checkout of this exact branch and run the focused test file.
+2. Fix any failures and review the SQLite transaction/cursor behavior.
+3. Inspect current startup, Mission Engine, API and storage interfaces before wiring the
+   ledger in; avoid parallel or duplicate registries.
+4. Add a read-only recovery inventory endpoint/report and checkpoint visibility.
+5. Add authorized source adapters one at a time, preserving raw exports and attachments.
+6. Build the searchable index and project grouping/tree from captured evidence.
+7. Only after archive, index, provenance and project reconciliation are independently
+   verified, produce a deletion-candidate report. Provider deletion remains disabled
+   until explicit user approval and a supported, verifiable provider interface exist.
