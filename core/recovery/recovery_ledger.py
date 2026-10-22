@@ -152,19 +152,18 @@ class RecoveryLedger:
                 cursor = db.execute(
                     "SELECT * FROM recovery_cursor WHERE pipeline=?", (pipeline,)
                 ).fetchone()
-                unfinished = "('verified', 'captured', 'partial', 'blocked', 'failed')"
                 if cursor:
-                    row = db.execute(f"""
+                    row = db.execute("""
                         SELECT * FROM recovery_sources
                         WHERE (provider, source_date, source_id) > (?, ?, ?)
-                          AND capture_status NOT IN {unfinished}
+                          AND capture_status='discovered'
                         ORDER BY provider, source_date, source_id LIMIT 1
                     """, (cursor["last_provider"], cursor["last_source_date"],
                           cursor["last_source_id"])).fetchone()
                 else:
-                    row = db.execute(f"""
+                    row = db.execute("""
                         SELECT * FROM recovery_sources
-                        WHERE capture_status NOT IN {unfinished}
+                        WHERE capture_status='discovered'
                         ORDER BY provider, source_date, source_id LIMIT 1
                     """).fetchone()
             if row is None:
@@ -285,6 +284,26 @@ class RecoveryLedger:
                         last_source_id=excluded.last_source_id,
                         updated_at=excluded.updated_at
                 """, (pipeline, *last, now))
+
+    def recover_interrupted(self, pipeline: str = "conversation_recovery") -> int:
+        """Requeue in-progress items after startup, when prior workers are gone."""
+        now = time.time()
+        with self._connect() as db:
+            rows = db.execute("""
+                SELECT provider, source_id FROM recovery_sources
+                WHERE capture_status='in_progress'
+                ORDER BY provider, source_date, source_id
+            """).fetchall()
+            for row in rows:
+                db.execute("""
+                    UPDATE recovery_sources SET capture_status='discovered', updated_at=?
+                    WHERE provider=? AND source_id=?
+                """, (now, row["provider"], row["source_id"]))
+                db.execute("""
+                    INSERT INTO recovery_events(provider, source_id, event, detail, occurred_at)
+                    VALUES (?, ?, 'requeued_after_restart', ?, ?)
+                """, (row["provider"], row["source_id"], pipeline, now))
+            return len(rows)
 
     def request_retry(self, provider: str, source_id: str, reason: str) -> None:
         """Queue a deliberate retry, including for a source behind the forward cursor."""
