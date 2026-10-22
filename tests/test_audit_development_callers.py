@@ -28,6 +28,19 @@ class DevelopmentCallerAuditTests(unittest.TestCase):
                 for item in findings
             ))
 
+    def test_ignores_unrelated_imports_and_generic_method_names(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "noise.py"
+            source.write_text(
+                "import json\n"
+                "value = object()\n"
+                "value.get('x')\n"
+                "value.create()\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(inspect_file(source, root), [])
+
     def test_reports_syntax_errors_instead_of_silently_dropping_files(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
