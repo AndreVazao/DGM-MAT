@@ -48,6 +48,8 @@ class RecoveryLedgerTests(unittest.TestCase):
     def test_restart_requeues_interrupted_source_once(self) -> None:
         self.add("a", "2026-01-01")
         self.add("b", "2026-01-02")
+        # Simulate a previously completed later record so only "a" remains claimable.
+        self.ledger.checkpoint("chatgpt", "b", capture_status="captured", completeness="unknown")
         self.assertEqual(self.ledger.next_source().source_id, "a")
         self.assertIsNone(self.ledger.next_source())
         self.assertEqual(self.ledger.recover_interrupted(), 1)
