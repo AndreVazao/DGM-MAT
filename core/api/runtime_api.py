@@ -25,6 +25,7 @@ from core.runtime.provider_freshness import (
     provider_freshness as _shared_provider_freshness,
 )
 from core.realtime.websocket_manager import manager
+from core.organization.office import OFFICE_AGENTS, OFFICE_DEPARTMENTS
 
 router = APIRouter(prefix="/runtime", tags=["runtime"])
 connectors = create_runtime_connectors()
@@ -339,6 +340,51 @@ def get_mission_detail(mission_id: str):
     }
 
 
+
+
+def _office_roster_snapshot() -> dict:
+    """Expose declared roles separately from observed runtime activity.
+
+    Office profiles are a design-time roster, not proof that autonomous workers
+    have started. Activity remains unknown until a dedicated live event source
+    exists for that exact department or agent.
+    """
+    departments = [
+        {
+            "department_id": item.department_id,
+            "name": item.name,
+            "mission": item.mission,
+            "capabilities": list(item.capabilities),
+            "role_state": "defined",
+            "activity_state": "unknown",
+            "activity_reason": "The role catalog does not prove worker activation; no direct department event feed is registered.",
+        }
+        for item in OFFICE_DEPARTMENTS
+    ]
+    agents = []
+    for item in OFFICE_AGENTS:
+        metadata = item.metadata if isinstance(item.metadata, dict) else {}
+        agents.append({
+            "agent_id": item.agent_id,
+            "name": item.name,
+            "department_id": item.department_id,
+            "role": item.role,
+            "skills": list(item.skills),
+            "responsibilities": list(item.responsibilities),
+            "supervisor_id": item.supervisor_id,
+            "memory_scope": item.memory_scope,
+            "execution_maturity": str(metadata.get("execution_maturity") or "ROLE_DEFINED_ONLY"),
+            "activation_blocker": str(metadata.get("activation_blocker") or "Role defined; live worker activation has not been verified."),
+            "activity_state": "unknown",
+        })
+    return {
+        "source": "core.organization.office",
+        "role_state": "declared_catalog",
+        "activity_policy": "Declared roles are not running agents; activity remains unknown without direct runtime evidence.",
+        "departments": departments,
+        "agents": agents,
+    }
+
 @router.get("/office/telemetry")
 def get_office_telemetry():
     """Read-only, content-minimized telemetry for the virtual office projection."""
@@ -452,6 +498,7 @@ def get_office_telemetry():
                 "reason": "No per-agent activity event feed is registered yet.",
             },
         },
+        "organization": _office_roster_snapshot(),
         "limitations": [
             "This endpoint is observational and does not authorize, approve, execute, or mutate missions.",
             "Mission goals, conversation content, credentials, and full action payloads are intentionally omitted.",

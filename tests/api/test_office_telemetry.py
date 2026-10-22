@@ -65,6 +65,24 @@ def test_office_telemetry_aggregates_real_states_without_mission_content(tmp_pat
     assert result["departments"]["operations"]["state"] == "active"
     assert result["departments"]["research"]["state"] == "unknown"
     assert result["departments"]["memory"]["state"] == "unknown"
+    assert result["organization"]["role_state"] == "declared_catalog"
+    assert result["organization"]["agents"]
+    assert all(agent["activity_state"] == "unknown" for agent in result["organization"]["agents"])
     assert "PRIVATE_GOAL_MUST_NOT_LEAK" not in json.dumps(result)
     assert "another private goal" not in json.dumps(result)
     assert "goal" not in result["missions"]["recent"][0]
+
+
+
+def test_office_telemetry_exposes_declared_roster_without_claiming_agents_are_running():
+    roster = runtime_api._office_roster_snapshot()
+
+    assert roster["source"] == "core.organization.office"
+    assert roster["role_state"] == "declared_catalog"
+    assert len(roster["departments"]) == len(runtime_api.OFFICE_DEPARTMENTS)
+    assert len(roster["agents"]) == len(runtime_api.OFFICE_AGENTS)
+    assert all(item["role_state"] == "defined" for item in roster["departments"])
+    assert all(item["activity_state"] == "unknown" for item in roster["departments"])
+    assert all(item["activity_state"] == "unknown" for item in roster["agents"])
+    assert all(isinstance(item["execution_maturity"], str) and item["execution_maturity"] for item in roster["agents"])
+    assert all("permissions" not in item for item in roster["agents"])
