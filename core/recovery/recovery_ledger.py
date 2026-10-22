@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import hashlib
 import sqlite3
-from contextlib import contextmanager
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
@@ -235,7 +235,7 @@ class RecoveryLedger:
             if self.sha256_file(archive).casefold() != raw_sha256.casefold():
                 raise RecoveryLedgerError("archive SHA-256 does not match the supplied digest.")
         now = time.time()
-        with self._connect() as db:
+        with self._connection() as db:
             row = db.execute(
                 "SELECT provider, source_id, source_date FROM recovery_sources WHERE provider=? AND source_id=?",
                 (provider, source_id),
