@@ -149,3 +149,10 @@ The [canonical end-to-end operating model](architecture/DGM-MAT-CANONICAL-OPERAT
 Update to the build sequence: before expanding the number of agents or visual departments, prove one request through persistent intake → executable plan → policy/approval → real worker → independent validation → durable terminal state → truthful final answer. Planning-only outcomes must never be counted as execution. Start with the smallest useful pilot: HQ/owner liaison, Python engineering, independent QA/bug hunting, Research, and Conversation Intelligence. Add language specialists and separate lab workers only after real demand, contracts, resource limits and tests are demonstrated.
 
 The status labels in this document are historical planning notes. They do not prove current implementation; reconcile every phase against current code, tests and runtime before marking it complete.
+
+
+## Programming department follow-up — contract/caller audit — 2026-10-22
+
+Targeted searches exposed the legacy call chain but did not prove a complete production caller graph. The current visible `DevelopmentEngine.process_request` path plans a feature, appends a task to an in-memory list, invokes an implementation method that only backs up `.env` and returns `IN_PROGRESS`, records that status and returns a feature ID. It does not generate/apply code or invoke validation. Do not treat it as a working coding pipeline, and do not connect the new language catalogue to it yet. See the audit for exact limitations and the required local AST/import/caller scan.
+
+Security/reliability note: avoid invoking the legacy implementation method merely to obtain a status because it may copy `.env` (potential secrets) into a plain backup file. Do not delete or broadly refactor legacy APIs until callers and compatibility tests are mapped. Next priority is a shared, truthful task-result contract and one end-to-end language pilot with real patch, configured checks, independent QA, durable state and evidence. PR #143 remains the only open PR; no new PR or GitHub Actions run was created in this audit pass.
