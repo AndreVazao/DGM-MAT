@@ -50,6 +50,19 @@ class DevelopmentTaskResultTests(unittest.TestCase):
                 validation_passed=True,
             )
 
+    def test_verified_rejects_duplicate_failed_evidence(self):
+        with self.assertRaisesRegex(ValueError, "all validation and independent QA"):
+            DevelopmentTaskResult(
+                "task-1", TaskResultStatus.VERIFIED, "Verified",
+                evidence=(
+                    TaskEvidence("validation", "passed", "test://validation-1"),
+                    TaskEvidence("validation", "failed", "test://validation-2"),
+                    TaskEvidence("independent_qa", "passed", "test://qa"),
+                ),
+                validation_passed=True,
+                independent_qa_passed=True,
+            )
+
     def test_verified_requires_both_evidence_types(self):
         with self.assertRaisesRegex(ValueError, "evidence references"):
             DevelopmentTaskResult(
