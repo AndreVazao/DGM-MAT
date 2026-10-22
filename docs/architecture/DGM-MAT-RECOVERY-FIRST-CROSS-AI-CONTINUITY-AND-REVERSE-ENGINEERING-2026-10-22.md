@@ -199,3 +199,30 @@ The focused tests have been authored but have **not yet been executed** in a com
 local checkout or on the target Windows PC. The component is not yet wired into the
 Mission Engine, startup flow, API or cockpit. Do not represent the first-run recovery
 pipeline as operational until those integrations and tests are complete.
+
+## ChatGPT JSON export adapter — implementation checkpoint
+
+Added `core/recovery/chatgpt_export_importer.py` as the first provider-export adapter.
+It accepts a local `conversations.json` top-level array, reads records incrementally
+with the Python standard library, preserves the supplied export file unchanged, writes
+a per-conversation JSON archive and a derived JSONL message file, and registers source
+provenance plus SHA-256 in the recovery ledger.
+
+Safety behavior:
+
+- Existing source IDs and archive files are never silently overwritten; conflicting
+  re-imports are reported as failures for manual review.
+- All mapping nodes/branches are retained in the derived message records, including role,
+  timestamp, node ID, parent/children and original message object.
+- Attachment references are detected, but this adapter does not copy attachment files.
+  Such conversations are marked `partial`; all other records remain `unknown` for
+  completeness rather than being falsely certified complete.
+- Provider deletion is not implemented, and deletion eligibility remains
+  `not_eligible`.
+- The importer does not log transcript bodies or send content to external services.
+
+Tests authored in `tests/test_chatgpt_export_importer.py` cover original-file preservation,
+idempotent import, conflicts, attachment incompleteness, malformed input and invalid
+records. These tests have **not yet been executed** in a full local checkout or on the
+target Windows PC. This adapter is not yet connected to a cockpit upload flow or startup
+pipeline, and it currently accepts the JSON file rather than unpacking a provider ZIP.
