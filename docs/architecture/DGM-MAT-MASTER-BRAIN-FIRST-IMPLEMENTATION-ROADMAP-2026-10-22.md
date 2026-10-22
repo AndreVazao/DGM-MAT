@@ -356,10 +356,11 @@ O cockpit PC é agora preparado para ser servido pelo próprio backend local atr
 O painel novo só corre após clique explícito e verifica:
 1. `GET /health`;
 2. `GET /runtime/health` com sessão;
-3. `GET /mobile/status` e lista de conversas;
-4. criação/reutilização de uma thread de diagnóstico dedicada;
-5. ping neutro, confirmação de intenção `chat`, resposta não vazia e ausência de `mission_id`;
-6. nova leitura da thread para confirmar que mensagem e resposta estão no histórico.
+3. `GET /runtime/missions`, `GET /runtime/queue`, `GET /runtime/approvals` e catálogo governado, todos em leitura;
+4. `GET /mobile/status` e lista de conversas;
+5. criação/reutilização de uma thread de diagnóstico dedicada;
+6. ping neutro, confirmação de intenção `chat`, resposta não vazia e ausência de `mission_id`;
+7. nova leitura da thread para confirmar que mensagem e resposta estão no histórico.
 
 **Limite importante:** isto prova o percurso conversacional API→serviço→armazenamento→leitura, quando passar no PC real. Não prova, por si só, que o executor de missões consegue executar uma tarefa de programação de ponta a ponta. Essa validação deve ser um gate separado, governado e observado, sem criar uma missão de teste automaticamente durante a abertura do dashboard.
 
