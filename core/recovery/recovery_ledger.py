@@ -147,8 +147,9 @@ class RecoveryLedger:
             ))
 
     def next_source(self, pipeline: str = "conversation_recovery") -> RecoverySource | None:
-        """Return the earliest unfinished source after the cursor and record an attempt."""
-        with self._connect() as db:
+        """Claim one source in deterministic order, or an explicitly requested retry."""
+        with self._connection() as db:
+            db.execute("BEGIN IMMEDIATE")
             retry = db.execute("""
                 SELECT s.* FROM recovery_retry_queue q
                 JOIN recovery_sources s USING (provider, source_id)
