@@ -175,13 +175,21 @@ def _pc_cockpit_directory() -> Path | None:
 
 def _mobile_ui_directory() -> Path | None:
     configured = os.getenv("DGM_MOBILE_UI_PATH")
+    pc_configured = os.getenv("DGM_PC_COCKPIT_PATH")
     candidates = [
         Path(configured) if configured else None,
         Path(__file__).resolve().parents[3] / "DGM-MAT-Mobile" / "web",
     ]
+    pc_path = Path(pc_configured).resolve() if pc_configured else None
     for candidate in candidates:
-        if candidate and candidate.is_dir() and (candidate / "index.html").is_file():
-            return candidate
+        if not candidate or not candidate.is_dir() or not (candidate / "index.html").is_file():
+            continue
+        resolved = candidate.resolve()
+        # Migrate the legacy setup where DGM_MOBILE_UI_PATH pointed at the PC
+        # cockpit. Do not mount that same interface at both /app and /cockpit.
+        if candidate.name.casefold() == "dgm-cockpit-frontend" or (pc_path and resolved == pc_path):
+            continue
+        return candidate
     return None
 
 
