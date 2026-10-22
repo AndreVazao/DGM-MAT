@@ -262,9 +262,10 @@ Added a standard-library ChatGPT JSON-export adapter:
 - Attachment references are detected but the files are not copied yet. Such records are
   marked partial; other records remain completeness-unknown. No deletion capability exists.
 
-The importer currently requires an already-extracted `conversations.json`; ZIP unpacking,
-attachment recovery, full-text search, project grouping, project-tree generation, cockpit
-upload and startup orchestration remain future steps. Tests are authored, not executed.
+The importer accepts either an already-extracted `conversations.json` or a ZIP containing
+exactly one such member. ZIP handling streams only that JSON member to private staging;
+arbitrary archive members are not extracted. Attachment recovery, full-text search, project
+grouping, project-tree generation, cockpit upload and startup orchestration remain future steps. Tests are authored, not executed.
 
 ### Memory and project-tree correction
 
