@@ -89,3 +89,28 @@ def test_local_llm_auto_start_requires_explicit_opt_in(tmp_path, monkeypatch):
 
     assert answer is None
     start_ollama.assert_called_once()
+
+
+def test_pc_cockpit_e2e_ping_stays_chat_only_and_survives_store_reload(tmp_path: Path, monkeypatch):
+    store_path = tmp_path / "conversations.json"
+    service = MobileConversationService(ConversationStore(store_path))
+    monkeypatch.setenv("DGM_MOBILE_LOCAL_LLM", "off")
+    thread = service.create_thread("Diagnóstico E2E DGM-MAT")
+    marker = "DGM_E2E_SAFE_PING_391"
+    ping = f"Ping local do cockpit DGM-MAT. Devolve apenas a sequência {marker}."
+
+    with patch("core.mobile_runtime.service.mission_engine.create_mission") as create_mission:
+        response = service.append_user_message(thread["id"], ping)
+
+    create_mission.assert_not_called()
+    assert response["intent"]["intent"] == "chat"
+    assert response["mission_id"] is None
+    assert response["message"].strip()
+
+    restored = ConversationStore(store_path).get_thread(thread["id"])
+    assert restored is not None
+    assert len(restored.messages) == 2
+    assert restored.messages[0].role == "user"
+    assert marker in restored.messages[0].content
+    assert restored.messages[1].role == "assistant"
+    assert restored.messages[1].content.strip() == response["message"].strip()
