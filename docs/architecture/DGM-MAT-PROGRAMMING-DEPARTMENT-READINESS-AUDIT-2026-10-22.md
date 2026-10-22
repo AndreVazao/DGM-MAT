@@ -75,6 +75,13 @@ This is a routing/metadata primitive, not a code-generation engine, compiler det
 
 Also added `core/development/toolchain_probe.py`, an explicit, allowlisted version-probe utility for common interpreters, compilers and developer tools. It accepts only fixed tool IDs and fixed argument lists, never uses a shell, clamps the timeout to 0.2–5 seconds, distinguishes unavailable/timeout/failed/available, and does not install packages or execute project source. Probing occurs only when explicitly called; catalogue presence is not an availability assertion.
 
+Three unsafe legacy development behaviors were also corrected on this branch:
+- `ValidationEngine.validate_implementation()` now fails closed with an explicit error until real validation adapters run; it no longer returns success unconditionally.
+- `ArchitectureValidator` imports `Any` correctly and refuses to certify empty or unchecked changes until structural rules exist.
+- `FeaturePlanner` now derives IDs from a stable SHA-256 digest and rejects empty requests, instead of using process-randomized `hash()`.
+
+These are intentionally conservative safety gates, not a claim that implementation or architecture validation is complete. The legacy implementation engine, execution fabric and dead-code detector still require a caller/contract audit before they can be safely integrated.
+
 ## Required architecture before calling the department operational
 
 ### Intake and plan
@@ -112,7 +119,7 @@ Persist plans, task transitions, diffs, tool invocations, test output summaries,
 
 ## Test status and release gate
 
-Thirteen unit tests (7 language-catalogue + 6 toolchain-probe tests) were executed against isolated temporary copies of the modules and test files: **13 passed**. This was not a checkout of the full repository and does not replace running the tests on the actual branch/Windows PC. No compiler/linter availability is claimed, and no runtime/build test was run. The branch is intentionally separate from the existing governance PR #143; no second PR has been opened.
+Nineteen unit tests (7 language-catalogue + 6 toolchain-probe + 6 development safety-gate tests) were executed against isolated temporary copies of the modules and test files: **19 passed**. This was not a checkout of the full repository and does not replace running the tests on the actual branch/Windows PC. No compiler/linter availability is claimed, and no runtime/build test was run. The branch is intentionally separate from the existing governance PR #143; no second PR has been opened.
 
 Before merge: run the new tests; run focused development/organization tests; verify imports/callers and Python compatibility; test unknown/ambiguous extensions; verify no code execution occurs; then update the roadmap with results. Before declaring the Programming department operational, prove at least one supported language end-to-end from task intake through safe patch, real validation, independent QA, durable result and truthful final report.
 
