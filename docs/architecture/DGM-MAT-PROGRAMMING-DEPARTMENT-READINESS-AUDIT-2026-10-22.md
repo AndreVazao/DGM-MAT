@@ -172,3 +172,10 @@ Added `core/development/task_store.py`, a SQLite-backed local registry with expl
 A follow-up review found that `TaskStore.create()` accepted a `planned` result containing execution evidence, then silently discarded that evidence. This could make the API appear to accept proof while persisting none. The store now rejects any evidence supplied at creation; evidence must be attached through a validated state transition. Added a regression test that checks rejection and confirms no task row was created. This is source-reviewed only; the new test has **not been executed**.
 
 Focused tests are present for the contract and store, including persistence after reopening, rejected transitions, stale revisions, failed evidence and audit history. They have **not been executed**. The prior isolated 19-test result is separate and does not include these new tests. No full-repository caller graph or Windows runtime result is claimed.
+
+
+## Read-only caller inventory utility — 2026-10-22
+
+Added `tools/audit_development_callers.py` with focused tests in `tests/test_audit_development_callers.py`. It scans Python files with the standard-library AST parser, skips common virtual-environment/generated directories, and reports relevant development imports, tracked class references and selected method calls. It does not import or execute project modules and does not write to the checkout. Output is deliberately filtered to avoid flooding the terminal with unrelated imports or generic `get/create` calls.
+
+Five focused tests passed against isolated temporary copies of the authored utility and tests. This is a **limited isolated test**, not a full DGM-MAT checkout run, not Windows-PC validation, and not a complete runtime call graph. Dynamic imports, reflection, generated code and configuration-driven wiring may still be missed. Run it from a real checkout and manually reconcile results with entry points, tests, configuration and runtime dependency injection before changing legacy interfaces.
