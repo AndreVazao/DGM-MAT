@@ -15,6 +15,8 @@ class LanguageCatalogTests(unittest.TestCase):
         profiles = list_language_profiles()
         ids = [profile.language_id for profile in profiles]
         self.assertEqual(len(ids), len(set(ids)))
+        extensions = [extension for profile in profiles for extension in profile.extensions]
+        self.assertEqual(len(extensions), len(set(extensions)))
         self.assertTrue(all(profile.execution_enabled is False for profile in profiles))
         self.assertTrue(all(profile.toolchain_status == "requires_environment_probe" for profile in profiles))
 
