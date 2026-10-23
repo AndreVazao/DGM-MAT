@@ -1,0 +1,65 @@
+DGM-MAT PROJECT_TREE.txt
+Version: 2026-10-22
+Scope: Partial, evidence-backed GitHub branch snapshot for the recovery-first increment.
+Branch: audit/programming-department-readiness-2026-10-22-synced
+
+IMPORTANT TRUTH BOUNDARY
+- This is not a full checkout scan and does not describe every file in the repository.
+- "OBSERVED" means the path was fetched from this GitHub branch during this work.
+- "ADDED" means the path was created or changed by the recovery-first increment.
+- "NOT IMPLEMENTED" means the capability is planned but has no verified working integration.
+- The target Windows PC filesystem has not been inspected during this increment.
+- Update this tree whenever recovery files, APIs, tests, or their ownership change.
+- Before a merge or deletion, compare this document against a complete local filesystem scan.
+
+RECOVERY CORE
+core/
+  recovery/
+    recovery_ledger.py                 [OBSERVED; ADDED/UPDATED]
+      SQLite source ledger, durable cursor, explicit retry queue, archive SHA-256 checks,
+      restart recovery, status counts and SQL pagination.
+    chatgpt_export_importer.py         [OBSERVED; ADDED]
+      Incremental importer for an already-extracted ChatGPT conversations.json array.
+      Preserves each conversation object and emits derived message JSONL.
+      Does not unpack ZIPs or copy attachments.
+  api/
+    api_server.py                     [OBSERVED; UPDATED]
+      Registers the read-only recovery router.
+    recovery_api.py                   [OBSERVED; ADDED]
+      GET /recovery/status and GET /recovery/sources; operator-only inventory.
+    security_policy.py                [OBSERVED; UPDATED]
+      Classifies recovery inventory routes as operator-only.
+
+TESTS
+tests/
+  test_recovery_ledger.py             [OBSERVED; ADDED]
+  test_chatgpt_export_importer.py     [OBSERVED; ADDED]
+  api/
+    test_recovery_api.py              [OBSERVED; ADDED]
+
+ARCHITECTURE / BUILD DOCUMENTATION
+docs/
+  DGM-MAT_DIGITAL_ORGANIZATION_BUILD_ORDER.md
+                                      [OBSERVED; UPDATED]
+  architecture/
+    DGM-MAT-RECOVERY-FIRST-CROSS-AI-CONTINUITY-AND-REVERSE-ENGINEERING-2026-10-22.md
+                                      [OBSERVED; UPDATED]
+
+KNOWN GAPS — NOT IMPLEMENTED / NOT VERIFIED
+- Full ZIP extraction is intentionally not performed. The adapter safely streams only the unique
+  conversations.json member to private staging; it does not unpack arbitrary archive paths.
+- Attachment discovery, copying, hashing and association; referenced conversations remain partial.
+- Importer integration with the PC cockpit upload flow or application startup.
+- Actual provider-history connectors or browser-session capture.
+- Full-text search index and project/context grouping.
+- Recovery master report/export and local file inventory.
+- Per-project complete PROJECT_TREE.txt generation and drift reconciliation.
+- Repository reconciliation for recovered programs.
+- Tests executed in a full local checkout or on the target Windows PC.
+- Provider deletion: intentionally absent; never enabled by this increment.
+
+PLACEMENT / CHANGE RULE
+Before adding or moving a recovery component, inspect its callers and current interfaces.
+Update this file in the same change as any structural change. Never label a proposed path
+as an existing filesystem path. Keep generated archives and user exports outside the
+source-code tree unless a user-selected data directory explicitly places them here.
