@@ -64,7 +64,9 @@ class GovernanceMeetingRegistryTests(unittest.TestCase):
             meeting_id, actor="André", approved=True, rationale="OK final do André."
         )
         self.assertEqual(owner_approved["status"], "approved")
-        self.assertEqual(owner_approved["action_dispatch"]["status"], "ready_for_governed_execution")
+        self.assertEqual(owner_approved["action_dispatch"]["status"], "approved_execution_not_implemented")
+        self.assertIn("no governed action runner is wired", owner_approved["action_dispatch"]["note"])
+        self.assertIn("No action has run", owner_approved["action_dispatch"]["note"])
         self.assertIn("meeting.ceo_approval_recorded", [event["event"] for event in owner_approved["history"]])
         self.assertIn("meeting.owner_approval_recorded", [event["event"] for event in owner_approved["history"]])
 
