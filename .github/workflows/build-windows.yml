@@ -2,6 +2,9 @@
 name: Windows Executable Build
 
 "on":
+  push:
+    branches:
+      - main
   workflow_dispatch:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -27,6 +30,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
+
+      - name: Resolve build version
+        shell: pwsh
+        run: |
+          $version = git rev-parse --short HEAD
+          echo "VERSION=$version" >> $env:GITHUB_ENV
 
       - name: Clean Build Environment
         shell: pwsh
@@ -72,8 +81,9 @@ jobs:
           copy config\*.json publish\config\
           copy scripts\autostart\*.py publish\scripts\autostart\
           copy scripts\runtime_smoke_test.py publish\scripts\
-          $zip = "DGM-MAT-Windows-${{ matrix.python-version }}.zip"
+          $zip = "DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION.zip"
           Compress-Archive -Path publish\* -DestinationPath $zip
+          certutil -hashfile $zip SHA256 | Select-Object -Skip 1 | ForEach-Object { $_.Trim() } | Out-File "$zip.sha256" -Encoding utf8
 
       - name: Final Build Assertions
         shell: pwsh
@@ -88,5 +98,7 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: "DGM-MAT-Windows-${{ matrix.python-version }}"
-          path: "DGM-MAT-Windows-${{ matrix.python-version }}.zip"
+          name: "DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION"
+          path: |
+            DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION.zip
+            DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION.zip.sha256
