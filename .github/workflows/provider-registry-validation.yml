@@ -30,11 +30,12 @@ jobs:
           pip install -r requirements.txt
       - name: Compile core and tests
         run: python -m compileall -q core tests
-      - name: Run provider registry regression tests
+      - name: Run provider and runtime regression suites
         env:
           PYTHONPATH: .
         run: >-
           python -m pytest -q
-          tests/unit/test_provider_orchestration_new.py
-          tests/unit/test_provider_registry.py
-          tests/provider_mesh/test_mesh_orchestration.py
+          tests/unit
+          tests/providers
+          tests/provider_mesh
+          tests/runtime
