@@ -60,10 +60,51 @@ def _iter_json_array(path: Path, chunk_size: int = 64 * 1024) -> Iterator[Any]:
             raise ChatGPTExportError("Expected conversations.json to contain a top-level JSON array.")
         buffer = buffer[1:]
 
+        expect_value = True
+        after_comma = False
+        saw_value = False
+
         while True:
             buffer = buffer.lstrip()
-            while buffer.startswith(","):
-                buffer = buffer[1:].lstrip()
+            if not buffer and not eof:
+                fill()
+                continue
+
+            if expect_value:
+                if buffer.startswith("]"):
+                    if after_comma:
+                        raise ChatGPTExportError("Malformed JSON array: trailing comma.")
+                    buffer = buffer[1:]
+                    if buffer.strip():
+                        raise ChatGPTExportError("Unexpected content after the top-level JSON array.")
+                    while not eof:
+                        fill()
+                        if buffer.strip():
+                            raise ChatGPTExportError("Unexpected content after the top-level JSON array.")
+                    return
+                if not buffer and eof:
+                    raise ChatGPTExportError("Unexpected end of JSON array.")
+                try:
+                    item, end = decoder.raw_decode(buffer)
+                except json.JSONDecodeError:
+                    if eof:
+                        raise ChatGPTExportError("Malformed or truncated conversation JSON.")
+                    fill()
+                    continue
+                yield item
+                buffer = buffer[end:]
+                expect_value = False
+                after_comma = False
+                saw_value = True
+                continue
+
+            if not buffer and eof:
+                raise ChatGPTExportError("Unexpected end of JSON array.")
+            if buffer.startswith(","):
+                buffer = buffer[1:]
+                expect_value = True
+                after_comma = True
+                continue
             if buffer.startswith("]"):
                 buffer = buffer[1:]
                 if buffer.strip():
@@ -73,19 +114,10 @@ def _iter_json_array(path: Path, chunk_size: int = 64 * 1024) -> Iterator[Any]:
                     if buffer.strip():
                         raise ChatGPTExportError("Unexpected content after the top-level JSON array.")
                 return
-            if not buffer and eof:
-                raise ChatGPTExportError("Unexpected end of JSON array.")
-            try:
-                item, end = decoder.raw_decode(buffer)
-            except json.JSONDecodeError:
-                if eof:
-                    raise ChatGPTExportError("Malformed or truncated conversation JSON.")
-                fill()
-                continue
-            yield item
-            buffer = buffer[end:]
             if not buffer and not eof:
                 fill()
+                continue
+            raise ChatGPTExportError("Malformed JSON array: expected a comma or closing bracket.")
 
 
 def _stable_json(value: Any) -> str:

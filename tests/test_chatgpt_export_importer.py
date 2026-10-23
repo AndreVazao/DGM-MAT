@@ -206,3 +206,21 @@ def test_non_object_records_are_reported_and_skipped(tmp_path):
     assert report.archived == 1
     assert report.failed == 1
     assert ledger.source_count() == 1
+
+@pytest.mark.parametrize("payload", [
+    '[{"id":"one"},]',
+    '[,{"id":"one"}]',
+    '[{"id":"one"},,{"id":"two"}]',
+    '[{"id":"one"} {"id":"two"}]',
+])
+def test_malformed_array_delimiters_are_rejected_before_archive_writes(tmp_path, payload):
+    source = tmp_path / "conversations.json"
+    source.write_text(payload, encoding="utf-8")
+    ledger = RecoveryLedger(tmp_path / "ledger.sqlite3")
+
+    with pytest.raises(ChatGPTExportError):
+        import_chatgpt_conversations_json(source, tmp_path / "archive", ledger)
+
+    assert ledger.source_count() == 0
+    assert not (tmp_path / "archive").exists()
+
