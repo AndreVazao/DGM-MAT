@@ -20,6 +20,7 @@ from core.api.usb_recovery_api import router as usb_recovery_router
 from core.operator.usb_recovery import start_usb_recovery_monitor
 from core.api.governance_api import router as governance_router
 from core.api.provider_execution_api import router as provider_execution_router
+from core.api.recovery_api import router as recovery_router
 from core.api.local_auth_api import router as local_auth_router, session_manager
 from core.api.auth_middleware import LocalSessionAuthMiddleware
 from core.federation.node_identity import local_node
@@ -33,7 +34,7 @@ app.add_middleware(
     allow_origins=["http://127.0.0.1:8181", "http://localhost:8181", "https://localhost"],
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-DGM-Governance-Credential"],
 )
 
 app.include_router(runtime_router)
@@ -41,6 +42,7 @@ app.include_router(mobile_router)
 app.include_router(usb_recovery_router)
 app.include_router(governance_router)
 app.include_router(provider_execution_router)
+app.include_router(recovery_router)
 app.include_router(local_auth_router)
 
 
