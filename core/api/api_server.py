@@ -34,7 +34,7 @@ app.add_middleware(
     allow_origins=["http://127.0.0.1:8181", "http://localhost:8181", "https://localhost"],
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-DGM-Governance-Credential"],
 )
 
 app.include_router(runtime_router)
