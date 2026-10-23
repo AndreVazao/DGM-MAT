@@ -289,6 +289,6 @@ class GovernanceMeetingRegistry:
             meeting["status"] = "approved" if approved else "rejected"
             meeting["updated_at"] = now
             meeting["history"].append({"event": "meeting.owner_approval_recorded", "at": now, "actor": actor, "approved": approved})
-            meeting["action_dispatch"] = {"status": "ready_for_governed_execution", "note": "Human approval recorded. Execution must still use the governed action runner and verify the approved plan."} if approved else {"status": "blocked", "note": "André rejected the proposal."}
+            meeting["action_dispatch"] = {"status": "approved_execution_not_implemented", "note": "CEO and owner approvals are recorded, but no governed action runner is wired to execute this plan. No action has run."} if approved else {"status": "blocked", "note": "André rejected the proposal."}
             self._write(data)
             return meeting
