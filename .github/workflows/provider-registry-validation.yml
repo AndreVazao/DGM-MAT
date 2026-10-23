@@ -1,0 +1,40 @@
+name: Provider Registry Contract Validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/provider-registry-contract-2026-10-23
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  provider-contract:
+    name: Provider contract (${{ matrix.os }}, Python 3.12)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Compile core and tests
+        run: python -m compileall -q core tests
+      - name: Run provider registry regression tests
+        env:
+          PYTHONPATH: .
+        run: >-
+          python -m pytest -q
+          tests/unit/test_provider_orchestration_new.py
+          tests/unit/test_provider_registry.py
+          tests/provider_mesh/test_mesh_orchestration.py
