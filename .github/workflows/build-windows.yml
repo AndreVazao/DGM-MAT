@@ -5,6 +5,14 @@ name: Windows Executable Build
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'scripts/validate_executable.py'
+      - '.github/workflows/build-windows.yml'
+      - 'build/dgm_mat.spec'
+      - 'main.py'
   workflow_dispatch:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
