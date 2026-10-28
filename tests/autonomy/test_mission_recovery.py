@@ -5,7 +5,10 @@ from core.autonomy.mission_models import Mission, MissionStatus
 
 
 def _stale_mission(engine, mission_id, action_id, now):
-    old = now - timedelta(minutes=5)
+    # The execution budget is 300 seconds (MISSION_EXECUTION_TIMEOUT_SECONDS).
+    # A mission exactly at the boundary is still within budget; use a clearly
+    # stale duration so recovery is exercised regardless of the threshold.
+    old = now - timedelta(minutes=6)
     mission = Mission(
         mission_id=mission_id,
         goal="Recovery regression test",

@@ -39,6 +39,10 @@ def test_self_evolution_safety():
     patch_high_risk = {"module": "shared/utils.py", "risk_score": 90}
     assert validator.validate(patch_high_risk) is False
 
-    # Safe patch should be accepted
-    patch_safe = {"module": "shared/utils.py", "risk_score": 10}
+    # Safe patch should be accepted (validator requires a real unified diff).
+    patch_safe = {
+        "module": "shared/utils.py",
+        "diff": "diff --git a/shared/utils.py b/shared/utils.py\n--- a/shared/utils.py\n+++ b/shared/utils.py\n@@ -1 +1,2 @@\n x\n+y\n",
+        "risk_score": 10,
+    }
     assert validator.validate(patch_safe) is True
