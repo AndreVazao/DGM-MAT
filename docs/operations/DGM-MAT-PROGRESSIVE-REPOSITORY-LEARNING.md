@@ -16,7 +16,7 @@ Default roots:
 - `C:\ProjectFlux`
 - `C:\ProjectMind`
 
-Additional roots can be supplied through `DGM_REPO_SCAN_ROOTS`, separated by semicolons. Discovery is recursive to a bounded depth (default 5), detects normal repositories and Git worktrees, and does not follow symlinks. Generated/vendor directories are pruned.
+Additional roots can be supplied through `DGM_REPO_SCAN_ROOTS`, separated by semicolons. Discovery is recursive to a bounded depth (default 8), detects normal repositories and Git worktrees (including hidden worktree folders), and does not follow symlinks. Only known generated/vendor directories are pruned.
 
 ## What is learned
 
@@ -44,7 +44,7 @@ For each repository the worker stores:
 
 ## API
 
-- `GET /runtime/repository-learning` — progress plus a bounded repository metadata page.
+- `GET /runtime/repository-learning` — progress percentage, next repository path, scan roots and a bounded repository metadata page.
 - `POST /runtime/repository-learning/start` — operator-only start/resume.
 - `POST /runtime/repository-learning/stop` — operator-only pause; the cursor and ledger remain intact.
 - `GET /runtime/missions/page?limit=20&offset=0` — bounded durable mission summaries. This avoids the legacy unbounded mission-list response on a runtime with hundreds of checkpoints.
@@ -54,7 +54,7 @@ For each repository the worker stores:
 Set before runtime startup:
 - `DGM_REPOSITORY_LEARNING_ENABLED=1`
 - `DGM_REPOSITORY_LEARNING_BATCH_SIZE=5`
-- `DGM_REPOSITORY_LEARNING_MAX_DEPTH=5`
+- `DGM_REPOSITORY_LEARNING_MAX_DEPTH=8`
 - `DGM_REPOSITORY_LEARNING_REFRESH_SECONDS=900`
 
 The worker is deliberately independent of the SafeActionQueue. It does not create hundreds of mission records or auto-approve repository mutations. It is a read-only learning/indexing process; later deep audits and code changes must be separate, evidence-backed tasks.

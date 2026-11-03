@@ -85,7 +85,7 @@ class RepositoryLearningService:
         storage_dir: str | Path | None = None,
         roots: list[str | Path] | tuple[str | Path, ...] | None = None,
         batch_size: int = 5,
-        max_depth: int = 5,
+        max_depth: int = 8,
         refresh_seconds: int = 900,
         command_timeout: float = 4.0,
     ) -> None:
@@ -208,7 +208,7 @@ class RepositoryLearningService:
                     depth = len(current_path.relative_to(root).parts)
                     directories[:] = sorted(
                         name for name in directories
-                        if name.casefold() not in SKIP_DIRS and not name.startswith(".")
+                        if name.casefold() not in SKIP_DIRS
                     )
                     if depth >= self.max_depth:
                         directories[:] = []
@@ -474,12 +474,20 @@ class RepositoryLearningService:
             FROM repositories
         """).fetchone()
         complete = state.get("status") == "complete" if cycle_complete is None else cycle_complete
+        candidate_items = state.get("candidate_paths", [])
+        next_item = candidate_items[cursor] if isinstance(candidate_items, list) and cursor < len(candidate_items) else None
+        progress_percent = 100.0 if complete else (
+            round((min(cursor, total) / total) * 100, 1) if total else 0.0
+        )
         return {
             "status": state.get("status", "not_started"),
             "run_id": state.get("run_id"),
+            "scan_roots": [str(root) for root in self.roots],
             "total_candidates": total,
             "processed_candidates": min(cursor, total),
             "pending_candidates": max(0, total - cursor),
+            "progress_percent": progress_percent,
+            "next_path": next_item.get("path") if isinstance(next_item, dict) else None,
             "repositories_learned": int(row["total"] or 0),
             "repositories_with_errors": int(row["errors"] or 0),
             "protected_repositories": int(row["protected"] or 0),

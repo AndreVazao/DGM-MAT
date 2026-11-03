@@ -21,6 +21,7 @@ class MobileConversationService:
     def __init__(self, store: ConversationStore | None = None) -> None:
         self.store = store or ConversationStore()
         self.intent = IntentInterpreter()
+        self.auto_help_worker = None
 
     def create_thread(self, title: str = "Nova conversa", **kwargs: Any) -> dict[str, Any]:
         return self.store.create_thread(title, **kwargs).to_dict()
@@ -87,6 +88,7 @@ class MobileConversationService:
             if current_mission is not None:
                 mission_status = getattr(current_mission.status, "value", current_mission.status)
 
+        auto_help_request_id = None
         if mission_id:
             if action_status == "APPROVED":
                 approval_source = (
@@ -130,6 +132,61 @@ class MobileConversationService:
         else:
             response_text = self._generate_response(thread_id, result)
 
+        # Unsupported actionable requests remain non-executable, but can ask the
+        # allowlisted free Hub providers for a consultative plan in the background.
+        if (
+            mission_id is None
+            and not mission_decision.supported
+            and result.intent in {"repair", "implement", "deploy", "sync", "audit", "research"}
+            and self.auto_help_worker is not None
+        ):
+            try:
+                help_request = self.auto_help_worker.enqueue(
+                    thread_id=thread_id,
+                    goal=content,
+                    reason=mission_decision.reason,
+                )
+                auto_help_request_id = help_request.get("request_id")
+                help_status = help_request.get("status")
+                if help_request.get("duplicate"):
+                    if help_request.get("cached_response"):
+                        response_text += (
+                            "\n\nJá existe uma consulta recente para este pedido. "
+                            "Reutilizei o resultado guardado e não voltei a chamar os fornecedores."
+                        )
+                    else:
+                        response_text += (
+                            f"\n\nJá existe uma consulta {auto_help_request_id} "
+                            f"com estado {help_status}; não criei outra nem repeti o pedido."
+                        )
+                elif help_status == "PENDING":
+                    response_text += (
+                        f"\n\nRegistei a consulta gratuita {auto_help_request_id}. "
+                        "O DGM-MAT vai pedir uma segunda opinião ao Kilo/LLM7 em segundo plano. "
+                        "As respostas serão guardadas nesta thread como sugestões não verificadas; "
+                        "não autorizam execução nem alterações."
+                    )
+                elif help_status == "BLOCKED_SECRET_CONTENT":
+                    response_text += (
+                        "\n\nA consulta externa foi bloqueada porque o pedido parece conter "
+                        "credenciais ou segredos. Não foi enviado a nenhum fornecedor."
+                    )
+                elif help_status == "DISABLED":
+                    response_text += (
+                        "\n\nA ajuda externa automática está desligada; o pedido ficou guardado "
+                        "e não foi enviado a fornecedores."
+                    )
+                elif help_status == "BLOCKED_NO_FREE_PROVIDER":
+                    response_text += (
+                        "\n\nNão há fornecedor gratuito autorizado configurado. "
+                        "Não foi feita qualquer chamada externa."
+                    )
+            except Exception as exc:
+                response_text += (
+                    f"\n\nNão consegui registar a consulta externa ({type(exc).__name__}); "
+                    "não foi feita qualquer chamada nem repetição automática."
+                )
+
         assistant_metadata = {
             "intent": result.to_dict(),
             "mission_decision": mission_decision.to_dict(),
@@ -137,6 +194,7 @@ class MobileConversationService:
             "mission_status": mission_status,
             "action_status": action_status,
             "mission_requires_approval": mission_requires_approval,
+            "auto_help_request_id": auto_help_request_id,
             "source": "dgm-mat-mobile-runtime",
         }
         self.store.append_message(
@@ -154,6 +212,7 @@ class MobileConversationService:
             "mission_status": mission_status,
             "action_status": action_status,
             "mission_requires_approval": mission_requires_approval,
+            "auto_help_request_id": auto_help_request_id,
             "message": response_text,
         }
 

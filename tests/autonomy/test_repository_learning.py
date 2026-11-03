@@ -122,3 +122,19 @@ def test_repository_learning_reports_missing_roots_without_failing(tmp_path: Pat
     assert result["status"] == "complete"
     assert result["total_candidates"] == 0
     assert result["root_warnings"] == [{"root": str(tmp_path / "missing"), "status": "missing"}]
+
+
+def test_repository_learning_finds_git_worktrees_inside_hidden_workspace_folders(tmp_path):
+    root = tmp_path / "workspace"
+    repo = _create_repo(root / ".worktrees", "hidden-worktree")
+    service = RepositoryLearningService(
+        storage_dir=tmp_path / "ledger", roots=[root], batch_size=5, max_depth=8
+    )
+
+    result = service.run_batch()
+    records = service.list_repositories()
+
+    assert result["cycle_complete"] is True
+    assert result["progress_percent"] == 100.0
+    assert len(records) == 1
+    assert Path(records[0]["path"]) == repo

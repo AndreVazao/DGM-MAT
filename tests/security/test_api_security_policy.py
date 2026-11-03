@@ -153,3 +153,12 @@ def test_repository_learning_and_mission_page_scopes_are_bounded():
     assert learning_start is not None and learning_start.scope is SecurityScope.OPERATOR
     assert learning_stop is not None and learning_stop.scope is SecurityScope.OPERATOR
     assert mission_page is not None and mission_page.scope is SecurityScope.LOCAL_CLIENT
+
+
+def test_auto_help_status_is_local_client_and_controls_are_operator_only():
+    status = classify_route("/runtime/auto-help", ("GET",))
+    start = classify_route("/runtime/auto-help/start", ("POST",))
+    stop = classify_route("/runtime/auto-help/stop", ("POST",))
+    assert status is not None and status.scope is SecurityScope.LOCAL_CLIENT
+    assert start is not None and start.scope is SecurityScope.OPERATOR
+    assert stop is not None and stop.scope is SecurityScope.OPERATOR
