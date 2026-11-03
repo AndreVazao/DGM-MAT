@@ -130,7 +130,11 @@ class RepositoryLearningService:
         self.batch_size = max(1, min(int(batch_size), 25))
         self.max_depth = max(1, min(int(max_depth), 8))
         self.refresh_seconds = max(60, min(int(refresh_seconds), 86400))
-        self.command_timeout = max(1.0, min(float(command_timeout), 10.0))
+        try:
+            configured_timeout = float(os.getenv("DGM_REPOSITORY_LEARNING_COMMAND_TIMEOUT", str(command_timeout)))
+        except (TypeError, ValueError):
+            configured_timeout = float(command_timeout)
+        self.command_timeout = max(1.0, min(configured_timeout, 10.0))
         self._lock = threading.RLock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -429,14 +433,22 @@ class RepositoryLearningService:
         path = Path(item["path"])
         protected = self._is_protected(path)
         branch = self._git(path, "branch", "--show-current") or "detached"
-        head = self._git(path, "rev-parse", "--short=12", "HEAD") or "unknown"
-        dirty = bool(self._git(path, "status", "--porcelain=v1", "-uno"))
+        status_output = self._git(path, "status", "--porcelain=v1", "-uno")
+        dirty = bool(status_output)
+        try:
+            head = self._git(path, "rev-parse", "--short=12", "HEAD") or "unknown"
+        except RuntimeError:
+            # A newly initialized repository has a symbolic branch but no commit yet.
+            # Git status succeeds in this state; represent it as an unborn branch.
+            if branch != "detached":
+                head = "unborn"
+            else:
+                raise
         try:
             origin = _safe_origin(self._git(path, "remote", "get-url", "origin"))
         except (RuntimeError, subprocess.TimeoutExpired):
             origin = ""
         stack = self._manifest_stack(path)
-        summary = self._read_project_summary(path, protected)
         marker_times = []
         for name in ("README.md", "README.rst", "README.txt", "readme.md", *MANIFESTS):
             for marker in path.glob(name):
@@ -460,7 +472,7 @@ class RepositoryLearningService:
             "origin": origin,
             "protected": protected,
             "stack": stack,
-            "summary": summary,
+            "summary": None,
             "fingerprint": fingerprint,
             "scan_status": "protected_metadata_only" if protected else "learned",
             "scan_error": None,
@@ -530,6 +542,10 @@ class RepositoryLearningService:
                         (inspected["path"],),
                     ).fetchone()
                     unchanged = bool(previous and previous["fingerprint"] == inspected["fingerprint"])
+                    if not unchanged:
+                        inspected["summary"] = self._read_project_summary(
+                            Path(inspected["path"]), bool(inspected["protected"])
+                        )
                     try:
                         self._ensure_tree(
                             Path(inspected["path"]),
@@ -589,6 +605,11 @@ class RepositoryLearningService:
                     ))
                     state["errors_this_cycle"] = int(state.get("errors_this_cycle", 0)) + 1
                     state["last_path"] = path_text
+                    error_code = str(exc)[:120] if isinstance(exc, RuntimeError) else type(exc).__name__
+                    db.execute(
+                        "UPDATE repositories SET scan_error=? WHERE path=?",
+                        (error_code, path_text),
+                    )
                 state["cursor_index"] = index + 1
                 processed += 1
                 self._write_state(db, state)

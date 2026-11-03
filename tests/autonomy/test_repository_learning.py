@@ -259,3 +259,50 @@ def test_repository_learning_reads_only_indexed_tree_artifacts(tmp_path: Path):
         assert "repository_tree_not_found" in str(exc)
     else:
         raise AssertionError("unindexed repository paths must not expose arbitrary files")
+
+
+def test_repository_learning_handles_unborn_empty_git_repositories(tmp_path: Path):
+    root = tmp_path / "repos"
+    repo = root / "empty-project"
+    repo.mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / "README.md").write_text("# Empty project\n\nA repository with no commit yet.\n", encoding="utf-8")
+
+    service = RepositoryLearningService(
+        storage_dir=tmp_path / "ledger", roots=[root], batch_size=5
+    )
+    result = service.run_batch()
+    record = service.list_repositories()[0]
+
+    assert result["cycle_complete"] is True
+    assert record["scan_status"] == "learned"
+    assert record["head_sha"] == "unborn"
+    assert record["tree_path"] is not None
+    assert "repository with no commit" in record["summary"]
+
+
+def test_repository_learning_does_not_reread_readme_for_unchanged_repositories(tmp_path: Path):
+    root = tmp_path / "repos"
+    _create_repo(root, "unchanged-readme")
+    service = RepositoryLearningService(
+        storage_dir=tmp_path / "ledger", roots=[root], batch_size=5, refresh_seconds=60
+    )
+    service.run_batch()
+    _expire_refresh(service)
+
+    def fail_if_read(*_args, **_kwargs):
+        raise AssertionError("unchanged README must not be read again")
+
+    service._read_project_summary = fail_if_read
+    result = service.run_batch()
+
+    assert result["cycle_complete"] is True
+    assert result["unchanged_skipped_this_cycle"] == 1
+
+
+def test_repository_learning_command_timeout_is_configurable(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("DGM_REPOSITORY_LEARNING_COMMAND_TIMEOUT", "8")
+    service = RepositoryLearningService(
+        storage_dir=tmp_path / "ledger", roots=[tmp_path / "repos"]
+    )
+    assert service.command_timeout == 8.0

@@ -21,7 +21,7 @@
 
 - Python compileall passed for changed modules and tests.
 - `git diff --check` passed.
-- **109 tests passed** across repository learning/tree artifacts, mission pagination, free-only help, mobile runtime, Hub bridge/observer, API security, mission intent, read-only diagnostics, terminal result guards, mission-system and live diagnostic integration.
+- **112 tests passed** across repository learning/tree artifacts, mission pagination, free-only help, mobile runtime, Hub bridge/observer, API security, mission intent, read-only diagnostics, terminal result guards, mission-system and live diagnostic integration.
 - Focused tree tests cover external artifact placement, sensitive-name exclusions, unchanged-tree reuse, protected-mirror exclusion, indexed-only tree retrieval, sibling grouping and same-origin grouping.
 
 ## Operational boundary

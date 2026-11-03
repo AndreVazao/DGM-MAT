@@ -50,7 +50,7 @@ For each repository the worker stores:
 - Default batch size: 5 repositories.
 - Every repository and cursor advance is committed atomically.
 - If the process stops, the next start resumes from the saved cursor.
-- If HEAD, branch, tracked dirty state, origin or top-level documentation/manifest timestamps are unchanged, the repository is marked unchanged and its README is not read again.
+- If HEAD, branch, tracked dirty state, origin or top-level documentation/manifest timestamps are unchanged, the repository is marked unchanged before the README is opened; its previous summary and tree are reused.
 - After a complete pass, the next refresh defaults to 15 minutes; unchanged repositories are skipped.
 - Errors are recorded and the cursor advances, so one inaccessible repository cannot trap the entire worker in an infinite retry.
 - No Git checkout, reset, clean, stash, commit, push, file edit, build or project command is performed.
@@ -71,5 +71,6 @@ Set before runtime startup:
 - `DGM_REPOSITORY_LEARNING_MAX_DEPTH=8`
 - `DGM_REPOSITORY_TREE_DIR=C:\\ProgramasGodMode\\DGM-MAT-Data\\repository-trees` (recommended external sidecar location)
 - `DGM_REPOSITORY_LEARNING_REFRESH_SECONDS=900`
+- `DGM_REPOSITORY_LEARNING_COMMAND_TIMEOUT=8` (bounded to 10 seconds; useful for slower repositories)
 
 The worker is deliberately independent of the SafeActionQueue. It does not create hundreds of mission records or auto-approve repository mutations. It is a read-only learning/indexing process; later deep audits and code changes must be separate, evidence-backed tasks.
