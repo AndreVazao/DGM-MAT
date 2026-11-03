@@ -21,8 +21,8 @@
 
 - Python compileall passed for all changed runtime, API, service and test modules.
 - `git diff --check` passed.
-- **100 tests passed** across:
-  - repository-learning cursor, resume and unchanged-skip behavior;
+- **101 tests passed** across:
+  - repository-learning cursor, resume, unchanged-skip, hidden worktree discovery and progress percentage;
   - bounded mission pagination;
   - auto-help deduplication, secret blocking, free-provider allowlist, restart safety and no-retry behavior;
   - mobile mission routing;
