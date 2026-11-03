@@ -255,3 +255,36 @@ Não há tokens, passwords ou dados privados neste relatório. Evidências adici
 ---
 
 **Conclusão:** O DGM-MAT executa o fluxo E2E (saúde → autenticação → missão → persistência/checkpoint → resposta) de forma controlada e sem erros nas categorias testáveis localmente. As 4 regressões foram corrigidas com evidência. O `.exe` e o teste móvel real permanecem como limitações de ambiente/dispositivo, documentadas acima, e não como falhas de código.
+
+---
+
+## 11. Atualização de verificação — 2026-11-03
+
+Esta secção complementa o registo histórico de 2026-10-28; não reescreve os resultados daquela sessão.
+
+### Evidência obtida no PC em 2026-11-03
+
+| Verificação | Resultado | Evidência |
+|---|---|---|
+| Backoffice local | PASS | `GET http://127.0.0.1:8181/health` → HTTP 200, `status=healthy` |
+| Missão real read-only | PASS | `scripts/diagnose_live_mission.py --poll-timeout 90` → missão `mission_775c4e8e`, handler `list_repositories`, estado `COMPLETED`, sem erro; relatório JSON em `%LOCALAPPDATA%\DGM-MAT\diagnostics\live-mission-20261103-075714.json` |
+| Cliente móvel — contratos | PASS | No commit remoto `18b1aae` de `AndreVazao/DGM-MAT-Mobile`, `node --test tests/mobile-client-contract.test.cjs` → 9/9 aprovados |
+| Sintaxe JavaScript móvel | PASS | `node --check web/app.js` sem erros |
+| Compilação Python do DGM-MAT | PASS | `python -m compileall -q scripts tests` sem erros no commit remoto `bc57b50` |
+| Regressões da branch deste relatório | PASS | `python -m pytest -q tests/autonomy/test_mission_recovery.py tests/autonomy/test_phase37_logic.py` → 17/17 aprovados |
+| Dispositivo Android via ADB nesta sessão | NÃO TESTADO | `adb devices -l` não apresentou dispositivos ligados em 2026-11-03 |
+
+### Limites importantes do teste móvel
+
+- Os 9 testes do cliente móvel validam contratos e lógica do cliente; não substituem a execução da APK num telefone.
+- Os testes HTTP de autenticação e endpoints executados anteriormente a partir do PC validam o backoffice, mas não provam que a APK originou os pedidos.
+- A instalação da APK registada em 2026-10-28 é evidência histórica de instalação, não prova de abertura da interface, emparelhamento iniciado na APK, envio de mensagem pelo telefone ou apresentação da resposta no telefone.
+- O estado MAIN/LAUNCHER da APK permanece por investigar. Não concluir que a aplicação é headless ou que o lançamento não se aplica sem inspecionar o manifesto e a atividade Android instalada.
+- Critério E2E móvel ainda pendente: abrir a APK → emparelhar/autenticar → enviar mensagem pela interface móvel → o cérebro processar → a resposta aparecer na mesma conversa no telefone.
+
+### Bloqueios CI identificados após a auditoria original
+
+- PR #154 — a CI conseguiu construir o executável, mas a validação de arranque revelou `ModuleNotFoundError: No module named 'dgm_contracts'`. A causa foi a dependência pública `DGM-Contracts` estar instalada em modo editável apenas no PC e não declarada no build limpo. Foi adicionada à branch do PR como dependência Git fixada ao commit `3bf14d62025f21a6af8f69e4d2ecac0c6f9630ab`, e os módulos foram explicitados no `build/dgm_mat.spec`. A nova validação CI deve confirmar a correção antes do merge.
+- PR #3 de `DGM-MAT-Mobile` — o APK foi construído e carregado como artefacto, mas o emulador Android ficou offline durante o arranque e terminou com `Broken pipe` antes de executar o fluxo Maestro. O smoke test de interface continua pendente.
+
+**Conclusão atualizada:** o cérebro/backoffice local executou uma missão read-only completa e o cliente móvel passou os testes de contrato. A ligação real APK → cérebro → resposta visível no telefone continua por demonstrar e não deve ser marcada como PASS.
