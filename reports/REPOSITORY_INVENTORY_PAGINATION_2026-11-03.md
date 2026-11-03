@@ -18,12 +18,20 @@ Base: origin/main at 19eea585c86a0cda2eae7af033f673ead1a1a6e0
 
 ## Local PC evidence
 
-A metadata-only directory check confirmed C:\AI exists and has one direct child Git repository: DGM-HUB-MultiChat. No Git command was executed against that checkout by this check.
+A bounded read-only execution of the new scanner with page size 1 inspected exactly one repository:
+- total candidates across configured roots: 85;
+- page 1 repository: DGM-HUB-MultiChat;
+- branch: feature/dgm-hub-multichat-cockpit;
+- last commit: 3d422c5;
+- working tree reported dirty with 11 changes (pre-existing operator work);
+- 84 candidates deferred; next cursor: 1; partial=true; no root warnings.
+
+The scanner ran only read-only Git inspection for that one page. No checkout, reset, clean, stash or file mutation was performed. The dirty Hub worktree was left untouched.
 
 ## Validation
 
 Windows Python 3.12:
-- 38 tests passed across repository pagination, mission lifecycle, terminal guards, read-only diagnostic missions and live-mission diagnostic contracts.
+- 39 tests passed across repository pagination, mission lifecycle, terminal guards, read-only diagnostic missions and live-mission diagnostic contracts.
 - python -m compileall -q core tests: passed.
 - git diff --check: passed.
 
