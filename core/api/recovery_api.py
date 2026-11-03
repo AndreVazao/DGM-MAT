@@ -1,6 +1,7 @@
 """Read-only operator API for recovery progress and source inventory."""
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 from functools import lru_cache
