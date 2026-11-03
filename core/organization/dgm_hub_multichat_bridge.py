@@ -20,7 +20,7 @@ from uuid import uuid4
 
 PROVIDER_ROLES = {
     "codex": ("Codex Free", "engineering implementation and code-architecture consultant"),
-    "claude": ("Claude Code Free", "senior engineering reviewer and root-cause analyst"),
+    "claude": ("Claude Code CLI via FCC", "senior engineering reviewer and root-cause analyst; FCC backend identity is not asserted"),
     "kilo": ("Kilo Gateway", "independent reasoning and design critic"),
     "llm7": ("LLM7", "architecture, requirements and test-strategy analyst"),
 }
