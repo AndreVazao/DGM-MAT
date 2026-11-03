@@ -188,8 +188,12 @@ def consult_hub_agents(payload: HubAgentConsultRequest):
             "review_intake_warning": recorded.get("review_intake_warning"),
         })
 
+    successful_count = sum(item.get("status") == "RESULT_RECEIVED" for item in responses)
     return {
-        "status": "completed",
+        "status": "completed" if successful_count == len(responses) else "partial",
+        "provider_count": len(responses),
+        "successful_count": successful_count,
+        "paused_count": len(responses) - successful_count,
         "hub_task_id": task.task_id,
         "conversation_id": task.conversation_id,
         "room_leader": "operator",
