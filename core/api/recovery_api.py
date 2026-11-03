@@ -2,11 +2,17 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 
+from core.recovery.chatgpt_export_importer import (
+    ChatGPTExportError,
+    import_chatgpt_conversations_json,
+    import_chatgpt_export_zip,
+)
 from core.recovery.recovery_ledger import RecoveryLedger
 
 router = APIRouter(prefix="/recovery", tags=["recovery"])
@@ -71,3 +77,83 @@ def list_recovery_sources(
             for item in page
         ],
     }
+
+
+MAX_CHATGPT_UPLOAD_BYTES = 512 * 1024 * 1024
+
+
+@router.post("/import/chatgpt")
+async def import_chatgpt_export(request: Request, format: str = Query(default="zip")):
+    """Import a user-supplied ChatGPT JSON/ZIP export into the local recovery archive.
+
+    The request body is streamed to a private temporary file with a strict size cap.
+    The original upload is never modified; ZIP extraction is delegated to the safe
+    importer, which reads only the uniquely identified conversations.json member.
+    """
+    normalized_format = str(format).strip().casefold()
+    if normalized_format not in {"json", "zip"}:
+        raise HTTPException(status_code=400, detail="format must be 'json' or 'zip'")
+
+    archive_root = Path(
+        os.getenv("DGM_RECOVERY_ARCHIVE_ROOT", str(Path.home() / ".dgm-mat" / "recovery-archive"))
+    ).expanduser().resolve()
+    try:
+        archive_root.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail="Recovery archive directory is unavailable") from exc
+
+    suffix = ".json" if normalized_format == "json" else ".zip"
+    staged_path: Path | None = None
+    total_bytes = 0
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb", prefix="dgm-chatgpt-upload-", suffix=suffix,
+            dir=str(archive_root), delete=False,
+        ) as staged:
+            staged_path = Path(staged.name)
+            async for chunk in request.stream():
+                if not chunk:
+                    continue
+                total_bytes += len(chunk)
+                if total_bytes > MAX_CHATGPT_UPLOAD_BYTES:
+                    raise HTTPException(status_code=413, detail="ChatGPT export exceeds the 512 MiB upload limit")
+                staged.write(chunk)
+            staged.flush()
+            os.fsync(staged.fileno())
+
+        if total_bytes == 0:
+            raise HTTPException(status_code=400, detail="The uploaded export is empty")
+
+        ledger = get_recovery_ledger()
+        if normalized_format == "json":
+            report = import_chatgpt_conversations_json(staged_path, archive_root, ledger)
+        else:
+            report = import_chatgpt_export_zip(staged_path, archive_root, ledger)
+
+        return {
+            "status": "completed" if report.failed == 0 else "completed_with_errors",
+            "provider": "chatgpt",
+            "format": normalized_format,
+            "source_file": report.source_file,
+            "discovered": report.discovered,
+            "archived": report.archived,
+            "skipped_existing": report.skipped_existing,
+            "partial": report.partial,
+            "failed": report.failed,
+            "errors": list(report.errors[:50]),
+            "error_count": len(report.errors),
+            "source_count": ledger.source_count(),
+            "provider_access_used": False,
+            "source_modified": False,
+            "provider_deletion_attempted": False,
+        }
+    except HTTPException:
+        raise
+    except (ChatGPTExportError, OSError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        if staged_path is not None:
+            try:
+                staged_path.unlink(missing_ok=True)
+            except OSError:
+                pass
