@@ -96,3 +96,11 @@ def test_external_or_mutating_research_is_not_auto_routed_to_local_search():
         assert decision.intent == "unsupported"
         assert decision.supported is False
         assert decision.requires_approval is True
+
+def test_github_main_sync_worktree_requires_operator_approval():
+    decision = classify_mission_intent(
+        "sync DGM-MAT GitHub main into the isolated worktree"
+    )
+    assert decision.intent == "repository_sync_worktree"
+    assert decision.supported is True
+    assert decision.requires_approval is True

@@ -85,7 +85,7 @@ def test_mission_list_refreshes_durable_status_over_stale_cache():
 
 
 def test_operator_can_approve_queue_action():
-    response = client.post('/runtime/missions', headers=_headers(), json={'goal': 'summarize a test repository', 'description': 'approval API test'})
+    response = client.post('/runtime/missions', headers=_headers(), json={'goal': 'create a test repository workspace', 'description': 'approval API test'})
     assert response.status_code == 200
     mission_id = response.json()['mission_id']
     action_id = mission_engine.active_missions[mission_id].metadata['action_id']
@@ -102,7 +102,7 @@ def test_reject_queue_action_does_not_overwrite_durable_terminal_mission():
     response = client.post(
         "/runtime/missions",
         headers=_headers(),
-        json={"goal": "summarize terminal mission test", "description": "terminal state regression"},
+        json={"goal": "create terminal mission test artifact", "description": "terminal state regression"},
     )
     assert response.status_code == 200
     mission_id = response.json()["mission_id"]
@@ -130,7 +130,7 @@ def test_reject_queue_action_does_not_overwrite_durable_terminal_mission():
 
 
 def test_operator_can_reject_queue_action():
-    response = client.post('/runtime/missions', headers=_headers(), json={'goal': 'summarize another test repository', 'description': 'rejection API test'})
+    response = client.post('/runtime/missions', headers=_headers(), json={'goal': 'create another test repository workspace', 'description': 'rejection API test'})
     assert response.status_code == 200
     mission_id = response.json()['mission_id']
     action_id = mission_engine.active_missions[mission_id].metadata['action_id']

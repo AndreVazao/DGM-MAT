@@ -225,3 +225,41 @@ def test_local_research_without_evidence_does_not_claim_completion(tmp_path, mon
     assert mission.status == MissionStatus.FAILED
     assert mission.metadata["result"]["error_type"] == "LookupError"
     assert "No local evidence found" in mission.metadata["result"]["error"]
+
+def test_github_worktree_sync_mission_waits_for_operator_approval(tmp_path, monkeypatch):
+    from core.autonomy.github_worktree_sync import GitHubWorktreeSync
+
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    engine.missions_path = tmp_path
+    mission = engine.create_mission(
+        "sync DGM-MAT GitHub main into the isolated worktree",
+        "Bring GitHub advances into a separate verified local worktree",
+    )
+    action = engine.action_queue.get_action(mission.metadata["action_id"])
+    assert mission.status == MissionStatus.QUEUED
+    assert action["status"] == "QUEUED"
+    assert action["is_approved"] is False
+
+    monkeypatch.setattr(
+        GitHubWorktreeSync,
+        "sync",
+        lambda self: {
+            "status": "completed",
+            "remote_sha": "a" * 40,
+            "worktree_sha": "a" * 40,
+            "worktree_path": str(tmp_path / "dgm-mat-github-main-sync"),
+            "worktree_clean": True,
+            "worktree_created": True,
+            "authoritative_head_unchanged": True,
+            "authoritative_worktree_unchanged": True,
+        },
+    )
+    engine.action_queue.approve(mission.metadata["action_id"], operator="operator-test")
+    engine._handle_queue_execution(
+        {"mission_id": mission.mission_id, "goal": mission.goal}
+    )
+    assert mission.status == MissionStatus.COMPLETED
+    result = mission.metadata["result"]
+    assert result["handler"] == "repository_sync_worktree"
+    assert result["operator_approved"] is True
+    assert result["authoritative_worktree_unchanged"] is True

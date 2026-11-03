@@ -83,6 +83,17 @@ def classify_mission_intent(goal: str) -> IntentDecision:
     words = _normalized_words(goal)
     word_set = set(words)
 
+    # Fixed DGM-MAT GitHub-main sync into a dedicated detached worktree.
+    # It never updates the authoritative checkout and always requires approval.
+    if (
+        {"github", "worktree"}.issubset(word_set)
+        and bool(word_set & {"sync", "synchronize", "synchronise", "sincronizar", "sincroniza", "prepare", "preparar", "trazer", "bring"})
+    ):
+        return IntentDecision(
+            "repository_sync_worktree", True, 0.99, True,
+            "Matched the fixed DGM-MAT GitHub-main isolated-worktree sync; explicit operator approval is required.",
+        )
+
     # A read-only keyword must never override a mutating request in the same sentence.
     if word_set & _MUTATION_WORDS:
         return IntentDecision(
