@@ -16,7 +16,7 @@ The existing Hub participant set is:
 | Hub ID | Transport observed | Permitted DGM-MAT role |
 |---|---|---|
 | `codex` | Codex Free local CLI launcher | Engineering/code-architecture consultation |
-| `claude` | Claude Code CLI 2.1.112 through local FCC | Senior engineering review/diagnosis |
+| `claude` | Claude Code CLI frontend through local FCC; backend/model identity not verified as a Claude subscription | Senior engineering review/diagnosis |
 | `kilo` | Kilo Gateway, free-model route | Independent reasoning/design critique |
 | `llm7` | Anonymous LLM7 endpoint, configured model `gpt-oss:20b` | Architecture/requirements/test-strategy consultation |
 | `dgm_mat` | Existing Hub observer hook | Observation only; excluded as a target to avoid recursive calls |
@@ -69,7 +69,7 @@ A single operator-initiated Hub request targeted all four external participants 
 | LLM7 | `ok` | 5.84 s | `gpt-oss:20b` |
 | DGM-MAT | `observer` | 0 s | Not applicable |
 
-Important provenance finding: the LLM7 response text claimed “GPT-4”, while the Hub transport metadata identified `gpt-oss:20b`. The transport metadata is retained as the model identity; provider self-claims are untrusted. The Claude Code response self-claimed Claude Sonnet 4.6, but the Hub did not return a transport model ID, so that claim is not verified. The Hub's FCC configuration must be treated as a separate model backend.
+Important provenance finding: the LLM7 response text claimed “GPT-4”, while the Hub transport metadata identified `gpt-oss:20b`. The transport metadata is retained as the model identity; provider self-claims are untrusted. The Claude Code response self-claimed Claude Sonnet 4.6, but the Hub did not return a transport model ID, so that claim is not verified. The Hub's FCC configuration must be treated as a separate model backend. The installed Claude CLI authentication probe reported logged out; therefore this participant is not described as a verified Claude Code Free account.
 
 All external agents were asked to be consultative and to declare no file edits or command execution. Their responses are evidence of successful request/response transport, not proof of their claims or of code execution. DGM-MAT's observer response explicitly confirmed it had not yet been connected to its authenticated conversational engine at the time of the smoke test.
 
