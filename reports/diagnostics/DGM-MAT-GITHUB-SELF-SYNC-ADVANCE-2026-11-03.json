@@ -1,0 +1,31 @@
+{
+  "schema": "dgm-mat-github-self-sync.v1",
+  "generated_at": "2026-11-03T13:29:15.629530+00:00",
+  "result": {
+    "status": "completed",
+    "repository": "AndreVazao/DGM-MAT",
+    "remote": "origin",
+    "branch": "main",
+    "remote_url": "https://github.com/AndreVazao/DGM-MAT.git",
+    "remote_sha": "a1bc49d0704fbe59097ac52f4346d410c37bb335",
+    "worktree_path": "C:\\ProgramasGodMode\\_worktrees\\dgm-mat-github-main-sync",
+    "worktree_sha": "a1bc49d0704fbe59097ac52f4346d410c37bb335",
+    "worktree_created": false,
+    "worktree_advanced": true,
+    "worktree_previous_sha": "7b6e3e0ca3d2882d554642b220a25e3940e43edc",
+    "worktree_clean": true,
+    "worktree_detached": true,
+    "git_commands_executed": 19,
+    "authoritative_head_unchanged": true,
+    "authoritative_worktree_unchanged": true,
+    "authoritative_head": "7e38d4033968f6a3c4c5113e6c3969f0c9e1652a",
+    "authoritative_dirty_entries": 35,
+    "fetch_scope": "fixed origin/main ref only; non-forced; no prune",
+    "mutations": [
+      "Git remote-tracking ref update",
+      "dedicated detached worktree fast-forward checkout"
+    ],
+    "forbidden_operations_used": [],
+    "duration_seconds": 4.282
+  }
+}
