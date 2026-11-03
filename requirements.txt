@@ -20,3 +20,5 @@ pytest-cov
 pyinstaller
 cryptography>=42.0.0
 pyyaml
+# Public cross-process contracts used by the DGM-MAT runtime; pin to a reproducible revision.
+dgm-contracts @ git+https://github.com/AndreVazao/DGM-Contracts.git@3bf14d62025f21a6af8f69e4d2ecac0c6f9630ab
