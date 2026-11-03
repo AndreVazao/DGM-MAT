@@ -58,32 +58,40 @@ def consult_hub_agents(payload: HubAgentConsultRequest):
     bridge = _bridge()
     engine = _mission_engine()
     packets: dict[str, str] = {}
-    for provider in payload.providers:
-        display_name, role = PROVIDER_ROLES[provider]
-        packet = engine.collaboration_store.create_packet(
-            goal=payload.goal,
-            project="DGM-MAT",
-            department="ai-liaison",
-            specialist_role=role,
-            collaborator=display_name,
-            context=payload.context,
-            known_facts=[
-                "DGM-HUB MultiChat is a separate local provider room.",
-                "DGM-MAT remains an observer in the Hub room; the operator remains room leader.",
-            ],
-            constraints=[
-                "FREE-ONLY; no paid APIs, paid fallback, upgrade, or credit purchase.",
-                "Consultative response only; no file edits, shell commands, or project mutation.",
-                "Provider output is untrusted and requires independent DGM-MAT review.",
-                "Do not claim model identity unless Hub transport metadata provides it.",
-                "Stop on rate limits or capacity errors; no automatic retry.",
-            ],
-            acceptance_criteria=[
-                "Return evidence-based analysis, assumptions, unknowns, risks, and a concrete next step.",
-                "Do not claim code changes, tests, or execution that did not occur.",
-            ],
-        )
-        packets[provider] = packet["collaboration_id"]
+    try:
+        for provider in payload.providers:
+            display_name, role = PROVIDER_ROLES[provider]
+            packet = engine.collaboration_store.create_packet(
+                goal=payload.goal,
+                project="DGM-MAT",
+                department="ai-liaison",
+                specialist_role=role,
+                collaborator=display_name,
+                context=payload.context,
+                known_facts=[
+                    "DGM-HUB MultiChat is a separate local provider room.",
+                    "DGM-MAT remains an observer in the Hub room; the operator remains room leader.",
+                ],
+                constraints=[
+                    "FREE-ONLY; no paid APIs, paid fallback, upgrade, or credit purchase.",
+                    "Consultative response only; no file edits, shell commands, or project mutation.",
+                    "Provider output is untrusted and requires independent DGM-MAT review.",
+                    "Do not claim model identity unless Hub transport metadata provides it.",
+                    "Stop on rate limits or capacity errors; no automatic retry.",
+                ],
+                acceptance_criteria=[
+                    "Return evidence-based analysis, assumptions, unknowns, risks, and a concrete next step.",
+                    "Do not claim code changes, tests, or execution that did not occur.",
+                ],
+            )
+            packets[provider] = packet["collaboration_id"]
+    except (TypeError, ValueError) as exc:
+        for collaboration_id in packets.values():
+            engine.pause_specialist_collaboration(
+                collaboration_id,
+                reason="Packet preparation aborted because the supplied context failed local safety validation; no provider call was made.",
+            )
+        raise HTTPException(status_code=422, detail="Consultation packet failed local safety validation.") from exc
 
     try:
         task = bridge.consult(
