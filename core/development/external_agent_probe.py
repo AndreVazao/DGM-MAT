@@ -10,6 +10,8 @@ import os
 import shutil
 from datetime import datetime, timezone
 import subprocess
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -279,34 +281,144 @@ def probe_fcc_gateway(*, port: int = 8082, timeout_seconds: float = 2.0) -> dict
     }
 
 
+FREE_NVIDIA_NIM_MODEL_IDS = {
+    # NVIDIA's public catalog marked this exact model "Free Endpoint" on 2026-11-03.
+    "nvidia_nim/nvidia/nemotron-3.5-super-vl-120b-a12b",
+}
+
+
+def probe_fcc_admin_status(*, timeout_seconds: float = 2.0) -> dict[str, Any]:
+    """Read FCC's loopback-only admin status; never returns credential values."""
+    try:
+        request = urllib.request.Request(
+            "http://127.0.0.1:8082/admin/api/status",
+            headers={"Accept": "application/json"},
+            method="GET",
+        )
+        with urllib.request.urlopen(request, timeout=_timeout(timeout_seconds)) as response:
+            if response.status != 200:
+                raise ValueError(f"unexpected status {response.status}")
+            payload = json.loads(response.read(128 * 1024).decode("utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError, urllib.error.URLError) as exc:
+        return {
+            "status": "unavailable",
+            "selected_provider": None,
+            "selected_model": None,
+            "configured_remote_providers": [],
+            "free_endpoint_verified": False,
+            "cost_status": "unverified",
+            "quota_status": "unknown",
+            "execution_ready": False,
+            "detail": f"FCC local admin status unavailable ({type(exc).__name__}).",
+        }
+    if not isinstance(payload, dict):
+        return {
+            "status": "invalid_response",
+            "selected_provider": None,
+            "selected_model": None,
+            "configured_remote_providers": [],
+            "free_endpoint_verified": False,
+            "cost_status": "unverified",
+            "quota_status": "unknown",
+            "execution_ready": False,
+            "detail": "FCC local admin status returned an invalid payload.",
+        }
+
+    provider = payload.get("provider") if isinstance(payload.get("provider"), str) else None
+    model = payload.get("model") if isinstance(payload.get("model"), str) else None
+    provider_status = payload.get("provider_status")
+    if not isinstance(provider_status, list):
+        provider_status = []
+    configured_remote = sorted({
+        item.get("provider_id")
+        for item in provider_status
+        if isinstance(item, dict)
+        and item.get("kind") == "remote"
+        and item.get("status") == "configured"
+        and isinstance(item.get("provider_id"), str)
+    })
+    selected_configured = any(
+        isinstance(item, dict)
+        and item.get("provider_id") == provider
+        and item.get("kind") == "remote"
+        and item.get("status") == "configured"
+        for item in provider_status
+    )
+    free_endpoint = (
+        provider == "nvidia_nim"
+        and model in FREE_NVIDIA_NIM_MODEL_IDS
+        and selected_configured
+        and configured_remote == ["nvidia_nim"]
+    )
+    ready = free_endpoint
+    return {
+        "status": "ready_free_endpoint" if ready else "configured_model_not_allowlisted",
+        "selected_provider": provider,
+        "selected_model": model,
+        "configured_remote_providers": configured_remote,
+        "free_endpoint_verified": free_endpoint,
+        "cost_status": "official_free_endpoint" if free_endpoint else "unverified",
+        "quota_status": "free_endpoint_rate_limits_and_account_quota_apply" if free_endpoint else "unknown",
+        "execution_ready": ready,
+        "detail": (
+            "Selected NVIDIA NIM model is listed as a Free Endpoint; the executor must pin this model and fail closed on provider errors."
+            if ready else
+            "FCC is not configured exclusively for the allowlisted NVIDIA NIM free endpoint."
+        ),
+        "model_requests_sent": 0,
+    }
+
+
 def get_external_agent_readiness() -> dict[str, Any]:
     """Return truthful, non-invasive readiness for the configured external agents."""
     claude = probe_claude_code()
     fcc = probe_fcc_gateway()
+    admin = (
+        probe_fcc_admin_status()
+        if fcc.get("bind_scope") == "loopback"
+        else {
+            "status": "not_checked",
+            "selected_provider": None,
+            "selected_model": None,
+            "configured_remote_providers": [],
+            "free_endpoint_verified": False,
+            "cost_status": "unverified",
+            "quota_status": "unknown",
+            "execution_ready": False,
+            "detail": "FCC admin status is queried only after loopback-only binding is confirmed.",
+            "model_requests_sent": 0,
+        }
+    )
     blockers = []
-    if claude.get("authenticated") is False:
-        blockers.append("claude_code_not_authenticated")
-    elif claude.get("authenticated") is not True:
-        blockers.append("claude_code_auth_state_unknown")
     if not fcc.get("cli_installed"):
         blockers.append("fcc_cli_not_installed")
-    if fcc["gateway_status"] == "network_exposed":
+    if fcc.get("gateway_status") == "network_exposed":
         blockers.append("fcc_gateway_not_loopback_only")
-    elif fcc["gateway_status"] != "loopback_only":
+    elif fcc.get("gateway_status") != "loopback_only":
         blockers.append("fcc_gateway_not_running_loopback")
-    blockers.append("provider_zero_cost_not_verified")
+    if not admin.get("free_endpoint_verified"):
+        blockers.append("fcc_free_endpoint_not_verified")
+    if not claude.get("authenticated"):
+        blockers.append("direct_claude_code_not_authenticated")
+    # FCC's explicit Free Endpoint is the only permitted execution route.
+    execution_ready = bool(
+        fcc.get("cli_installed")
+        and fcc.get("bind_scope") == "loopback"
+        and admin.get("free_endpoint_verified")
+    )
     return {
         "schema": "dgm-mat.external-agent-readiness.v1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "execution_ready": False,
+        "execution_ready": execution_ready,
         "policy": "FREE_ONLY_PAID_DENY",
         "provider_calls_performed": 0,
         "claude_code": claude,
-        "fcc": fcc,
+        "fcc": {**fcc, "admin": admin},
         "blockers": blockers,
         "limitations": [
-            "Authentication status does not prove model quota, price, or free-tier availability.",
-            "A CLI or gateway being installed does not prove that an agent can safely edit and validate a repository.",
+            "The allowlisted NVIDIA NIM model is a free endpoint, but rate limits and account quota still apply.",
+            "The executor must pin the exact allowlisted model and must not fall back to paid providers.",
+            "A successful readiness probe does not prove that a future model request will succeed; provider errors must stop the task.",
             "This endpoint never starts a provider, sends a prompt, reads credential files, or authorizes paid usage.",
         ],
     }
