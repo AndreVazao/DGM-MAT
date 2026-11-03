@@ -76,6 +76,10 @@ The running DGM-MAT API exposes:
 
 The API is intended to become the cockpit/mission entry point for future automated audit, repair and portfolio organization workflows.
 
+## Mobile conversation and mission routing
+
+The mobile/Hub conversation surface creates missions only when the authoritative mission-intent router finds a registered handler. Supported read-only diagnostics can enter the automatic allowlist; GitHub worktree synchronization remains approval-gated. Unsupported repair, implementation, deployment, external research and persistent-memory requests stay in the conversation and do not create queue actions. See [Mobile mission routing](docs/MOBILE-MISSION-ROUTING.md) for the supported intent matrix and validation report.
+
 ## Ecosystem boundary
 
 DGM-MAT may absorb knowledge, architecture, techniques and validated snippets from upstream, cloned, legacy and lab repositories.

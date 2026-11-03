@@ -35,6 +35,9 @@ _SUMMARY_WORDS = {
     "summary", "summarize", "summarise", "summarized", "summarised",
     "resumo", "resumir", "resume", "sintese", "sintetizar", "overview",
 }
+_ANALYSIS_SUMMARY_WORDS = {
+    "analyze", "analyse", "analysis", "analisa", "analisar", "review", "revisa", "revisar",
+}
 _ARCHITECTURE_TARGET_WORDS = {
     "architecture", "arquitetura", "structure", "estrutura",
     "project", "projeto", "repository", "repo", "system", "sistema",
@@ -46,13 +49,16 @@ _REPOSITORY_STATUS_TARGET_WORDS = {
 _STATUS_WORDS = {"status", "estado", "situacao", "branch"}
 _LOCAL_RESEARCH_VERBS = {
     "research", "search", "investigate", "look", "find", "explore",
+    "audit", "audits", "auditing", "analyze", "analyse", "review", "inspect",
     "pesquisa", "pesquisar", "procura", "procurar", "investiga",
     "investigar", "encontra", "encontrar", "explora", "explorar",
-    "consulta", "consultar",
+    "consulta", "consultar", "audita", "auditar", "auditoria",
+    "analisa", "analisar", "revisa", "revisar", "inspeciona", "inspecionar",
 }
 _LOCAL_RESEARCH_TARGET_WORDS = {
-    "local", "repository", "repo", "repositorio", "code", "codebase",
-    "codigo", "docs", "documentation", "documentacao", "workspace", "dgm",
+    "local", "repository", "repo", "repositorio", "project", "projeto", "projecto",
+    "code", "codebase", "codigo", "docs", "documentation", "documentacao",
+    "workspace", "dgm",
 }
 _EXTERNAL_RESEARCH_WORDS = {"web", "internet", "online", "external", "externo", "externa"}
 _MUTATION_WORDS = {
@@ -103,7 +109,7 @@ def classify_mission_intent(goal: str) -> IntentDecision:
 
     has_repository = bool(word_set & _REPOSITORY_WORDS)
     has_read_verb = bool(word_set & _READ_VERBS)
-    has_summary = bool(word_set & _SUMMARY_WORDS) or {"visao", "geral"}.issubset(word_set)
+    has_summary = bool(word_set & (_SUMMARY_WORDS | _ANALYSIS_SUMMARY_WORDS)) or {"visao", "geral"}.issubset(word_set)
     has_architecture_target = bool(word_set & _ARCHITECTURE_TARGET_WORDS)
     # Host diagnostics map only to fixed, read-only command IDs in CommandExecutor.
     # A mission can never supply arbitrary command text through this router.
@@ -133,7 +139,7 @@ def classify_mission_intent(goal: str) -> IntentDecision:
         )
 
     if (
-        bool(word_set & {"system", "host", "windows", "pc", "computador", "sistema"})
+        bool(word_set & {"system", "host", "windows", "pc", "computador", "sistema", "dgm"})
         and bool(word_set & (_SUMMARY_WORDS | _STATUS_WORDS | {"informacao", "informacoes", "info"}))
         and not bool(word_set & {"architecture", "arquitetura", "structure", "estrutura", "departments", "departamentos"})
     ):
