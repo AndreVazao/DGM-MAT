@@ -113,10 +113,15 @@ def test_search_rejects_too_short_query(monkeypatch, tmp_path):
 
 def test_message_read_does_not_allow_archive_path_escape(monkeypatch, tmp_path):
     client, ledger, _ = _client(monkeypatch, tmp_path)
-    source = ledger.get("chatgpt", "recovery-search-001")
-    from dataclasses import replace
-    ledger.register(replace(source, raw_archive_path=str(tmp_path / "outside.conversation.json")))
+    from core.recovery.recovery_ledger import RecoverySource
+    ledger.register(RecoverySource(
+        provider="chatgpt",
+        source_id="outside-path",
+        title="Outside path",
+        source_date="2026-11-03",
+        raw_archive_path=str(tmp_path / "outside.conversation.json"),
+    ))
 
-    response = client.get("/recovery/sources/chatgpt/recovery-search-001/messages")
+    response = client.get("/recovery/sources/chatgpt/outside-path/messages")
 
     assert response.status_code == 404
