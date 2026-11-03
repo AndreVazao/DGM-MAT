@@ -17,7 +17,7 @@ def test_bridge_rejects_non_loopback_hub_urls():
         "http://192.168.1.20:8770",
         "https://127.0.0.1:8770",
         "http://user:pass@127.0.0.1:8770",
-        "http://127.0.0.1:8770/proxy",
+        "http://127.0.0.1:8770/proxy",\n        "http://127.0.0.1:8080",\n        "http://localhost:8770",
     ):
         with pytest.raises(HubBridgeError):
             DGMHubMultiChatBridge(url)
