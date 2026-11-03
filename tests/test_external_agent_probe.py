@@ -159,6 +159,7 @@ def test_combined_readiness_never_claims_execution_without_free_cost_proof(monke
             "cost_status": "official_free_endpoint",
             "quota_status": "free_endpoint_rate_limits_and_account_quota_apply",
             "execution_ready": True,
+            "fallbacks_disabled": True,
         },
     )
 
@@ -173,8 +174,8 @@ def test_combined_readiness_never_claims_execution_without_free_cost_proof(monke
 
 
 
-def test_fcc_admin_status_accepts_only_the_allowlisted_free_nim_model(monkeypatch):
-    payload = {
+def test_fcc_admin_status_accepts_only_allowlisted_free_nim_model_without_fallbacks(monkeypatch):
+    status_payload = {
         "status": "running",
         "provider": "nvidia_nim",
         "model": "nvidia_nim/nvidia/nemotron-3.5-super-vl-120b-a12b",
@@ -183,26 +184,41 @@ def test_fcc_admin_status_accepts_only_the_allowlisted_free_nim_model(monkeypatc
             {"provider_id": "anthropic", "kind": "remote", "status": "missing_key"},
         ],
     }
+    config_payload = {
+        "fields": [
+            {"key": "MODEL_FALLBACKS", "value": None, "secret": False},
+            {"key": "NVIDIA_NIM_API_KEY", "value": "********", "secret": True},
+        ]
+    }
+    responses = iter([status_payload, config_payload])
+
     class Response:
         status = 200
+        def __init__(self, payload): self.payload = payload
         def __enter__(self): return self
         def __exit__(self, *args): return False
-        def read(self, size): return __import__("json").dumps(payload).encode("utf-8")
+        def read(self, size): return __import__("json").dumps(self.payload).encode("utf-8")
 
-    monkeypatch.setattr(probe.urllib.request, "urlopen", lambda *args, **kwargs: Response())
+    monkeypatch.setattr(
+        probe.urllib.request,
+        "urlopen",
+        lambda *args, **kwargs: Response(next(responses)),
+    )
 
     result = probe.probe_fcc_admin_status()
 
     assert result["free_endpoint_verified"] is True
     assert result["selected_provider"] == "nvidia_nim"
-    assert result["selected_model"] == payload["model"]
+    assert result["selected_model"] == status_payload["model"]
     assert result["configured_remote_providers"] == ["nvidia_nim"]
+    assert result["fallbacks_disabled"] is True
+    assert result["fallback_models_count"] == 0
     assert result["execution_ready"] is True
     assert "api_key" not in str(result).casefold()
 
 
 def test_fcc_admin_status_rejects_unlisted_model_or_paid_fallback(monkeypatch):
-    payload = {
+    status_payload = {
         "status": "running",
         "provider": "nvidia_nim",
         "model": "nvidia_nim/nvidia/unknown-model",
@@ -211,18 +227,32 @@ def test_fcc_admin_status_rejects_unlisted_model_or_paid_fallback(monkeypatch):
             {"provider_id": "anthropic", "kind": "remote", "status": "configured"},
         ],
     }
+    config_payload = {
+        "fields": [
+            {"key": "MODEL_FALLBACKS", "value": '[{"model":"anthropic/claude"}]', "secret": False},
+        ]
+    }
+    responses = iter([status_payload, config_payload])
+
     class Response:
         status = 200
+        def __init__(self, payload): self.payload = payload
         def __enter__(self): return self
         def __exit__(self, *args): return False
-        def read(self, size): return __import__("json").dumps(payload).encode("utf-8")
+        def read(self, size): return __import__("json").dumps(self.payload).encode("utf-8")
 
-    monkeypatch.setattr(probe.urllib.request, "urlopen", lambda *args, **kwargs: Response())
+    monkeypatch.setattr(
+        probe.urllib.request,
+        "urlopen",
+        lambda *args, **kwargs: Response(next(responses)),
+    )
 
     result = probe.probe_fcc_admin_status()
 
     assert result["free_endpoint_verified"] is False
     assert result["execution_ready"] is False
+    assert result["fallbacks_disabled"] is False
+    assert result["fallback_models_count"] == 1
     assert result["cost_status"] == "unverified"
 
 
