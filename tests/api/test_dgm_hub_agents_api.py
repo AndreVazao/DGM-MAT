@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi import HTTPException
+from starlette.requests import Request
 
 from core.api import dgm_hub_agents_api as api
 from core.organization.dgm_hub_multichat_bridge import HubTaskResult
