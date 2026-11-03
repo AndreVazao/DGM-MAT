@@ -7,7 +7,8 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from core.api import dgm_hub_agents_api as api
-from core.organization.dgm_hub_multichat_bridge import HubTaskResult\nfrom core.organization.specialist_collaboration import SpecialistCollaborationStore
+from core.organization.dgm_hub_multichat_bridge import HubTaskResult
+from core.organization.specialist_collaboration import SpecialistCollaborationStore
 
 
 class FakeEngine:
