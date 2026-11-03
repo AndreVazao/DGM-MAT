@@ -84,14 +84,15 @@ class TelescopeAdapter:
         return [self._safe_metadata(item) for item in items if isinstance(item, dict)]
 
     def conversation(self, session_id: str) -> ConversationRecord | None:
-        """Return a metadata-only record; full transcript import is not supported."""
+        """Build a metadata record from the list endpoint; never fetch session details."""
         if not isinstance(session_id, str) or not session_id.strip() or len(session_id) > 256:
             return None
-        data = self._run_json("sessions", "get", session_id, "--json")
-        if not isinstance(data, dict):
+        safe = next(
+            (item for item in self.sessions() if item.get("session_id") == session_id),
+            None,
+        )
+        if safe is None:
             return None
-        safe = self._safe_metadata(data)
-        safe.setdefault("session_id", session_id)
         title = f"Telescope session {session_id[:12]}"
         content = json.dumps(safe, ensure_ascii=False, indent=2, sort_keys=True)
         return ConversationRecord(

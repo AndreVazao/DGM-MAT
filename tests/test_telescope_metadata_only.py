@@ -56,11 +56,14 @@ def test_conversation_is_metadata_only_and_never_contains_turns(monkeypatch):
         "turns": [{"role": "user", "content": "PRIVATE TURN BODY"}],
         "metadata": {"access_token": "PRIVATE TOKEN"},
     }
+    calls = []
     monkeypatch.setattr("shutil.which", lambda _: "tele.exe")
-    monkeypatch.setattr(
-        "subprocess.run",
-        lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0, json.dumps(payload), ""),
-    )
+
+    def fake_run(arguments, **kwargs):
+        calls.append(arguments)
+        return subprocess.CompletedProcess(arguments, 0, json.dumps([payload]), "")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
 
     record = TelescopeAdapter().conversation("session-2")
 
@@ -68,6 +71,7 @@ def test_conversation_is_metadata_only_and_never_contains_turns(monkeypatch):
     assert record.conversation_id == "session-2"
     assert record.source == "telescope-metadata"
     assert record.metadata["content_policy"] == "metadata_only"
+    assert calls == [["tele", "sessions", "list", "--json"]]
     serialized = record.content + json.dumps(record.metadata)
     assert "PRIVATE" not in serialized
     assert "private-user" not in serialized

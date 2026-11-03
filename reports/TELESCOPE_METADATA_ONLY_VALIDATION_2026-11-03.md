@@ -16,6 +16,7 @@ The adapter now projects both list and detail responses onto an explicit metadat
 - project is derived only from the final directory component of cwd;
 - absolute cwd, git_repo, last_message, turns, raw metadata and all unknown fields are discarded;
 - ConversationRecord uses a generated non-content title and a metadata-only content policy;
+- conversation lookup uses only the sessions list endpoint and never invokes sessions get, so full turns are not fetched;
 - invalid IDs, missing executable, malformed JSON, process errors and CLI timeouts fail closed.
 
 This is not a transcript importer. Full-session content remains unavailable through this adapter.
