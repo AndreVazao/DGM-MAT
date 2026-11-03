@@ -156,7 +156,7 @@ def test_consult_pauses_packets_on_hub_failure_without_retry_or_paid_fallback(mo
     monkeypatch.setattr(api, "_mission_engine", lambda: engine)
 
     with pytest.raises(HTTPException) as exc:
-        api.consult_hub_agents(_payload())
+        api.consult_hub_agents(_payload(), _request())
 
     assert exc.value.status_code == 503
     assert len(engine.paused) == 2
@@ -200,7 +200,7 @@ def test_secret_like_context_is_rejected_before_any_provider_call(monkeypatch, t
 
     with pytest.raises(HTTPException) as exc:
         api.consult_hub_agents(
-            _payload(context="api_key=sk-12345678901234567890123456789012")
+            _payload(context="api_key=sk-12345678901234567890123456789012"), _request()
         )
 
     assert exc.value.status_code == 422
