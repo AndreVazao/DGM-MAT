@@ -55,13 +55,13 @@ The live `MissionEngine.REPO_SCAN_ROOTS` contains only:
 - `C:/ProgramasGodMode`
 - `C:/DevopGodMode`
 
-The active MultiChat Hub is at `C:\\AI\\DGM-HUB-MultiChat`, outside these roots. The scanner discovered the separate `C:\\ProgramasGodMode\\DGM-HUB` checkout instead. Therefore this result is a partial inventory and does not prove that all local repositories, especially the active Hub checkout, were discovered.
+The active MultiChat Hub is at `C:\AI\DGM-HUB-MultiChat`, outside these roots. The scanner discovered the separate `C:\ProgramasGodMode\DGM-HUB` checkout instead. Therefore this result is a partial inventory and does not prove that all local repositories, especially the active Hub checkout, were discovered.
 
 The runtime was already in low-memory mode with high CPU/memory measurements. Increasing the 20-repository cap blindly would be unsafe. [Issue #161](https://github.com/AndreVazao/DGM-MAT/issues/161) tracks configurable roots and bounded cursor pagination.
 
 ## Evidence and limits
 
-- Full machine-local diagnostic JSON: `%LOCALAPPDATA%\\DGM-MAT\\diagnostics\\live-mission-20261103-115316.json`
+- Full machine-local diagnostic JSON: `%LOCALAPPDATA%\DGM-MAT\diagnostics\live-mission-20261103-115316.json`
 - Mission checkpoint source: `durable_mission_checkpoint`
 - The mission only listed repository metadata and Git status; it did not checkout, reset, clean, stash, commit, or edit any repository.
 - This validates mission submission, authentication, execution, persistence and completion. It does not validate the DGM-HUB meeting observer's end-to-end proposal/decision workflow.
