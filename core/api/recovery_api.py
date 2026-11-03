@@ -170,22 +170,22 @@ MAX_RECOVERY_SEARCH_FILE_BYTES = 4 * 1024 * 1024
 
 def _message_text(value):
     """Extract searchable text from ChatGPT message content without changing the archive."""
-    chunks = []
     if isinstance(value, str):
-        return value
+        return [value]
     if isinstance(value, dict):
-        for key, child in value.items():
-            if key in {"text", "parts", "content"}:
-                chunks.extend(_message_text(child) if isinstance(_message_text(child), list) else [_message_text(child)])
-            elif isinstance(child, (dict, list)):
-                chunks.extend(_message_text(child))
-    elif isinstance(value, list):
+        chunks = []
+        for child in value.values():
+            chunks.extend(_message_text(child))
+        return chunks
+    if isinstance(value, list):
+        chunks = []
         for child in value:
             chunks.extend(_message_text(child))
-    return [item for item in chunks if isinstance(item, str) and item]
+        return chunks
+    return []
 
 
-def _chatgpt_messages_path(source) -> Path:
+def _chatgpt_messages_path(source, *, verify_archive: bool = True) -> Path:
     archive = Path(source.raw_archive_path).expanduser().resolve()
     archive_root = Path(
         os.getenv("DGM_RECOVERY_ARCHIVE_ROOT", str(Path.home() / ".dgm-mat" / "recovery-archive"))
@@ -195,7 +195,7 @@ def _chatgpt_messages_path(source) -> Path:
         raise HTTPException(status_code=404, detail="Recovery archive is unavailable")
     if not archive.is_file():
         raise HTTPException(status_code=404, detail="Archived conversation is unavailable")
-    if source.raw_sha256 and RecoveryLedger.sha256_file(archive).casefold() != source.raw_sha256.casefold():
+    if verify_archive and source.raw_sha256 and RecoveryLedger.sha256_file(archive).casefold() != source.raw_sha256.casefold():
         raise HTTPException(status_code=409, detail="Archived conversation failed integrity verification")
     suffix = ".conversation.json"
     if not archive.name.endswith(suffix):
@@ -250,7 +250,7 @@ def search_recovery_sources(
         if source.provider != "chatgpt" or not source.raw_archive_path:
             continue
         try:
-            messages_path = _chatgpt_messages_path(source)
+            messages_path = _chatgpt_messages_path(source, verify_archive=False)
             size = messages_path.stat().st_size
             if size > MAX_RECOVERY_SEARCH_FILE_BYTES or scanned_bytes + size > MAX_RECOVERY_SEARCH_BYTES:
                 truncated = True
