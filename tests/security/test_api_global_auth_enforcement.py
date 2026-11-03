@@ -1,5 +1,5 @@
+import json
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -309,7 +309,7 @@ def test_operator_can_consult_hub_agents_and_request_is_audited(client, monkeypa
     assert response.json()["status"] == "completed"
     assert response.json()["providers"][0]["result_trusted"] is False
     audit = [
-        __import__("json").loads(line)
+        json.loads(line)
         for line in (tmp_path / "provider-audit.jsonl").read_text(encoding="utf-8").splitlines()
     ]
     assert [event["event"] for event in audit] == ["command.requested", "command.completed"]
