@@ -126,3 +126,18 @@ def test_dgm_hub_agent_routes_are_operator_only():
     consult = classify_route("/governance/agents/hub/consult", ("POST",))
     assert status is not None and status.scope is SecurityScope.OPERATOR
     assert consult is not None and consult.scope is SecurityScope.OPERATOR
+
+def test_dgm_hub_meeting_observer_routes_are_operator_only():
+    routes = [
+        ("/governance/agents/hub/observer/status", "GET"),
+        ("/governance/agents/hub/observer/capture", "POST"),
+        ("/governance/agents/hub/observer/start", "POST"),
+        ("/governance/agents/hub/observer/stop", "POST"),
+        ("/governance/agents/hub/meetings", "GET"),
+        ("/governance/agents/hub/meetings/{conversation_id}", "GET"),
+        ("/governance/agents/hub/meetings/{conversation_id}/proposals", "POST"),
+        ("/governance/agents/hub/meetings/{conversation_id}/decision", "POST"),
+    ]
+    for path, method in routes:
+        result = classify_route(path, (method,))
+        assert result is not None and result.scope is SecurityScope.OPERATOR, path

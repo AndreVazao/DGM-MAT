@@ -310,6 +310,101 @@ class ConversationKnowledgeStore:
                 "confirmed_by_user": decision.confirmed_by_user,
             })
 
+    def save_decision_with_proposals(
+        self,
+        decision: UserDecision,
+        *,
+        accepted_proposal_ids: list[str] | None = None,
+        rejected_proposal_ids: list[str] | None = None,
+    ) -> None:
+        """Atomically save a decision and review the proposals it explicitly accepts/rejects."""
+        if not decision.decision_id.strip() or not decision.statement.strip():
+            raise ValueError("decision_id and statement are required")
+        accepted_ids = list(dict.fromkeys(accepted_proposal_ids or []))
+        rejected_ids = list(dict.fromkeys(rejected_proposal_ids or []))
+        if set(accepted_ids) & set(rejected_ids):
+            raise ValueError("a proposal cannot be both accepted and rejected")
+        if (accepted_ids or rejected_ids) and not decision.source_conversation_id:
+            raise ValueError("proposal decisions require a source conversation")
+        if (accepted_ids or rejected_ids) and (
+            decision.status != "confirmed" or not decision.confirmed_by_user
+        ):
+            raise ValueError("proposal review requires an explicitly user-confirmed decision")
+        now = self._now()
+        with self._connect() as db:
+            reviewed = [(proposal_id, True) for proposal_id in accepted_ids]
+            reviewed.extend((proposal_id, False) for proposal_id in rejected_ids)
+            for proposal_id, accepted in reviewed:
+                proposal = db.execute(
+                    "SELECT * FROM ai_proposals WHERE proposal_id=?", (proposal_id,)
+                ).fetchone()
+                if proposal is None or proposal["source_conversation_id"] != decision.source_conversation_id:
+                    raise ValueError(f"proposal does not belong to decision conversation: {proposal_id}")
+                if proposal["accepted"] is not None and (
+                    bool(proposal["accepted"]) != accepted
+                    or proposal["decision_id"] != decision.decision_id
+                ):
+                    raise ValueError(f"proposal already has an immutable review: {proposal_id}")
+
+            existing = db.execute(
+                "SELECT * FROM user_decisions WHERE decision_id=?", (decision.decision_id,)
+            ).fetchone()
+            if existing and (
+                existing["statement"] != decision.statement
+                or existing["status"] != decision.status
+                or existing["source_conversation_id"] != decision.source_conversation_id
+                or existing["source_message_id"] != decision.source_message_id
+                or existing["decided_at"] != decision.decided_at
+                or existing["supersedes_json"] != self._json(decision.supersedes)
+                or existing["evidence_json"] != self._json(decision.evidence)
+                or bool(existing["confirmed_by_user"]) != decision.confirmed_by_user
+            ):
+                if existing["confirmed_by_user"]:
+                    raise ValueError("User-confirmed decision is immutable without an explicit reviewed migration")
+                raise ValueError("decision id already exists with different content")
+
+            if existing is None:
+                db.execute("""
+                    INSERT INTO user_decisions (
+                        decision_id, statement, status, source_conversation_id, source_message_id,
+                        decided_at, supersedes_json, evidence_json, confirmed_by_user,
+                        created_at, updated_at, schema_version
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    decision.decision_id, decision.statement, decision.status,
+                    decision.source_conversation_id, decision.source_message_id,
+                    decision.decided_at, self._json(decision.supersedes),
+                    self._json(decision.evidence), int(decision.confirmed_by_user),
+                    now, now, self.SCHEMA_VERSION,
+                ))
+                self._record_history(db, "decision", decision.decision_id, "saved", {
+                    "statement": decision.statement,
+                    "status": decision.status,
+                    "source_conversation_id": decision.source_conversation_id,
+                    "source_message_id": decision.source_message_id,
+                    "decided_at": decision.decided_at,
+                    "supersedes": decision.supersedes,
+                    "evidence": decision.evidence,
+                    "confirmed_by_user": decision.confirmed_by_user,
+                })
+
+            for proposal_id, accepted in reviewed:
+                proposal = db.execute(
+                    "SELECT * FROM ai_proposals WHERE proposal_id=?", (proposal_id,)
+                ).fetchone()
+                if proposal["accepted"] is not None:
+                    continue
+                db.execute("""
+                    UPDATE ai_proposals
+                    SET accepted=?, decision_id=?, updated_at=?, schema_version=?
+                    WHERE proposal_id=?
+                """, (int(accepted), decision.decision_id, now, self.SCHEMA_VERSION, proposal_id))
+                self._record_history(db, "proposal", proposal_id, "reviewed", {
+                    "accepted": accepted,
+                    "decision_id": decision.decision_id,
+                    "source_conversation_id": decision.source_conversation_id,
+                })
+
     def supersede_confirmed_decision(
         self,
         decision_id: str,

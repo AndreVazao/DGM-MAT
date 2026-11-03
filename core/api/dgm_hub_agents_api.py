@@ -301,3 +301,227 @@ def consult_hub_agents(payload: HubAgentConsultRequest, request: Request):
         "all_results_untrusted": True,
         "audit_warning": audit_warning,
     }
+
+# Passive DGM-HUB meeting capture and explicit operator decision memory.
+from datetime import datetime, timezone
+from uuid import uuid4
+
+from core.conversation_intelligence.knowledge_store import ConversationKnowledgeStore
+from core.conversation_intelligence.models import AIProposal, UserDecision
+from core.organization.dgm_hub_meeting_observer import (
+    HubObserverError,
+    get_hub_meeting_observer,
+)
+
+
+class HubMeetingProposalRequest(BaseModel):
+    source_event_id: str = Field(min_length=1, max_length=128)
+    statement: str = Field(min_length=1, max_length=4000)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class HubMeetingDecisionRequest(BaseModel):
+    statement: str = Field(min_length=1, max_length=4000)
+    outcome: Literal["approved", "rejected"]
+    rationale: str = Field(min_length=1, max_length=4000)
+    accepted_proposal_ids: list[str] = Field(default_factory=list, max_length=50)
+    rejected_proposal_ids: list[str] = Field(default_factory=list, max_length=50)
+    source_event_id: str | None = Field(default=None, min_length=1, max_length=128)
+    confirm: bool = False
+
+    model_config = ConfigDict(extra="forbid")
+
+
+def _hub_knowledge_store() -> ConversationKnowledgeStore:
+    observer = get_hub_meeting_observer()
+    return ConversationKnowledgeStore(observer.store.database_path)
+
+
+@router.get("/observer/status")
+def hub_meeting_observer_status():
+    """Read-only observer status; never contacts a provider."""
+    return get_hub_meeting_observer().runtime_status()
+
+
+@router.post("/observer/capture")
+def capture_hub_meeting_history():
+    """Run one bounded GET-only history sync; sends no messages to the Hub."""
+    try:
+        return get_hub_meeting_observer().capture_once()
+    except HubObserverError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post("/observer/start")
+def start_hub_meeting_observer():
+    """Start the passive local history poller; it performs GET requests only."""
+    observer = get_hub_meeting_observer()
+    started = observer.start()
+    return {"started": started, **observer.runtime_status()}
+
+
+@router.post("/observer/stop")
+def stop_hub_meeting_observer():
+    """Stop passive capture without stopping the Hub or any provider."""
+    observer = get_hub_meeting_observer()
+    observer.stop()
+    return {"stopped": True, **observer.runtime_status()}
+
+
+@router.get("/meetings")
+def list_hub_meetings(limit: int = 100):
+    """List locally captured Hub conversations and expose missing task correlation."""
+    observer = get_hub_meeting_observer()
+    return {
+        "meetings": observer.store.list_meetings(limit),
+        "observer": observer.runtime_status(),
+    }
+
+
+@router.get("/meetings/{conversation_id}")
+def get_hub_meeting(conversation_id: str):
+    observer = get_hub_meeting_observer()
+    meeting = observer.store.get_meeting(conversation_id)
+    if meeting is None:
+        raise HTTPException(status_code=404, detail="Captured DGM-HUB meeting not found.")
+    knowledge = _hub_knowledge_store()
+    meeting["proposals"] = [
+        item for item in knowledge.list_proposals()
+        if item.get("source_conversation_id") == conversation_id
+    ]
+    meeting["decisions"] = [
+        item for item in knowledge.list_decisions()
+        if item.get("source_conversation_id") == conversation_id
+    ]
+    return meeting
+
+
+@router.post("/meetings/{conversation_id}/proposals")
+def record_hub_meeting_proposal(
+    conversation_id: str,
+    payload: HubMeetingProposalRequest,
+):
+    """Record a human-identified agent proposal linked to one immutable Hub event."""
+    observer = get_hub_meeting_observer()
+    meeting = observer.store.get_meeting(conversation_id)
+    if meeting is None:
+        raise HTTPException(status_code=404, detail="Captured DGM-HUB meeting not found.")
+    source = observer.store.get_event(payload.source_event_id)
+    if (
+        source is None
+        or source["conversation_id"] != conversation_id
+        or source["kind"] != "provider_response"
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Proposal source must be a captured provider_response from this meeting.",
+        )
+    proposal = AIProposal(
+        proposal_id=f"hubproposal_{uuid4().hex}",
+        statement=payload.statement.strip(),
+        source_conversation_id=conversation_id,
+        source_message_id=payload.source_event_id,
+    )
+    try:
+        _hub_knowledge_store().save_proposal(proposal)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {
+        "proposal_id": proposal.proposal_id,
+        "source_conversation_id": conversation_id,
+        "source_event_id": payload.source_event_id,
+        "accepted": None,
+        "status": "unreviewed_proposal",
+    }
+
+
+@router.post("/meetings/{conversation_id}/decision")
+def record_hub_meeting_decision(
+    conversation_id: str,
+    payload: HubMeetingDecisionRequest,
+    request: Request,
+):
+    """Persist an explicit operator-confirmed decision; agent consensus is never enough."""
+    if payload.confirm is not True:
+        raise HTTPException(
+            status_code=400,
+            detail="Explicit confirm=true is required to record an operator decision.",
+        )
+    principal = getattr(request.state, "dgm_principal", {}) or {}
+    if not isinstance(principal, dict):
+        raise HTTPException(status_code=401, detail="Authenticated operator identity is unavailable.")
+    session_id = principal.get("session_id")
+    actor = principal.get("subject") or session_id
+    if not isinstance(session_id, str) or not session_id or not isinstance(actor, str) or not actor:
+        raise HTTPException(status_code=401, detail="Authenticated operator identity is unavailable.")
+
+    observer = get_hub_meeting_observer()
+    meeting = observer.store.get_meeting(conversation_id)
+    if meeting is None:
+        raise HTTPException(status_code=404, detail="Captured DGM-HUB meeting not found.")
+    source_message_id = None
+    if payload.source_event_id:
+        source = observer.store.get_event(payload.source_event_id)
+        if (
+            source is None
+            or source["conversation_id"] != conversation_id
+            or source["kind"] != "user_message"
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="Decision source must be a captured operator message from this meeting.",
+            )
+        source_message_id = payload.source_event_id
+
+    accepted = list(dict.fromkeys(payload.accepted_proposal_ids))
+    rejected = list(dict.fromkeys(payload.rejected_proposal_ids))
+    if set(accepted) & set(rejected):
+        raise HTTPException(status_code=422, detail="A proposal cannot be both accepted and rejected.")
+    knowledge = _hub_knowledge_store()
+    proposals = {item["proposal_id"]: item for item in knowledge.list_proposals()}
+    for proposal_id in accepted + rejected:
+        proposal = proposals.get(proposal_id)
+        if proposal is None or proposal.get("source_conversation_id") != conversation_id:
+            raise HTTPException(status_code=422, detail=f"Proposal does not belong to this meeting: {proposal_id}")
+
+    evidence = [
+        f"operator_session_id:{session_id}",
+        f"meeting_conversation_id:{conversation_id}",
+        f"outcome:{payload.outcome}",
+        f"rationale:{payload.rationale.strip()}",
+    ]
+    if source_message_id:
+        evidence.append(f"source_event_id:{source_message_id}")
+    evidence.extend(f"accepted_proposal_id:{item}" for item in accepted)
+    evidence.extend(f"rejected_proposal_id:{item}" for item in rejected)
+
+    decision = UserDecision(
+        decision_id=f"hubdecision_{uuid4().hex}",
+        statement=f"{payload.outcome.upper()}: {payload.statement.strip()}",
+        status="confirmed",
+        source_conversation_id=conversation_id,
+        source_message_id=source_message_id,
+        decided_at=datetime.now(timezone.utc).isoformat(),
+        evidence=evidence,
+        confirmed_by_user=True,
+    )
+    try:
+        knowledge.save_decision_with_proposals(
+            decision,
+            accepted_proposal_ids=accepted,
+            rejected_proposal_ids=rejected,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {
+        "decision_id": decision.decision_id,
+        "statement": decision.statement,
+        "status": decision.status,
+        "confirmed_by_user": decision.confirmed_by_user,
+        "source_conversation_id": conversation_id,
+        "source_message_id": source_message_id,
+        "accepted_proposal_ids": accepted,
+        "rejected_proposal_ids": rejected,
+        "evidence": evidence,
+    }

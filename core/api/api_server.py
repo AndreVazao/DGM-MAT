@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import subprocess
 import threading
@@ -26,6 +27,7 @@ from core.api.local_auth_api import router as local_auth_router, session_manager
 from core.api.auth_middleware import LocalSessionAuthMiddleware
 from core.federation.node_identity import local_node
 from core.federation.rendezvous_client import RendezvousClient
+from core.organization.dgm_hub_meeting_observer import get_hub_meeting_observer
 
 
 app = FastAPI(title="DGM-MAT API")
@@ -221,3 +223,25 @@ def run_api():
     import uvicorn
 
     uvicorn.run(app, host=API_HOST, port=API_PORT)
+
+
+# DGM-HUB passive meeting observer. It only polls the local read-only history API.
+@app.on_event("startup")
+def start_dgm_hub_meeting_observer() -> None:
+    enabled = os.getenv("DGM_HUB_OBSERVER_ENABLED", "1").strip().casefold()
+    if enabled in {"0", "false", "no", "off", "disabled"}:
+        return
+    try:
+        get_hub_meeting_observer().start()
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "DGM-HUB observer could not start; DGM-MAT API startup continues safely."
+        )
+
+
+@app.on_event("shutdown")
+def stop_dgm_hub_meeting_observer() -> None:
+    try:
+        get_hub_meeting_observer().stop()
+    except Exception:
+        logging.getLogger(__name__).exception("DGM-HUB observer shutdown failed.")
