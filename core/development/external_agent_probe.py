@@ -302,28 +302,38 @@ def _fcc_local_admin_get(path: str, timeout_seconds: float) -> dict[str, Any]:
     return payload
 
 
-def _fcc_fallbacks_disabled(config: dict[str, Any]) -> bool:
+def _fcc_fallback_policy(config: dict[str, Any]) -> tuple[bool, int | None]:
+    """Allow no fallback or fallbacks that all resolve to the same approved free model."""
     fields = config.get("fields")
     if not isinstance(fields, list):
-        return False
+        return False, None
     field = next(
         (item for item in fields if isinstance(item, dict) and item.get("key") == "MODEL_FALLBACKS"),
         None,
     )
     if field is None:
-        return False
+        return False, None
     value = field.get("value")
     if value is None or value == "":
-        return True
-    if isinstance(value, list):
-        return len(value) == 0
+        return True, 0
     if isinstance(value, str):
-        try:
-            parsed = json.loads(value)
-        except json.JSONDecodeError:
-            return False
-        return isinstance(parsed, list) and len(parsed) == 0
-    return False
+        if value.lstrip().startswith("["):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                return False, None
+        else:
+            value = [item.strip() for item in value.split(",") if item.strip()]
+    if not isinstance(value, list):
+        return False, None
+    models = []
+    for item in value:
+        model = item.get("model") if isinstance(item, dict) else item
+        if not isinstance(model, str) or not model.strip():
+            return False, None
+        models.append(model.strip())
+    safe = all(model in FREE_NVIDIA_NIM_MODEL_IDS for model in models)
+    return safe, len(models)
 
 
 def probe_fcc_admin_status(*, timeout_seconds: float = 2.0) -> dict[str, Any]:
@@ -366,44 +376,29 @@ def probe_fcc_admin_status(*, timeout_seconds: float = 2.0) -> dict[str, Any]:
         and item.get("status") == "configured"
         for item in provider_status
     )
-    fallbacks_disabled = _fcc_fallbacks_disabled(config)
-    fallback_field = next(
-        (
-            item for item in config.get("fields", [])
-            if isinstance(item, dict) and item.get("key") == "MODEL_FALLBACKS"
-        ),
-        None,
-    )
-    fallback_value = fallback_field.get("value") if isinstance(fallback_field, dict) else None
-    if isinstance(fallback_value, str):
-        try:
-            fallback_value = json.loads(fallback_value)
-        except json.JSONDecodeError:
-            fallback_value = None
-    fallback_count = len(fallback_value) if isinstance(fallback_value, list) else (0 if fallbacks_disabled else None)
-
+    fallbacks_free_only, fallback_count = _fcc_fallback_policy(config)
     free_endpoint = (
         provider == "nvidia_nim"
         and model in FREE_NVIDIA_NIM_MODEL_IDS
         and selected_configured
         and configured_remote == ["nvidia_nim"]
-        and fallbacks_disabled
+        and fallbacks_free_only
     )
     return {
         "status": "ready_free_endpoint" if free_endpoint else "configured_model_not_allowlisted",
         "selected_provider": provider,
         "selected_model": model,
         "configured_remote_providers": configured_remote,
-        "fallbacks_disabled": fallbacks_disabled,
+        "fallbacks_free_only": fallbacks_free_only,
         "fallback_models_count": fallback_count,
         "free_endpoint_verified": free_endpoint,
         "cost_status": "official_free_endpoint" if free_endpoint else "unverified",
         "quota_status": "free_endpoint_rate_limits_and_account_quota_apply" if free_endpoint else "unknown",
         "execution_ready": free_endpoint,
         "detail": (
-            "Selected NVIDIA NIM model is listed as a Free Endpoint, only that remote provider is configured, and model fallbacks are disabled."
+            "Selected NVIDIA NIM model is listed as a Free Endpoint, only that remote provider is configured, and all model fallbacks are pinned to that same free endpoint."
             if free_endpoint else
-            "FCC is not configured exclusively for the allowlisted NVIDIA NIM free endpoint with model fallbacks disabled."
+            "FCC is not configured exclusively for the allowlisted NVIDIA NIM free endpoint with all model fallbacks pinned to that same free endpoint."
         ),
         "model_requests_sent": 0,
     }
