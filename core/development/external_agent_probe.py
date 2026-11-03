@@ -398,8 +398,6 @@ def get_external_agent_readiness() -> dict[str, Any]:
         blockers.append("fcc_gateway_not_running_loopback")
     if not admin.get("free_endpoint_verified"):
         blockers.append("fcc_free_endpoint_not_verified")
-    if not claude.get("authenticated"):
-        blockers.append("direct_claude_code_not_authenticated")
     # FCC's explicit Free Endpoint is the only permitted execution route.
     execution_ready = bool(
         fcc.get("cli_installed")
