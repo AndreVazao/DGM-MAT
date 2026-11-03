@@ -16,7 +16,7 @@ Bring the latest GitHub `main` commit onto the PC without replacing or mutating 
 - The destination is fixed at `C:\ProgramasGodMode\_worktrees\dgm-mat-github-main-sync`.
 - The authoritative checkout HEAD and complete porcelain status (including untracked files) are captured before and after.
 - A new worktree is detached at the fetched SHA.
-- An existing destination is never overwritten. It must already be a registered worktree, clean, detached, and exactly at the fetched SHA.
+- An existing destination is never adopted or blindly overwritten. It must be a registered, clean, detached worktree. If its HEAD is an ancestor of the fetched SHA, the service advances only this dedicated worktree with a normal non-forced detached checkout; divergent/ahead histories are refused. Ignored local files are protected with --no-overwrite-ignore.
 - Any mismatch, dirty destination, wrong remote, missing worktrees directory or failed Git command blocks the operation.
 - No `pull`, merge, rebase, reset, clean, stash, force update or arbitrary shell input is used.
 
@@ -41,9 +41,10 @@ The script writes a machine-readable report under `reports/diagnostics`. It does
 - Created detached worktree at `C:\ProgramasGodMode\_worktrees\dgm-mat-github-main-sync`.
 - Independently checked that remote SHA and worktree HEAD match.
 - Independently checked clean worktree status, detached HEAD and empty Git prefix.
-- A second CLI execution passed idempotently: it verified the existing worktree without recreating or overwriting it.
+- A second CLI execution passed idempotently: it verified the existing worktree without recreating it.
+- Repeated syncs may advance the dedicated worktree only along a verified fast-forward ancestry path; dirty, attached, divergent or backward destinations fail closed. Normal checkout is used without force/reset/clean, with ignored-file overwrite disabled. Mission results distinguish creation, advancement and an already-current idempotent verification.
 - Confirmed the authoritative checkout remained at `7e38d4033968f6a3c4c5113e6c3969f0c9e1652a`.
 - Confirmed its 35 porcelain entries (including untracked installed files) remained present.
 - Machine-readable evidence: `reports/diagnostics/DGM-MAT-GITHUB-SELF-SYNC-2026-11-03.json`.
 
-The existing production runtime was separately exercised with a read-only `repository_status` mission (`mission_eb7dadf7`). The new sync handler is covered by unit tests and the explicit-approval MissionEngine test; the live runtime must load this branch after integration before the new API mission intent can be exercised end-to-end.
+The existing production runtime was separately exercised with a read-only `repository_status` mission (`mission_eb7dadf7`). The new sync handler is covered by unit tests and the explicit-approval MissionEngine test; the live runtime must load the integrated code before the new API mission intent can be exercised end-to-end.

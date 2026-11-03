@@ -121,6 +121,8 @@ class GitHubWorktreeSync:
             )
 
         created = False
+        advanced = False
+        previous_worktree_sha: str | None = None
         if target_exists:
             target_status = self._git(
                 ["status", "--porcelain=v1", "--untracked-files=all"],
@@ -130,11 +132,31 @@ class GitHubWorktreeSync:
                 raise GitHubWorktreeSyncError(
                     "The existing GitHub sync worktree is dirty; refusing to overwrite local work."
                 )
-            target_head = self._git(["rev-parse", "HEAD"], cwd=self.target_path)
-            if target_head != remote_sha:
+            target_branch = self._git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=self.target_path)
+            if target_branch != "HEAD":
                 raise GitHubWorktreeSyncError(
-                    "The existing sync worktree does not match the newly fetched origin/main; manual review is required."
+                    "The existing sync worktree is attached to a branch; refusing to move it."
                 )
+            target_head = self._git(["rev-parse", "HEAD"], cwd=self.target_path)
+            previous_worktree_sha = target_head
+            if target_head != remote_sha:
+                merge_base = self._git(
+                    ["merge-base", target_head, remote_sha],
+                    cwd=self.target_path,
+                )
+                if merge_base != target_head:
+                    raise GitHubWorktreeSyncError(
+                        "The existing sync worktree is not an ancestor of origin/main; refusing divergent or backwards movement."
+                    )
+                # Advance only the dedicated, clean, detached worktree. This is a
+                # normal checkout, not a forced update, reset, merge, or clean.
+                # --no-overwrite-ignore protects ignored local files from replacement.
+                self._git(
+                    ["checkout", "--detach", "--no-overwrite-ignore", remote_sha],
+                    cwd=self.target_path,
+                )
+                advanced = True
+                target_head = self._git(["rev-parse", "HEAD"], cwd=self.target_path)
         else:
             self._git([
                 "worktree", "add", "--detach", str(self.target_path),
@@ -142,6 +164,7 @@ class GitHubWorktreeSync:
             ])
             created = True
             target_head = self._git(["rev-parse", "HEAD"], cwd=self.target_path)
+            previous_worktree_sha = None
 
         target_prefix = self._git(["rev-parse", "--show-prefix"], cwd=self.target_path)
         target_status = self._git(
@@ -177,6 +200,8 @@ class GitHubWorktreeSync:
             "worktree_path": str(self.target_path),
             "worktree_sha": target_head,
             "worktree_created": created,
+            "worktree_advanced": advanced,
+            "worktree_previous_sha": previous_worktree_sha,
             "worktree_clean": not bool(target_status),
             "worktree_detached": target_branch == "HEAD",
             "git_commands_executed": self.command_count,
@@ -184,8 +209,14 @@ class GitHubWorktreeSync:
             "authoritative_worktree_unchanged": authoritative_status_after == authoritative_status_before,
             "authoritative_head": authoritative_head_after,
             "authoritative_dirty_entries": len(authoritative_status_after.splitlines()) if authoritative_status_after else 0,
-            "fetch_scope": "fixed origin/main ref only; no prune",
-            "mutations": ["Git remote-tracking ref update", "dedicated detached worktree creation"] if created else ["Git remote-tracking ref update"],
+            "fetch_scope": "fixed origin/main ref only; non-forced; no prune",
+            "mutations": (
+                ["Git remote-tracking ref update", "dedicated detached worktree creation"]
+                if created else
+                ["Git remote-tracking ref update", "dedicated detached worktree fast-forward checkout"]
+                if advanced else
+                ["Git remote-tracking ref update"]
+            ),
             "forbidden_operations_used": [],
             "duration_seconds": round(time.monotonic() - started, 3),
         }

@@ -1154,14 +1154,29 @@ class MissionEngine:
         started = time.monotonic()
         repo_root = Path(__file__).resolve().parents[2]
         result = GitHubWorktreeSync(repo_root).sync()
+        if result.get("worktree_advanced"):
+            summary = "Advanced the dedicated DGM-MAT worktree to the latest GitHub main."
+            output = (
+                f"Advanced the verified detached worktree from {result['worktree_previous_sha']} "
+                f"to {result['remote_sha']}; authoritative checkout unchanged."
+            )
+        elif result.get("worktree_created"):
+            summary = "Created and verified the dedicated DGM-MAT GitHub worktree."
+            output = (
+                f"GitHub main {result['remote_sha']} is available in verified worktree "
+                f"{result['worktree_path']}; authoritative checkout unchanged."
+            )
+        else:
+            summary = "Verified the dedicated DGM-MAT worktree is already current."
+            output = (
+                f"Dedicated worktree already matches GitHub main {result['remote_sha']}; "
+                "no worktree content changed and authoritative checkout unchanged."
+            )
         result.update({
             "mission_id": mission.mission_id,
             "handler": "repository_sync_worktree",
-            "summary": "Fetched DGM-MAT GitHub main and verified its dedicated local worktree.",
-            "output": (
-                f"GitHub main {result['remote_sha']} is available in verified worktree "
-                f"{result['worktree_path']}; authoritative checkout unchanged."
-            ),
+            "summary": summary,
+            "output": output,
             "read_only": False,
             "operator_approved": True,
             "commands_executed": result.get("git_commands_executed", 0),

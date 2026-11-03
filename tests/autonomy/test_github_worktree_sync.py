@@ -95,7 +95,7 @@ def test_sync_refuses_to_overwrite_dirty_existing_worktree(tmp_path):
     assert (target / "local-review.txt").read_text(encoding="utf-8") == "preserve me\n"
 
 
-def test_sync_refuses_to_advance_existing_worktree_when_github_main_moves(tmp_path):
+def test_sync_advances_existing_clean_detached_worktree_by_fast_forward(tmp_path):
     repo, origin, seed = _repository(tmp_path)
     service = _service(repo, origin)
     first = service.sync()
@@ -104,11 +104,63 @@ def test_sync_refuses_to_advance_existing_worktree_when_github_main_moves(tmp_pa
     _git(seed, "add", "README.md")
     _git(seed, "commit", "-m", "remote advance")
     _git(seed, "push", "origin", "main")
+    expected_sha = _git(seed, "rev-parse", "HEAD")
 
-    with pytest.raises(GitHubWorktreeSyncError, match="does not match the newly fetched"):
+    second = service.sync()
+
+    assert second["worktree_created"] is False
+    assert second["worktree_advanced"] is True
+    assert second["worktree_previous_sha"] == first["worktree_sha"]
+    assert second["remote_sha"] == expected_sha
+    assert second["worktree_sha"] == expected_sha
+    assert second["worktree_clean"] is True
+    assert _git(Path(first["worktree_path"]), "rev-parse", "HEAD") == expected_sha
+
+
+def test_sync_refuses_divergent_existing_worktree_without_discarding_its_commit(tmp_path):
+    repo, origin, seed = _repository(tmp_path)
+    service = _service(repo, origin)
+    first = service.sync()
+    target = Path(first["worktree_path"])
+    _git(target, "config", "user.name", "DGM Test")
+    _git(target, "config", "user.email", "dgm-test@example.invalid")
+    (target / "local-branch.txt").write_text("local-only\n", encoding="utf-8")
+    _git(target, "add", "local-branch.txt")
+    _git(target, "commit", "-m", "local divergent commit")
+    local_head = _git(target, "rev-parse", "HEAD")
+
+    (seed / "README.md").write_text("remote advance\n", encoding="utf-8")
+    _git(seed, "add", "README.md")
+    _git(seed, "commit", "-m", "remote advance")
+    _git(seed, "push", "origin", "main")
+
+    with pytest.raises(GitHubWorktreeSyncError, match="not an ancestor"):
         service.sync()
 
-    assert _git(Path(first["worktree_path"]), "rev-parse", "HEAD") == first["worktree_sha"]
+    assert _git(target, "rev-parse", "HEAD") == local_head
+    assert (target / "local-branch.txt").read_text(encoding="utf-8") == "local-only\n"
+
+
+def test_sync_does_not_overwrite_ignored_files_during_fast_forward(tmp_path):
+    repo, origin, seed = _repository(tmp_path)
+    service = _service(repo, origin)
+    first = service.sync()
+    target = Path(first["worktree_path"])
+    ignore_file = tmp_path / "local-ignore"
+    ignore_file.write_text("remote-added.txt\n", encoding="utf-8")
+    _git(target, "config", "core.excludesFile", str(ignore_file))
+    (target / "remote-added.txt").write_text("operator data\n", encoding="utf-8")
+
+    (seed / "remote-added.txt").write_text("tracked remote file\n", encoding="utf-8")
+    _git(seed, "add", "remote-added.txt")
+    _git(seed, "commit", "-m", "add remote file")
+    _git(seed, "push", "origin", "main")
+
+    with pytest.raises(GitHubWorktreeSyncError, match="Git checkout failed"):
+        service.sync()
+
+    assert (target / "remote-added.txt").read_text(encoding="utf-8") == "operator data\n"
+    assert _git(target, "rev-parse", "HEAD") == first["worktree_sha"]
 
 
 def test_sync_fails_closed_when_origin_fetch_fails(tmp_path):
