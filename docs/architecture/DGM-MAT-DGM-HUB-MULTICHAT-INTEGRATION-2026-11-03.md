@@ -86,3 +86,12 @@ All external agents were asked to be consultative and to declare no file edits o
 ## Next gate: controlled coding execution
 
 The next increment must make a separate, isolated worktree-based execution path. A provider may propose a patch; DGM-MAT must stage it in a disposable branch/worktree, run fixed allowlisted tests, preserve a diff and logs, obtain independent review, and request operator approval before promotion. Provider text alone must never be applied as a patch. Do not enable agent write mode in the Hub until explicit sandbox and permission behavior is independently tested.
+
+
+## Local integration validation addendum — 2026-11-03
+
+The DGM-MAT API bridge has now been exercised against the live local Hub from an authenticated operator TestClient. Kilo and LLM7 returned usable consultation results and were persisted as untrusted specialist results; Codex and Claude Code timed out at their current Hub CLI limits and were paused. A later LLM7 request returned HTTP 429 and was paused without retry or paid fallback. The API now reports mixed outcomes as `partial`, never as fully completed.
+
+Windows validation: compileall passed; 56 focused tests passed; `git diff --check` passed. The real MissionEngine specialist intake was separately verified to write a correlated message to the SQLite-backed `agent:bug-hunter` inbox. Full commands and exact outcomes: [DGM-MAT ↔ DGM-HUB local validation report](../../reports/DGM-MAT-DGM-HUB-BRIDGE-VALIDATION-2026-11-03.md).
+
+The integration remains consultation-only. No provider has permission to edit files or execute commands through this bridge. The next gate is a separate isolated-worktree patch proposal/execution pipeline with independent QA and explicit approval.
