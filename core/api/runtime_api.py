@@ -34,6 +34,8 @@ obsidian_connector = connectors["obsidian"]
 class MissionCreate(BaseModel):
     goal: str = Field(min_length=1, max_length=2000)
     description: Optional[str] = ""
+    repository_offset: int = Field(default=0, ge=0, le=100000)
+    repository_page_size: int = Field(default=20, ge=1, le=50)
 
     @field_validator("goal")
     @classmethod
@@ -228,7 +230,14 @@ def index_obsidian():
 def create_mission(mission_data: MissionCreate):
     """Requirement 7: Mission creation interface."""
     # Creation is not execution: expose validation failure truthfully to callers.
-    mission = mission_engine.create_mission(mission_data.goal, mission_data.description)
+    mission = mission_engine.create_mission(
+        mission_data.goal,
+        mission_data.description,
+        repository_page={
+            "offset": mission_data.repository_offset,
+            "page_size": mission_data.repository_page_size,
+        },
+    )
     if mission.status.value == "FAILED":
         return {
             "status": "failed",

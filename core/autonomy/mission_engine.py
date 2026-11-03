@@ -32,8 +32,15 @@ from core.learning.learning_engine import LearningEngine
 from core.operations.command_executor import CommandExecutor
 
 class MissionEngine:
-    REPO_SCAN_ROOTS = [Path("C:/ProgramasGodMode"), Path("C:/DevopGodMode")]
+    REPO_SCAN_ROOTS = [
+        Path("C:/ProgramasGodMode"),
+        Path("C:/DevopGodMode"),
+        Path("C:/AI"),
+    ]
+    REPO_SCAN_ROOTS_ENV = "DGM_REPO_SCAN_ROOTS"
     REPO_SCAN_LIMIT = 20
+    REPO_PAGE_SIZE = 20
+    REPO_PAGE_SIZE_MAX = 50
     BRANCH_SCAN_LIMIT = 20
     REPO_TIMEOUT_SECONDS = 5.0
     MISSION_EXECUTION_TIMEOUT_SECONDS = 60.0
@@ -84,6 +91,20 @@ class MissionEngine:
         self.action_queue.register_handler("MISSION_EXECUTION", self._handle_queue_execution)
         self.timeout_threshold = timedelta(seconds=self.MISSION_EXECUTION_TIMEOUT_SECONDS)
         self._load_missions()
+
+    def _repository_scan_roots(self) -> List[Path]:
+        """Return deterministic, deduplicated scan roots plus optional operator additions."""
+        configured = os.getenv(self.REPO_SCAN_ROOTS_ENV, "")
+        roots = list(self.REPO_SCAN_ROOTS)
+        roots.extend(Path(item.strip()) for item in configured.split(";") if item.strip())
+        unique: Dict[str, Path] = {}
+        for root in roots:
+            try:
+                resolved = root.expanduser().resolve()
+            except (OSError, RuntimeError):
+                resolved = Path(os.path.abspath(str(root)))
+            unique.setdefault(os.path.normcase(str(resolved)).casefold(), resolved)
+        return sorted(unique.values(), key=lambda item: str(item).casefold())
 
     def register_organization_worker(self, agent_id: str, handler):
         """Register an explicit local handler; no implicit AI/provider is activated."""
@@ -497,13 +518,25 @@ class MissionEngine:
             counts["enqueued_missing"] += 1
         return counts
 
-    def create_mission(self, goal: str, description: str) -> Mission:
+    def create_mission(
+        self,
+        goal: str,
+        description: str,
+        repository_page: Dict[str, int] | None = None,
+    ) -> Mission:
         mission_id = f"mission_{uuid4().hex[:8]}"
 
         # Validation Logic
         status = MissionStatus.CREATED
         intent_decision = classify_mission_intent(goal)
         metadata = {"intent": intent_decision.to_dict()}
+        if intent_decision.intent == "list_repositories" and isinstance(repository_page, dict):
+            try:
+                page_offset = max(0, min(int(repository_page.get("offset", 0)), 100000))
+                page_size = max(1, min(int(repository_page.get("page_size", self.REPO_PAGE_SIZE)), self.REPO_PAGE_SIZE_MAX))
+                metadata["repository_page"] = {"offset": page_offset, "page_size": page_size}
+            except (TypeError, ValueError):
+                metadata["repository_page"] = {"offset": 0, "page_size": self.REPO_PAGE_SIZE}
         error_msg = None
 
         if not goal or len(goal) < 3:
@@ -1226,9 +1259,28 @@ class MissionEngine:
     def _execute_list_repositories_mission(self, mission: Mission) -> Dict[str, Any]:
         dgm_logger.info(f"MISSION_HANDLER_SELECTED: {mission.mission_id} - list_repositories")
         started = time.monotonic()
-        repositories, scan_meta = self._discover_workspace_repositories(started)
+        page = mission.metadata.get("repository_page", {})
+        if not isinstance(page, dict):
+            page = {}
+        try:
+            page_offset = max(0, min(int(page.get("offset", 0)), 100000))
+            page_size = max(1, min(int(page.get("page_size", self.REPO_PAGE_SIZE)), self.REPO_PAGE_SIZE_MAX))
+        except (TypeError, ValueError):
+            page_offset, page_size = 0, self.REPO_PAGE_SIZE
+        repositories, scan_meta = self._discover_workspace_repositories(
+            started, offset=page_offset, page_size=page_size
+        )
         output = self._render_repository_output(repositories)
         execution_duration = round(time.monotonic() - started, 3)
+        pagination = {
+            "total_candidates": scan_meta["total_candidates"],
+            "current_page": scan_meta["current_page"],
+            "page_size": scan_meta["page_size"],
+            "page_offset": scan_meta["page_offset"],
+            "next_cursor": scan_meta["next_cursor"],
+            "has_more": scan_meta["has_more"],
+            "complete": scan_meta["complete"],
+        }
         result = {
             "mission_id": mission.mission_id,
             "handler": "list_repositories",
@@ -1236,59 +1288,98 @@ class MissionEngine:
             "count": len(repositories),
             "repos_scanned": scan_meta["repos_scanned"],
             "repos_skipped": scan_meta["repos_skipped"],
+            "repos_previously_paginated": scan_meta["repos_previously_paginated"],
             "branches_truncated": scan_meta["branches_truncated"],
+            "pagination": pagination,
+            "root_warnings": scan_meta["root_warnings"],
+            "partial": scan_meta["partial"],
             "execution_duration": execution_duration,
-            "summary": f"Found {len(repositories)} repositories.",
+            "summary": "Showing {} of {} repository candidates (page {}).".format(
+                len(repositories), scan_meta["total_candidates"], scan_meta["current_page"]
+            ),
             "output": output,
             "generated_at": datetime.now().isoformat()
         }
-        dgm_logger.info(f"MISSION_RESULT_GENERATED: {mission.mission_id} - {len(repositories)} repositories")
+        dgm_logger.info(
+            "MISSION_RESULT_GENERATED: {} - page {}, {} repositories".format(
+                mission.mission_id, scan_meta["current_page"], len(repositories)
+            )
+        )
         return result
 
-    def _discover_workspace_repositories(self, mission_started: float) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
-        repositories: Dict[str, Dict[str, Any]] = {}
-        repos_skipped = 0
+    def _discover_workspace_repositories(
+        self,
+        mission_started: float,
+        offset: int = 0,
+        page_size: int | None = None,
+    ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        """Discover sorted repository candidates and inspect only the requested bounded page."""
+        page_size = max(1, min(int(page_size or self.REPO_PAGE_SIZE), self.REPO_PAGE_SIZE_MAX))
+        offset = max(0, min(int(offset), 100000))
+        candidates_by_path: Dict[str, Path] = {}
+        root_warnings: List[Dict[str, str]] = []
+
+        for root in self._repository_scan_roots():
+            if time.monotonic() - mission_started >= self.MISSION_EXECUTION_TIMEOUT_SECONDS:
+                raise TimeoutError("Repository candidate discovery exceeded 60 seconds.")
+            if not root.exists():
+                root_warnings.append({"root": str(root), "status": "missing"})
+                continue
+            try:
+                with os.scandir(root) as entries:
+                    for entry in entries:
+                        if not entry.is_dir(follow_symlinks=False):
+                            continue
+                        path = Path(entry.path)
+                        if not (path / ".git").exists():
+                            continue
+                        try:
+                            resolved = path.resolve()
+                        except (OSError, RuntimeError):
+                            resolved = path.absolute()
+                        key = os.path.normcase(str(resolved)).casefold()
+                        candidates_by_path.setdefault(key, resolved)
+            except PermissionError:
+                root_warnings.append({"root": str(root), "status": "permission_denied"})
+            except OSError as exc:
+                root_warnings.append({"root": str(root), "status": "scan_error:{}".format(type(exc).__name__)})
+
+        candidates = sorted(candidates_by_path.values(), key=lambda item: str(item).casefold())
+        total_candidates = len(candidates)
+        page_offset = min(offset, total_candidates)
+        page_candidates = candidates[page_offset:page_offset + page_size]
+        repositories: List[Dict[str, Any]] = []
         branches_truncated = 0
 
-        for root in self.REPO_SCAN_ROOTS:
-            if not root.exists():
-                continue
+        for path in page_candidates:
+            if time.monotonic() - mission_started >= self.MISSION_EXECUTION_TIMEOUT_SECONDS:
+                dgm_logger.error("MISSION_TIMEOUT: repository page inspection exceeded mission budget")
+                raise TimeoutError("Repository scan exceeded 60 seconds.")
+            repo_started = time.monotonic()
+            repo = self._inspect_git_repository(path, repo_started, mission_started)
+            if repo.get("branches_truncated"):
+                branches_truncated += 1
+            repositories.append(repo)
 
-            try:
-                candidates = [p for p in root.iterdir() if p.is_dir()]
-            except PermissionError:
-                continue
-
-            for path in sorted(candidates, key=lambda item: item.name.lower()):
-                if time.monotonic() - mission_started >= self.MISSION_EXECUTION_TIMEOUT_SECONDS:
-                    dgm_logger.error("MISSION_TIMEOUT: repository scan exceeded mission budget")
-                    raise TimeoutError("Repository scan exceeded 60 seconds.")
-
-                if not (path / ".git").exists():
-                    continue
-
-                key = str(path.resolve()).lower()
-                if key in repositories:
-                    continue
-
-                if len(repositories) >= self.REPO_SCAN_LIMIT:
-                    repos_skipped += 1
-                    dgm_logger.warning(f"MISSION_REPO_SCAN_LIMIT: max repos scanned={self.REPO_SCAN_LIMIT}")
-                    dgm_logger.info(f"MISSION_REPO_SCAN_SKIPPED: {path}")
-                    continue
-
-                repo_started = time.monotonic()
-                repo = self._inspect_git_repository(path, repo_started, mission_started)
-                if repo.get("branches_truncated"):
-                    branches_truncated += 1
-                repositories[key] = repo
-
+        next_offset = page_offset + len(page_candidates)
+        has_more = next_offset < total_candidates
+        complete = not has_more and not root_warnings
         return (
-            sorted(repositories.values(), key=lambda repo: repo["name"].lower()),
+            repositories,
             {
+                "total_candidates": total_candidates,
+                "current_page": (page_offset // page_size) + 1,
+                "page_size": page_size,
+                "page_offset": page_offset,
+                "next_cursor": next_offset if has_more else None,
+                "has_more": has_more,
+                "complete": complete,
+                "partial": not complete,
                 "repos_scanned": len(repositories),
-                "repos_skipped": repos_skipped,
+                "repos_skipped": max(0, total_candidates - next_offset),
+                "repos_previously_paginated": page_offset,
                 "branches_truncated": branches_truncated,
+                "root_warnings": root_warnings,
             },
         )
 
