@@ -174,3 +174,34 @@ def test_queue_decision_routes_require_operator_session(client):
 
 def test_office_telemetry_requires_authenticated_local_session(client):
     assert client.get("/runtime/office/telemetry").status_code == 401
+
+
+
+def test_external_agent_readiness_requires_operator_session(client, monkeypatch):
+    from core.api import governance_api
+
+    payload = {
+        "schema": "dgm-mat.external-agent-readiness.v1",
+        "execution_ready": False,
+        "policy": "FREE_ONLY_PAID_DENY",
+        "provider_calls_performed": 0,
+        "blockers": ["provider_zero_cost_not_verified"],
+    }
+    monkeypatch.setattr(governance_api, "get_external_agent_readiness", lambda: payload)
+
+    assert client.get("/governance/agents/readiness").status_code == 401
+
+    read_only_token = _session({"local-client"})
+    assert client.get(
+        "/governance/agents/readiness",
+        headers={"Authorization": f"Bearer {read_only_token}"},
+    ).status_code == 403
+
+    operator_token = _session({"local-client", "operator"})
+    response = client.get(
+        "/governance/agents/readiness",
+        headers={"Authorization": f"Bearer {operator_token}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["execution_ready"] is False
+    assert response.json()["provider_calls_performed"] == 0
