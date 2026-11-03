@@ -145,11 +145,13 @@ def test_dgm_hub_meeting_observer_routes_are_operator_only():
 
 def test_repository_learning_and_mission_page_scopes_are_bounded():
     learning_status = classify_route("/runtime/repository-learning", ("GET",))
+    learning_tree = classify_route("/runtime/repository-learning/tree", ("GET",))
     learning_start = classify_route("/runtime/repository-learning/start", ("POST",))
     learning_stop = classify_route("/runtime/repository-learning/stop", ("POST",))
     mission_page = classify_route("/runtime/missions/page", ("GET",))
 
     assert learning_status is not None and learning_status.scope is SecurityScope.LOCAL_CLIENT
+    assert learning_tree is not None and learning_tree.scope is SecurityScope.LOCAL_CLIENT
     assert learning_start is not None and learning_start.scope is SecurityScope.OPERATOR
     assert learning_stop is not None and learning_stop.scope is SecurityScope.OPERATOR
     assert mission_page is not None and mission_page.scope is SecurityScope.LOCAL_CLIENT

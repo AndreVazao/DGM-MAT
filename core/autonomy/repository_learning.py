@@ -42,6 +42,19 @@ MANIFESTS = (
     "build.gradle", "build.gradle.kts", "CMakeLists.txt", "platformio.ini",
     "*.csproj", "*.sln", "*.kicad_pro", "*.ino",
 )
+TREE_MAX_ENTRIES = 4000
+TREE_MAX_DEPTH = 12
+TREE_SKIP_NAMES = {
+    ".env", ".secrets", "secrets", "credentials", ".ssh", ".aws",
+    ".dgm-mat", "dgm-mat-full-mirror",
+}
+TREE_SECRET_FILE_PATTERNS = (
+    re.compile(r"(?i)^\.env(?:\..*)?$"),
+    re.compile(r"(?i).*(?:secret|credential|password|token).*\.(?:json|ya?ml|toml|ini|txt)$"),
+    re.compile(r"(?i).+\.(?:pem|key|p12|pfx|keystore|jks)$"),
+    re.compile(r"(?i)^(?:id_rsa|id_ed25519)(?:\.pub)?$"),
+    re.compile(r"(?i).*\.tfstate(?:\.backup)?$"),
+)
 _SECRET_PATTERNS = (
     re.compile(r"(?i)(api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret)\s*[:=]\s*[^\s,;]{6,}"),
     re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b"),
@@ -92,6 +105,12 @@ class RepositoryLearningService:
         base = Path(storage_dir) if storage_dir else storage_manager.get_path("cognition") / "repository_learning"
         base.mkdir(parents=True, exist_ok=True)
         self.database_path = base / "repository_learning.sqlite3"
+        configured_tree_dir = os.getenv("DGM_REPOSITORY_TREE_DIR", "").strip()
+        self.tree_dir = (
+            Path(configured_tree_dir).expanduser().resolve()
+            if configured_tree_dir else base / "trees"
+        )
+        self.tree_dir.mkdir(parents=True, exist_ok=True)
         configured = os.getenv("DGM_REPO_SCAN_ROOTS", "")
         selected = list(roots) if roots is not None else list(DEFAULT_ROOTS)
         if roots is None:
@@ -155,6 +174,15 @@ class RepositoryLearningService:
                     ON repositories(root, name);
                 CREATE INDEX IF NOT EXISTS ix_repository_learning_status
                     ON repositories(scan_status, protected);
+                CREATE TABLE IF NOT EXISTS repository_artifacts (
+                    repo_path TEXT PRIMARY KEY,
+                    tree_path TEXT NOT NULL,
+                    tree_sha256 TEXT NOT NULL,
+                    entry_count INTEGER NOT NULL DEFAULT 0,
+                    truncated INTEGER NOT NULL DEFAULT 0,
+                    generated_at TEXT NOT NULL,
+                    tree_error TEXT
+                );
                 CREATE TABLE IF NOT EXISTS learning_runs (
                     run_id TEXT PRIMARY KEY,
                     started_at TEXT NOT NULL,
@@ -274,6 +302,129 @@ class RepositoryLearningService:
                 break
         return _redact(" ".join(lines), 800) or "README contains no summary text."
 
+    def _tree_artifact_path(self, path: Path) -> Path:
+        identity = hashlib.sha256(str(path.resolve()).casefold().encode("utf-8")).hexdigest()[:10]
+        slug = re.sub(r"[^A-Za-z0-9._-]+", "-", path.name).strip("-.")[:64] or "repository"
+        return self.tree_dir / f"{slug}-{identity}.tree.txt"
+
+    @staticmethod
+    def _skip_tree_file(name: str) -> bool:
+        folded = name.casefold()
+        if folded in TREE_SKIP_NAMES:
+            return True
+        return any(pattern.fullmatch(name) for pattern in TREE_SECRET_FILE_PATTERNS)
+
+    def _write_tree(self, path: Path) -> dict[str, Any]:
+        """Write a bounded path-only tree outside the source repository."""
+        destination = self._tree_artifact_path(path)
+        lines = [
+            "# DGM-MAT repository tree",
+            f"Repository: {path.name}",
+            f"Source: {path}",
+            f"Generated: {_now()}",
+            "Contents: paths only; no file contents are read",
+            ".",
+        ]
+        entry_count = 0
+        truncated = False
+
+        def visit(folder: Path, prefix: str, depth: int) -> None:
+            nonlocal entry_count, truncated
+            if depth >= TREE_MAX_DEPTH or truncated:
+                return
+            try:
+                entries = sorted(os.scandir(folder), key=lambda item: item.name.casefold())
+            except OSError:
+                lines.append(prefix + "[directory unreadable]")
+                return
+            visible = []
+            for entry in entries:
+                name = entry.name
+                if name.casefold() in SKIP_DIRS or name.casefold() in TREE_SKIP_NAMES:
+                    continue
+                if path.name.casefold() == "dgm-mat" and folder == path and name.casefold() == "storage":
+                    continue
+                if entry.is_symlink() or self._skip_tree_file(name):
+                    continue
+                visible.append(entry)
+            for index, entry in enumerate(visible):
+                if entry_count >= TREE_MAX_ENTRIES:
+                    truncated = True
+                    return
+                try:
+                    is_dir = entry.is_dir(follow_symlinks=False)
+                except OSError:
+                    continue
+                is_last = index == len(visible) - 1
+                connector = "└── " if is_last else "├── "
+                lines.append(prefix + connector + entry.name + ("/" if is_dir else ""))
+                entry_count += 1
+                if is_dir:
+                    child_prefix = prefix + ("    " if is_last else "│   ")
+                    visit(Path(entry.path), child_prefix, depth + 1)
+                    if truncated:
+                        return
+
+        visit(path, "", 0)
+        if truncated:
+            lines.append(f"... [truncated after {TREE_MAX_ENTRIES} entries]")
+        content = "\n".join(lines) + "\n"
+        temporary = destination.with_suffix(destination.suffix + ".tmp")
+        temporary.write_text(content, encoding="utf-8")
+        temporary.replace(destination)
+        digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        generated_at = _now()
+        with self._connection() as db:
+            db.execute(
+                """
+                INSERT INTO repository_artifacts(
+                    repo_path, tree_path, tree_sha256, entry_count, truncated, generated_at, tree_error
+                ) VALUES (?, ?, ?, ?, ?, ?, NULL)
+                ON CONFLICT(repo_path) DO UPDATE SET
+                    tree_path=excluded.tree_path, tree_sha256=excluded.tree_sha256,
+                    entry_count=excluded.entry_count, truncated=excluded.truncated,
+                    generated_at=excluded.generated_at, tree_error=NULL
+                """,
+                (str(path), str(destination), digest, entry_count, int(truncated), generated_at),
+            )
+            db.commit()
+        return {
+            "tree_path": str(destination),
+            "tree_sha256": digest,
+            "tree_entries": entry_count,
+            "tree_truncated": truncated,
+            "tree_generated_at": generated_at,
+            "tree_error": None,
+        }
+
+    def _ensure_tree(self, path: Path, *, protected: bool, force: bool = False) -> None:
+        if protected:
+            return
+        with self._connection() as db:
+            row = db.execute(
+                "SELECT tree_path FROM repository_artifacts WHERE repo_path=?",
+                (str(path),),
+            ).fetchone()
+        if not force and row and Path(row["tree_path"]).is_file():
+            return
+        self._write_tree(path)
+
+    def _record_tree_error(self, path: Path, error: Exception) -> None:
+        destination = self._tree_artifact_path(path)
+        with self._connection() as db:
+            db.execute(
+                """
+                INSERT INTO repository_artifacts(
+                    repo_path, tree_path, tree_sha256, entry_count, truncated, generated_at, tree_error
+                ) VALUES (?, ?, '', 0, 0, ?, ?)
+                ON CONFLICT(repo_path) DO UPDATE SET
+                    tree_path=excluded.tree_path, tree_error=excluded.tree_error,
+                    generated_at=excluded.generated_at
+                """,
+                (str(path), str(destination), _now(), type(error).__name__),
+            )
+            db.commit()
+
     def _inspect(self, item: dict[str, str]) -> dict[str, Any]:
         path = Path(item["path"])
         protected = self._is_protected(path)
@@ -379,6 +530,14 @@ class RepositoryLearningService:
                         (inspected["path"],),
                     ).fetchone()
                     unchanged = bool(previous and previous["fingerprint"] == inspected["fingerprint"])
+                    try:
+                        self._ensure_tree(
+                            Path(inspected["path"]),
+                            protected=bool(inspected["protected"]),
+                            force=not unchanged,
+                        )
+                    except (OSError, RuntimeError, ValueError) as tree_exc:
+                        self._record_tree_error(Path(inspected["path"]), tree_exc)
                     timestamp = _now()
                     if unchanged:
                         db.execute(
@@ -514,9 +673,14 @@ class RepositoryLearningService:
         limit = max(1, min(int(limit), 200))
         with self._connection() as db:
             rows = db.execute("""
-                SELECT path, root, name, branch, head_sha, dirty, origin, protected,
-                       stack_json, summary, scan_status, scan_error, last_seen_at, scan_count
-                FROM repositories ORDER BY path COLLATE NOCASE LIMIT ?
+                SELECT r.path, r.root, r.name, r.branch, r.head_sha, r.dirty, r.origin, r.protected,
+                       r.stack_json, r.summary, r.scan_status, r.scan_error, r.last_seen_at, r.scan_count,
+                       a.tree_path, a.tree_sha256, a.entry_count AS tree_entries,
+                       a.truncated AS tree_truncated, a.generated_at AS tree_generated_at,
+                       a.tree_error
+                FROM repositories AS r
+                LEFT JOIN repository_artifacts AS a ON a.repo_path=r.path
+                ORDER BY r.path COLLATE NOCASE LIMIT ?
             """, (limit,)).fetchall()
         results = []
         for row in rows:
@@ -532,8 +696,80 @@ class RepositoryLearningService:
                 "summary": row["summary"], "scan_status": row["scan_status"],
                 "scan_error": row["scan_error"], "last_seen_at": row["last_seen_at"],
                 "scan_count": row["scan_count"],
+                "tree_path": row["tree_path"], "tree_sha256": row["tree_sha256"],
+                "tree_entries": row["tree_entries"],
+                "tree_truncated": bool(row["tree_truncated"]) if row["tree_truncated"] is not None else False,
+                "tree_generated_at": row["tree_generated_at"], "tree_error": row["tree_error"],
+                "project_group": None,
+                "project_group_id": None,
+                "project_group_basis": "awaiting_relationship_evidence",
+                "project_group_confidence": 0.0,
             })
+
+        origin_members: dict[str, list[dict[str, Any]]] = {}
+        parent_members: dict[str, list[dict[str, Any]]] = {}
+        for item in results:
+            if item["origin"]:
+                origin_members.setdefault(item["origin"].casefold(), []).append(item)
+            parent_path = Path(item["path"]).parent
+            parent = str(parent_path).casefold()
+            root_path = str(Path(item["root"])).casefold()
+            if parent != root_path and parent_path.name.casefold() not in {
+                "_worktrees", "worktrees", "repos", "repositories", "clones", "archive", "archives"
+            }:
+                parent_members.setdefault(parent, []).append(item)
+
+        for members in origin_members.values():
+            if len(members) > 1:
+                label = Path(members[0]["path"]).name
+                for item in members:
+                    item["project_group"] = label
+                    item["project_group_id"] = f"origin:{item['origin'].casefold()}"
+                    item["project_group_basis"] = "same_git_origin"
+                    item["project_group_confidence"] = 0.99
+
+        for members in parent_members.values():
+            if len(members) > 1:
+                label = Path(members[0]["path"]).parent.name
+                for item in members:
+                    if item["project_group"] is None:
+                        item["project_group"] = label
+                        item["project_group_id"] = f"folder:{str(Path(item['path']).parent).casefold()}"
+                        item["project_group_basis"] = "shared_parent_folder"
+                        item["project_group_confidence"] = 0.85
+
+        for item in results:
+            if item["project_group"] is None:
+                item["project_group"] = item["name"]
+                item["project_group_id"] = f"repo:{item['path'].casefold()}"
+                item["project_group_basis"] = "single_repository_pending_semantic_review"
+                item["project_group_confidence"] = 0.25
         return results
+
+    def read_tree(self, repo_path: str, *, max_bytes: int = 2_000_000) -> dict[str, Any]:
+        """Read only a tree artifact already indexed for a known repository."""
+        with self._connection() as db:
+            row = db.execute(
+                "SELECT tree_path, tree_sha256, tree_error FROM repository_artifacts WHERE repo_path=?",
+                (str(Path(repo_path).resolve()),),
+            ).fetchone()
+        if row is None or not row["tree_path"]:
+            raise KeyError("repository_tree_not_found")
+        if row["tree_error"]:
+            raise ValueError("repository_tree_generation_failed")
+        artifact = Path(row["tree_path"]).resolve()
+        if not artifact.is_relative_to(self.tree_dir.resolve()):
+            raise ValueError("repository_tree_path_outside_artifact_directory")
+        if not artifact.is_file():
+            raise FileNotFoundError("repository_tree_artifact_missing")
+        if artifact.stat().st_size > max(1, int(max_bytes)):
+            raise ValueError("repository_tree_artifact_too_large")
+        return {
+            "repo_path": str(Path(repo_path).resolve()),
+            "tree_path": str(artifact),
+            "tree_sha256": row["tree_sha256"],
+            "content": artifact.read_text(encoding="utf-8"),
+        }
 
     def run_once(self) -> dict[str, Any]:
         """Complete the current inventory cycle, resuming its durable cursor."""

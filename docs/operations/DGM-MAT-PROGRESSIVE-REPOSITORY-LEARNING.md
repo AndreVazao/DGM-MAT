@@ -18,6 +18,17 @@ Default roots:
 
 Additional roots can be supplied through `DGM_REPO_SCAN_ROOTS`, separated by semicolons. Discovery is recursive to a bounded depth (default 8), detects normal repositories and Git worktrees (including hidden worktree folders), and does not follow symlinks. Only known generated/vendor directories are pruned.
 
+## Repository tree artifacts
+
+For every non-protected repository, the worker writes a UTF-8 `.tree.txt` sidecar under `storage/runtime/cognition/repository_learning/trees` by default, or the external directory configured with `DGM_REPOSITORY_TREE_DIR`. Production should use an external directory so generated trees do not dirty the DGM-MAT source checkout. The filename is based on the repository name plus a stable path hash, so same-named repositories do not overwrite one another.
+
+- The tree contains paths only; it never reads file contents.
+- With the recommended external `DGM_REPOSITORY_TREE_DIR`, tree generation does not dirty the DGM-MAT source checkout or any inventoried project.
+- Unchanged repositories reuse their existing tree. A changed repository regenerates its tree.
+- The tree is bounded to 4,000 entries and depth 12.
+- Git, virtual environments, build output, dependencies, runtime storage, secrets, credential files, private keys and symlinks are excluded.
+- The protected full mirror receives no tree artifact.
+
 ## What is learned
 
 For each repository the worker stores:
@@ -27,7 +38,9 @@ For each repository the worker stores:
 - sanitized origin host/path, without embedded credentials;
 - top-level technology/build manifest names;
 - a short redacted README introduction;
-- protected-mirror status, last-seen time and a fingerprint.
+- protected-mirror status, last-seen time and a fingerprint;
+- the `.tree.txt` artifact path, SHA-256, entry count, truncation flag and generation time;
+- a provisional project-group suggestion based only on a shared Git origin or multiple repositories under the same non-root parent directory; ambiguous repositories remain marked for semantic review.
 
 `DGM-MAT-FULL-MIRROR` is recorded as a protected metadata-only entry. Its README and project files are not read.
 
@@ -44,7 +57,8 @@ For each repository the worker stores:
 
 ## API
 
-- `GET /runtime/repository-learning` — progress percentage, next repository path, scan roots and a bounded repository metadata page.
+- `GET /runtime/repository-learning` — progress percentage, next repository path, scan roots, repository metadata and evidence-based project-group suggestions.
+- `GET /runtime/repository-learning/tree?repo_path=...` — reads only the bounded tree artifact already indexed for that repository.
 - `POST /runtime/repository-learning/start` — operator-only start/resume.
 - `POST /runtime/repository-learning/stop` — operator-only pause; the cursor and ledger remain intact.
 - `GET /runtime/missions/page?limit=20&offset=0` — bounded durable mission summaries. This avoids the legacy unbounded mission-list response on a runtime with hundreds of checkpoints.
@@ -55,6 +69,7 @@ Set before runtime startup:
 - `DGM_REPOSITORY_LEARNING_ENABLED=1`
 - `DGM_REPOSITORY_LEARNING_BATCH_SIZE=5`
 - `DGM_REPOSITORY_LEARNING_MAX_DEPTH=8`
+- `DGM_REPOSITORY_TREE_DIR=C:\\ProgramasGodMode\\DGM-MAT-Data\\repository-trees` (recommended external sidecar location)
 - `DGM_REPOSITORY_LEARNING_REFRESH_SECONDS=900`
 
 The worker is deliberately independent of the SafeActionQueue. It does not create hundreds of mission records or auto-approve repository mutations. It is a read-only learning/indexing process; later deep audits and code changes must be separate, evidence-backed tasks.
