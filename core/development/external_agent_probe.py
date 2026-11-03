@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+from datetime import datetime, timezone
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -21,10 +22,11 @@ def _timeout(value: float) -> float:
 
 
 def _claude_command() -> tuple[list[str] | None, str | None]:
-    executable = shutil.which("claude")
-    if not executable and os.name == "nt":
+    executable = None
+    if os.name == "nt":
         appdata = os.getenv("APPDATA")
         if appdata:
+            # Prefer the PowerShell shim: it avoids cmd.exe argument parsing.
             for candidate in (
                 Path(appdata) / "npm" / "claude.ps1",
                 Path(appdata) / "npm" / "claude.cmd",
@@ -32,6 +34,8 @@ def _claude_command() -> tuple[list[str] | None, str | None]:
                 if candidate.is_file():
                     executable = str(candidate)
                     break
+    if not executable:
+        executable = shutil.which("claude")
     if not executable:
         return None, None
 
@@ -63,7 +67,7 @@ def _json_object(output: str) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
-def probe_claude_code(*, timeout_seconds: float = 3.0) -> dict[str, Any]:
+def probe_claude_code(*, timeout_seconds: float = 5.0) -> dict[str, Any]:
     """Check CLI presence and supported auth status without issuing a model request."""
     command, executable = _claude_command()
     if not executable:
@@ -289,7 +293,7 @@ def get_external_agent_readiness() -> dict[str, Any]:
     blockers.append("provider_zero_cost_not_verified")
     return {
         "schema": "dgm-mat.external-agent-readiness.v1",
-        "generated_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "execution_ready": False,
         "policy": "FREE_ONLY_PAID_DENY",
         "provider_calls_performed": 0,
