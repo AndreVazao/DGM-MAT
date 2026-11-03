@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -247,3 +248,70 @@ def test_dgm_hub_agent_routes_require_operator_session(client, monkeypatch):
     assert client.get(
         "/governance/agents/hub/status", headers=operator_headers
     ).status_code == 200
+
+
+def test_operator_can_consult_hub_agents_and_request_is_audited(client, monkeypatch, tmp_path):
+    from core.api import dgm_hub_agents_api
+    from core.organization.dgm_hub_multichat_bridge import HubTaskResult
+    from core.organization.specialist_collaboration import SpecialistCollaborationStore
+
+    monkeypatch.setenv("DGM_COMMAND_AUDIT_PATH", str(tmp_path / "provider-audit.jsonl"))
+
+    class FakeBridge:
+        def consult(self, **kwargs):
+            return HubTaskResult(
+                task_id="auth-audit-task",
+                conversation_id="auth-audit-conversation",
+                results={
+                    "llm7": {
+                        "provider": "llm7",
+                        "status": "ok",
+                        "text": "A bounded test consultation result.",
+                        "model": "gpt-oss:20b",
+                        "duration_seconds": 0.5,
+                        "truncated": False,
+                    }
+                },
+            )
+
+    store = SpecialistCollaborationStore(tmp_path / "collaborations")
+
+    class FakeEngine:
+        collaboration_store = store
+
+        def record_specialist_result(self, collaboration_id, *, result, provenance):
+            packet = store.record_result(collaboration_id, result=result, provenance=provenance)
+            return {
+                "collaboration_id": collaboration_id,
+                "status": packet.status.value,
+                "review_required": True,
+            }
+
+        def pause_specialist_collaboration(self, collaboration_id, *, reason):
+            packet = store.mark_waiting_for_free_capacity(collaboration_id, reason=reason)
+            return {"collaboration_id": collaboration_id, "status": packet.status.value}
+
+    monkeypatch.setattr(dgm_hub_agents_api, "_bridge", lambda: FakeBridge())
+    monkeypatch.setattr(dgm_hub_agents_api, "_mission_engine", lambda: FakeEngine())
+
+    token = _session({"local-client", "operator"})
+    response = client.post(
+        "/governance/agents/hub/consult",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "goal": "Check operator-authenticated Hub consultation.",
+            "providers": ["llm7"],
+            "free_capacity_confirmed": True,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "completed"
+    assert response.json()["providers"][0]["result_trusted"] is False
+    audit = [
+        __import__("json").loads(line)
+        for line in (tmp_path / "provider-audit.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert [event["event"] for event in audit] == ["command.requested", "command.completed"]
+    assert all(event["session_id"] for event in audit)
+    assert audit[0]["command_id"] == "dgm_hub.consult.free_only:llm7"
