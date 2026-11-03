@@ -14,6 +14,9 @@ a = Analysis(
         ('../architecture.md', '.'),
     ],
     hiddenimports=[
+        'dgm_contracts',
+        'dgm_contracts.models',
+        'dgm_contracts.agent_services',
         'pydantic.deprecated.decorator',
         'uvicorn.protocols.http.httptools_impl',
         'uvicorn.protocols.websockets.websockets_impl',
