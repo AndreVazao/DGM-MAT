@@ -159,7 +159,7 @@ def test_combined_readiness_never_claims_execution_without_free_cost_proof(monke
             "cost_status": "official_free_endpoint",
             "quota_status": "free_endpoint_rate_limits_and_account_quota_apply",
             "execution_ready": True,
-            "fallbacks_disabled": True,
+            "fallbacks_free_only": True,
         },
     )
 
@@ -186,7 +186,7 @@ def test_fcc_admin_status_accepts_only_allowlisted_free_nim_model_without_fallba
     }
     config_payload = {
         "fields": [
-            {"key": "MODEL_FALLBACKS", "value": None, "secret": False},
+            {"key": "MODEL_FALLBACKS", "value": "nvidia_nim/nvidia/nemotron-3.5-super-vl-120b-a12b", "secret": False},
             {"key": "NVIDIA_NIM_API_KEY", "value": "********", "secret": True},
         ]
     }
@@ -211,7 +211,7 @@ def test_fcc_admin_status_accepts_only_allowlisted_free_nim_model_without_fallba
     assert result["selected_provider"] == "nvidia_nim"
     assert result["selected_model"] == status_payload["model"]
     assert result["configured_remote_providers"] == ["nvidia_nim"]
-    assert result["fallbacks_disabled"] is True
+    assert result["fallbacks_free_only"] is True
     assert result["fallback_models_count"] == 0
     assert result["execution_ready"] is True
     assert "api_key" not in str(result).casefold()
@@ -251,7 +251,7 @@ def test_fcc_admin_status_rejects_unlisted_model_or_paid_fallback(monkeypatch):
 
     assert result["free_endpoint_verified"] is False
     assert result["execution_ready"] is False
-    assert result["fallbacks_disabled"] is False
+    assert result["fallbacks_free_only"] is False
     assert result["fallback_models_count"] == 1
     assert result["cost_status"] == "unverified"
 
