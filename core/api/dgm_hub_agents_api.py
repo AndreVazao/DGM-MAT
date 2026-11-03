@@ -315,7 +315,7 @@ from core.organization.dgm_hub_meeting_observer import (
 
 
 class HubMeetingProposalRequest(BaseModel):
-    source_event_id: str = Field(min_length=64, max_length=64)
+    source_event_id: str = Field(min_length=1, max_length=128)
     statement: str = Field(min_length=1, max_length=4000)
 
     model_config = ConfigDict(extra="forbid")
@@ -327,7 +327,7 @@ class HubMeetingDecisionRequest(BaseModel):
     rationale: str = Field(min_length=1, max_length=4000)
     accepted_proposal_ids: list[str] = Field(default_factory=list, max_length=50)
     rejected_proposal_ids: list[str] = Field(default_factory=list, max_length=50)
-    source_event_id: str | None = Field(default=None, min_length=64, max_length=64)
+    source_event_id: str | None = Field(default=None, min_length=1, max_length=128)
     confirm: bool = False
 
     model_config = ConfigDict(extra="forbid")

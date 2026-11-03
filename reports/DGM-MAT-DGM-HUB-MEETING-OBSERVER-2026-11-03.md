@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-03
 **Branch:** `feat/dgm-hub-meeting-observer-2026-11-03`
-**Base:** DGM-MAT PR #158 head `70fc8e82bc7486f2e82caa30100ec2025ba5f7a4`
+**Base:** DGM-MAT main after PR #158 and #165; commit `19eea585c86a0cda2eae7af033f673ead1a1a6e0`
 **Issue:** #159 - DGM-HUB meeting learning and decision memory
 
 ## Objective
@@ -11,13 +11,17 @@ Capture the real DGM-HUB MultiChat room without taking over the room, sending me
 
 ## Verified source contract
 
-Live local Hub: `http://127.0.0.1:8770`
-Read-only endpoint: `GET /api/history?limit=500`
-Hub journal: `C:\AI\DGM-HUB-MultiChat\runtime\multichat\conversation.jsonl`
+Live local Hub endpoint: http://127.0.0.1:8770
 
-The current Hub journal contains `user_message` and `provider_response` events with timestamps, `conversation_id`, provider identity and text. The API exposes a bounded latest-500 event window. The current journal does **not** expose a stable event ID or `task_id`; the observer therefore derives an immutable SHA-256 fingerprint from each source event and reports correlation as conversation-only rather than inventing task correlation.
+Current history contract (DGM-HUB issue #27, PR #30, merged as b46b8329f74e0d8e26a6a054235c14c6728664e0):
 
-The Hub task result map is process-memory based. A Hub restart can lose task status/results even though the JSONL journal remains on disk.
+- GET /api/history?after=<seq>&limit=500 returns stable event_id, monotonic seq, next_cursor, has_more and total_events.
+- user_message, provider_response and provider_error events carry the same task_id.
+- Task results/status persist in SQLite across Hub restart; queued/running tasks are marked interrupted rather than re-executed.
+- Legacy JSONL entries are migrated with deterministic event IDs and marked correlation_status=legacy_unlinked when no historical task relationship exists.
+- The old GET /api/history?limit=500 latest-window contract remains compatible.
+
+The original live capture on 2026-11-03 predates this Hub contract and therefore observed only conversation-level correlation. The DGM-MAT observer has now been updated to consume the new cursor and identity fields; the active Hub runtime has not yet been restarted, so live cursor operation against the new server has not been claimed.
 
 ## Implementation
 
@@ -58,25 +62,30 @@ A temporary SQLite database was used so the production DGM-MAT storage and the H
 | Messages sent to Hub | 0 |
 | Provider calls initiated | 0 |
 
-The capture returned HTTP 200 from the local history endpoint. The temporary database was discarded after the test. A background-thread test performed two polling passes: the first inserted 52 events across 15 conversations; the second recognized all 52 as duplicates. The observer then stopped cleanly, with zero provider calls and zero messages sent.
+The capture returned HTTP 200 from the pre-contract local history endpoint. The temporary database was discarded after the test. A background-thread test performed two polling passes: the first inserted 52 events across 15 conversations; the second recognized all 52 as duplicates. The observer then stopped cleanly, with zero provider calls and zero messages sent. This is historical evidence for the original bounded observer, not a claim that the new cursor API was live at that time.
 
 ## Automated validation
 
-- `compileall`: passed.
-- Full focused regression (PR #158 baseline, observer/API/security and knowledge-store tests): **99 passed in 10.54s**.
-- The run includes three atomicity/confirmation tests for the decision and proposal ledger.
-- `compileall` and `git diff --check` both passed.
-- FastAPI `on_event` deprecation warnings remain in the existing application lifecycle and the newly added hooks; this is not a test failure and should be migrated to a lifespan handler in a separate bounded change.
-- Existing `command_executor.py` invalid-escape `SyntaxWarning` is unrelated and unchanged.
+- Original observer baseline: 99 passed (2026-11-03).
+- Refreshed main + observer + Hub + recovery + inventory integration suite: 172 passed in 17.06s.
+- Focused observer API, store, cursor pagination, legacy database migration and atomic decision suite: 20 passed in 4.44s.
+- Cursor regression reads four events across two pages and verifies persisted cursor, stable Hub IDs, source_seq, task_id and provider-error classification.
+- A schema-v1 DGM-MAT observer database is upgraded in place; when a migrated Hub event matches the old source fingerprint, the existing row is upgraded to the stable Hub event ID rather than duplicated.
+- A Hub journal reset (saved cursor greater than current total) fails closed and requires manual reconciliation; the observer never rewinds automatically.
+- compileall and changed-source git diff --check passed.
+- Existing warnings: two Python invalid-escape SyntaxWarnings and FastAPI on_event deprecation warnings. They are unrelated to the cursor implementation.
+- DGM-HUB's unrelated full-suite import/port blockers are tracked separately in DGM-HUB issue #29.
 
 ## Known limitations / next gate
 
-1. Task-level correlation remains incomplete because the Hub history contract does not include `task_id` or a source event ID. No synthetic task IDs are created. A separate DGM-HUB contract change is needed.
-2. The Hub history endpoint returns only the latest 500 events. If that window is saturated, the observer raises a visible warning that older unseen events may be missing. It does not claim complete capture.
-3. The observer stores sanitized event payloads and their SHA-256 source fingerprints. Secret-like patterns are redacted in stored text; the Hub source journal is never rewritten.
-4. Proposals are recorded only when explicitly identified and linked to a provider response. No automatic classifier can mark a proposal accepted.
-5. Decisions are stored only after an explicit authenticated operator confirmation. No provider consensus or model output can create a confirmed decision.
-6. This phase does not generate AI summaries, choose a solution, chair meetings, dispatch tasks, edit projects, or execute patches.
+1. New Hub events now carry stable event_id, seq and task_id; historical events remain legacy_unlinked because their original task relationships cannot be reconstructed safely.
+2. Cursor pagination resumes from the last committed page and processes up to 10 × 500 events per capture pass. If a backlog remains, the next pass resumes from the persisted cursor. The old Hub API fallback remains visibly partial and warns when its 500-event window is saturated.
+3. If the Hub journal is reset and its total sequence falls below the saved cursor, capture stops and requires manual reconciliation; it does not rewind and risk silently duplicating or skipping records.
+4. The observer schema migration preserves existing fingerprint rows and upgrades them in place when the corresponding stable Hub event arrives. Stored text remains redacted; the source Hub journal is never rewritten.
+5. Proposals are recorded only when explicitly identified and linked to a provider response/error event from the same meeting. No automatic classifier can mark a proposal accepted.
+6. Decisions are stored only after explicit authenticated operator confirmation. No provider consensus or model output can create a confirmed decision.
+7. This phase does not generate AI summaries, choose a solution, chair meetings, dispatch tasks, edit projects, or execute patches.
+8. A live end-to-end cursor capture against the new Hub runtime remains pending a controlled Hub restart. The active Hub process was intentionally not restarted during this implementation.
 
 ## Safety boundaries
 
@@ -86,4 +95,4 @@ The capture returned HTTP 200 from the local history endpoint. The temporary dat
 - No Hub chat messages are sent.
 - All captured provider text remains untrusted.
 - The authoritative DGM-MAT checkout and the active, uncommitted `C:\AI\DGM-HUB-MultiChat` working tree were left untouched.
-- No merge or promotion has been performed.
+- DGM-HUB issue #27 contract is merged; DGM-MAT PR #160 remains unmerged. No active Hub or DGM-MAT runtime restart/promotion has been performed.
