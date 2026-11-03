@@ -14,6 +14,7 @@ from core.governance.runtime_capability_profile import collect_runtime_capabilit
 from core.operations.command_executor import CommandDenied, CommandExecutor
 from core.operations.operation_audit import AuditWriteError, append_command_audit
 from core.governance.meeting_registry import GovernanceMeetingRegistry
+from core.development.external_agent_probe import get_external_agent_readiness
 
 
 router = APIRouter(prefix="/governance", tags=["governance"])
@@ -32,6 +33,12 @@ class RepairRequest(BaseModel):
 def runtime_capabilities():
     """Expose a cheap, read-only profile of the current host's observed capacity."""
     return collect_runtime_capability_profile().to_dict()
+
+
+@router.get("/agents/readiness")
+def external_agent_readiness():
+    """Inspect external agent readiness without starting a provider or sending prompts."""
+    return get_external_agent_readiness()
 
 
 @router.get("/audit/workspace")
