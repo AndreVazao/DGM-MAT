@@ -80,6 +80,10 @@ The API is intended to become the cockpit/mission entry point for future automat
 
 The mobile/Hub conversation surface creates missions only when the authoritative mission-intent router finds a registered handler. Supported read-only diagnostics can enter the automatic allowlist; GitHub worktree synchronization remains approval-gated. Unsupported repair, implementation, deployment, external research and persistent-memory requests stay in the conversation and do not create queue actions. See [Mobile mission routing](docs/MOBILE-MISSION-ROUTING.md) for the supported intent matrix and validation report.
 
+## Progressive repository learning
+
+The runtime can maintain a durable, read-only map of repositories and Git worktrees across the configured Windows project roots. It stores branch/HEAD/dirty state, sanitized origin metadata, technology manifests and a short redacted README summary. A SQLite cursor resumes after restarts and unchanged repositories are skipped; the protected DGM-MAT full mirror receives metadata-only treatment. See [Progressive repository learning](docs/operations/DGM-MAT-PROGRESSIVE-REPOSITORY-LEARNING.md). The paginated `/runtime/missions/page` endpoint avoids unbounded mission-list reads.
+
 ## Ecosystem boundary
 
 DGM-MAT may absorb knowledge, architecture, techniques and validated snippets from upstream, cloned, legacy and lab repositories.

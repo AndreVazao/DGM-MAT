@@ -6,7 +6,7 @@ import re
 import time
 from datetime import datetime
 import psutil
-from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any
 from core.storage.storage_manager import storage_manager
@@ -279,6 +279,62 @@ def list_missions():
             "output": mission.metadata.get("output"),
         })
     return missions
+
+
+@router.get("/missions/page")
+def list_missions_page(
+    limit: int = Query(default=20, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
+):
+    """Return a bounded page of durable mission summaries without loading every checkpoint."""
+    directory = mission_engine.missions_path
+    files = sorted(
+        directory.glob("mission_*.json"),
+        key=lambda item: item.stat().st_mtime_ns if item.exists() else 0,
+        reverse=True,
+    ) if directory.exists() else []
+    total = len(files)
+    selected = files[offset:offset + limit]
+    items = []
+    for mission_file in selected:
+        try:
+            data = json.loads(mission_file.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            continue
+        mission_id = data.get("mission_id")
+        if not isinstance(mission_id, str) or not re.fullmatch(r"mission_[0-9a-f]{8}", mission_id):
+            continue
+        metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+        result = metadata.get("result") if isinstance(metadata.get("result"), dict) else {}
+        action_id = metadata.get("action_id")
+        if isinstance(action_id, bool) or not isinstance(action_id, int):
+            action_id = None
+        action = SafeActionQueue().get_action(action_id) if action_id is not None else None
+        status = data.get("status")
+        if isinstance(status, dict):
+            status = status.get("value")
+        items.append({
+            "mission_id": mission_id,
+            "goal": str(data.get("goal") or "")[:240],
+            "status": status,
+            "progress": data.get("progress"),
+            "created_at": data.get("created_at"),
+            "updated_at": data.get("updated_at"),
+            "action_id": action_id,
+            "action_status": action.get("status") if action else None,
+            "handler": result.get("handler") if isinstance(result.get("handler"), str) else None,
+            "error": str(data.get("error") or "")[:400] or None,
+        })
+    next_offset = offset + len(selected)
+    return {
+        "items": items,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_more": next_offset < total,
+        "next_offset": next_offset if next_offset < total else None,
+        "source": "durable_checkpoint_page",
+    }
 
 
 @router.get("/missions/{mission_id}")
