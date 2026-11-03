@@ -333,6 +333,7 @@ def import_chatgpt_export_zip(
     ledger: RecoveryLedger,
     *,
     max_conversations_json_bytes: int = 512 * 1024 * 1024,
+    original_location: str | None = None,
 ) -> ChatGPTImportReport:
     """Safely import conversations.json from a ZIP without extracting arbitrary paths.
 
@@ -381,7 +382,8 @@ def import_chatgpt_export_zip(
                 if copied != member.file_size:
                     raise ChatGPTExportError("ZIP member size differs from bytes read; archive may be truncated.")
                 report = import_chatgpt_conversations_json(
-                    staged_json, root, ledger, original_location=str(source_zip)
+                    staged_json, root, ledger,
+                    original_location=original_location or str(source_zip),
                 )
                 return replace(report, source_file=str(source_zip))
     except zipfile.BadZipFile as exc:
