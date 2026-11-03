@@ -284,8 +284,12 @@ def get_external_agent_readiness() -> dict[str, Any]:
     claude = probe_claude_code()
     fcc = probe_fcc_gateway()
     blockers = []
-    if not claude["authenticated"]:
+    if claude.get("authenticated") is False:
         blockers.append("claude_code_not_authenticated")
+    elif claude.get("authenticated") is not True:
+        blockers.append("claude_code_auth_state_unknown")
+    if not fcc.get("cli_installed"):
+        blockers.append("fcc_cli_not_installed")
     if fcc["gateway_status"] == "network_exposed":
         blockers.append("fcc_gateway_not_loopback_only")
     elif fcc["gateway_status"] != "loopback_only":
