@@ -193,7 +193,7 @@ def consult_hub_agents(payload: HubAgentConsultRequest):
         "hub_task_id": task.task_id,
         "conversation_id": task.conversation_id,
         "room_leader": "operator",
-        "dgm_mat_mode": "observer_and_consultation_coordinator",
+        "dgm_mat_mode": "observer_operator_requested_consultations",
         "providers": responses,
         "paid_fallback": False,
         "free_capacity_attested_by_operator": True,
