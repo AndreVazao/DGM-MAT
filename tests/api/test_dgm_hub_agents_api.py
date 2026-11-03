@@ -255,3 +255,20 @@ def test_consult_fails_closed_when_request_audit_cannot_be_written(monkeypatch, 
     assert exc.value.status_code == 503
     assert bridge.called == []
     assert engine.collaboration_store.list_packets() == []
+
+def test_consult_rejects_duplicate_provider_ids_before_provider_contact(monkeypatch, tmp_path):
+    events = []
+    bridge = FakeBridge()
+    engine = FakeEngine(tmp_path)
+    monkeypatch.setattr(api, "append_command_audit", lambda **kwargs: events.append(kwargs))
+    monkeypatch.setattr(api, "_bridge", lambda: bridge)
+    monkeypatch.setattr(api, "_mission_engine", lambda: engine)
+
+    with pytest.raises(HTTPException) as exc:
+        api.consult_hub_agents(_payload(providers=["llm7", "llm7"]), _request())
+
+    assert exc.value.status_code == 422
+    assert bridge.called == []
+    assert engine.collaboration_store.list_packets() == []
+    assert [event["event"] for event in events] == ["command.denied"]
+    assert events[0]["status"] == "denied"
