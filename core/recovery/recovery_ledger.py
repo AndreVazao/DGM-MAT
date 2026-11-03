@@ -399,3 +399,42 @@ class RecoveryLedger:
             for chunk in iter(lambda: stream.read(1024 * 1024), b""):
                 digest.update(chunk)
         return digest.hexdigest()
+
+    def search_sources(
+        self,
+        query: str,
+        *,
+        provider: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[RecoverySource]:
+        """Search source metadata using bounded, parameterized SQLite queries."""
+        term = query.strip()
+        if len(term) < 2:
+            raise ValueError("query must contain at least two characters.")
+        if len(term) > 200:
+            raise ValueError("query must not exceed 200 characters.")
+        if not 1 <= limit <= 100 or offset < 0:
+            raise ValueError("invalid pagination.")
+        escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
+        sql = """
+            SELECT * FROM recovery_sources
+            WHERE (
+                title LIKE ? ESCAPE '\\'
+                OR source_id LIKE ? ESCAPE '\\'
+                OR project_key LIKE ? ESCAPE '\\'
+            )
+        """
+        parameters: list[object] = [pattern, pattern, pattern]
+        if provider:
+            sql += " AND provider = ?"
+            parameters.append(provider.strip().casefold())
+        sql += " ORDER BY provider, source_date DESC, source_id LIMIT ? OFFSET ?"
+        parameters.extend([limit, offset])
+        with self._connection() as db:
+            rows = db.execute(sql, tuple(parameters)).fetchall()
+        return [
+            RecoverySource(**{key: row[key] for key in RecoverySource.__dataclass_fields__})
+            for row in rows
+        ]
