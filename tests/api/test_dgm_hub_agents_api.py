@@ -116,7 +116,7 @@ def test_consult_persists_each_provider_result_as_untrusted_and_reviewable(monke
 
     assert result["status"] == "completed"
     assert result["room_leader"] == "operator"
-    assert result["dgm_mat_mode"] == "observer_and_consultation_coordinator"
+    assert result["dgm_mat_mode"] == "observer_operator_requested_consultations"
     assert result["paid_fallback"] is False
     assert result["all_results_untrusted"] is True
     assert len(engine.collaboration_store.created) == 2
