@@ -33,6 +33,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Checkout DGM-MAT Connectors
+        uses: actions/checkout@v6
+        with:
+          repository: AndreVazao/DGM-MAT-Connectors
+          ref: main
+          path: DGM-MAT-Connectors
+          persist-credentials: false
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -98,6 +105,7 @@ jobs:
         if: steps.select.outputs.has_tests == 'true'
         env:
           PYTHONPATH: .
+          DGM_CONNECTORS_PATH: ${{ github.workspace }}/DGM-MAT-Connectors/src
           DGM_COMMAND_AUDIT_PATH: ${{ runner.temp }}/dgm-command-audit.jsonl
         run: |
           python - <<'PY'
