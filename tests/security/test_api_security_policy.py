@@ -37,7 +37,7 @@ def test_sensitive_routes_are_not_public():
         ("/runtime/workspace/scan", "GET"),
         ("/mobile/threads/{thread_id}/messages", "POST"),
         ("/governance/repair/self/apply", "POST"),
-        ("/governance/commands/run", "POST"),
+        ("/governance/commands/run", "POST"),\n        ("/governance/agents/hub/consult", "POST"),\n        ("/governance/agents/hub/status", "GET"),
         ("/governance/commands/catalog", "GET"),
         ("/provider-execution/execute", "POST"),
     ]:
@@ -116,3 +116,11 @@ def test_legacy_mobile_ui_setting_does_not_mount_the_pc_cockpit_twice(monkeypatc
     # A mobile PWA may still be returned from the independent fallback directory,
     # but the PC cockpit itself must never be selected for /app.
     assert _mobile_ui_directory() != pc_dir
+
+
+
+def test_dgm_hub_agent_routes_are_operator_only():
+    status = classify_route("/governance/agents/hub/status", ("GET",))
+    consult = classify_route("/governance/agents/hub/consult", ("POST",))
+    assert status is not None and status.scope is SecurityScope.OPERATOR
+    assert consult is not None and consult.scope is SecurityScope.OPERATOR
