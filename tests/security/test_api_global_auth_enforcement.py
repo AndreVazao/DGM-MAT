@@ -205,3 +205,45 @@ def test_external_agent_readiness_requires_operator_session(client, monkeypatch)
     assert response.status_code == 200
     assert response.json()["execution_ready"] is False
     assert response.json()["provider_calls_performed"] == 0
+
+
+
+def test_dgm_hub_agent_routes_require_operator_session(client, monkeypatch):
+    from core.api import dgm_hub_agents_api
+
+    class FakeBridge:
+        def get_status(self):
+            return {"hub": "online", "providers": {}}
+
+    monkeypatch.setattr(dgm_hub_agents_api, "_bridge", lambda: FakeBridge())
+
+    assert client.get("/governance/agents/hub/status").status_code == 401
+    assert client.post(
+        "/governance/agents/hub/consult",
+        json={
+            "goal": "Review a small integration",
+            "providers": ["codex"],
+            "free_capacity_confirmed": True,
+        },
+    ).status_code == 401
+
+    read_only_token = _session({"local-client"})
+    read_only_headers = {"Authorization": f"Bearer {read_only_token}"}
+    assert client.get(
+        "/governance/agents/hub/status", headers=read_only_headers
+    ).status_code == 403
+    assert client.post(
+        "/governance/agents/hub/consult",
+        headers=read_only_headers,
+        json={
+            "goal": "Review a small integration",
+            "providers": ["codex"],
+            "free_capacity_confirmed": True,
+        },
+    ).status_code == 403
+
+    operator_token = _session({"local-client", "operator"})
+    operator_headers = {"Authorization": f"Bearer {operator_token}"}
+    assert client.get(
+        "/governance/agents/hub/status", headers=operator_headers
+    ).status_code == 200
