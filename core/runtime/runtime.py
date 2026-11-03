@@ -29,6 +29,7 @@ class Runtime:
             started_at=datetime.now(),
         )
         self.is_degraded = False
+        self.repository_learning_service = None
 
         # Guarded Subsystem Initialization
         self.governance_engine = self._load_and_init("core.governance.governance_engine", "GovernanceEngine", "Governance")
@@ -254,6 +255,25 @@ class Runtime:
 
         self.state.runtime_status = "running"
 
+        # Repository learning is an opt-in, low-memory, read-only background worker.
+        # Its SQLite cursor is durable, so restarts resume instead of rescanning completed work.
+        learning_enabled = os.getenv("DGM_REPOSITORY_LEARNING_ENABLED", "0").strip().casefold()
+        if learning_enabled in {"1", "true", "yes", "on"}:
+            try:
+                from core.api.repository_learning_api import repository_learning_service
+                self.repository_learning_service = repository_learning_service
+                started = repository_learning_service.start()
+                dgm_logger.info(
+                    "Runtime: Repository learning worker %s; progress=%s",
+                    "started" if started else "already running",
+                    repository_learning_service.get_status().get("status"),
+                )
+            except Exception as exc:
+                dgm_logger.error(
+                    "Runtime: Repository learning worker could not start: %s",
+                    type(exc).__name__,
+                )
+
         self._sync_reality()
 
         self.state_store.dispatch(StateEvents.COCKPIT_STATE_CHANGED, {
@@ -300,6 +320,11 @@ class Runtime:
 
     def shutdown(self):
         dgm_logger.info("Runtime: Initiating shutdown...")
+        if self.repository_learning_service is not None:
+            try:
+                self.repository_learning_service.stop()
+            except Exception as exc:
+                dgm_logger.warning("Runtime: Repository learning worker stop failed: %s", type(exc).__name__)
         try:
             SafeActionQueue().stop_consumer()
             self.state_store.dispatch(StateEvents.CONSUMER_STATUS_CHANGED, {
