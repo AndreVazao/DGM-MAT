@@ -15,6 +15,7 @@ from core.recovery.chatgpt_export_importer import (
     import_chatgpt_export_zip,
 )
 from core.recovery.recovery_ledger import RecoveryLedger
+from core.recovery.ai_source_inventory import inventory_local_ai_sources
 
 router = APIRouter(prefix="/recovery", tags=["recovery"])
 
@@ -40,6 +41,14 @@ def recovery_status():
         "provider_deletion_enabled": False,
         "integration_status": "ledger_only",
     }
+
+
+@router.get("/local-ai-sources")
+def list_local_ai_conversation_sources(
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    """Return bounded local Chrome app/history metadata; never read transcripts or credentials."""
+    return inventory_local_ai_sources(limit=limit)
 
 
 @router.get("/sources")
