@@ -37,7 +37,9 @@ def test_sensitive_routes_are_not_public():
         ("/runtime/workspace/scan", "GET"),
         ("/mobile/threads/{thread_id}/messages", "POST"),
         ("/governance/repair/self/apply", "POST"),
-        ("/governance/commands/run", "POST"),\n        ("/governance/agents/hub/consult", "POST"),\n        ("/governance/agents/hub/status", "GET"),
+        ("/governance/commands/run", "POST"),
+        ("/governance/agents/hub/consult", "POST"),
+        ("/governance/agents/hub/status", "GET"),
         ("/governance/commands/catalog", "GET"),
         ("/provider-execution/execute", "POST"),
     ]:
