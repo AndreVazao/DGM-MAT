@@ -287,41 +287,63 @@ FREE_NVIDIA_NIM_MODEL_IDS = {
 }
 
 
+def _fcc_local_admin_get(path: str, timeout_seconds: float) -> dict[str, Any]:
+    request = urllib.request.Request(
+        "http://127.0.0.1:8082" + path,
+        headers={"Accept": "application/json"},
+        method="GET",
+    )
+    with urllib.request.urlopen(request, timeout=_timeout(timeout_seconds)) as response:
+        if response.status != 200:
+            raise ValueError(f"unexpected status {response.status}")
+        payload = json.loads(response.read(256 * 1024).decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("invalid FCC admin response")
+    return payload
+
+
+def _fcc_fallbacks_disabled(config: dict[str, Any]) -> bool:
+    fields = config.get("fields")
+    if not isinstance(fields, list):
+        return False
+    field = next(
+        (item for item in fields if isinstance(item, dict) and item.get("key") == "MODEL_FALLBACKS"),
+        None,
+    )
+    if field is None:
+        return False
+    value = field.get("value")
+    if value is None or value == "":
+        return True
+    if isinstance(value, list):
+        return len(value) == 0
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return False
+        return isinstance(parsed, list) and len(parsed) == 0
+    return False
+
+
 def probe_fcc_admin_status(*, timeout_seconds: float = 2.0) -> dict[str, Any]:
-    """Read FCC's loopback-only admin status; never returns credential values."""
+    """Read FCC loopback admin status and masked config; never returns credential values."""
     try:
-        request = urllib.request.Request(
-            "http://127.0.0.1:8082/admin/api/status",
-            headers={"Accept": "application/json"},
-            method="GET",
-        )
-        with urllib.request.urlopen(request, timeout=_timeout(timeout_seconds)) as response:
-            if response.status != 200:
-                raise ValueError(f"unexpected status {response.status}")
-            payload = json.loads(response.read(128 * 1024).decode("utf-8"))
+        payload = _fcc_local_admin_get("/admin/api/status", timeout_seconds)
+        config = _fcc_local_admin_get("/admin/api/config", timeout_seconds)
     except (OSError, ValueError, json.JSONDecodeError, urllib.error.URLError) as exc:
         return {
             "status": "unavailable",
             "selected_provider": None,
             "selected_model": None,
             "configured_remote_providers": [],
+            "fallbacks_disabled": False,
+            "fallback_models_count": None,
             "free_endpoint_verified": False,
             "cost_status": "unverified",
             "quota_status": "unknown",
             "execution_ready": False,
-            "detail": f"FCC local admin status unavailable ({type(exc).__name__}).",
-        }
-    if not isinstance(payload, dict):
-        return {
-            "status": "invalid_response",
-            "selected_provider": None,
-            "selected_model": None,
-            "configured_remote_providers": [],
-            "free_endpoint_verified": False,
-            "cost_status": "unverified",
-            "quota_status": "unknown",
-            "execution_ready": False,
-            "detail": "FCC local admin status returned an invalid payload.",
+            "detail": f"FCC local admin status/config unavailable ({type(exc).__name__}).",
         }
 
     provider = payload.get("provider") if isinstance(payload.get("provider"), str) else None
@@ -344,26 +366,44 @@ def probe_fcc_admin_status(*, timeout_seconds: float = 2.0) -> dict[str, Any]:
         and item.get("status") == "configured"
         for item in provider_status
     )
+    fallbacks_disabled = _fcc_fallbacks_disabled(config)
+    fallback_field = next(
+        (
+            item for item in config.get("fields", [])
+            if isinstance(item, dict) and item.get("key") == "MODEL_FALLBACKS"
+        ),
+        None,
+    )
+    fallback_value = fallback_field.get("value") if isinstance(fallback_field, dict) else None
+    if isinstance(fallback_value, str):
+        try:
+            fallback_value = json.loads(fallback_value)
+        except json.JSONDecodeError:
+            fallback_value = None
+    fallback_count = len(fallback_value) if isinstance(fallback_value, list) else (0 if fallbacks_disabled else None)
+
     free_endpoint = (
         provider == "nvidia_nim"
         and model in FREE_NVIDIA_NIM_MODEL_IDS
         and selected_configured
         and configured_remote == ["nvidia_nim"]
+        and fallbacks_disabled
     )
-    ready = free_endpoint
     return {
-        "status": "ready_free_endpoint" if ready else "configured_model_not_allowlisted",
+        "status": "ready_free_endpoint" if free_endpoint else "configured_model_not_allowlisted",
         "selected_provider": provider,
         "selected_model": model,
         "configured_remote_providers": configured_remote,
+        "fallbacks_disabled": fallbacks_disabled,
+        "fallback_models_count": fallback_count,
         "free_endpoint_verified": free_endpoint,
         "cost_status": "official_free_endpoint" if free_endpoint else "unverified",
         "quota_status": "free_endpoint_rate_limits_and_account_quota_apply" if free_endpoint else "unknown",
-        "execution_ready": ready,
+        "execution_ready": free_endpoint,
         "detail": (
-            "Selected NVIDIA NIM model is listed as a Free Endpoint; the executor must pin this model and fail closed on provider errors."
-            if ready else
-            "FCC is not configured exclusively for the allowlisted NVIDIA NIM free endpoint."
+            "Selected NVIDIA NIM model is listed as a Free Endpoint, only that remote provider is configured, and model fallbacks are disabled."
+            if free_endpoint else
+            "FCC is not configured exclusively for the allowlisted NVIDIA NIM free endpoint with model fallbacks disabled."
         ),
         "model_requests_sent": 0,
     }
@@ -411,7 +451,7 @@ def get_external_agent_readiness() -> dict[str, Any]:
         "policy": "FREE_ONLY_PAID_DENY",
         "provider_calls_performed": 0,
         "claude_code": claude,
-        "fcc": {**fcc, "admin": admin},
+        "fcc": {**fcc, "admin": admin, "cost_status": admin.get("cost_status", "unverified"), "execution_ready": bool(execution_ready)},
         "blockers": blockers,
         "limitations": [
             "The allowlisted NVIDIA NIM model is a free endpoint, but rate limits and account quota still apply.",
