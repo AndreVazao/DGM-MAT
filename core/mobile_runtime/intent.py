@@ -11,7 +11,7 @@ class IntentInterpreter:
 
     _patterns = [
         ("status", ("estado", "status", "como está", "como esta", "saúde", "saude", "verifica")),
-        ("audit", ("audita", "auditar", "auditoria", "analisa", "analisar", "verifica o código", "verifica o codigo")),
+        ("audit", ("audit", "audits", "auditing", "audita", "auditar", "auditoria", "analisa", "analisar", "analyze", "analyse", "review", "revisa", "revisar", "inspeciona", "inspecionar", "verifica o código", "verifica o codigo")),
         ("repair", ("corrige", "corrigir", "repara", "reparar", "resolve", "resolver", "conserta")),
         ("implement", ("avança", "avanca", "implementa", "implementar", "cria", "criar", "faz", "fazer", "desenvolve", "desenvolver")),
         ("sync", ("sincroniza", "sincronizar", "sync", "atualiza github", "atualiza a memória", "atualiza a memoria")),
@@ -46,9 +46,31 @@ class IntentInterpreter:
         if project_hint:
             evidence.append("explicit_project")
 
-        requires_approval = intent in {"deploy"} or any(
+        requires_approval = intent in {"repair", "implement", "sync", "deploy"} or any(
             phrase in normalized
             for phrase in (
+                "corrige",
+                "corrigir",
+                "repara",
+                "reparar",
+                "resolve",
+                "resolver",
+                "conserta",
+                "implementa",
+                "implementar",
+                "cria",
+                "criar",
+                "crie",
+                "desenvolve",
+                "desenvolver",
+                "sincroniza",
+                "sincronizar",
+                "sync",
+                "atualiza github",
+                "publica",
+                "publicar",
+                "deploy",
+                "release",
                 "apaga",
                 "apagar",
                 "elimina",

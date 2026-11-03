@@ -18,7 +18,7 @@ def test_mutating_request_is_not_misclassified_as_read_only():
 
 
 def test_unknown_request_is_explicitly_unsupported():
-    decision = classify_mission_intent('analisa a arquitetura do meu projeto')
+    decision = classify_mission_intent('orquestra uma nova estrutura organizacional')
     assert decision.intent == 'unsupported'
     assert decision.supported is False
     assert 'No registered executor' in decision.reason
@@ -36,6 +36,8 @@ def test_read_only_architecture_summary_is_recognized_in_portuguese_and_english(
         "summarize the project structure",
         "resumo da arquitetura do projeto",
         "faz um resumo da estrutura do sistema",
+        "analisa a arquitetura do meu projeto",
+        "review the project architecture",
     ]:
         decision = classify_mission_intent(goal)
         assert decision.intent == "architecture_summary"
@@ -103,4 +105,31 @@ def test_github_main_sync_worktree_requires_operator_approval():
     )
     assert decision.intent == "repository_sync_worktree"
     assert decision.supported is True
+    assert decision.requires_approval is True
+
+
+
+def test_repository_audit_routes_to_bounded_local_research():
+    for goal in [
+        "audita o repositório DGM-MAT",
+        "audit the local repository",
+        "analisa o código local do DGM-MAT",
+    ]:
+        decision = classify_mission_intent(goal)
+        assert decision.intent == "local_research"
+        assert decision.supported is True
+        assert decision.requires_approval is False
+
+
+def test_dgm_mat_status_maps_to_read_only_system_summary():
+    decision = classify_mission_intent("estado do DGM-MAT")
+    assert decision.intent == "system_summary"
+    assert decision.supported is True
+    assert decision.requires_approval is False
+
+
+def test_audit_cannot_hide_a_mutating_request():
+    decision = classify_mission_intent("audita o repositório DGM-MAT e corrige o cockpit")
+    assert decision.intent == "unsupported"
+    assert decision.supported is False
     assert decision.requires_approval is True
