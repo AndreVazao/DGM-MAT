@@ -145,12 +145,99 @@ def test_combined_readiness_never_claims_execution_without_free_cost_proof(monke
     monkeypatch.setattr(
         probe,
         "probe_fcc_gateway",
-        lambda: {"gateway_status": "loopback_only", "bind_scope": "loopback"},
+        lambda: {"gateway_status": "loopback_only", "bind_scope": "loopback", "cli_installed": True},
+    )
+    monkeypatch.setattr(
+        probe,
+        "probe_fcc_admin_status",
+        lambda: {
+            "status": "ready_free_endpoint",
+            "selected_provider": "nvidia_nim",
+            "selected_model": "nvidia_nim/nvidia/nemotron-3.5-super-vl-120b-a12b",
+            "configured_remote_providers": ["nvidia_nim"],
+            "free_endpoint_verified": True,
+            "cost_status": "official_free_endpoint",
+            "quota_status": "free_endpoint_rate_limits_and_account_quota_apply",
+            "execution_ready": True,
+        },
     )
 
     result = probe.get_external_agent_readiness()
 
-    assert result["execution_ready"] is False
+    assert result["execution_ready"] is True
     assert result["policy"] == "FREE_ONLY_PAID_DENY"
     assert result["provider_calls_performed"] == 0
-    assert "provider_zero_cost_not_verified" in result["blockers"]
+    assert result["fcc"]["admin"]["free_endpoint_verified"] is True
+    assert result["fcc"]["admin"]["quota_status"] == "free_endpoint_rate_limits_and_account_quota_apply"
+    assert result["blockers"] == []
+
+
+
+def test_fcc_admin_status_accepts_only_the_allowlisted_free_nim_model(monkeypatch):
+    payload = {
+        "status": "running",
+        "provider": "nvidia_nim",
+        "model": "nvidia_nim/nvidia/nemotron-3.5-super-vl-120b-a12b",
+        "provider_status": [
+            {"provider_id": "nvidia_nim", "kind": "remote", "status": "configured"},
+            {"provider_id": "anthropic", "kind": "remote", "status": "missing_key"},
+        ],
+    }
+    class Response:
+        status = 200
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self, size): return __import__("json").dumps(payload).encode("utf-8")
+
+    monkeypatch.setattr(probe.urllib.request, "urlopen", lambda *args, **kwargs: Response())
+
+    result = probe.probe_fcc_admin_status()
+
+    assert result["free_endpoint_verified"] is True
+    assert result["selected_provider"] == "nvidia_nim"
+    assert result["selected_model"] == payload["model"]
+    assert result["configured_remote_providers"] == ["nvidia_nim"]
+    assert result["execution_ready"] is True
+    assert "api_key" not in str(result).casefold()
+
+
+def test_fcc_admin_status_rejects_unlisted_model_or_paid_fallback(monkeypatch):
+    payload = {
+        "status": "running",
+        "provider": "nvidia_nim",
+        "model": "nvidia_nim/nvidia/unknown-model",
+        "provider_status": [
+            {"provider_id": "nvidia_nim", "kind": "remote", "status": "configured"},
+            {"provider_id": "anthropic", "kind": "remote", "status": "configured"},
+        ],
+    }
+    class Response:
+        status = 200
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self, size): return __import__("json").dumps(payload).encode("utf-8")
+
+    monkeypatch.setattr(probe.urllib.request, "urlopen", lambda *args, **kwargs: Response())
+
+    result = probe.probe_fcc_admin_status()
+
+    assert result["free_endpoint_verified"] is False
+    assert result["execution_ready"] is False
+    assert result["cost_status"] == "unverified"
+
+
+def test_readiness_does_not_query_fcc_admin_when_listener_is_not_loopback(monkeypatch):
+    monkeypatch.setattr(probe, "probe_claude_code", lambda: {"authenticated": False})
+    monkeypatch.setattr(
+        probe,
+        "probe_fcc_gateway",
+        lambda: {"gateway_status": "network_exposed", "bind_scope": "non_loopback", "cli_installed": True},
+    )
+    def must_not_call():
+        raise AssertionError("Admin API must not be called on a non-loopback listener")
+    monkeypatch.setattr(probe, "probe_fcc_admin_status", must_not_call)
+
+    result = probe.get_external_agent_readiness()
+
+    assert result["execution_ready"] is False
+    assert "fcc_gateway_not_loopback_only" in result["blockers"]
