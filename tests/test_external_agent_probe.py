@@ -174,7 +174,7 @@ def test_combined_readiness_never_claims_execution_without_free_cost_proof(monke
 
 
 
-def test_fcc_admin_status_accepts_only_allowlisted_free_nim_model_without_fallbacks(monkeypatch):
+def test_fcc_admin_status_accepts_allowlisted_free_nim_model_and_same_model_fallback(monkeypatch):
     status_payload = {
         "status": "running",
         "provider": "nvidia_nim",
@@ -212,7 +212,7 @@ def test_fcc_admin_status_accepts_only_allowlisted_free_nim_model_without_fallba
     assert result["selected_model"] == status_payload["model"]
     assert result["configured_remote_providers"] == ["nvidia_nim"]
     assert result["fallbacks_free_only"] is True
-    assert result["fallback_models_count"] == 0
+    assert result["fallback_models_count"] == 1
     assert result["execution_ready"] is True
     assert "api_key" not in str(result).casefold()
 
