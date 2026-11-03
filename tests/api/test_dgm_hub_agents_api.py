@@ -141,7 +141,7 @@ def test_consult_pauses_packets_when_hub_provider_is_unavailable(monkeypatch, tm
     monkeypatch.setattr(api, "_mission_engine", lambda: engine)
 
     with pytest.raises(HTTPException) as exc:
-        api.consult_hub_agents(_payload())
+        api.consult_hub_agents(_payload(), _request())
 
     assert exc.value.status_code == 409
     assert len(engine.collaboration_store.list_packets()) == 2
