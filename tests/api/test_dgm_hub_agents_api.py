@@ -49,6 +49,26 @@ class FakeBridge:
         return self.task
 
 
+@pytest.fixture(autouse=True)
+def _default_audit(monkeypatch):
+    monkeypatch.setattr(api, "append_command_audit", lambda **kwargs: None)
+
+
+def _request():
+    request = Request({
+        "type": "http",
+        "method": "POST",
+        "path": "/governance/agents/hub/consult",
+        "headers": [],
+        "query_string": b"",
+        "server": ("127.0.0.1", 8181),
+        "client": ("127.0.0.1", 12345),
+        "scheme": "http",
+    })
+    request.state.dgm_principal = {"session_id": "unit-test-session"}
+    return request
+
+
 def _payload(**overrides):
     value = {
         "goal": "Review the DGM-MAT provider integration.",
@@ -67,7 +87,7 @@ def test_consult_requires_explicit_free_capacity_attestation(monkeypatch, tmp_pa
     monkeypatch.setattr(api, "_mission_engine", lambda: engine)
 
     with pytest.raises(HTTPException) as exc:
-        api.consult_hub_agents(_payload(free_capacity_confirmed=False))
+        api.consult_hub_agents(_payload(free_capacity_confirmed=False), _request())
 
     assert exc.value.status_code == 400
     assert bridge.called == []
@@ -95,7 +115,7 @@ def test_consult_persists_each_provider_result_as_untrusted_and_reviewable(monke
     monkeypatch.setattr(api, "_bridge", lambda: bridge)
     monkeypatch.setattr(api, "_mission_engine", lambda: engine)
 
-    result = api.consult_hub_agents(_payload())
+    result = api.consult_hub_agents(_payload(), _request())
 
     assert result["status"] == "completed"
     assert result["provider_count"] == 2
@@ -159,7 +179,7 @@ def test_failed_provider_result_is_partial_and_not_promoted_as_validated(monkeyp
     monkeypatch.setattr(api, "_bridge", lambda: bridge)
     monkeypatch.setattr(api, "_mission_engine", lambda: engine)
 
-    result = api.consult_hub_agents(_payload(providers=["codex"]))
+    result = api.consult_hub_agents(_payload(providers=["codex"]), _request())
 
     assert result["status"] == "partial"
     assert result["provider_count"] == 1
@@ -183,5 +203,54 @@ def test_secret_like_context_is_rejected_before_any_provider_call(monkeypatch, t
         )
 
     assert exc.value.status_code == 422
+    assert bridge.called == []
+    assert engine.collaboration_store.list_packets() == []
+
+
+def test_consult_audits_operator_and_provider_selection_before_and_after_call(monkeypatch, tmp_path):
+    events = []
+    monkeypatch.setattr(api, "append_command_audit", lambda **kwargs: events.append(kwargs))
+    bridge = FakeBridge(
+        task=HubTaskResult(
+            task_id="audit-task",
+            conversation_id="audit-conversation",
+            results={
+                "llm7": {
+                    "provider": "llm7", "status": "ok", "text": "Audited result",
+                    "model": "gpt-oss:20b", "duration_seconds": 1.0, "truncated": False,
+                }
+            },
+        )
+    )
+    engine = FakeEngine(tmp_path)
+    monkeypatch.setattr(api, "_bridge", lambda: bridge)
+    monkeypatch.setattr(api, "_mission_engine", lambda: engine)
+
+    result = api.consult_hub_agents(_payload(providers=["llm7"]), _request())
+
+    assert result["status"] == "completed"
+    assert [event["event"] for event in events] == ["command.requested", "command.completed"]
+    assert all(event["session_id"] == "unit-test-session" for event in events)
+    assert all(event["command_id"] == "dgm_hub.consult.free_only:llm7" for event in events)
+    assert events[0]["status"] == "requested"
+    assert events[1]["status"] == "completed"
+    assert events[1]["duration_ms"] is not None
+
+
+def test_consult_fails_closed_when_request_audit_cannot_be_written(monkeypatch, tmp_path):
+    bridge = FakeBridge()
+    engine = FakeEngine(tmp_path)
+    monkeypatch.setattr(api, "_bridge", lambda: bridge)
+    monkeypatch.setattr(api, "_mission_engine", lambda: engine)
+
+    def fail_audit(**kwargs):
+        raise api.AuditWriteError("audit unavailable")
+
+    monkeypatch.setattr(api, "append_command_audit", fail_audit)
+
+    with pytest.raises(HTTPException) as exc:
+        api.consult_hub_agents(_payload(providers=["llm7"]), _request())
+
+    assert exc.value.status_code == 503
     assert bridge.called == []
     assert engine.collaboration_store.list_packets() == []
