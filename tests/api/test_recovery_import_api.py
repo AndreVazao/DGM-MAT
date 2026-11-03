@@ -62,6 +62,8 @@ def test_json_upload_archives_export_and_reports_truthful_provenance(monkeypatch
     assert result["provider_deletion_attempted"] is False
     saved = ledger.get("chatgpt", "conversation-1")
     assert saved is not None
+    assert saved.original_location == "api-upload"
+    assert result["source_file"] == "uploaded-request-body"
     assert Path(saved.raw_archive_path).is_file()
     assert ledger.source_count() == 1
 
@@ -91,7 +93,9 @@ def test_zip_upload_does_not_extract_untrusted_paths(monkeypatch, tmp_path):
 
     assert response.status_code == 200
     assert response.json()["archived"] == 1
-    assert ledger.get("chatgpt", "zip-1") is not None
+    saved = ledger.get("chatgpt", "zip-1")
+    assert saved is not None
+    assert saved.original_location == "api-upload"
     assert not (tmp_path / "outside.txt").exists()
 
 
