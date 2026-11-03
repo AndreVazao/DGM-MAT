@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 
 from core.autonomy.mission_models import Mission, MissionStatus, SubTask
 from core.autonomy.mission_intent_router import classify_mission_intent
+from core.autonomy.github_worktree_sync import GitHubWorktreeSync
 from core.autonomy.mission_research import LocalMissionResearch
 from core.storage.storage_manager import storage_manager
 from core.observability.logger import dgm_logger
@@ -674,6 +675,15 @@ class MissionEngine:
                             "changed or its checkpoint is unavailable."
                         )
                     return finalized
+                elif intent.intent == "repository_sync_worktree" and intent.supported:
+                    result = self._execute_github_sync_worktree_mission(mission)
+                    finalized = self._finish_mission_success(mission, result)
+                    if finalized is None:
+                        raise RuntimeError(
+                            "GitHub worktree sync finalization was refused because durable state "
+                            "changed or its checkpoint is unavailable."
+                        )
+                    return finalized
                 elif intent.intent == "local_research" and intent.supported:
                     result = self._execute_local_research_mission(mission)
                     finalized = self._finish_mission_success(mission, result)
@@ -957,6 +967,13 @@ class MissionEngine:
             intent = classify_mission_intent(mission.goal)
             if intent.intent == "list_repositories" and intent.supported:
                 self._mark_execution_started(mission)
+            elif intent.intent == "repository_sync_worktree" and intent.supported:
+                self._mark_execution_started(mission)
+                try:
+                    result = self._execute_github_sync_worktree_mission(mission)
+                    self._finish_mission_success(mission, result)
+                except Exception as exc:
+                    self._finish_mission_failure(mission, exc)
             else:
                 self.decompose_mission(mission.mission_id)
                 self._finish_mission_failure(
@@ -1129,6 +1146,32 @@ class MissionEngine:
         dgm_logger.info(
             f"MISSION_RESULT_GENERATED: {mission.mission_id} - local research "
             f"with {len(sources)} evidence snippets"
+        )
+        return result
+
+    def _execute_github_sync_worktree_mission(self, mission: Mission) -> Dict[str, Any]:
+        """Fetch fixed origin/main into a dedicated worktree after operator approval."""
+        started = time.monotonic()
+        repo_root = Path(__file__).resolve().parents[2]
+        result = GitHubWorktreeSync(repo_root).sync()
+        result.update({
+            "mission_id": mission.mission_id,
+            "handler": "repository_sync_worktree",
+            "summary": "Fetched DGM-MAT GitHub main and verified its dedicated local worktree.",
+            "output": (
+                f"GitHub main {result['remote_sha']} is available in verified worktree "
+                f"{result['worktree_path']}; authoritative checkout unchanged."
+            ),
+            "read_only": False,
+            "operator_approved": True,
+            "commands_executed": result.get("git_commands_executed", 0),
+            "external_calls": 1,
+            "execution_duration": round(time.monotonic() - started, 3),
+            "generated_at": datetime.now().isoformat(),
+        })
+        dgm_logger.info(
+            f"MISSION_RESULT_GENERATED: {mission.mission_id} - isolated GitHub worktree "
+            f"{result['worktree_sha']}"
         )
         return result
 
