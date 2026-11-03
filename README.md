@@ -6,6 +6,8 @@ Constituição arquitetural: [DGM-MAT Architecture Constitution — Modular Depa
 
 Inventário documental da recuperação e arquitetura: [DGM-MAT Recovery & Unification Inventory — 2026-10-18](docs/architecture/DGM-MAT-RECOVERY-UNIFICATION-INVENTORY-2026-10-18.md).
 
+Integração consultiva com a sala multi-agente local: [DGM-MAT ↔ DGM-HUB MultiChat](docs/architecture/DGM-MAT-DGM-HUB-MULTICHAT-INTEGRATION-2026-11-03.md) · [Validação Windows e resultados reais](reports/DGM-MAT-DGM-HUB-BRIDGE-VALIDATION-2026-11-03.md). O operador mantém a liderança da sala; respostas externas permanecem não confiáveis até revisão independente.
+
 Modelo operacional canónico para end-to-end, departamentos multi-agent, especialização por linguagem, recuperação de conversas e expansão multi-PC: [Modelo Canónico de Operação, Departamentos e End-to-End (2026-10-21)](docs/architecture/DGM-MAT-CANONICAL-OPERATING-MODEL-END-TO-END-AND-DEPARTMENTS-2026-10-21.md). Este aditamento complementa — não substitui — a Constituição Arquitetural e a Diretiva Primária de Missão/Verdade.
 
 Esquemática integral do escritório virtual, cockpit, pisos lógicos, contratos e avatar CEO: [Blueprint do Escritório Virtual (2026-10-21)](docs/architecture/DGM-MAT-VIRTUAL-OFFICE-SYSTEM-SCHEMATIC-2026-10-21.md) · [Diagrama SVG](docs/architecture/assets/dgm-mat-virtual-office-system-schematic.svg). A fotografia de referência do CEO é `1792476724975.jpg`; o avatar careca derivado permanece pendente de criação e aprovação.
