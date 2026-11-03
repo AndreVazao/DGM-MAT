@@ -81,6 +81,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("POST",), "/governance/repair/self/apply", SecurityScope.OPERATOR, "Potentially mutating repair."),
     RouteClassification(("POST",), "/governance/conversations/analyze", SecurityScope.OPERATOR, "Processes submitted conversation content."),
     RouteClassification(("GET",), "/governance/runtime-capabilities", SecurityScope.OPERATOR, "Read-only observed host capability snapshot."),
+    RouteClassification(("GET",), "/governance/agents/readiness", SecurityScope.OPERATOR, "Read-only external agent authentication, FCC listener and cost-policy readiness; no model calls."),
     RouteClassification(("GET",), "/governance/commands/catalog", SecurityScope.OPERATOR, "Lists allowlisted read-only local diagnostics."),
     RouteClassification(("POST",), "/governance/commands/run", SecurityScope.OPERATOR, "Runs one allowlisted read-only local diagnostic."),
     RouteClassification(("GET",), "/governance/meetings", SecurityScope.OPERATOR, "Lists persistent central governance meetings."),
