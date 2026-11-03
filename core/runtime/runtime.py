@@ -30,6 +30,7 @@ class Runtime:
         )
         self.is_degraded = False
         self.repository_learning_service = None
+        self.auto_help_worker = None
 
         # Guarded Subsystem Initialization
         self.governance_engine = self._load_and_init("core.governance.governance_engine", "GovernanceEngine", "Governance")
@@ -274,6 +275,23 @@ class Runtime:
                     type(exc).__name__,
                 )
 
+        help_enabled = os.getenv("DGM_AUTONOMY_HELP_ENABLED", "0").strip().casefold()
+        if help_enabled in {"1", "true", "yes", "on"}:
+            try:
+                from core.api.mobile_bridge import auto_help_worker
+                self.auto_help_worker = auto_help_worker
+                started = auto_help_worker.start()
+                dgm_logger.info(
+                    "Runtime: Free-only Hub help worker %s; providers=%s",
+                    "started" if started else "already running or disabled",
+                    ",".join(auto_help_worker.providers),
+                )
+            except Exception as exc:
+                dgm_logger.error(
+                    "Runtime: Free-only Hub help worker could not start: %s",
+                    type(exc).__name__,
+                )
+
         self._sync_reality()
 
         self.state_store.dispatch(StateEvents.COCKPIT_STATE_CHANGED, {
@@ -325,6 +343,11 @@ class Runtime:
                 self.repository_learning_service.stop()
             except Exception as exc:
                 dgm_logger.warning("Runtime: Repository learning worker stop failed: %s", type(exc).__name__)
+        if self.auto_help_worker is not None:
+            try:
+                self.auto_help_worker.stop()
+            except Exception as exc:
+                dgm_logger.warning("Runtime: Auto-help worker stop failed: %s", type(exc).__name__)
         try:
             SafeActionQueue().stop_consumer()
             self.state_store.dispatch(StateEvents.CONSUMER_STATUS_CHANGED, {

@@ -84,6 +84,10 @@ The mobile/Hub conversation surface creates missions only when the authoritative
 
 The runtime can maintain a durable, read-only map of repositories and Git worktrees across the configured Windows project roots. It stores branch/HEAD/dirty state, sanitized origin metadata, technology manifests and a short redacted README summary. A SQLite cursor resumes after restarts and unchanged repositories are skipped; the protected DGM-MAT full mirror receives metadata-only treatment. See [Progressive repository learning](docs/operations/DGM-MAT-PROGRESSIVE-REPOSITORY-LEARNING.md). The paginated `/runtime/missions/page` endpoint avoids unbounded mission-list reads.
 
+## Automatic free-only help
+
+When an actionable request has no registered executor, the mobile conversation can enqueue a durable consult to the free-only DGM-HUB allowlist (Kilo and LLM7). Results are untrusted, stored for independent review, and never authorize execution. Identical requests are deduplicated; provider limits stop the request without retries or paid fallback. ChatGPT, Grok and Gemini are not yet registered Hub adapters. See [Automatic free-only help](docs/operations/DGM-MAT-AUTOMATIC-FREE-HELP.md).
+
 ## Ecosystem boundary
 
 DGM-MAT may absorb knowledge, architecture, techniques and validated snippets from upstream, cloned, legacy and lab repositories.

@@ -10,11 +10,14 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.mobile_runtime import MobileConversationService
+from core.mobile_runtime.auto_help import AutoHelpWorker
 from core.organization import CapabilityScout
 
 
 router = APIRouter(prefix="/mobile", tags=["mobile"])
 service = MobileConversationService()
+auto_help_worker = AutoHelpWorker(conversation_store=service.store)
+service.auto_help_worker = auto_help_worker
 capability_scout = CapabilityScout()
 
 
