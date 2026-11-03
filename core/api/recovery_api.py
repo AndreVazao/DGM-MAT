@@ -126,15 +126,19 @@ async def import_chatgpt_export(request: Request, format: str = Query(default="z
 
         ledger = get_recovery_ledger()
         if normalized_format == "json":
-            report = import_chatgpt_conversations_json(staged_path, archive_root, ledger)
+            report = import_chatgpt_conversations_json(
+                staged_path, archive_root, ledger, original_location="api-upload"
+            )
         else:
-            report = import_chatgpt_export_zip(staged_path, archive_root, ledger)
+            report = import_chatgpt_export_zip(
+                staged_path, archive_root, ledger, original_location="api-upload"
+            )
 
         return {
             "status": "completed" if report.failed == 0 else "completed_with_errors",
             "provider": "chatgpt",
             "format": normalized_format,
-            "source_file": report.source_file,
+            "source_file": "uploaded-request-body",
             "discovered": report.discovered,
             "archived": report.archived,
             "skipped_existing": report.skipped_existing,
