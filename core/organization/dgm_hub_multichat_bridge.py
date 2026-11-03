@@ -65,9 +65,14 @@ class DGMHubMultiChatBridge:
 
     def _validate_base_url(self) -> None:
         parsed = urllib.parse.urlsplit(self.base_url)
+        try:
+            port = parsed.port
+        except ValueError as exc:
+            raise HubBridgeError("DGM-HUB URL contains an invalid port.") from exc
         if (
             parsed.scheme != "http"
-            or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}
+            or parsed.hostname not in {"127.0.0.1", "::1"}
+            or port != 8770
             or parsed.username is not None
             or parsed.password is not None
             or parsed.path not in {"", "/"}
