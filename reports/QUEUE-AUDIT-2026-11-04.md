@@ -23,7 +23,7 @@ No queue row was approved, rejected, deleted, replayed or otherwise modified dur
 | REJECTED | false | 74 |
 | **Total** | | **1,065** |
 
-All 801 queued rows have action type `MISSION_EXECUTION`. Their creation timestamps range from **2026-10-07 07:35:01 UTC** to **2026-11-03 19:47:22 UTC**.
+All 801 queued rows have action type `MISSION_EXECUTION`. Their database timestamps (stored without timezone metadata) range from **2026-10-07 07:35:01** to **2026-11-03 19:47:22**.
 
 ## Reconciliation against mission checkpoints
 
