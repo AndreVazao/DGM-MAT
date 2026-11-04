@@ -15,6 +15,7 @@ from typing import Sequence
 
 from core.observability.logger import dgm_logger
 from core.runtime.repository_root import resolve_repository_root
+from core.runtime.runtime_interpreters import resolve_python_executable
 
 
 _BRANCH_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
@@ -272,7 +273,7 @@ class WorktreeRuntime:
             }
             environment["PYTHONDONTWRITEBYTECODE"] = "1"
             execution_argv = [
-                sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", argv[4]
+                resolve_python_executable(), "-m", "pytest", "-q", "-p", "no:cacheprovider", argv[4]
             ]
             return self._run_bounded(execution_argv, target, environment)
         except Exception as exc:

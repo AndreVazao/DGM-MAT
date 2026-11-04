@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from scripts.autostart import backend_service
@@ -89,3 +90,23 @@ def test_full_runtime_identity_accepts_only_installed_frozen_executable(monkeypa
     process.exe.return_value = str(tmp_path / "other.exe")
     with patch("psutil.Process", return_value=process):
         assert backend_service._pid_is_full_runtime(12345) is False
+
+
+def test_full_runtime_start_passes_repository_and_python_paths(monkeypatch, tmp_path):
+    monkeypatch.setattr(backend_service, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(backend_service, "LOG_DIR", tmp_path / "logs")
+    monkeypatch.setattr(backend_service, "LOG_FILE", tmp_path / "logs" / "backend-service.log")
+    monkeypatch.setattr(backend_service, "_health", lambda *_args: (False, "not running"))
+    monkeypatch.setattr(backend_service, "_read_state", lambda: None)
+    monkeypatch.setattr(backend_service, "_runtime_readiness", lambda *_args: (True, "ready"))
+    monkeypatch.setattr(backend_service, "_write_state", lambda _payload: None)
+    process = MagicMock()
+    process.pid = 12345
+    process.poll.return_value = None
+
+    with patch.object(backend_service.subprocess, "Popen", return_value=process) as popen:
+        assert backend_service.start("127.0.0.1", 8181, mode="full") == 0
+
+    child_env = popen.call_args.kwargs["env"]
+    assert child_env["DGM_REPOSITORY_ROOT"] == str(tmp_path.resolve())
+    assert Path(child_env["DGM_PYTHON_EXECUTABLE"]).is_file()

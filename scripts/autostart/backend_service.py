@@ -190,6 +190,12 @@ def start(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, mode: str = "api")
     creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
     child_env = os.environ.copy()
     child_env["DGM_REPOSITORY_ROOT"] = str(PROJECT_ROOT.resolve())
+    python_executable = Path(sys.executable)
+    if python_executable.name.casefold() == "pythonw.exe":
+        console_python = python_executable.with_name("python.exe")
+        if console_python.is_file():
+            python_executable = console_python
+    child_env["DGM_PYTHON_EXECUTABLE"] = str(python_executable.resolve())
     with LOG_FILE.open("a", encoding="utf-8", buffering=1) as log_handle:
         log_handle.write(
             f"\n[{datetime.now(timezone.utc).isoformat()}] START requested: "

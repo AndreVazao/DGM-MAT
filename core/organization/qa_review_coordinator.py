@@ -13,6 +13,7 @@ from typing import Any
 from .qa_review_queue import QAReviewQueue
 from .specialist_collaboration import CollaborationStatus, SpecialistCollaborationStore
 from .validated_learning import ValidatedLessonStore
+from core.runtime.runtime_interpreters import resolve_python_executable
 
 
 class QAReviewCoordinator:
@@ -82,10 +83,22 @@ class QAReviewCoordinator:
             raise KeyError(work_item_id)
         if item["status"] != "IN_PROGRESS" or item["owner_id"] != reviewer_id:
             raise ValueError("Verification requires the current work-item owner")
+        try:
+            python_executable = resolve_python_executable()
+        except RuntimeError as exc:
+            return {
+                "work_item_id": item["work_item_id"], "reviewer_id": reviewer_id,
+                "checks": [{"name": "python-interpreter", "result": "UNAVAILABLE", "exit_code": None,
+                            "command": [], "output_tail": str(exc)}],
+                "evidence": [{"source": "local-qa-preflight", "summary": "Python interpreter unavailable for frozen-runtime validation."}],
+                "all_checks_passed": False, "review_completed": False,
+                "lesson_promotion_allowed": False,
+                "note": "No Python interpreter was found; independent QA cannot pass.",
+            }
         commands = [
             ("git-diff-check", ["git", "diff", "--check"]),
-            ("python-compileall", [sys.executable, "-m", "compileall", "-q", "core", "tests"]),
-            ("pytest-full-suite", [sys.executable, "-m", "pytest", "-q"]),
+            ("python-compileall", [python_executable, "-m", "compileall", "-q", "core", "tests"]),
+            ("pytest-full-suite", [python_executable, "-m", "pytest", "-q"]),
         ]
         checks: list[dict[str, Any]] = []
         for name, argv in commands:
