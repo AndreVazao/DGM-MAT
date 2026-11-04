@@ -71,8 +71,22 @@ class ProviderRegistry:
             configs = json.loads(data)
             for name, config in configs.items():
                 provider = self.get_provider(name)
-                if provider:
+                if provider and isinstance(config, dict):
+                    previous = dict(provider.config)
                     provider.config.update(config)
+                    validator = getattr(provider, "validate_loaded_config", None)
+                    if callable(validator):
+                        try:
+                            if validator() is not True:
+                                raise ValueError("provider rejected persisted configuration")
+                        except Exception as exc:
+                            provider.config.clear()
+                            provider.config.update(previous)
+                            dgm_logger.warning(
+                                f"ProviderRegistry: Rejected unsafe persisted config for '{name}' "
+                                f"({type(exc).__name__}); constructor defaults retained."
+                            )
+                            continue
                     dgm_logger.info(f"ProviderRegistry: Applied config for '{name}'")
         except Exception as exc:
             dgm_logger.error(f"ProviderRegistry: Failed to load configs: {exc}")
