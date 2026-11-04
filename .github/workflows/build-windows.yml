@@ -81,6 +81,8 @@ jobs:
           copy config\*.json publish\config\
           copy scripts\autostart\*.py publish\scripts\autostart\
           copy scripts\runtime_smoke_test.py publish\scripts\
+          copy scripts\install_windows_update.ps1 publish\scripts\
+          copy scripts\rollback_windows_update.ps1 publish\scripts\
           $zip = "DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION.zip"
           Compress-Archive -Path publish\* -DestinationPath $zip
           certutil -hashfile $zip SHA256 | Select-Object -Skip 1 | ForEach-Object { $_.Trim() } | Out-File "$zip.sha256" -Encoding utf8
