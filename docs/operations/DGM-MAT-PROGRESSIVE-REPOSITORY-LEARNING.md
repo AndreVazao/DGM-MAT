@@ -25,7 +25,9 @@ For every non-protected repository, the worker writes a UTF-8 `.tree.txt` sideca
 - The tree contains paths only; it never reads file contents.
 - With the recommended external `DGM_REPOSITORY_TREE_DIR`, tree generation does not dirty the DGM-MAT source checkout or any inventoried project.
 - Unchanged repositories reuse their existing tree. A changed repository regenerates its tree.
-- The tree is bounded to 4,000 entries and depth 12.
+- The tree is bounded to 4,000 entries and depth 12; reaching either limit is explicitly marked as truncated.
+- Directory enumeration keeps only the remaining entry budget plus one candidate in memory, even when a repository contains a very large directory.
+- Git-origin grouping requires a specific repository path (`host/owner/repository` or deeper); host-only and owner-only remotes remain ungrouped for semantic review.
 - Git, virtual environments, build output, dependencies, runtime storage, secrets, credential files, private keys and symlinks are excluded.
 - The protected full mirror receives no tree artifact.
 
