@@ -127,6 +127,17 @@ def safe_excerpt(value, limit: int = 16000):
     return {"truncated": True, "preview": encoded[:limit]}
 
 
+def mission_checkpoint_status(mission: dict) -> str:
+    """Return the explicit status even when the checkpoint payload is truncated."""
+    status = mission.get("last_checkpoint_status")
+    if isinstance(status, str) and status:
+        return status
+    checkpoint = mission.get("last_checkpoint")
+    if isinstance(checkpoint, dict) and isinstance(checkpoint.get("status"), str):
+        return checkpoint["status"]
+    return "checkpoint unavailable"
+
+
 def run(args: argparse.Namespace) -> tuple[int, dict]:
     report: dict = {
         "schema": "dgm-mat-live-mission-diagnostic.v1",
@@ -270,8 +281,9 @@ def run(args: argparse.Namespace) -> tuple[int, dict]:
                 }
                 break
             last_detail = detail
-            report["mission"]["last_checkpoint"] = safe_excerpt(detail, 16000)
             mission_status = detail.get("status")
+            report["mission"]["last_checkpoint_status"] = mission_status
+            report["mission"]["last_checkpoint"] = safe_excerpt(detail, 16000)
             if mission_status in TERMINAL:
                 report["mission"]["terminal"] = True
                 break
@@ -335,8 +347,7 @@ def main() -> int:
     print(f"Overall: {report['overall']}")
     print(f"Report: {report_path}")
     if report.get("mission"):
-        checkpoint = report["mission"].get("last_checkpoint")
-        state = checkpoint.get("status") if isinstance(checkpoint, dict) else "checkpoint unavailable"
+        state = mission_checkpoint_status(report["mission"])
         print(f"Mission: {report['mission'].get('mission_id')} / {state}")
     if report.get("blocker"):
         print(f"Blocker: {report['blocker']}")
