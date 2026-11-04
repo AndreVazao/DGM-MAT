@@ -1,8 +1,8 @@
 # Path: C:\\ProgramasGodMode\\DGM-MAT\\scripts\\autostart\\backend_service.py
-"""Headless, bounded lifecycle manager for the DGM-MAT HTTP API.
+"""Headless, bounded lifecycle manager for the DGM-MAT runtime.
 
-This manages only the API process. It deliberately does not start the cockpit,
-autonomous cognition loop, action-queue consumer, or external providers.
+Full mode starts the runtime and durable queue worker, plus bounded,
+metadata-only repository learning. External AI help remains opt-in.
 """
 from __future__ import annotations
 
@@ -158,6 +158,22 @@ def _command_for_mode(mode: str, host: str, port: int) -> list[str]:
     raise ValueError("mode must be 'api' or 'full'")
 
 
+def _configure_runtime_environment(child_env: dict[str, str], mode: str) -> dict[str, str]:
+    """Apply safe full-runtime defaults while preserving operator overrides."""
+    if mode == "full":
+        defaults = {
+            "DGM_REPOSITORY_LEARNING_ENABLED": "1",
+            "DGM_REPOSITORY_LEARNING_BATCH_SIZE": "2",
+            "DGM_REPOSITORY_LEARNING_MAX_DEPTH": "6",
+            "DGM_REPOSITORY_LEARNING_REFRESH_SECONDS": "1800",
+            "DGM_REPOSITORY_LEARNING_COMMAND_TIMEOUT": "4",
+            "DGM_AUTONOMY_HELP_ENABLED": "0",
+        }
+        for key, value in defaults.items():
+            child_env.setdefault(key, value)
+    return child_env
+
+
 def start(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, mode: str = "api") -> int:
     if mode not in {"api", "full"}:
         print("START_REFUSED: mode must be 'api' or 'full'")
@@ -188,7 +204,7 @@ def start(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, mode: str = "api")
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     command = _command_for_mode(mode, host, port)
     creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
-    child_env = os.environ.copy()
+    child_env = _configure_runtime_environment(os.environ.copy(), mode)
     child_env["DGM_REPOSITORY_ROOT"] = str(PROJECT_ROOT.resolve())
     python_executable = Path(sys.executable)
     if python_executable.name.casefold() == "pythonw.exe":

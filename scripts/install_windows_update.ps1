@@ -166,6 +166,7 @@ $preserved = @(
     @{ Source = (Join-Path $installRoot "DGM-MAT-Memory"); Relative = "data\DGM-MAT-Memory" },
     @{ Source = (Join-Path $installRoot "memory_sync"); Relative = "data\memory_sync" },
     @{ Source = (Join-Path $installRoot "storage\runtime"); Relative = "data\repository\storage\runtime" },
+    @{ Source = (Join-Path $installRoot "storage\cognition"); Relative = "data\repository\storage\cognition" },
     @{ Source = (Join-Path $installRoot ".runtime"); Relative = "data\repository\.runtime" },
     @{ Source = (Join-Path $installRoot "logs"); Relative = "data\repository\logs" },
     @{ Source = (Join-Path $targetDirectory ".runtime"); Relative = "data\installed\.runtime" }
@@ -265,9 +266,10 @@ $manifest = [ordered]@{
         (Join-Path $installRoot "DGM-MAT-Memory"),
         (Join-Path $installRoot "memory_sync"),
         (Join-Path $installRoot "storage\runtime"),
+        (Join-Path $installRoot "storage\cognition"),
         (Join-Path $installRoot ".runtime")
     )
-    note = "The executable and its managed startup launcher were replaced. Configuration, credentials, runtime data, memory repositories and worktrees were not uninstalled or deleted."
+    note = "The executable and its managed startup launcher were replaced. Configuration, credentials, runtime/cognition data, memory repositories and worktrees were not uninstalled or deleted."
 }
 $manifestPath = Join-Path $backupDirectory "INSTALL-MANIFEST.json"
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $manifestPath -Encoding utf8

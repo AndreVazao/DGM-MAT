@@ -110,3 +110,38 @@ def test_full_runtime_start_passes_repository_and_python_paths(monkeypatch, tmp_
     child_env = popen.call_args.kwargs["env"]
     assert child_env["DGM_REPOSITORY_ROOT"] == str(tmp_path.resolve())
     assert Path(child_env["DGM_PYTHON_EXECUTABLE"]).is_file()
+
+
+def test_full_runtime_defaults_to_bounded_read_only_repository_learning():
+    environment = {}
+
+    configured = backend_service._configure_runtime_environment(environment, "full")
+
+    assert configured["DGM_REPOSITORY_LEARNING_ENABLED"] == "1"
+    assert configured["DGM_REPOSITORY_LEARNING_BATCH_SIZE"] == "2"
+    assert configured["DGM_REPOSITORY_LEARNING_MAX_DEPTH"] == "6"
+    assert configured["DGM_REPOSITORY_LEARNING_REFRESH_SECONDS"] == "1800"
+    assert configured["DGM_REPOSITORY_LEARNING_COMMAND_TIMEOUT"] == "4"
+    assert configured["DGM_AUTONOMY_HELP_ENABLED"] == "0"
+
+
+def test_full_runtime_respects_explicit_operator_overrides():
+    environment = {
+        "DGM_REPOSITORY_LEARNING_ENABLED": "0",
+        "DGM_REPOSITORY_LEARNING_BATCH_SIZE": "1",
+        "DGM_AUTONOMY_HELP_ENABLED": "1",
+    }
+
+    configured = backend_service._configure_runtime_environment(environment, "full")
+
+    assert configured["DGM_REPOSITORY_LEARNING_ENABLED"] == "0"
+    assert configured["DGM_REPOSITORY_LEARNING_BATCH_SIZE"] == "1"
+    assert configured["DGM_AUTONOMY_HELP_ENABLED"] == "1"
+
+
+def test_api_only_mode_does_not_enable_repository_learning():
+    environment = {}
+
+    configured = backend_service._configure_runtime_environment(environment, "api")
+
+    assert configured == {}
