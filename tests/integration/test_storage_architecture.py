@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 from pathlib import Path
 import pytest
 from core.storage.storage_manager import RuntimeStorageManager
@@ -68,3 +69,19 @@ def test_read_only_fallback(temp_storage_dir):
         assert "/tmp/dgm_fallback" in str(path) or str(ro_dir) in str(path)
     finally:
         os.chmod(ro_dir, 0o777)
+
+
+def test_storage_manager_frozen_install_uses_persistent_project_vault(monkeypatch, tmp_path):
+    """A PyInstaller build must reuse <project-root>/storage/runtime, not _MEIPASS."""
+    monkeypatch.delenv("DGM_STORAGE_PATH", raising=False)
+    monkeypatch.delenv("DGM_BASE_PATH", raising=False)
+    executable = tmp_path / "DGM-MAT" / "installed" / "DGM-MAT.exe"
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", str(executable))
+
+    manager = RuntimeStorageManager()
+
+    expected = tmp_path / "DGM-MAT" / "storage" / "runtime"
+    assert manager.base_path == expected.resolve()
+    assert (expected / "missions").is_dir()
+    assert (expected / "memory").is_dir()

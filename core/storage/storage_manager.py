@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+import sys
 from pathlib import Path
 from typing import Optional
 from core.observability.logger import dgm_logger
@@ -22,11 +23,19 @@ class RuntimeStorageManager:
                     # Fix for CI expectations in test_storage_architecture.py
                     base_path = str(Path(dgm_base) / "data")
                 else:
-                    # 3. Default to a persistent local runtime directory
-                    # Never hardcode a machine-specific Windows path.
-                    # The repository-local default is deterministic and can be overridden
-                    # by DGM_STORAGE_PATH or DGM_BASE_PATH when an installation needs it.
-                    project_root = Path(__file__).parent.parent.parent
+                    # 3. Default to a persistent local runtime directory.
+                    # In PyInstaller mode, __file__ points inside the temporary bundle;
+                    # derive the data root from the installed executable instead.
+                    # The supported install layout is <project-root>/installed/DGM-MAT.exe.
+                    if getattr(sys, "frozen", False):
+                        executable_dir = Path(sys.executable).resolve().parent
+                        project_root = (
+                            executable_dir.parent
+                            if executable_dir.name.casefold() == "installed"
+                            else executable_dir
+                        )
+                    else:
+                        project_root = Path(__file__).parent.parent.parent
                     base_path = str(project_root / "storage" / "runtime")
 
         self.base_path = Path(base_path).resolve()
