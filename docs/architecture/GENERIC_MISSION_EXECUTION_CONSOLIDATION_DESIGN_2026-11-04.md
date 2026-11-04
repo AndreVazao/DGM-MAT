@@ -159,3 +159,27 @@ Do not merge if required CI/security checks are failing or indeterminate. Do not
 ## 9. Next engineering action
 
 Complete Stage A by generating the caller/import map and tests around the existing durable action contracts. Then implement Stage B as a read-only registry adapter. Keep the active dirty main checkout untouched and use isolated worktrees for all code changes.
+
+## 10. Caller and ownership map (Stage A evidence)
+
+A repository-wide symbol search in the clean `main` worktree found the following direct ownership surfaces:
+
+| Contract/component | Production references observed | Current boundary |
+|---|---|---|
+| `SafeActionQueue` | `MissionEngine`, `Runtime`, runtime API, reality snapshot; singleton implementation in `core/runtime/safe_action_queue.py` | Durable action queue and worker; queue action claims use conditional DB updates |
+| `ExecutionRequest` | `core/contracts/compat.py`, `SafeActionQueue.get_execution_request()`, provider execution API | Public contract exists, but generic tool dispatch is not wired through it |
+| `ToolDescriptor` | `core/contracts/mcp.py` and DGM-Contracts adapter | Metadata conversion exists; no authoritative runtime tool registry was found in the searched Python tree |
+| `ApprovalManager` | MissionEngine compatibility facade, runtime API, legacy execution-fabric supervisor | Durable authority is SafeActionQueue; legacy fabric still imports the module-level facade |
+| `WorktreeManager` | `ExecutionEngine` only in the searched production tree | Basic worktree helper; not integrated into MissionEngine's generic task path |
+| `QAReviewCoordinator` | MissionEngine plus focused QA tests | Durable review workflow exists, but it is a separate review of specialist results, not yet an automatic post-implementation gate |
+
+### Additional implementation constraints exposed by the caller audit
+
+- `SafeActionQueue` is a process-local singleton around a durable database. It registers handlers in memory; handler registration must therefore be verified in every process that may consume actions.
+- The queue consumer currently polls at five-second intervals and atomically claims approved rows. The new design must reuse this worker rather than introduce a second competing polling loop.
+- Existing `ExecutionRequest` contract tests cover conversion and persistence, and `test_cross_process_mission.py` covers mission creation in one process and execution in another. Extend these tests rather than duplicating their fixtures or authority.
+- `core/contracts/mcp.py` maps MCP tool metadata to descriptors, but defaults unknown tool names to HIGH risk and REQUIRED approval. That fail-closed behavior should be retained; the adapter is not itself an execution permission.
+- `QAReviewCoordinator.run_local_verification()` runs fixed commands from its configured repository root, including a full pytest suite. A future mission QA adapter must instantiate it against the exact isolated worktree or use a scoped validation adapter; it must never silently test the active dirty checkout.
+- `core/execution_fabric/execution_supervisor.py` currently returns `True` from plan validation without substantive validation. Its approval path only queues a request and returns `False`; it is not an execution coordinator and must remain disconnected from the production mission path.
+
+This caller map is an initial static inventory, not proof that no reflective, plugin or dynamically imported callers exist. Before changing signatures or removing compatibility surfaces, repeat the audit with import/call graph tooling and run the full relevant regression matrix.
