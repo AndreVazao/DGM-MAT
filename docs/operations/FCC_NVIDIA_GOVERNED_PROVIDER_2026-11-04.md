@@ -53,7 +53,7 @@ Before it reports healthy, it verifies:
 7. The active FCC provider is `nvidia_nim`, and its configured and active model match the allowlist.
 8. Optional Claude tier routes (`MODEL_OPUS`, `MODEL_SONNET`, `MODEL_HAIKU`) are blank or use the same allowlisted model.
 
-The adapter exposes only text chat through the Anthropic-compatible `/v1/messages` endpoint. It does not expose shell, filesystem, browser, tools or function calling. Redirects are blocked, inputs are capped at 8,000 characters, responses at 16,000 characters, and unknown provider options are rejected.
+The adapter exposes only text chat through the Anthropic-compatible `/v1/messages` endpoint. It does not expose shell, filesystem, browser, tools or function calling. Redirects are blocked, inputs are capped at 8,000 characters, responses at 16,000 characters, and unknown provider options are rejected. The transport bypasses environment proxy variables for loopback traffic so vault credentials and prompts cannot be forwarded to an HTTP proxy.
 
 ## Local usage budget
 
@@ -63,6 +63,9 @@ A persistent SQLite budget applies per UTC day:
 - 4,096 tokens reserved for each request.
 - 2,048 maximum output tokens per request.
 - 2 concurrent requests maximum.
+- Reservations are keyed to the exact governed request ID and stored with a UTC admission day; dispatch refuses a stale reservation after midnight.
+- The two active-request slots are enforced transactionally in SQLite per FCC endpoint, across provider instances and processes; abandoned slots expire only after a conservative lease.
+- Caller cancellation and one total monotonic deadline are checked between each health probe and before inference dispatch; a timed-out health probe is propagated rather than converted into an ordinary unavailable observation.
 - No paid fallback, automatic provider switch or retry to another model.
 
 These are DGM-MAT local safety limits, not a claim about NVIDIA's account-specific quota. A failed/timeout request consumes the local reservation conservatively.
