@@ -306,3 +306,70 @@ def test_repository_learning_command_timeout_is_configurable(tmp_path: Path, mon
         storage_dir=tmp_path / "ledger", roots=[tmp_path / "repos"]
     )
     assert service.command_timeout == 8.0
+
+
+def test_repository_learning_does_not_group_owner_only_git_remotes(tmp_path: Path):
+    root = tmp_path / "workspaces"
+    first = _create_repo(root / "checkout-a", "project-a")
+    second = _create_repo(root / "checkout-b", "project-b")
+    for repo in (first, second):
+        subprocess.run(
+            ["git", "-C", str(repo), "remote", "add", "origin", "https://github.com/AndreVazao/"],
+            check=True,
+        )
+
+    service = RepositoryLearningService(
+        storage_dir=tmp_path / "ledger", roots=[root], batch_size=10
+    )
+    service.run_batch()
+    records = service.list_repositories()
+
+    assert len(records) == 2
+    assert all(
+        item["project_group_basis"] == "single_repository_pending_semantic_review"
+        for item in records
+    )
+    assert len({item["project_group_id"] for item in records}) == 2
+
+
+def test_repository_tree_marks_depth_truncation(tmp_path: Path):
+    root = tmp_path / "repos"
+    repo = _create_repo(root, "deep-tree")
+    folder = repo
+    for index in range(1, 13):
+        folder = folder / f"level-{index}"
+        folder.mkdir()
+    (folder / "beyond-depth.txt").write_text("not read by tree generation", encoding="utf-8")
+
+    service = RepositoryLearningService(
+        storage_dir=tmp_path / "ledger", roots=[root], batch_size=5
+    )
+    service.run_batch()
+    record = service.list_repositories()[0]
+    tree = Path(record["tree_path"]).read_text(encoding="utf-8")
+
+    assert record["tree_truncated"] is True
+    assert "truncated: entry limit or maximum depth reached" in tree
+
+
+def test_repository_tree_entry_limit_is_bounded_and_reported(tmp_path: Path, monkeypatch):
+    import core.autonomy.repository_learning as repository_learning
+
+    monkeypatch.setattr(repository_learning, "TREE_MAX_ENTRIES", 5)
+    root = tmp_path / "repos"
+    repo = _create_repo(root, "wide-tree")
+    source = repo / "src"
+    source.mkdir()
+    for index in range(10):
+        (source / f"module-{index:02}.py").write_text("# fixture\\n", encoding="utf-8")
+
+    service = RepositoryLearningService(
+        storage_dir=tmp_path / "ledger", roots=[root], batch_size=5
+    )
+    service.run_batch()
+    record = service.list_repositories()[0]
+    tree = Path(record["tree_path"]).read_text(encoding="utf-8")
+
+    assert record["tree_entries"] == 5
+    assert record["tree_truncated"] is True
+    assert "truncated: entry limit or maximum depth reached" in tree
