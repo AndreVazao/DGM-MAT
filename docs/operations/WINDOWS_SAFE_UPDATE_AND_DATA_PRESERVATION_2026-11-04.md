@@ -105,3 +105,11 @@ A compilação Windows deve fixar e instalar as três dependências externas do 
 O pacote `dgm_mat_connectors` é carregado dinamicamente pela fronteira de conectores; por isso, a especificação PyInstaller recolhe explicitamente os seus submódulos. A validação profunda falha rapidamente se o servidor API reportar um erro fatal de arranque, em vez de aguardar todo o período de tentativas de health-check.
 
 A memória temporal normaliza timestamps naive e timezone-aware para UTC durante comparações, evitando falhas de ingestão de eventos no arranque.
+
+## Arranque da aprendizagem de repositórios
+
+No modo `full`, o gestor de serviço ativa por omissão a aprendizagem incremental de repositórios, limitada a dois repositórios por lote, profundidade máxima de seis níveis, timeout Git de quatro segundos e intervalo de atualização de 30 minutos. O operador pode substituir estes valores através das variáveis `DGM_REPOSITORY_LEARNING_*` ou desligar a aprendizagem com `DGM_REPOSITORY_LEARNING_ENABLED=0`.
+
+A aprendizagem é read-only: recolhe metadados Git, manifestos e um resumo redigido do README; gera árvores de caminhos sem ler o conteúdo dos ficheiros; não altera repositórios nem executa código de projetos. Os dados duráveis ficam em `storage/cognition/repository_learning` e são agora incluídos no backup de atualização.
+
+O worker de ajuda por IA externa continua desligado por omissão (`DGM_AUTONOMY_HELP_ENABLED=0`) até existir integração e validação explícita dos fornecedores gratuitos pretendidos.
