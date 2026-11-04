@@ -29,3 +29,25 @@ def test_get_runtime_status_field_consistency():
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "running"
+
+
+def test_active_mission_counters_exclude_queued_and_terminal_missions():
+    previous = state_store.get_snapshot().missions.copy()
+    fixtures = {
+        "mission-running": {"id": "mission-running", "status": "RUNNING"},
+        "mission-queued": {"id": "mission-queued", "status": "QUEUED"},
+        "mission-failed": {"id": "mission-failed", "status": "FAILED"},
+        "mission-completed": {"id": "mission-completed", "status": "COMPLETED"},
+    }
+    state_store.dispatch(StateEvents.MISSIONS_RECONCILED, fixtures)
+    try:
+        headers = _headers()
+        status_response = client.get("/runtime/status", headers=headers)
+        autonomy_response = client.get("/runtime/autonomy", headers=headers)
+
+        assert status_response.status_code == 200
+        assert autonomy_response.status_code == 200
+        assert status_response.json()["missions_active"] == 1
+        assert autonomy_response.json()["missions_active"] == 1
+    finally:
+        state_store.dispatch(StateEvents.MISSIONS_RECONCILED, previous)

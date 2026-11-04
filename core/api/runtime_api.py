@@ -51,6 +51,19 @@ class ApprovalDecision(BaseModel):
 class QueueRejection(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
 
+def _active_mission_count(missions: Any) -> int:
+    """Count only missions currently executing, not the full historical index."""
+    if not isinstance(missions, dict):
+        return 0
+    running_status = MissionStatus.RUNNING.value
+    return sum(
+        1
+        for mission in missions.values()
+        if isinstance(mission, dict)
+        and str(getattr(mission.get("status"), "value", mission.get("status", ""))).upper()
+        == running_status
+    )
+
 @router.websocket("/ws")
 async def runtime_websocket_endpoint(websocket: WebSocket):
     """Compatibility websocket for clients that connect to /runtime/ws."""
@@ -79,7 +92,7 @@ def get_runtime_status():
             "memory": psutil.virtual_memory().percent
         },
         "agents": truth.agents,
-        "missions_active": len(truth.missions)
+        "missions_active": _active_mission_count(truth.missions)
     }
 
 @router.get("/state")
@@ -211,7 +224,7 @@ def get_autonomy_status():
     return {
         "status": truth.runtime_status,
         "mode": "LOW_MEMORY" if truth.health.get("low_memory_profile") else "STANDARD",
-        "missions_active": len(truth.missions),
+        "missions_active": _active_mission_count(truth.missions),
         "tasks": truth.tasks,
         "memory_stats": truth.memory_stats,
     }
