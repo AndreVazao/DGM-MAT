@@ -25,3 +25,24 @@ def test_redacted_tail_is_bounded(tmp_path: Path):
     result = _redacted_tail(log, max_lines=3)
 
     assert result.splitlines() == ["line-7", "line-8", "line-9"]
+
+
+def test_api_start_failure_is_detected_without_waiting_for_health_timeout(tmp_path: Path):
+    from scripts.validate_executable import _api_start_failure_detected
+
+    log = tmp_path / "child.log"
+    log.write_text(
+        "Runtime: Failed to start API Server: dgm_mat_connectors is unavailable",
+        encoding="utf-8",
+    )
+
+    assert _api_start_failure_detected(log)
+
+
+def test_api_start_failure_detector_ignores_normal_startup_log(tmp_path: Path):
+    from scripts.validate_executable import _api_start_failure_detected
+
+    log = tmp_path / "child.log"
+    log.write_text("Runtime: API Server thread started.", encoding="utf-8")
+
+    assert not _api_start_failure_detected(log)
