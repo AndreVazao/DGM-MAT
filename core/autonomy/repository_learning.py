@@ -7,6 +7,7 @@ symlinked directories. A SQLite ledger makes progress resumable across restarts.
 from __future__ import annotations
 
 import hashlib
+import heapq
 import json
 import os
 import re
@@ -87,6 +88,17 @@ def _safe_origin(value: str) -> str:
     else:
         return _redact(value, 240)
     return _redact(f"{host}/{path.lstrip('/').removesuffix('.git')}", 240)
+
+def _specific_origin_key(value: str) -> str | None:
+    """Return a grouping key only when an origin identifies a repository.
+
+    Host-only and owner/group-only remotes are too broad to prove that two
+    checkouts are the same project. Require at least host/owner/repository.
+    """
+    parts = [part.casefold() for part in value.strip().strip("/").split("/") if part]
+    if len(parts) < 3:
+        return None
+    return "/".join(parts)
 
 
 class RepositoryLearningService:
@@ -332,46 +344,71 @@ class RepositoryLearningService:
         entry_count = 0
         truncated = False
 
+        def collect_visible(folder: Path, limit: int) -> tuple[list[tuple[str, str, str, bool]], bool]:
+            """Collect at most limit+1 sorted entries, even for huge directories."""
+            unreadable = False
+
+            def candidates():
+                nonlocal unreadable
+                try:
+                    with os.scandir(folder) as scanner:
+                        for entry in scanner:
+                            name = entry.name
+                            if name.casefold() in SKIP_DIRS or name.casefold() in TREE_SKIP_NAMES:
+                                continue
+                            if path.name.casefold() == "dgm-mat" and folder == path and name.casefold() == "storage":
+                                continue
+                            if self._skip_tree_file(name):
+                                continue
+                            try:
+                                if entry.is_symlink():
+                                    continue
+                                is_dir = entry.is_dir(follow_symlinks=False)
+                            except OSError:
+                                continue
+                            yield (name.casefold(), name, entry.path, is_dir)
+                except OSError:
+                    unreadable = True
+
+            # nsmallest keeps memory bounded by the remaining tree budget + 1.
+            return heapq.nsmallest(max(1, limit + 1), candidates()), unreadable
+
         def visit(folder: Path, prefix: str, depth: int) -> None:
             nonlocal entry_count, truncated
-            if depth >= TREE_MAX_DEPTH or truncated:
+            if truncated:
                 return
-            try:
-                entries = sorted(os.scandir(folder), key=lambda item: item.name.casefold())
-            except OSError:
-                lines.append(prefix + "[directory unreadable]")
-                return
-            visible = []
-            for entry in entries:
-                name = entry.name
-                if name.casefold() in SKIP_DIRS or name.casefold() in TREE_SKIP_NAMES:
-                    continue
-                if path.name.casefold() == "dgm-mat" and folder == path and name.casefold() == "storage":
-                    continue
-                if entry.is_symlink() or self._skip_tree_file(name):
-                    continue
-                visible.append(entry)
-            for index, entry in enumerate(visible):
-                if entry_count >= TREE_MAX_ENTRIES:
+            if depth >= TREE_MAX_DEPTH:
+                remaining, unreadable = collect_visible(folder, 0)
+                if unreadable:
+                    lines.append(prefix + "[directory unreadable]")
+                if remaining:
                     truncated = True
-                    return
-                try:
-                    is_dir = entry.is_dir(follow_symlinks=False)
-                except OSError:
-                    continue
-                is_last = index == len(visible) - 1
+                return
+
+            remaining_budget = max(0, TREE_MAX_ENTRIES - entry_count)
+            visible, unreadable = collect_visible(folder, remaining_budget)
+            if unreadable:
+                lines.append(prefix + "[directory unreadable]")
+            has_more = len(visible) > remaining_budget
+            visible = visible[:remaining_budget]
+
+            for index, (_, name, entry_path, is_dir) in enumerate(visible):
+                is_last = index == len(visible) - 1 and not has_more
                 connector = "└── " if is_last else "├── "
-                lines.append(prefix + connector + entry.name + ("/" if is_dir else ""))
+                lines.append(prefix + connector + name + ("/" if is_dir else ""))
                 entry_count += 1
                 if is_dir:
                     child_prefix = prefix + ("    " if is_last else "│   ")
-                    visit(Path(entry.path), child_prefix, depth + 1)
+                    visit(Path(entry_path), child_prefix, depth + 1)
                     if truncated:
                         return
 
+            if has_more:
+                truncated = True
+
         visit(path, "", 0)
         if truncated:
-            lines.append(f"... [truncated after {TREE_MAX_ENTRIES} entries]")
+            lines.append("... [truncated: entry limit or maximum depth reached]")
         content = "\n".join(lines) + "\n"
         temporary = destination.with_suffix(destination.suffix + ".tmp")
         temporary.write_text(content, encoding="utf-8")
@@ -730,8 +767,9 @@ class RepositoryLearningService:
         origin_members: dict[str, list[dict[str, Any]]] = {}
         parent_members: dict[str, list[dict[str, Any]]] = {}
         for item in results:
-            if item["origin"]:
-                origin_members.setdefault(item["origin"].casefold(), []).append(item)
+            origin_key = _specific_origin_key(str(item["origin"] or ""))
+            if origin_key:
+                origin_members.setdefault(origin_key, []).append(item)
             parent_path = Path(item["path"]).parent
             parent = str(parent_path).casefold()
             root_path = str(Path(item["root"])).casefold()
@@ -745,7 +783,7 @@ class RepositoryLearningService:
                 label = Path(members[0]["path"]).name
                 for item in members:
                     item["project_group"] = label
-                    item["project_group_id"] = f"origin:{item['origin'].casefold()}"
+                    item["project_group_id"] = f"origin:{_specific_origin_key(str(item['origin']))}"
                     item["project_group_basis"] = "same_git_origin"
                     item["project_group_confidence"] = 0.99
 
