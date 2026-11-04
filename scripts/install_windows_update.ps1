@@ -1,3 +1,4 @@
+
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
@@ -10,6 +11,29 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+function New-DgmMatCockpitShortcut {
+    param(
+        [Parameter(Mandatory = $true)][string]$ExecutablePath,
+        [Parameter(Mandatory = $true)][string]$WorkingDirectory
+    )
+
+    $desktopPath = [Environment]::GetFolderPath("Desktop")
+    if (-not $desktopPath -or -not (Test-Path -LiteralPath $desktopPath)) {
+        throw "The current user's Desktop directory is unavailable."
+    }
+
+    $shortcutPath = Join-Path $desktopPath "DGM-MAT Chat.lnk"
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath = $ExecutablePath
+    $shortcut.Arguments = "--cockpit-only"
+    $shortcut.WorkingDirectory = $WorkingDirectory
+    $shortcut.Description = "Open the DGM-MAT chat cockpit; the backend must already be running."
+    $shortcut.IconLocation = "$ExecutablePath,0"
+    $shortcut.Save()
+    return $shortcutPath
+}
 
 function Stop-ExactInstalledProcess {
     param([Parameter(Mandatory = $true)][string]$ExecutablePath)
@@ -212,6 +236,14 @@ catch {
     throw
 }
 
+$cockpitShortcutPath = $null
+try {
+    $cockpitShortcutPath = New-DgmMatCockpitShortcut -ExecutablePath $targetPath -WorkingDirectory $installRoot
+}
+catch {
+    Write-Warning "The runtime was updated, but the DGM-MAT Chat desktop shortcut could not be created: $($_.Exception.GetType().Name)"
+}
+
 $manifest = [ordered]@{
     schema = "dgm-mat-safe-windows-update.v1"
     installed_at = (Get-Date).ToString("o")
@@ -223,6 +255,7 @@ $manifest = [ordered]@{
     launcher_target = $launcherTarget
     launcher_new_sha256 = $launcherSourceHash
     launcher_previous_sha256 = $oldLauncherHash
+    cockpit_shortcut = $cockpitShortcutPath
     previous_launcher_backup = $oldLauncherBackup
     backup_directory = $backupDirectory
     preserved_data = $backupRecords
@@ -246,4 +279,5 @@ Write-Host "Service launcher: $launcherTarget"
 Write-Host "Launcher SHA-256: $launcherSourceHash"
 Write-Host "Backup: $backupDirectory"
 Write-Host "Manifest: $manifestPath"
+if ($cockpitShortcutPath) { Write-Host "Chat cockpit shortcut: $cockpitShortcutPath" }
 Write-Host "The runtime was not started. The startup shortcut will now launch the installed executable through the updated service manager."

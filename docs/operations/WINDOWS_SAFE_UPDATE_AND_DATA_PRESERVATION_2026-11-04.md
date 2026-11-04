@@ -83,3 +83,13 @@ O rollback restaura o executável e o gestor de arranque anteriores. Os dados pe
 - Não migra nem altera credenciais.
 - Não apaga filas, missões, checkpoints, worktrees, históricos ou vaults.
 - A primeira inicialização do novo executável deve ser validada separadamente; copiar os ficheiros não prova, por si só, que o runtime está saudável.
+
+## Cockpit de chat independente
+
+A atualização cria, quando o Windows permite, o atalho `DGM-MAT Chat.lnk` no Ambiente de Trabalho. O atalho executa:
+
+```powershell
+installed\DGM-MAT.exe --cockpit-only
+```
+
+Este modo abre apenas a interface de chat e liga-se ao backend já ativo em `127.0.0.1:8181`. Não inicia um segundo backend. Fechar a janela de chat não interrompe o serviço DGM-MAT. Se o backend estiver parado, a interface apresenta o erro de ligação sem declarar que a missão foi enviada.
