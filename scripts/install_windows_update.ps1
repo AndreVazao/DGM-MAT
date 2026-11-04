@@ -141,6 +141,8 @@ $preserved = @(
     @{ Source = (Join-Path $userDgmRoot "recovery-ledger.sqlite3"); Relative = "data\userprofile\.dgm-mat\recovery-ledger.sqlite3" },
     @{ Source = (Join-Path $installRoot "DGM-MAT-Memory"); Relative = "data\DGM-MAT-Memory" },
     @{ Source = (Join-Path $installRoot "memory_sync"); Relative = "data\memory_sync" },
+    @{ Source = (Join-Path $installRoot "storage\runtime"); Relative = "data\repository\storage\runtime" },
+    @{ Source = (Join-Path $installRoot ".runtime"); Relative = "data\repository\.runtime" },
     @{ Source = (Join-Path $targetDirectory ".runtime"); Relative = "data\installed\.runtime" }
 )
 
@@ -186,7 +188,9 @@ $manifest = [ordered]@{
         (Join-Path $localDgmRoot "security"),
         (Join-Path $userDgmRoot "worktrees"),
         (Join-Path $installRoot "DGM-MAT-Memory"),
-        (Join-Path $installRoot "memory_sync")
+        (Join-Path $installRoot "memory_sync"),
+        (Join-Path $installRoot "storage\runtime"),
+        (Join-Path $installRoot ".runtime")
     )
     note = "Only the executable was replaced. Configuration, credentials, runtime data, memory repositories and worktrees were not uninstalled or deleted."
 }

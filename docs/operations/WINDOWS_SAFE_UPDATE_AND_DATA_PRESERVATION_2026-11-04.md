@@ -15,6 +15,8 @@ Antes da substituição, o script cria uma cópia datada de:
 - `%USERPROFILE%\.dgm-mat\recovery-ledger.sqlite3`
 - `DGM-MAT-Memory`
 - `memory_sync`
+- `storage\runtime` ? SQLite, missions, checkpoints, conversation archive/intelligence, cognition, reports and runtime memory.
+- `.runtime` ? runtime traces, task reports and telemetry.
 - `installed\.runtime`
 - Executável anterior e respetivo SHA-256
 
