@@ -15,22 +15,24 @@ def resolve_repository_root(
 ) -> Path:
     """Resolve a Git checkout without mistaking PyInstaller's _MEIPASS for it.
 
-    Priority: explicit operator override, current working tree, installed
-    executable's project parent, then the source package's checkout.
+    Priority: explicit operator override, installed executable project parent
+    (frozen mode), source package checkout, then current working tree.
     """
     configured = os.getenv("DGM_REPOSITORY_ROOT", "").strip()
     if configured:
         return Path(configured).expanduser().resolve()
 
-    current = Path(cwd if cwd is not None else Path.cwd()).expanduser().resolve()
     is_frozen = bool(getattr(sys, "frozen", False)) if frozen is None else bool(frozen)
     if is_frozen:
-        executable_path = Path(executable if executable is not None else sys.executable).expanduser().resolve()
+        executable_path = Path(
+            executable if executable is not None else sys.executable
+        ).expanduser().resolve()
         executable_dir = executable_path.parent
         candidates = (executable_dir.parent, executable_dir)
         for candidate in candidates:
             if (candidate / ".git").exists():
                 return candidate
+        current = Path(cwd if cwd is not None else Path.cwd()).expanduser().resolve()
         if (current / ".git").exists():
             return current
         # Return the expected install root; callers that require Git must fail closed.
@@ -40,6 +42,8 @@ def resolve_repository_root(
     for candidate in source.parents:
         if (candidate / ".git").exists():
             return candidate
+
+    current = Path(cwd if cwd is not None else Path.cwd()).expanduser().resolve()
     if (current / ".git").exists():
         return current
     return source.parents[2] if len(source.parents) > 2 else source.parent
