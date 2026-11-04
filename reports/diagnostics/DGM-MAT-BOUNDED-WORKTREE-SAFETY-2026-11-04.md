@@ -1,6 +1,6 @@
 # DGM-MAT Bounded Worktree Execution Safety — 2026-11-04
 
-Branch: `feat/hardened-worktree-execution-2026-11-04`
+Branch: `feat/bounded-worktree-execution-2026-11-04`
 Base: `origin/main` at `15bb5704fefb297b55e5cab8e88334162a3419be`
 
 ## Findings repaired
@@ -8,7 +8,7 @@ Base: `origin/main` at `15bb5704fefb297b55e5cab8e88334162a3419be`
 The previous execution path had several unsafe or incomplete contracts:
 - `WorktreeRuntime` did not implement `create_sandbox` / `cleanup_sandbox`, although `AutonomousExecutor` called them.
 - It accepted arbitrary command strings or argument lists, with no fixed command catalogue, timeout or output cap.
-- Cleanup could remove a worktree containing unreviewed work.
+- Cleanup could remove a worktree containing unreviewed or ignored local data.
 - `SafePatchEngine.apply_patch` applied to the process working directory (the primary checkout by default), without an explicit target.
 - `AutonomousExecutor` tried to apply a diff that already existed in its worktree, and its `finally` path could delete pending work.
 - `ExecutionSupervisor.validate_plan` accepted every plan.
@@ -20,18 +20,16 @@ The previous execution path had several unsafe or incomplete contracts:
 - Implements deterministic `create_sandbox` and `cleanup_sandbox` APIs with strict task/branch identifiers.
 - Verifies repository root, Git worktree registration and exact target roots.
 - Creates a linked worktree from a verified commit.
-- Removes only clean worktrees; modified, staged and untracked content is retained.
+- Removes only worktrees with no tracked, untracked or ignored content; all other work is retained.
 - Allows only pytest against one explicit Python file under the resolved `tests/` root.
 - Rejects shell strings, `python -c`, pip and all unlisted command shapes.
 - Uses `shell=False`, fixed working directory, timeout, streamed stdout/stderr caps and disables bytecode/pytest cache writes.
 - Rejects test symlinks resolving outside the worktree's tests directory.
 
-### SafePatchEngine
-- Requires an explicit registered linked worktree and rejects the primary repository.
-- Validates patch size and file paths; rejects absolute paths and parent traversal.
-- Checks patch applicability before applying, scoped to the selected worktree.
-- Generates tracked staged/unstaged diffs, rejects untracked files rather than silently omitting them, and enforces a maximum patch size.
-- Does not commit, merge, push or deploy.
+### Patch application boundary
+
+Patch-application hardening is maintained separately in PR #182. This branch
+does not change SafePatchEngine and does not apply generated patches.
 
 ### Supervisor / executor / compatibility adapter
 - Validates task IDs, objectives, approval metadata and rejects caller-supplied command/shell/script fields.
@@ -43,20 +41,20 @@ The previous execution path had several unsafe or incomplete contracts:
 
 ## Verification
 
-**67 focused tests passed** across:
-- worktree creation, registration, cleanup and dirty-work preservation;
-- path traversal, symlink escape, patch targeting and patch generation;
-- command allowlisting, output caps and timeout behavior;
-- supervisor metadata/risk validation and approval persistence;
+**78 focused tests passed** in the isolated bounded-execution validation run across:
+- worktree creation, registration, cleanup and preservation of tracked, untracked and ignored data;
+- path traversal, symlink escape, allowlisted pytest execution, output caps and timeout handling;
+- supervisor metadata/risk validation and durable approval request delegation;
 - executor truthful completion and cleanup ownership;
-- sandbox adapter behavior;
-- development task store, evidence envelope, QA coordinator and caller audit.
+- sandbox compatibility adapter behavior;
+- development task store, evidence envelope, QA coordinator, QA queue and caller audit;
+- execution director truthfulness.
 
 Additional checks:
-- `python -m compileall -q core/execution_fabric core/sandbox` — passed.
-- `git diff --check` — passed.
+- python -m compileall -q core/execution_fabric core/sandbox core/organization core/autonomy ? passed.
+- git diff --check ? passed.
 
-One pre-existing test, `tests/execution_fabric/test_execution_fabric.py::test_specialization_registry`, remains outside this focused run because the sibling `DGM-MAT-Agents` package is not available in this checkout (`ModuleNotFoundError: dgm_mat_agents`). The state-machine test in the same file was included and passed.
+The optional specialization-registry test requiring the separate DGM-MAT-Agents package was not part of this focused run.
 
 ## Safety boundary / remaining work
 

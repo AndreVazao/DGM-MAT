@@ -1,7 +1,7 @@
 # Bounded Worktree Execution Safety
 
 Date: 2026-11-04
-Branch: feat/hardened-worktree-execution-2026-11-04
+Branch: feat/bounded-worktree-execution-2026-11-04
 Base: origin/main (15bb570)
 
 ## Purpose
@@ -13,22 +13,18 @@ Repair the existing development execution primitives before any integration with
 - Worktree names and task IDs are restricted to a conservative identifier format.
 - A sandbox is a registered Git worktree created from a verified commit.
 - Worktree roots are verified against Git's registered worktree list.
-- Cleanup removes only clean worktrees. Modified, staged, or untracked content is preserved for recovery and human review.
+- Cleanup removes only worktrees with no tracked, untracked, or ignored content. Any recoverable data is preserved for human review.
 - Sandbox paths are resolved under a configured worktree directory.
 - Validation commands are a fixed catalogue: pytest against one explicit Python file below `tests/`. The runner disables bytecode and pytest cache writes to keep successful worktrees clean; compile checks remain in CI.
 - Arbitrary shell strings, `python -c`, pip, and unlisted executables are rejected.
 - Commands use `shell=False`, explicit working directory, timeout and streamed per-channel output caps.
 - `IsolatedRuntime` is now only a compatibility adapter over this catalogue; it has no temporary-directory fallback and cannot run arbitrary argument lists.
 
-## Patch application
+## Patch application boundary
 
-- Applying a patch requires an explicit target path.
-- The target must be a registered linked worktree belonging to the configured primary repository.
-- The primary repository itself is always rejected.
-- Patch size and file paths are bounded; absolute and parent-traversal paths are rejected.
-- Git apply check runs before Git apply, both scoped to the verified worktree.
-- Patch generation includes tracked staged/unstaged changes, rejects untracked files rather than silently omitting them, and enforces a maximum patch size.
-- No commit, merge, push, or deployment is performed.
+Patch application is deliberately outside this change. The separate PR #182
+(feat/isolated-patch-apply-guard-2026-11-04) owns the explicit-target
+SafePatchEngine.apply_patch guard. This branch does not weaken or replace it.
 
 ## Supervisor and executor
 

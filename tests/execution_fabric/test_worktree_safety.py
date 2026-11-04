@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 from core.execution_fabric.worktree_runtime import WorktreeRuntime
-from core.execution_fabric.safe_patch_engine import SafePatchEngine
 
 
 def _git(path: Path, *args: str) -> str:
@@ -78,40 +77,6 @@ def test_worktree_runtime_rejects_path_traversal_and_invalid_task_ids(tmp_path):
     assert not (tmp_path / "escape").exists()
 
 
-def test_safe_patch_engine_applies_only_to_registered_worktree(tmp_path):
-    repo = _repository(tmp_path / "repo")
-    runtime = WorktreeRuntime(tmp_path / "worktrees", repo_path=repo)
-    sandbox = runtime.create_sandbox("mission_patch")
-    assert sandbox is not None
-    engine = SafePatchEngine(repository_root=repo)
-    patch = (
-        "--- a/core/sample.py\n"
-        "+++ b/core/sample.py\n"
-        "@@ -1 +1 @@\n"
-        "-VALUE = 1\n"
-        "+VALUE = 2\n"
-    )
-
-    engine.apply_patch(patch, sandbox)
-
-    assert (sandbox / "core" / "sample.py").read_text(encoding="utf-8") == "VALUE = 2\n"
-    assert (repo / "core" / "sample.py").read_text(encoding="utf-8") == "VALUE = 1\n"
-    assert runtime.cleanup_sandbox("mission_patch") is False
-
-
-def test_safe_patch_engine_rejects_primary_repo_and_escaping_paths(tmp_path):
-    repo = _repository(tmp_path / "repo")
-    engine = SafePatchEngine(repository_root=repo)
-    patch = "--- a/core/sample.py\n+++ b/core/sample.py\n@@ -1 +1 @@\n-VALUE = 1\n+VALUE = 2\n"
-
-    with pytest.raises(ValueError, match="primary repository"):
-        engine.apply_patch(patch, repo)
-    with pytest.raises(ValueError, match="escaping"):
-        engine._validate_patch_paths(
-            "--- a/../../outside.txt\n+++ b/../../outside.txt\n"
-        )
-
-
 def test_worktree_runtime_runs_only_allowlisted_pytest_target(tmp_path):
     repo = _repository(tmp_path / 'repo')
     tests = repo / 'tests'
@@ -132,23 +97,6 @@ def test_worktree_runtime_runs_only_allowlisted_pytest_target(tmp_path):
     assert result.returncode == 0
     assert '1 passed' in result.stdout
     assert runtime.cleanup_sandbox('mission_validation') is True
-
-
-def test_patch_generation_includes_tracked_changes_and_rejects_untracked_files(tmp_path):
-    repo = _repository(tmp_path / 'repo')
-    runtime = WorktreeRuntime(tmp_path / 'worktrees', repo_path=repo)
-    sandbox = runtime.create_sandbox('mission_diff')
-    assert sandbox is not None
-    engine = SafePatchEngine(repository_root=repo)
-
-    (sandbox / 'core' / 'sample.py').write_text('VALUE = 7\n', encoding='utf-8')
-    patch = engine.generate_patch(sandbox)
-    assert 'VALUE = 7' in patch
-
-    (sandbox / 'core' / 'new_module.py').write_text('NEW_VALUE = 1\n', encoding='utf-8')
-    with pytest.raises(ValueError, match='Untracked files'):
-        engine.generate_patch(sandbox)
-    assert runtime.cleanup_sandbox('mission_diff') is False
 
 
 def test_worktree_validation_bounds_captured_output(tmp_path):
@@ -220,3 +168,19 @@ def test_validation_target_rejects_symlinks_outside_tests_root(tmp_path):
 
     runtime = WorktreeRuntime(tmp_path / 'worktrees', repo_path=repo)
     assert runtime._safe_test_target(repo, 'tests/test_escape.py') is False
+
+
+def test_cleanup_preserves_ignored_worktree_data_for_recovery(tmp_path):
+    repo = _repository(tmp_path / "repo")
+    (repo / ".gitignore").write_text("*.secret\\n", encoding="utf-8")
+    _git(repo, "add", ".gitignore")
+    _git(repo, "commit", "-m", "ignore local secret files")
+    runtime = WorktreeRuntime(tmp_path / "worktrees", repo_path=repo)
+    sandbox = runtime.create_sandbox("mission_ignored")
+    assert sandbox is not None
+    ignored_file = sandbox / "local.secret"
+    ignored_file.write_text("recoverable local data", encoding="utf-8")
+
+    assert runtime.cleanup_sandbox("mission_ignored") is False
+    assert sandbox.exists()
+    assert ignored_file.read_text(encoding="utf-8") == "recoverable local data"

@@ -142,8 +142,16 @@ class WorktreeRuntime:
             if not self._verify_worktree(target):
                 return False
             status = self._git(["status", "--porcelain", "--untracked-files=all"], cwd=target)
-            if status.returncode != 0 or status.stdout.strip():
-                dgm_logger.warning(f"WorktreeRuntime: Preserving non-clean worktree {target}")
+            ignored = self._git(["clean", "-ndx"], cwd=target)
+            if (
+                status.returncode != 0
+                or status.stdout.strip()
+                or ignored.returncode != 0
+                or ignored.stdout.strip()
+            ):
+                dgm_logger.warning(
+                    f"WorktreeRuntime: Preserving worktree with tracked, untracked or ignored data {target}"
+                )
                 return False
             result = self._git(["worktree", "remove", str(target)], timeout=60)
             if result.returncode != 0:
