@@ -37,6 +37,15 @@ def _redacted_tail(path: Path, *, max_lines: int = 80) -> str:
     return "\n".join(redacted)
 
 
+def _api_start_failure_detected(path: Path) -> bool:
+    """Detect a fatal API import/startup error without waiting for all health retries."""
+    try:
+        tail = path.read_text(encoding="utf-8", errors="replace")[-50_000:]
+    except OSError:
+        return False
+    return "Runtime: Failed to start API Server:" in tail
+
+
 def _stop_process(process: subprocess.Popen) -> None:
     if process.poll() is not None:
         return
@@ -88,6 +97,13 @@ def validate_executable(exe_path: str | os.PathLike[str]) -> bool:
             for attempt in range(1, max_retries + 1):
                 time.sleep(retry_interval)
                 child_output.flush()
+
+                if _api_start_failure_detected(log_path):
+                    dgm_logger.error(
+                        "Executable API startup failed. Redacted child output follows:\\n"
+                        f"{_redacted_tail(log_path)}"
+                    )
+                    return False
 
                 return_code = process.poll()
                 if return_code is not None:

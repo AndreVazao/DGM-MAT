@@ -6,11 +6,13 @@ from PyInstaller.utils.hooks import collect_submodules
 block_cipher = None
 contracts_src = os.path.abspath(os.path.join(SPECPATH, '..', 'DGM-Contracts', 'src'))
 agent_src = os.path.abspath(os.path.join(SPECPATH, '..', 'DGM-MAT-Agents', 'src'))
+connectors_src = os.path.abspath(os.path.join(SPECPATH, '..', 'DGM-MAT-Connectors', 'src'))
 agent_hiddenimports = collect_submodules('dgm_mat_agents')
+connector_hiddenimports = collect_submodules('dgm_mat_connectors')
 
 a = Analysis(
     ['../main.py'],
-    pathex=[contracts_src, agent_src],
+    pathex=[contracts_src, agent_src, connectors_src],
     binaries=[],
     datas=[
         ('../cockpit/styles/*.qss', 'cockpit/styles'),
@@ -25,6 +27,8 @@ a = Analysis(
         'dgm_contracts.models',
         'dgm_contracts.agent_services',
         *agent_hiddenimports,
+        'dgm_mat_connectors',
+        *connector_hiddenimports,
         'uvicorn.protocols.http.httptools_impl',
         'uvicorn.protocols.websockets.websockets_impl',
         'websockets.legacy.client',
