@@ -117,17 +117,31 @@ jobs:
       - name: Final Build Assertions
         shell: pwsh
         run: |
-          if (Test-Path "dist\DGM-MAT.exe") {
-            Write-Host "Executable verified."
-          } else {
-            Write-Error "Executable missing"
+          if (-not (Test-Path "dist\DGM-MAT.exe")) {
             throw "Executable missing"
           }
+
+          $zip = "DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION.zip"
+          $checksum = "$zip.sha256"
+          if (-not (Test-Path $zip)) {
+            throw "Distribution ZIP missing: $zip"
+          }
+          if (-not (Test-Path $checksum)) {
+            throw "SHA-256 file missing: $checksum"
+          }
+          if ((Get-Item $zip).Length -le 0) {
+            throw "Distribution ZIP is empty"
+          }
+          if (-not (Select-String -Path $checksum -Pattern '^[0-9A-Fa-f]{64}$' -Quiet)) {
+            throw "SHA-256 file does not contain a valid digest"
+          }
+          Write-Host "Executable, ZIP and SHA-256 verified."
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: "DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION"
+          name: "DGM-MAT-Windows-${{ matrix.python-version }}-${{ env.VERSION }}"
           path: |
-            DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION.zip
-            DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION.zip.sha256
+            DGM-MAT-Windows-${{ matrix.python-version }}-${{ env.VERSION }}.zip
+            DGM-MAT-Windows-${{ matrix.python-version }}-${{ env.VERSION }}.zip.sha256
+          if-no-files-found: error
