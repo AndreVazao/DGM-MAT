@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import sys
 from threading import Thread
 from pathlib import Path
 from typing import Sequence
@@ -255,9 +256,23 @@ class WorktreeRuntime:
                 pass
             else:
                 raise ValueError("Command is not present in the bounded validation catalogue.")
-            environment = os.environ.copy()
+            # Validation code must not inherit provider/API credentials from the
+            # DGM-MAT process. Keep only OS/runtime variables required to launch
+            # the pinned interpreter and temporary files.
+            safe_environment_names = {
+                "PATH", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "TMPDIR",
+                "PATHEXT", "COMSPEC", "HOME", "USERPROFILE", "APPDATA",
+                "LOCALAPPDATA", "PROGRAMDATA", "CI",
+            }
+            environment = {
+                key: value
+                for key, value in os.environ.items()
+                if key.upper() in safe_environment_names
+            }
             environment["PYTHONDONTWRITEBYTECODE"] = "1"
-            execution_argv = ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", argv[4]]
+            execution_argv = [
+                sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", argv[4]
+            ]
             return self._run_bounded(execution_argv, target, environment)
         except Exception as exc:
             dgm_logger.error(f"WorktreeRuntime: Validation command refused or failed: {exc}")

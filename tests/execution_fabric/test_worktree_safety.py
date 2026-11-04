@@ -184,3 +184,32 @@ def test_cleanup_preserves_ignored_worktree_data_for_recovery(tmp_path):
     assert runtime.cleanup_sandbox("mission_ignored") is False
     assert sandbox.exists()
     assert ignored_file.read_text(encoding="utf-8") == "recoverable local data"
+
+
+def test_validation_runner_does_not_inherit_secret_environment(tmp_path, monkeypatch):
+    repo = _repository(tmp_path / "repo")
+    tests = repo / "tests"
+    tests.mkdir()
+    (tests / "test_environment.py").write_text(
+        """import os
+def test_secret_not_inherited():
+    assert 'DGM_TEST_SECRET' not in os.environ
+""",
+        encoding="utf-8",
+    )
+    _git(repo, "add", "tests")
+    _git(repo, "commit", "-m", "add validation environment test")
+    monkeypatch.setenv("DGM_TEST_SECRET", "must-not-leak-to-validation")
+    runtime = WorktreeRuntime(tmp_path / "worktrees", repo_path=repo)
+    sandbox = runtime.create_sandbox("mission_env")
+    assert sandbox is not None
+
+    result = runtime.execute_in_worktree(
+        "dgm-sandbox-mission_env",
+        ["python", "-m", "pytest", "-q", "tests/test_environment.py"],
+    )
+
+    assert result is not None
+    assert result.returncode == 0
+    assert "1 passed" in result.stdout
+    assert runtime.cleanup_sandbox("mission_env") is True

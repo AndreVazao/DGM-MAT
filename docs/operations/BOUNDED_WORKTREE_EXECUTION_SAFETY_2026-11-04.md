@@ -18,6 +18,7 @@ Repair the existing development execution primitives before any integration with
 - Validation commands are a fixed catalogue: pytest against one explicit Python file below `tests/`. The runner disables bytecode and pytest cache writes to keep successful worktrees clean; compile checks remain in CI.
 - Arbitrary shell strings, `python -c`, pip, and unlisted executables are rejected.
 - Commands use `shell=False`, explicit working directory, timeout and streamed per-channel output caps.
+- Validation uses the current Python interpreter and a minimal OS-only environment; provider/API credentials and arbitrary parent-process environment variables are not inherited.
 - `IsolatedRuntime` is now only a compatibility adapter over this catalogue; it has no temporary-directory fallback and cannot run arbitrary argument lists.
 
 ## Patch application boundary
