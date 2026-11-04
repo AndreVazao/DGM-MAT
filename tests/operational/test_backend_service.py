@@ -60,3 +60,32 @@ def test_full_runtime_refuses_to_start_beside_api_only_process(capsys):
                 assert backend_service.start("127.0.0.1", 8181, mode="full") == 2
     popen.assert_not_called()
     assert "No second process was started" in capsys.readouterr().out
+
+
+def test_full_runtime_command_prefers_installed_frozen_executable(monkeypatch, tmp_path):
+    executable = tmp_path / "installed" / "DGM-MAT.exe"
+    executable.parent.mkdir(parents=True)
+    executable.write_bytes(b"frozen-runtime")
+    monkeypatch.setattr(backend_service, "PROJECT_ROOT", tmp_path)
+
+    assert backend_service._command_for_mode("full", "127.0.0.1", 8181) == [
+        str(executable), "--headless"
+    ]
+
+
+def test_full_runtime_identity_accepts_only_installed_frozen_executable(monkeypatch, tmp_path):
+    executable = tmp_path / "installed" / "DGM-MAT.exe"
+    executable.parent.mkdir(parents=True)
+    executable.write_bytes(b"frozen-runtime")
+    monkeypatch.setattr(backend_service, "PROJECT_ROOT", tmp_path)
+    process = MagicMock()
+    process.is_running.return_value = True
+    process.cmdline.return_value = [str(executable), "--headless"]
+    process.exe.return_value = str(executable)
+
+    with patch("psutil.Process", return_value=process):
+        assert backend_service._pid_is_full_runtime(12345) is True
+
+    process.exe.return_value = str(tmp_path / "other.exe")
+    with patch("psutil.Process", return_value=process):
+        assert backend_service._pid_is_full_runtime(12345) is False

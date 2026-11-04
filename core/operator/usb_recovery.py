@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from core.runtime.repository_root import resolve_repository_root
+
 PACKAGE_ID = "com.andrevazao.dgmmatmobile"
 ADB_TIMEOUT_SECONDS = 12
 
@@ -168,7 +170,7 @@ class UsbRecoveryService:
             candidates = []
             if os.getenv("DGM_MOBILE_APK_PATH"):
                 candidates.append(Path(os.environ["DGM_MOBILE_APK_PATH"]))
-            root = Path(__file__).resolve().parents[2]
+            root = resolve_repository_root(__file__)
             candidates.extend([
                 root.parent / "DGM-MAT-Mobile" / "android" / "app" / "build" / "outputs" / "apk" / "debug" / "app-debug.apk",
                 root / "artifacts" / "DGM-MAT-Mobile-debug.apk",

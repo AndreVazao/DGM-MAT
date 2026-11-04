@@ -12,6 +12,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from core.runtime.repository_root import resolve_repository_root
+
 
 _STOP_WORDS = {
     "the", "and", "for", "with", "from", "that", "this", "have", "has",
@@ -42,7 +44,7 @@ class LocalMissionResearch:
         max_seconds: float = 2.0,
         max_results: int = 8,
     ) -> None:
-        self.root = Path(root).resolve() if root is not None else Path(__file__).resolve().parents[2]
+        self.root = Path(root).resolve() if root is not None else resolve_repository_root(__file__)
         self.max_files = max(1, min(int(max_files), 1000))
         self.max_seconds = max(0.1, min(float(max_seconds), 10.0))
         self.max_results = max(1, min(int(max_results), 20))

@@ -8,6 +8,7 @@ from typing import Any
 
 from core.observability.logger import dgm_logger
 from core.repository_intelligence.portfolio_auditor import RepositoryAuditEngine
+from core.runtime.repository_root import resolve_repository_root
 
 
 @dataclass
@@ -32,7 +33,7 @@ class SelfRepairEngine:
     """
 
     def __init__(self, repo_root: Path | str | None = None):
-        self.repo_root = Path(repo_root or Path(__file__).resolve().parents[2])
+        self.repo_root = Path(repo_root).resolve() if repo_root is not None else resolve_repository_root(__file__)
         self.auditor = RepositoryAuditEngine(self.repo_root.parent)
 
     def diagnose(self) -> dict[str, Any]:

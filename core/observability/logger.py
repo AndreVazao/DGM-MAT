@@ -2,6 +2,7 @@ from loguru import logger
 import sys
 import os
 from pathlib import Path
+from core.runtime.repository_root import resolve_repository_root
 
 # Remove default handler
 logger.remove()
@@ -24,7 +25,7 @@ try:
     if configured_log_dir:
         log_dir = Path(configured_log_dir)
     else:
-        project_root = Path(__file__).parent.parent.parent
+        project_root = resolve_repository_root(__file__)
         log_dir = project_root / "storage" / "runtime" / "logs"
 
     log_dir.mkdir(parents=True, exist_ok=True)
