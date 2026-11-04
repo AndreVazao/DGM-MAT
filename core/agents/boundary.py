@@ -14,6 +14,18 @@ def _agents_src() -> Path:
 
 
 def _ensure_agents_importable() -> None:
+    # PyInstaller bundles the standalone package as importable modules. Do not
+    # look for the developer checkout beside the frozen executable: that path
+    # does not exist on clean user machines and PyInstaller extracts to _MEIPASS.
+    if getattr(sys, "frozen", False):
+        try:
+            import dgm_mat_agents  # noqa: F401
+        except ImportError as exc:
+            raise RuntimeError(
+                "The frozen DGM-MAT build does not contain DGM-MAT-Agents."
+            ) from exc
+        return
+
     src = _agents_src()
     if not src.exists():
         raise RuntimeError(f"DGM-MAT-Agents source not found: {src}")
