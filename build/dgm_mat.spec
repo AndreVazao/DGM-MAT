@@ -1,10 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+
 block_cipher = None
+contracts_src = os.path.abspath(os.path.join(SPECPATH, '..', 'DGM-Contracts', 'src'))
 
 a = Analysis(
     ['../main.py'],
-    pathex=[],
+    pathex=[contracts_src],
     binaries=[],
     datas=[
         ('../cockpit/styles/*.qss', 'cockpit/styles'),
@@ -15,6 +18,9 @@ a = Analysis(
     ],
     hiddenimports=[
         'pydantic.deprecated.decorator',
+        'dgm_contracts',
+        'dgm_contracts.models',
+        'dgm_contracts.agent_services',
         'uvicorn.protocols.http.httptools_impl',
         'uvicorn.protocols.websockets.websockets_impl',
         'websockets.legacy.client',
