@@ -40,7 +40,7 @@ def test_checkpoint_status_survives_a_truncated_payload():
         "last_checkpoint_status": "COMPLETED",
         "last_checkpoint": {
             "truncated": True,
-            "preview": "{\\"status\\": \\"COMPLETED\\"",
+            "preview": "truncated payload",
         },
     }
 
