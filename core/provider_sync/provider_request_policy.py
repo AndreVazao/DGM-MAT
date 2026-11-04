@@ -124,7 +124,10 @@ class ProviderRequestPolicy:
         if not callable(reserve_quota):
             return deny("free_quota_reservation_unavailable", "provider cannot reserve free-tier quota safely")
         try:
-            reserved = reserve_quota()
+            if getattr(provider, "requires_governed_request_id", False) is True:
+                reserved = reserve_quota(request_id=request_id)
+            else:
+                reserved = reserve_quota()
         except Exception:
             return deny("free_quota_reservation_failed", "free-tier quota reservation failed closed")
         if reserved is not True:

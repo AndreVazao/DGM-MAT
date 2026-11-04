@@ -137,8 +137,17 @@ class GovernedProviderService:
 
         started = time.monotonic()
         try:
+            provider_messages = [
+                {"role": message["role"], "content": message["content"]}
+                for message in messages
+            ]
+            chat_kwargs = (
+                {"request_id": request_id}
+                if getattr(provider, "requires_governed_request_id", False) is True
+                else {}
+            )
             response = await asyncio.wait_for(
-                provider.chat([{"role": message["role"], "content": message["content"]} for message in messages]),
+                provider.chat(provider_messages, **chat_kwargs),
                 timeout=self._timeout_seconds,
             )
         except asyncio.TimeoutError:

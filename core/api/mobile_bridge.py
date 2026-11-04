@@ -88,6 +88,7 @@ def get_mobile_status():
         "storage": "local-durable",
         "tailscale": tailscale,
         "ollama": _ollama_status(),
+        "governed_chat": service.governed_chat_status(),
         "source_of_truth": "authorized-dgm-mat-pc",
     }
 
@@ -145,6 +146,8 @@ def mobile_capabilities():
             "thread-history",
             "rename-conversation",
             "intent-understanding",
+            "governed-free-provider-chat-opt-in",
+            "mission-status-follow-up",
             "durable-local-history",
             "tailscale-direct",
             "vercel-discovery",
