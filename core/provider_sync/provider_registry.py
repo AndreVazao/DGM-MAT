@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Dict, List, Optional
 from core.storage.storage_manager import storage_manager
 from core.observability.logger import dgm_logger
@@ -16,7 +17,7 @@ class ProviderRegistry:
         self._providers: Dict[str, ProviderBase] = {}
         self.config_file = "provider_configs.json"
         self.priority_order = [
-            "ollama", "chatgpt", "grok", "gemini", "deepseek", "qwen", "claude",
+            "ollama", "nvidia_nim", "chatgpt", "grok", "gemini", "deepseek", "qwen", "claude",
             "poisongpt", "z"
         ]
 
@@ -83,9 +84,13 @@ provider_registry = ProviderRegistry()
 def initialize_default_providers():
     """
     Register trusted local inference explicitly; never import provider code from disk.
-    Cloud providers remain unregistered unless a separately governed adapter is added.
+    FCC NVIDIA NIM is opt-in and remains unavailable until its security checks pass.
     """
     if provider_registry.get_provider("ollama") is None:
         from core.providers.local.ollama_adapter import OllamaProvider
         provider_registry.register("ollama", OllamaProvider())
+    if os.getenv("DGM_FCC_NVIDIA_ENABLED", "0").strip() == "1":
+        if provider_registry.get_provider("nvidia_nim") is None:
+            from core.providers.remote.fcc_nvidia_provider import FccNvidiaProvider
+            provider_registry.register("nvidia_nim", FccNvidiaProvider())
     provider_registry.load_configs()
