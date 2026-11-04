@@ -7,6 +7,7 @@ symlinked directories. A SQLite ledger makes progress resumable across restarts.
 from __future__ import annotations
 
 import hashlib
+import heapq
 import json
 import os
 import re
@@ -42,6 +43,19 @@ MANIFESTS = (
     "build.gradle", "build.gradle.kts", "CMakeLists.txt", "platformio.ini",
     "*.csproj", "*.sln", "*.kicad_pro", "*.ino",
 )
+TREE_MAX_ENTRIES = 4000
+TREE_MAX_DEPTH = 12
+TREE_SKIP_NAMES = {
+    ".env", ".secrets", "secrets", "credentials", ".ssh", ".aws",
+    ".dgm-mat", "dgm-mat-full-mirror",
+}
+TREE_SECRET_FILE_PATTERNS = (
+    re.compile(r"(?i)^\.env(?:\..*)?$"),
+    re.compile(r"(?i).*(?:secret|credential|password|token).*\.(?:json|ya?ml|toml|ini|txt)$"),
+    re.compile(r"(?i).+\.(?:pem|key|p12|pfx|keystore|jks)$"),
+    re.compile(r"(?i)^(?:id_rsa|id_ed25519)(?:\.pub)?$"),
+    re.compile(r"(?i).*\.tfstate(?:\.backup)?$"),
+)
 _SECRET_PATTERNS = (
     re.compile(r"(?i)(api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret)\s*[:=]\s*[^\s,;]{6,}"),
     re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b"),
@@ -75,6 +89,17 @@ def _safe_origin(value: str) -> str:
         return _redact(value, 240)
     return _redact(f"{host}/{path.lstrip('/').removesuffix('.git')}", 240)
 
+def _specific_origin_key(value: str) -> str | None:
+    """Return a grouping key only when an origin identifies a repository.
+
+    Host-only and owner/group-only remotes are too broad to prove that two
+    checkouts are the same project. Require at least host/owner/repository.
+    """
+    parts = [part.casefold() for part in value.strip().strip("/").split("/") if part]
+    if len(parts) < 3:
+        return None
+    return "/".join(parts)
+
 
 class RepositoryLearningService:
     """Incrementally inventory repositories and skip unchanged snapshots."""
@@ -92,6 +117,12 @@ class RepositoryLearningService:
         base = Path(storage_dir) if storage_dir else storage_manager.get_path("cognition") / "repository_learning"
         base.mkdir(parents=True, exist_ok=True)
         self.database_path = base / "repository_learning.sqlite3"
+        configured_tree_dir = os.getenv("DGM_REPOSITORY_TREE_DIR", "").strip()
+        self.tree_dir = (
+            Path(configured_tree_dir).expanduser().resolve()
+            if configured_tree_dir else base / "trees"
+        )
+        self.tree_dir.mkdir(parents=True, exist_ok=True)
         configured = os.getenv("DGM_REPO_SCAN_ROOTS", "")
         selected = list(roots) if roots is not None else list(DEFAULT_ROOTS)
         if roots is None:
@@ -111,7 +142,11 @@ class RepositoryLearningService:
         self.batch_size = max(1, min(int(batch_size), 25))
         self.max_depth = max(1, min(int(max_depth), 8))
         self.refresh_seconds = max(60, min(int(refresh_seconds), 86400))
-        self.command_timeout = max(1.0, min(float(command_timeout), 10.0))
+        try:
+            configured_timeout = float(os.getenv("DGM_REPOSITORY_LEARNING_COMMAND_TIMEOUT", str(command_timeout)))
+        except (TypeError, ValueError):
+            configured_timeout = float(command_timeout)
+        self.command_timeout = max(1.0, min(configured_timeout, 10.0))
         self._lock = threading.RLock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -155,6 +190,15 @@ class RepositoryLearningService:
                     ON repositories(root, name);
                 CREATE INDEX IF NOT EXISTS ix_repository_learning_status
                     ON repositories(scan_status, protected);
+                CREATE TABLE IF NOT EXISTS repository_artifacts (
+                    repo_path TEXT PRIMARY KEY,
+                    tree_path TEXT NOT NULL,
+                    tree_sha256 TEXT NOT NULL,
+                    entry_count INTEGER NOT NULL DEFAULT 0,
+                    truncated INTEGER NOT NULL DEFAULT 0,
+                    generated_at TEXT NOT NULL,
+                    tree_error TEXT
+                );
                 CREATE TABLE IF NOT EXISTS learning_runs (
                     run_id TEXT PRIMARY KEY,
                     started_at TEXT NOT NULL,
@@ -274,18 +318,174 @@ class RepositoryLearningService:
                 break
         return _redact(" ".join(lines), 800) or "README contains no summary text."
 
+    def _tree_artifact_path(self, path: Path) -> Path:
+        identity = hashlib.sha256(str(path.resolve()).casefold().encode("utf-8")).hexdigest()[:10]
+        slug = re.sub(r"[^A-Za-z0-9._-]+", "-", path.name).strip("-.")[:64] or "repository"
+        return self.tree_dir / f"{slug}-{identity}.tree.txt"
+
+    @staticmethod
+    def _skip_tree_file(name: str) -> bool:
+        folded = name.casefold()
+        if folded in TREE_SKIP_NAMES:
+            return True
+        return any(pattern.fullmatch(name) for pattern in TREE_SECRET_FILE_PATTERNS)
+
+    def _write_tree(self, path: Path) -> dict[str, Any]:
+        """Write a bounded path-only tree outside the source repository."""
+        destination = self._tree_artifact_path(path)
+        lines = [
+            "# DGM-MAT repository tree",
+            f"Repository: {path.name}",
+            f"Source: {path}",
+            f"Generated: {_now()}",
+            "Contents: paths only; no file contents are read",
+            ".",
+        ]
+        entry_count = 0
+        truncated = False
+
+        def collect_visible(folder: Path, limit: int) -> tuple[list[tuple[str, str, str, bool]], bool]:
+            """Collect at most limit+1 sorted entries, even for huge directories."""
+            unreadable = False
+
+            def candidates():
+                nonlocal unreadable
+                try:
+                    with os.scandir(folder) as scanner:
+                        for entry in scanner:
+                            name = entry.name
+                            if name.casefold() in SKIP_DIRS or name.casefold() in TREE_SKIP_NAMES:
+                                continue
+                            if path.name.casefold() == "dgm-mat" and folder == path and name.casefold() == "storage":
+                                continue
+                            if self._skip_tree_file(name):
+                                continue
+                            try:
+                                if entry.is_symlink():
+                                    continue
+                                is_dir = entry.is_dir(follow_symlinks=False)
+                            except OSError:
+                                continue
+                            yield (name.casefold(), name, entry.path, is_dir)
+                except OSError:
+                    unreadable = True
+
+            # nsmallest keeps memory bounded by the remaining tree budget + 1.
+            return heapq.nsmallest(max(1, limit + 1), candidates()), unreadable
+
+        def visit(folder: Path, prefix: str, depth: int) -> None:
+            nonlocal entry_count, truncated
+            if truncated:
+                return
+            if depth >= TREE_MAX_DEPTH:
+                remaining, unreadable = collect_visible(folder, 0)
+                if unreadable:
+                    lines.append(prefix + "[directory unreadable]")
+                if remaining:
+                    truncated = True
+                return
+
+            remaining_budget = max(0, TREE_MAX_ENTRIES - entry_count)
+            visible, unreadable = collect_visible(folder, remaining_budget)
+            if unreadable:
+                lines.append(prefix + "[directory unreadable]")
+            has_more = len(visible) > remaining_budget
+            visible = visible[:remaining_budget]
+
+            for index, (_, name, entry_path, is_dir) in enumerate(visible):
+                is_last = index == len(visible) - 1 and not has_more
+                connector = "└── " if is_last else "├── "
+                lines.append(prefix + connector + name + ("/" if is_dir else ""))
+                entry_count += 1
+                if is_dir:
+                    child_prefix = prefix + ("    " if is_last else "│   ")
+                    visit(Path(entry_path), child_prefix, depth + 1)
+                    if truncated:
+                        return
+
+            if has_more:
+                truncated = True
+
+        visit(path, "", 0)
+        if truncated:
+            lines.append("... [truncated: entry limit or maximum depth reached]")
+        content = "\n".join(lines) + "\n"
+        temporary = destination.with_suffix(destination.suffix + ".tmp")
+        temporary.write_text(content, encoding="utf-8")
+        temporary.replace(destination)
+        digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        generated_at = _now()
+        with self._connection() as db:
+            db.execute(
+                """
+                INSERT INTO repository_artifacts(
+                    repo_path, tree_path, tree_sha256, entry_count, truncated, generated_at, tree_error
+                ) VALUES (?, ?, ?, ?, ?, ?, NULL)
+                ON CONFLICT(repo_path) DO UPDATE SET
+                    tree_path=excluded.tree_path, tree_sha256=excluded.tree_sha256,
+                    entry_count=excluded.entry_count, truncated=excluded.truncated,
+                    generated_at=excluded.generated_at, tree_error=NULL
+                """,
+                (str(path), str(destination), digest, entry_count, int(truncated), generated_at),
+            )
+            db.commit()
+        return {
+            "tree_path": str(destination),
+            "tree_sha256": digest,
+            "tree_entries": entry_count,
+            "tree_truncated": truncated,
+            "tree_generated_at": generated_at,
+            "tree_error": None,
+        }
+
+    def _ensure_tree(self, path: Path, *, protected: bool, force: bool = False) -> None:
+        if protected:
+            return
+        with self._connection() as db:
+            row = db.execute(
+                "SELECT tree_path FROM repository_artifacts WHERE repo_path=?",
+                (str(path),),
+            ).fetchone()
+        if not force and row and Path(row["tree_path"]).is_file():
+            return
+        self._write_tree(path)
+
+    def _record_tree_error(self, path: Path, error: Exception) -> None:
+        destination = self._tree_artifact_path(path)
+        with self._connection() as db:
+            db.execute(
+                """
+                INSERT INTO repository_artifacts(
+                    repo_path, tree_path, tree_sha256, entry_count, truncated, generated_at, tree_error
+                ) VALUES (?, ?, '', 0, 0, ?, ?)
+                ON CONFLICT(repo_path) DO UPDATE SET
+                    tree_path=excluded.tree_path, tree_error=excluded.tree_error,
+                    generated_at=excluded.generated_at
+                """,
+                (str(path), str(destination), _now(), type(error).__name__),
+            )
+            db.commit()
+
     def _inspect(self, item: dict[str, str]) -> dict[str, Any]:
         path = Path(item["path"])
         protected = self._is_protected(path)
         branch = self._git(path, "branch", "--show-current") or "detached"
-        head = self._git(path, "rev-parse", "--short=12", "HEAD") or "unknown"
-        dirty = bool(self._git(path, "status", "--porcelain=v1", "-uno"))
+        status_output = self._git(path, "status", "--porcelain=v1", "-uno")
+        dirty = bool(status_output)
+        try:
+            head = self._git(path, "rev-parse", "--short=12", "HEAD") or "unknown"
+        except RuntimeError:
+            # A newly initialized repository has a symbolic branch but no commit yet.
+            # Git status succeeds in this state; represent it as an unborn branch.
+            if branch != "detached":
+                head = "unborn"
+            else:
+                raise
         try:
             origin = _safe_origin(self._git(path, "remote", "get-url", "origin"))
         except (RuntimeError, subprocess.TimeoutExpired):
             origin = ""
         stack = self._manifest_stack(path)
-        summary = self._read_project_summary(path, protected)
         marker_times = []
         for name in ("README.md", "README.rst", "README.txt", "readme.md", *MANIFESTS):
             for marker in path.glob(name):
@@ -309,7 +509,7 @@ class RepositoryLearningService:
             "origin": origin,
             "protected": protected,
             "stack": stack,
-            "summary": summary,
+            "summary": None,
             "fingerprint": fingerprint,
             "scan_status": "protected_metadata_only" if protected else "learned",
             "scan_error": None,
@@ -379,6 +579,18 @@ class RepositoryLearningService:
                         (inspected["path"],),
                     ).fetchone()
                     unchanged = bool(previous and previous["fingerprint"] == inspected["fingerprint"])
+                    if not unchanged:
+                        inspected["summary"] = self._read_project_summary(
+                            Path(inspected["path"]), bool(inspected["protected"])
+                        )
+                    try:
+                        self._ensure_tree(
+                            Path(inspected["path"]),
+                            protected=bool(inspected["protected"]),
+                            force=not unchanged,
+                        )
+                    except (OSError, RuntimeError, ValueError) as tree_exc:
+                        self._record_tree_error(Path(inspected["path"]), tree_exc)
                     timestamp = _now()
                     if unchanged:
                         db.execute(
@@ -430,6 +642,11 @@ class RepositoryLearningService:
                     ))
                     state["errors_this_cycle"] = int(state.get("errors_this_cycle", 0)) + 1
                     state["last_path"] = path_text
+                    error_code = str(exc)[:120] if isinstance(exc, RuntimeError) else type(exc).__name__
+                    db.execute(
+                        "UPDATE repositories SET scan_error=? WHERE path=?",
+                        (error_code, path_text),
+                    )
                 state["cursor_index"] = index + 1
                 processed += 1
                 self._write_state(db, state)
@@ -514,9 +731,14 @@ class RepositoryLearningService:
         limit = max(1, min(int(limit), 200))
         with self._connection() as db:
             rows = db.execute("""
-                SELECT path, root, name, branch, head_sha, dirty, origin, protected,
-                       stack_json, summary, scan_status, scan_error, last_seen_at, scan_count
-                FROM repositories ORDER BY path COLLATE NOCASE LIMIT ?
+                SELECT r.path, r.root, r.name, r.branch, r.head_sha, r.dirty, r.origin, r.protected,
+                       r.stack_json, r.summary, r.scan_status, r.scan_error, r.last_seen_at, r.scan_count,
+                       a.tree_path, a.tree_sha256, a.entry_count AS tree_entries,
+                       a.truncated AS tree_truncated, a.generated_at AS tree_generated_at,
+                       a.tree_error
+                FROM repositories AS r
+                LEFT JOIN repository_artifacts AS a ON a.repo_path=r.path
+                ORDER BY r.path COLLATE NOCASE LIMIT ?
             """, (limit,)).fetchall()
         results = []
         for row in rows:
@@ -532,8 +754,81 @@ class RepositoryLearningService:
                 "summary": row["summary"], "scan_status": row["scan_status"],
                 "scan_error": row["scan_error"], "last_seen_at": row["last_seen_at"],
                 "scan_count": row["scan_count"],
+                "tree_path": row["tree_path"], "tree_sha256": row["tree_sha256"],
+                "tree_entries": row["tree_entries"],
+                "tree_truncated": bool(row["tree_truncated"]) if row["tree_truncated"] is not None else False,
+                "tree_generated_at": row["tree_generated_at"], "tree_error": row["tree_error"],
+                "project_group": None,
+                "project_group_id": None,
+                "project_group_basis": "awaiting_relationship_evidence",
+                "project_group_confidence": 0.0,
             })
+
+        origin_members: dict[str, list[dict[str, Any]]] = {}
+        parent_members: dict[str, list[dict[str, Any]]] = {}
+        for item in results:
+            origin_key = _specific_origin_key(str(item["origin"] or ""))
+            if origin_key:
+                origin_members.setdefault(origin_key, []).append(item)
+            parent_path = Path(item["path"]).parent
+            parent = str(parent_path).casefold()
+            root_path = str(Path(item["root"])).casefold()
+            if parent != root_path and parent_path.name.casefold() not in {
+                "_worktrees", "worktrees", "repos", "repositories", "clones", "archive", "archives"
+            }:
+                parent_members.setdefault(parent, []).append(item)
+
+        for members in origin_members.values():
+            if len(members) > 1:
+                label = Path(members[0]["path"]).name
+                for item in members:
+                    item["project_group"] = label
+                    item["project_group_id"] = f"origin:{_specific_origin_key(str(item['origin']))}"
+                    item["project_group_basis"] = "same_git_origin"
+                    item["project_group_confidence"] = 0.99
+
+        for members in parent_members.values():
+            if len(members) > 1:
+                label = Path(members[0]["path"]).parent.name
+                for item in members:
+                    if item["project_group"] is None:
+                        item["project_group"] = label
+                        item["project_group_id"] = f"folder:{str(Path(item['path']).parent).casefold()}"
+                        item["project_group_basis"] = "shared_parent_folder"
+                        item["project_group_confidence"] = 0.85
+
+        for item in results:
+            if item["project_group"] is None:
+                item["project_group"] = item["name"]
+                item["project_group_id"] = f"repo:{item['path'].casefold()}"
+                item["project_group_basis"] = "single_repository_pending_semantic_review"
+                item["project_group_confidence"] = 0.25
         return results
+
+    def read_tree(self, repo_path: str, *, max_bytes: int = 2_000_000) -> dict[str, Any]:
+        """Read only a tree artifact already indexed for a known repository."""
+        with self._connection() as db:
+            row = db.execute(
+                "SELECT tree_path, tree_sha256, tree_error FROM repository_artifacts WHERE repo_path=?",
+                (str(Path(repo_path).resolve()),),
+            ).fetchone()
+        if row is None or not row["tree_path"]:
+            raise KeyError("repository_tree_not_found")
+        if row["tree_error"]:
+            raise ValueError("repository_tree_generation_failed")
+        artifact = Path(row["tree_path"]).resolve()
+        if not artifact.is_relative_to(self.tree_dir.resolve()):
+            raise ValueError("repository_tree_path_outside_artifact_directory")
+        if not artifact.is_file():
+            raise FileNotFoundError("repository_tree_artifact_missing")
+        if artifact.stat().st_size > max(1, int(max_bytes)):
+            raise ValueError("repository_tree_artifact_too_large")
+        return {
+            "repo_path": str(Path(repo_path).resolve()),
+            "tree_path": str(artifact),
+            "tree_sha256": row["tree_sha256"],
+            "content": artifact.read_text(encoding="utf-8"),
+        }
 
     def run_once(self) -> dict[str, Any]:
         """Complete the current inventory cycle, resuming its durable cursor."""
