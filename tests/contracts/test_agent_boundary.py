@@ -19,3 +19,19 @@ def test_core_boundary_agents_handle_contract_event():
     agents = create_runtime_agents()
     agents["repo"].handle_event(event())
     assert agents["repo"].health == "healthy"
+
+
+def test_frozen_agent_boundary_uses_bundled_package(monkeypatch):
+    import sys
+    import types
+    import core.agents.boundary as boundary
+
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setitem(sys.modules, "dgm_mat_agents", types.ModuleType("dgm_mat_agents"))
+    monkeypatch.setattr(
+        boundary,
+        "_agents_src",
+        lambda: (_ for _ in ()).throw(AssertionError("frozen builds must not require a checkout")),
+    )
+
+    boundary._ensure_agents_importable()
