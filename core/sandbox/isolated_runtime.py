@@ -1,72 +1,52 @@
-import subprocess
-import os
-import signal
-import sys
-import tempfile
-from typing import Dict, Any, Optional, List
+"""Fail-closed adapter over the bounded Git worktree validation runtime."""
+from __future__ import annotations
+
 from pathlib import Path
-from core.observability.logger import dgm_logger
+from typing import Any, Sequence
+
 from core.execution_fabric.worktree_runtime import WorktreeRuntime
-from core.sandbox.execution_limits import ExecutionLimits
+
 
 class IsolatedRuntime:
-    """Provides secure and isolated execution environments for autonomous tasks."""
-    def __init__(self):
-        self.worktree_runtime = WorktreeRuntime()
-        self.limits = ExecutionLimits()
-        self.active_processes: Dict[str, subprocess.Popen] = {}
+    """Compatibility adapter; this is Git isolation, not OS process sandboxing."""
+
+    def __init__(self, worktree_runtime: WorktreeRuntime | None = None):
+        self.worktree_runtime = worktree_runtime or WorktreeRuntime()
+        self.active_processes: dict[str, Any] = {}
 
     def create_sandbox(self, task_id: str) -> str:
-        dgm_logger.info(f"IsolatedRuntime: Creating sandbox for task {task_id}")
-        worktree_path = self.worktree_runtime.create_worktree(f"sandbox_{task_id}")
-        if worktree_path:
-            return str(worktree_path)
+        worktree_path = self.worktree_runtime.create_sandbox(task_id)
+        if worktree_path is None:
+            raise RuntimeError("Unable to create a registered isolated Git worktree; no temporary-directory fallback is allowed.")
+        return str(worktree_path)
 
-        # Fallback to system temp directory (Phase 39 Bandit Fix)
-        temp_dir = tempfile.gettempdir()
-        fallback_path = os.path.join(temp_dir, f"dgm_sandbox_{task_id}")
-        os.makedirs(fallback_path, exist_ok=True)
-        return fallback_path
-
-    def run_safe(self, sandbox_path: str, command: List[str], task_id: str) -> Dict[str, Any]:
-        """Executes a command safely using list-based subprocess."""
-        dgm_logger.info(f"IsolatedRuntime: Executing in {sandbox_path}")
+    def run_safe(self, sandbox_path: str, command: Sequence[str], task_id: str) -> dict[str, Any]:
+        """Delegate only fixed validation commands to WorktreeRuntime."""
+        if not isinstance(task_id, str):
+            return {"status": "rejected", "error": "Invalid task ID."}
+        branch_name = f"dgm-sandbox-{task_id}"
         try:
-            kwargs = {}
-            if sys.platform != "win32":
-                kwargs["preexec_fn"] = os.setsid
+            expected = self.worktree_runtime._target_for(branch_name)
+            supplied = Path(sandbox_path).expanduser().resolve()
+            if not supplied.exists() or not supplied.samefile(expected):
+                return {"status": "rejected", "error": "Sandbox path does not match the registered task worktree."}
+        except (OSError, ValueError):
+            return {"status": "rejected", "error": "Sandbox path is invalid or not registered."}
 
-            process = subprocess.Popen(
-                command,
-                shell=False,
-                cwd=sandbox_path,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                **kwargs
-            )
-            self.active_processes[task_id] = process
-            stdout, stderr = process.communicate(timeout=300)
-            status = "success" if process.returncode == 0 else "failed"
-            return {"status": status, "exit_code": process.returncode, "stdout": stdout, "stderr": stderr}
-        except subprocess.TimeoutExpired:
-            self.terminate_task(task_id)
-            return {"status": "timeout", "error": "Execution exceeded limit."}
-        except Exception as e:
-            return {"status": "error", "error": str(e)}
-        finally:
-            if task_id in self.active_processes:
-                del self.active_processes[task_id]
+        result = self.worktree_runtime.execute_in_worktree(branch_name, command)
+        if result is None:
+            return {"status": "rejected", "error": "Command is outside the bounded validation catalogue or the worktree is unavailable."}
+        status = "timeout" if result.returncode == 124 else "success" if result.returncode == 0 else "failed"
+        return {
+            "status": status,
+            "exit_code": result.returncode,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        }
 
-    def terminate_task(self, task_id: str):
-        if task_id in self.active_processes:
-            process = self.active_processes[task_id]
-            if sys.platform != "win32":
-                try:
-                    os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-                except Exception: pass
-            else:
-                process.terminate()
+    def terminate_task(self, task_id: str) -> bool:
+        # Validation currently runs synchronously; there is no detached process handle.
+        return False
 
-    def rollback_sandbox(self, task_id: str):
-        self.worktree_runtime.remove_worktree(f"sandbox_{task_id}")
+    def rollback_sandbox(self, task_id: str) -> bool:
+        return self.worktree_runtime.cleanup_sandbox(task_id)
