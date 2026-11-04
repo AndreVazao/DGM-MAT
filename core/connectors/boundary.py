@@ -20,6 +20,9 @@ def _ensure_connectors_importable() -> None:
     candidates: list[Path] = []
     if configured:
         candidates.append(Path(configured))
+    if getattr(sys, "frozen", False):
+        bundle_root = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+        candidates.append(bundle_root / "DGM-MAT-Connectors" / "src")
     candidates.append(Path(__file__).resolve().parents[3] / "DGM-MAT-Connectors" / "src")
 
     for candidate in candidates:

@@ -4,10 +4,12 @@ import os
 
 block_cipher = None
 contracts_src = os.path.abspath(os.path.join(SPECPATH, '..', 'DGM-Contracts', 'src'))
+agents_src = os.path.abspath(os.path.join(SPECPATH, '..', 'DGM-MAT-Agents', 'src'))
+connectors_src = os.path.abspath(os.path.join(SPECPATH, '..', 'DGM-MAT-Connectors', 'src'))
 
 a = Analysis(
     ['../main.py'],
-    pathex=[contracts_src],
+    pathex=[contracts_src, agents_src, connectors_src],
     binaries=[],
     datas=[
         ('../cockpit/styles/*.qss', 'cockpit/styles'),
@@ -15,6 +17,8 @@ a = Analysis(
         ('../health.json', '.'),
         ('../ecosystem.json', '.'),
         ('../architecture.md', '.'),
+        (agents_src, 'DGM-MAT-Agents/src'),
+        (connectors_src, 'DGM-MAT-Connectors/src'),
     ],
     hiddenimports=[
         'pydantic.deprecated.decorator',

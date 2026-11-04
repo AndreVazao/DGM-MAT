@@ -10,6 +10,11 @@ def _agents_src() -> Path:
     configured = os.getenv("DGM_AGENTS_PATH")
     if configured:
         return Path(configured).expanduser().resolve()
+    if getattr(sys, "frozen", False):
+        bundle_root = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+        bundled_src = bundle_root / "DGM-MAT-Agents" / "src"
+        if bundled_src.is_dir():
+            return bundled_src
     return Path(__file__).resolve().parents[3] / "DGM-MAT-Agents" / "src"
 
 
