@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Run one bounded, read-only mission against a local DGM-MAT runtime.
+"""Submit one bounded read-only mission through the PC-local DGM-MAT API.
 
-The script never prints or persists bootstrap/session bearer tokens. It submits
-exactly one fixed read-only mission and polls its durable checkpoint; it never
-auto-approves, retries, restarts the runtime, or changes host configuration.
+The script never prints or persists bearer tokens. It accepts only intents in
+the runtime's read-only auto-run allowlist, checks that the queue worker is live,
+and polls the durable checkpoint. It never calls an approval endpoint, retries,
+restarts the runtime, or changes host configuration.
 """
 from __future__ import annotations
 
@@ -15,11 +16,46 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from core.autonomy.mission_intent_router import classify_mission_intent
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 TERMINAL = {"COMPLETED", "FAILED", "CANCELLED"}
 LOOPBACK_NAMES = {"127.0.0.1", "localhost", "::1"}
+
+# Keep aligned with MissionEngine.AUTO_RUN_READ_ONLY_INTENTS. The runtime remains
+# the authority: the script additionally verifies that its new action was
+# actually auto-approved before it reports a dispatch.
+READ_ONLY_AUTO_RUN_INTENTS = frozenset({
+    "list_repositories",
+    "architecture_summary",
+    "repository_status",
+    "local_research",
+    "system_summary",
+    "engines_inventory",
+    "ollama_status",
+    "claude_status",
+})
+
+
+def validate_mission_goal(goal: str):
+    """Fail closed unless the goal maps to a supported read-only auto-run intent."""
+    decision = classify_mission_intent(goal)
+    if (
+        not decision.supported
+        or decision.requires_approval
+        or decision.intent not in READ_ONLY_AUTO_RUN_INTENTS
+    ):
+        raise ValueError(
+            "Mission goal is not in the read-only auto-run allowlist; "
+            "no mission will be submitted."
+        )
+    return decision
 
 
 def utc_now() -> str:
@@ -91,24 +127,40 @@ def safe_excerpt(value, limit: int = 16000):
     return {"truncated": True, "preview": encoded[:limit]}
 
 
+def mission_checkpoint_status(mission: dict) -> str:
+    """Return the explicit status even when the checkpoint payload is truncated."""
+    status = mission.get("last_checkpoint_status")
+    if isinstance(status, str) and status:
+        return status
+    checkpoint = mission.get("last_checkpoint")
+    if isinstance(checkpoint, dict) and isinstance(checkpoint.get("status"), str):
+        return checkpoint["status"]
+    return "checkpoint unavailable"
+
+
 def run(args: argparse.Namespace) -> tuple[int, dict]:
     report: dict = {
         "schema": "dgm-mat-live-mission-diagnostic.v1",
         "started_at": utc_now(),
         "finished_at": None,
         "base_url": args.base_url,
-        "test_scope": "single fixed read-only repository-listing mission",
+        "test_scope": "single read-only mission from the runtime auto-run allowlist",
+        "goal": args.goal,
         "overall": "BLOCKED",
         "checks": {},
         "mission": None,
         "notes": [
             "HTTP /health only proves that the API process responds.",
             "Mission creation is not mission completion.",
-            "No action is auto-approved by this diagnostic.",
+            "The client never calls an approval endpoint; only the runtime's read-only allowlist can auto-approve.",
+            "Unsupported or approval-required goals are rejected before mission creation.",
             "Bearer credentials are never written to this report.",
         ],
     }
     try:
+        intent_decision = validate_mission_goal(args.goal)
+        report["mission_intent"] = intent_decision.to_dict()
+
         base_url = validate_base_url(args.base_url)
         report["base_url"] = base_url
 
@@ -162,11 +214,26 @@ def run(args: argparse.Namespace) -> tuple[int, dict]:
         }
         if status != 200:
             raise RuntimeError("Authenticated runtime-health request failed; no mission was submitted.")
+        if not {"local-client", "operator"}.issubset(set(session_scopes)):
+            raise RuntimeError("Local session lacks the required operator scopes; no mission was submitted.")
 
-        goal = "Lista os repositórios locais"
+        status, telemetry = request_json(
+            base_url, "/runtime/office/telemetry", bearer=session_token,
+            timeout=args.request_timeout,
+        )
+        queue_health = telemetry.get("queue_worker", {}) if isinstance(telemetry, dict) else {}
+        worker_alive = queue_health.get("worker_alive") is True
+        report["checks"]["queue_worker"] = {
+            "http_status": status,
+            "passed": status == 200 and worker_alive,
+            "details": safe_excerpt(queue_health, 2000),
+        }
+        if not report["checks"]["queue_worker"]["passed"]:
+            raise RuntimeError("Mission queue worker is not confirmed alive; no mission was submitted.")
+
         status, created = request_json(
             base_url, "/runtime/missions", method="POST",
-            payload={"goal": goal, "description": "Diagnóstico read-only automatizado; não alterar ficheiros."},
+            payload={"goal": args.goal, "description": args.description},
             bearer=session_token, timeout=args.request_timeout,
         )
         report["checks"]["mission_submission"] = {
@@ -182,7 +249,8 @@ def run(args: argparse.Namespace) -> tuple[int, dict]:
         mission_id = created["mission_id"]
         report["mission"] = {
             "mission_id": mission_id,
-            "goal": goal,
+            "goal": args.goal,
+            "intent": intent_decision.to_dict(),
             "accepted_at": utc_now(),
             "initial_status": created.get("mission_status"),
             "initial_action_status": created.get("action_status"),
@@ -190,6 +258,14 @@ def run(args: argparse.Namespace) -> tuple[int, dict]:
             "poll_count": 0,
             "terminal": False,
         }
+        if created.get("action_status") not in {"APPROVED", "RUNNING", "COMPLETED"}:
+            report["overall"] = "BLOCKED"
+            report["mission"]["conclusion"] = (
+                "The runtime did not auto-approve this read-only mission. "
+                "No manual approval or retry was attempted."
+            )
+            return 2, report
+
         deadline = time.monotonic() + args.poll_timeout
         last_detail = None
         while time.monotonic() < deadline:
@@ -205,8 +281,9 @@ def run(args: argparse.Namespace) -> tuple[int, dict]:
                 }
                 break
             last_detail = detail
-            report["mission"]["last_checkpoint"] = safe_excerpt(detail, 16000)
             mission_status = detail.get("status")
+            report["mission"]["last_checkpoint_status"] = mission_status
+            report["mission"]["last_checkpoint"] = safe_excerpt(detail, 16000)
             if mission_status in TERMINAL:
                 report["mission"]["terminal"] = True
                 break
@@ -245,6 +322,10 @@ def run(args: argparse.Namespace) -> tuple[int, dict]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="http://127.0.0.1:8181")
+    parser.add_argument("--goal", default="Lista os repositórios locais",
+                        help="Mission goal; must match a supported read-only auto-run intent.")
+    parser.add_argument("--description", default="Diagnóstico read-only; não alterar ficheiros.",
+                        help="Bounded mission context; no credentials or private session data.")
     parser.add_argument("--poll-timeout", type=int, default=90)
     parser.add_argument("--poll-interval", type=float, default=2.0)
     parser.add_argument("--request-timeout", type=float, default=5.0)
@@ -266,8 +347,7 @@ def main() -> int:
     print(f"Overall: {report['overall']}")
     print(f"Report: {report_path}")
     if report.get("mission"):
-        checkpoint = report["mission"].get("last_checkpoint")
-        state = checkpoint.get("status") if isinstance(checkpoint, dict) else "checkpoint unavailable"
+        state = mission_checkpoint_status(report["mission"])
         print(f"Mission: {report['mission'].get('mission_id')} / {state}")
     if report.get("blocker"):
         print(f"Blocker: {report['blocker']}")
