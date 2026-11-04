@@ -93,3 +93,15 @@ installed\DGM-MAT.exe --cockpit-only
 ```
 
 Este modo abre apenas a interface de chat e liga-se ao backend já ativo em `127.0.0.1:8181`. Não inicia um segundo backend. Fechar a janela de chat não interrompe o serviço DGM-MAT. Se o backend estiver parado, a interface apresenta o erro de ligação sem declarar que a missão foi enviada.
+
+## Dependências incluídas no executável frozen
+
+A compilação Windows deve fixar e instalar as três dependências externas do runtime:
+
+- `DGM-Contracts`
+- `DGM-MAT-Agents`
+- `DGM-MAT-Connectors`
+
+O pacote `dgm_mat_connectors` é carregado dinamicamente pela fronteira de conectores; por isso, a especificação PyInstaller recolhe explicitamente os seus submódulos. A validação profunda falha rapidamente se o servidor API reportar um erro fatal de arranque, em vez de aguardar todo o período de tentativas de health-check.
+
+A memória temporal normaliza timestamps naive e timezone-aware para UTC durante comparações, evitando falhas de ingestão de eventos no arranque.
