@@ -82,19 +82,21 @@ def _is_loopback_host(host: str) -> bool:
 
 
 def _pid_is_full_runtime(pid: int) -> bool:
-    """Fail closed unless process metadata proves this is the headless full runtime."""
+    """Fail closed unless process metadata proves the managed headless runtime."""
     try:
         import psutil
         process = psutil.Process(pid)
         command_line = " ".join(process.cmdline()).casefold()
-        executable = process.exe().casefold()
-        return (
-            process.is_running()
-            and "main.py" in command_line
+        executable = str(Path(process.exe()).resolve()).casefold()
+        python_runtime = (
+            "main.py" in command_line
             and "--headless" in command_line
             and str(PROJECT_ROOT).casefold() in command_line
             and (executable.endswith("python.exe") or executable.endswith("pythonw.exe"))
         )
+        frozen_executable = str((PROJECT_ROOT / "installed" / "DGM-MAT.exe").resolve()).casefold()
+        frozen_runtime = executable == frozen_executable and "--headless" in command_line
+        return process.is_running() and (python_runtime or frozen_runtime)
     except Exception:
         return False
 
@@ -149,6 +151,9 @@ def _command_for_mode(mode: str, host: str, port: int) -> list[str]:
     if mode == "api":
         return [sys.executable, "-m", "uvicorn", "core.api.api_server:app", "--host", host, "--port", str(port), "--log-level", "info"]
     if mode == "full":
+        installed_executable = PROJECT_ROOT / "installed" / "DGM-MAT.exe"
+        if installed_executable.is_file():
+            return [str(installed_executable), "--headless"]
         return [sys.executable, str(PROJECT_ROOT / "main.py"), "--headless"]
     raise ValueError("mode must be 'api' or 'full'")
 
@@ -183,6 +188,14 @@ def start(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, mode: str = "api")
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     command = _command_for_mode(mode, host, port)
     creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
+    child_env = os.environ.copy()
+    child_env["DGM_REPOSITORY_ROOT"] = str(PROJECT_ROOT.resolve())
+    python_executable = Path(sys.executable)
+    if python_executable.name.casefold() == "pythonw.exe":
+        console_python = python_executable.with_name("python.exe")
+        if console_python.is_file():
+            python_executable = console_python
+    child_env["DGM_PYTHON_EXECUTABLE"] = str(python_executable.resolve())
     with LOG_FILE.open("a", encoding="utf-8", buffering=1) as log_handle:
         log_handle.write(
             f"\n[{datetime.now(timezone.utc).isoformat()}] START requested: "
@@ -191,6 +204,7 @@ def start(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, mode: str = "api")
         process = subprocess.Popen(
             command,
             cwd=str(PROJECT_ROOT),
+            env=child_env,
             stdin=subprocess.DEVNULL,
             stdout=log_handle,
             stderr=subprocess.STDOUT,

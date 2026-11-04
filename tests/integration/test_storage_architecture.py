@@ -76,6 +76,7 @@ def test_storage_manager_frozen_install_uses_persistent_project_vault(monkeypatc
     monkeypatch.delenv("DGM_STORAGE_PATH", raising=False)
     monkeypatch.delenv("DGM_BASE_PATH", raising=False)
     executable = tmp_path / "DGM-MAT" / "installed" / "DGM-MAT.exe"
+    (executable.parent.parent / ".git").mkdir(parents=True)
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     monkeypatch.setattr(sys, "executable", str(executable))
 

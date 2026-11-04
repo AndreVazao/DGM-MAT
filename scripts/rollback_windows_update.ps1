@@ -50,5 +50,24 @@ if ($expectedHash -ne $actualHash) {
     throw "Rollback copy failed SHA-256 verification."
 }
 Move-Item -LiteralPath $restoreTemp -Destination $targetPath -Force
+
+$launcherTarget = [string]$manifest.launcher_target
+$launcherBackup = [string]$manifest.previous_launcher_backup
+if ($launcherTarget -and $launcherBackup -and (Test-Path -LiteralPath $launcherBackup)) {
+    $launcherRestoreTemp = "$launcherTarget.rollback"
+    Copy-Item -LiteralPath $launcherBackup -Destination $launcherRestoreTemp -Force
+    $launcherExpectedHash = (Get-FileHash -LiteralPath $launcherBackup -Algorithm SHA256).Hash
+    $launcherActualHash = (Get-FileHash -LiteralPath $launcherRestoreTemp -Algorithm SHA256).Hash
+    if ($launcherExpectedHash -ne $launcherActualHash) {
+        Remove-Item -LiteralPath $launcherRestoreTemp -Force -ErrorAction SilentlyContinue
+        throw "Rollback service launcher copy failed SHA-256 verification."
+    }
+    Move-Item -LiteralPath $launcherRestoreTemp -Destination $launcherTarget -Force
+}
+elseif ($launcherTarget -and -not $manifest.launcher_previous_sha256) {
+    Remove-Item -LiteralPath $launcherTarget -Force -ErrorAction SilentlyContinue
+}
+
 Write-Host "Previous DGM-MAT executable restored: $targetPath"
+if ($launcherTarget) { Write-Host "Previous service launcher restored: $launcherTarget" }
 Write-Host "Persistent data was left untouched."

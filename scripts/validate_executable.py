@@ -64,6 +64,8 @@ def validate_executable(exe_path: str | os.PathLike[str]) -> bool:
         with log_path.open("w", encoding="utf-8", errors="replace") as child_output:
             child_env = os.environ.copy()
             child_env["DGM_HEADLESS"] = "1"
+            child_env["DGM_REPOSITORY_ROOT"] = str(Path.cwd().resolve())
+            child_env["DGM_PYTHON_EXECUTABLE"] = sys.executable
             process = subprocess.Popen(
                 [str(executable), "--headless"],
                 cwd=str(Path.cwd()),

@@ -7,6 +7,7 @@ from core.observability.logger import dgm_logger
 from core.autonomy.scheduler.scheduler_engine import SchedulerEngine
 from core.repository_cognition.repo_scanner import CognitiveRepoScanner
 from core.autonomy.models import AutonomousTask
+from core.runtime.repository_root import resolve_repository_root
 
 
 class AutonomousLoop:
@@ -21,7 +22,7 @@ class AutonomousLoop:
     def _load_config(self, path: str) -> Dict[str, Any]:
         p = Path(path)
         if not p.is_absolute():
-            project_root = Path(__file__).resolve().parents[2]
+            project_root = resolve_repository_root(__file__)
             p = project_root / p
         if not p.exists():
             return {"enabled": True, "loop_interval": 60, "night_cycle_start": "02:00", "night_cycle_duration_hours": 4}

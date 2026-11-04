@@ -1,3 +1,4 @@
+
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
@@ -10,6 +11,29 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+function New-DgmMatCockpitShortcut {
+    param(
+        [Parameter(Mandatory = $true)][string]$ExecutablePath,
+        [Parameter(Mandatory = $true)][string]$WorkingDirectory
+    )
+
+    $desktopPath = [Environment]::GetFolderPath("Desktop")
+    if (-not $desktopPath -or -not (Test-Path -LiteralPath $desktopPath)) {
+        throw "The current user's Desktop directory is unavailable."
+    }
+
+    $shortcutPath = Join-Path $desktopPath "DGM-MAT Chat.lnk"
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath = $ExecutablePath
+    $shortcut.Arguments = "--cockpit-only"
+    $shortcut.WorkingDirectory = $WorkingDirectory
+    $shortcut.Description = "Open the DGM-MAT chat cockpit; the backend must already be running."
+    $shortcut.IconLocation = "$ExecutablePath,0"
+    $shortcut.Save()
+    return $shortcutPath
+}
 
 function Stop-ExactInstalledProcess {
     param([Parameter(Mandatory = $true)][string]$ExecutablePath)
@@ -143,6 +167,7 @@ $preserved = @(
     @{ Source = (Join-Path $installRoot "memory_sync"); Relative = "data\memory_sync" },
     @{ Source = (Join-Path $installRoot "storage\runtime"); Relative = "data\repository\storage\runtime" },
     @{ Source = (Join-Path $installRoot ".runtime"); Relative = "data\repository\.runtime" },
+    @{ Source = (Join-Path $installRoot "logs"); Relative = "data\repository\logs" },
     @{ Source = (Join-Path $targetDirectory ".runtime"); Relative = "data\installed\.runtime" }
 )
 
@@ -151,8 +176,26 @@ foreach ($entry in $preserved) {
     $backupRecords += Backup-PreservedPath -Source $entry.Source -RelativeDestination $entry.Relative -BackupDirectory $backupDirectory
 }
 
+# The startup shortcut calls this source-tree service manager. Update it together
+# with the executable so the next boot launches the frozen build, not main.py.
+$launcherSource = Join-Path (Split-Path -Parent $packagePath) "scripts\autostart\backend_service.py"
+$launcherTarget = Join-Path $installRoot "scripts\autostart\backend_service.py"
+if (-not (Test-Path -LiteralPath $launcherSource -PathType Leaf)) {
+    throw "The package is missing scripts\autostart\backend_service.py. Refusing a partial runtime update."
+}
+New-Item -ItemType Directory -Path (Split-Path -Parent $launcherTarget) -Force | Out-Null
+$launcherBackupRecord = Backup-PreservedPath -Source $launcherTarget -RelativeDestination "launcher\backend_service.py.previous" -BackupDirectory $backupDirectory
+$backupRecords += $launcherBackupRecord
+$oldLauncherBackup = $launcherBackupRecord.backup
+$oldLauncherHash = $null
+if (Test-Path -LiteralPath $launcherTarget) {
+    $oldLauncherHash = (Get-FileHash -LiteralPath $launcherTarget -Algorithm SHA256).Hash
+}
+
 $sourceHash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash
+$launcherSourceHash = (Get-FileHash -LiteralPath $launcherSource -Algorithm SHA256).Hash
 $stagedPath = Join-Path $targetDirectory "DGM-MAT.exe.new"
+$stagedLauncherPath = "$launcherTarget.new"
 try {
     Copy-Item -LiteralPath $packagePath -Destination $stagedPath -Force
     $stagedHash = (Get-FileHash -LiteralPath $stagedPath -Algorithm SHA256).Hash
@@ -160,18 +203,45 @@ try {
         throw "Staged executable SHA-256 does not match the package."
     }
 
+    Copy-Item -LiteralPath $launcherSource -Destination $stagedLauncherPath -Force
+    $stagedLauncherHash = (Get-FileHash -LiteralPath $stagedLauncherPath -Algorithm SHA256).Hash
+    if ($stagedLauncherHash -ne $launcherSourceHash) {
+        throw "Staged service launcher SHA-256 does not match the package."
+    }
+
     Move-Item -LiteralPath $stagedPath -Destination $targetPath -Force
+    Move-Item -LiteralPath $stagedLauncherPath -Destination $launcherTarget -Force
+
     $installedHash = (Get-FileHash -LiteralPath $targetPath -Algorithm SHA256).Hash
     if ($installedHash -ne $sourceHash) {
         throw "Installed executable SHA-256 does not match the package."
     }
+    $installedLauncherHash = (Get-FileHash -LiteralPath $launcherTarget -Algorithm SHA256).Hash
+    if ($installedLauncherHash -ne $launcherSourceHash) {
+        throw "Installed service launcher SHA-256 does not match the package."
+    }
 }
 catch {
     Remove-Item -LiteralPath $stagedPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $stagedLauncherPath -Force -ErrorAction SilentlyContinue
     if ($oldExeBackup -and (Test-Path -LiteralPath $oldExeBackup)) {
         Copy-Item -LiteralPath $oldExeBackup -Destination $targetPath -Force
     }
+    if ($oldLauncherBackup -and (Test-Path -LiteralPath $oldLauncherBackup)) {
+        Copy-Item -LiteralPath $oldLauncherBackup -Destination $launcherTarget -Force
+    }
+    elseif (-not $oldLauncherHash) {
+        Remove-Item -LiteralPath $launcherTarget -Force -ErrorAction SilentlyContinue
+    }
     throw
+}
+
+$cockpitShortcutPath = $null
+try {
+    $cockpitShortcutPath = New-DgmMatCockpitShortcut -ExecutablePath $targetPath -WorkingDirectory $installRoot
+}
+catch {
+    Write-Warning "The runtime was updated, but the DGM-MAT Chat desktop shortcut could not be created: $($_.Exception.GetType().Name)"
 }
 
 $manifest = [ordered]@{
@@ -182,6 +252,11 @@ $manifest = [ordered]@{
     new_sha256 = $sourceHash
     previous_sha256 = $oldExeHash
     previous_exe_backup = $oldExeBackup
+    launcher_target = $launcherTarget
+    launcher_new_sha256 = $launcherSourceHash
+    launcher_previous_sha256 = $oldLauncherHash
+    cockpit_shortcut = $cockpitShortcutPath
+    previous_launcher_backup = $oldLauncherBackup
     backup_directory = $backupDirectory
     preserved_data = $backupRecords
     deliberately_untouched = @(
@@ -192,7 +267,7 @@ $manifest = [ordered]@{
         (Join-Path $installRoot "storage\runtime"),
         (Join-Path $installRoot ".runtime")
     )
-    note = "Only the executable was replaced. Configuration, credentials, runtime data, memory repositories and worktrees were not uninstalled or deleted."
+    note = "The executable and its managed startup launcher were replaced. Configuration, credentials, runtime data, memory repositories and worktrees were not uninstalled or deleted."
 }
 $manifestPath = Join-Path $backupDirectory "INSTALL-MANIFEST.json"
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $manifestPath -Encoding utf8
@@ -200,6 +275,9 @@ $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $manifestPath -En
 Write-Host "DGM-MAT executable updated successfully."
 Write-Host "Installed: $targetPath"
 Write-Host "SHA-256: $sourceHash"
+Write-Host "Service launcher: $launcherTarget"
+Write-Host "Launcher SHA-256: $launcherSourceHash"
 Write-Host "Backup: $backupDirectory"
 Write-Host "Manifest: $manifestPath"
-Write-Host "The runtime was not started. Start it only after reviewing the backup manifest."
+if ($cockpitShortcutPath) { Write-Host "Chat cockpit shortcut: $cockpitShortcutPath" }
+Write-Host "The runtime was not started. The startup shortcut will now launch the installed executable through the updated service manager."
