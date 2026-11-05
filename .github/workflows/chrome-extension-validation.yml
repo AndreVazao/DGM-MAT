@@ -10,10 +10,15 @@ on:
       - "core/api/local_auth_api.py"
       - "core/api/auth_middleware.py"
       - "core/api/security_policy.py"
+      - "core/api/api_server.py"
+      - "core/recovery/**"
+      - "core/conversation_intelligence/**"
+      - "core/storage/**"
       - "tests/test_browser_extension_manifest.py"
       - "tests/api/test_browser_capture_api.py"
       - "tests/api/test_extension_pairing_origin.py"
       - "tests/api/test_extension_session_scope.py"
+      - "tests/test_recovery_ledger.py"
 
 permissions:
   contents: read
