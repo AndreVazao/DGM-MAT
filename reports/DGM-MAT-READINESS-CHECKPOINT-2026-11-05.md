@@ -20,21 +20,32 @@ DGM-MAT is **not yet ready for unattended autonomous development**. Browser conv
 - Artifact expiry: 2026-11-19.
 - Live acceptance against authenticated ChatGPT, Gemini and Grok sessions remains outstanding (#208); provider-confirmed oldest-history and deterministic multi-window fixtures remain outstanding (#215).
 
+### PR #222 — draft virtualized-history capture fixtures
+
+- Clean replacement for PR #221; branch `test/browser-virtualized-history-clean-2026-11-05`, one commit and five files.
+- Adds seven deterministic Node fixtures against the actual content script, covering ChatGPT/Gemini/Grok selectors, virtualized older windows, overlap/duplicates, chronological ordering, unknown oldest boundary, hard limits, identical text-only turns without stable IDs, and DOM mismatch fail-closed behavior.
+- The content script merges overlapping windows by stable message IDs and marks ambiguous ordering/identity as truncated.
+- API archives `sequence_order_conflict` and `oldest_boundary_evidence`. A positive oldest-boundary claim is accepted only when evidence is in the provider-specific allowlist; production allowlist is intentionally empty. All current providers remain `partial_or_unknown` until real provider markers are verified.
+- Fresh CI on exact PR head `d9bae549a49bdf7dd4f5cc4c4f894e49a492d6f9`: Chrome Extension Validation #103 **success**; Focused PR Validation #354 **success**.
+- Artifact: `DGM-MAT-Chrome-Conversation-Recovery`, ID `13435428666`, SHA-256 `2e54d055b82d0eec1be73974ec3428fe0e79f9a10d30c8817e7dc03665c208f5`, expires 2026-11-19.
+- PR #221 closed without merge to keep the branch history small; source branch retained for audit.
+- Live authenticated ChatGPT/Gemini/Grok acceptance remains outstanding (#208). No real provider oldest-history marker has been confirmed (#215).
+
 ### Backup-first executor — draft PR #220
 
 - PR #214 was closed without merge; its original path-based executor remains retained for audit.
 - PR #217 remains a separate draft containing the POSIX dirfd prototype; Windows mutation in that branch fails closed.
 - PR #219 was closed without merge because its 78-commit history was unnecessarily large. Its source branch remains retained for audit.
-- Clean replacement: [PR #220](https://github.com/AndreVazao/DGM-MAT/pull/220), branch `fix/backup-first-executor-win32-clean-2026-11-05`. The PR contains six files and two commits (one implementation commit plus one merge-base synchronization commit).
+- Clean replacement: [PR #220](https://github.com/AndreVazao/DGM-MAT/pull/220), branch `fix/backup-first-executor-win32-clean-2026-11-05`. The PR contains six files and three commits (one implementation commit plus two merge-base synchronization commits).
 - Implementation commit: `aa51f100c5145f83e7ea651076c44abeac068a7f`; synchronization commit: `6bd69227baafacaa37255c0654c0cd9a91e9ca41`.
 - Fresh CI on the implementation commit: Windows Guard #71 passed (38 passed, 8 POSIX-only tests skipped by policy); Focused PR Validation #328 passed.
-- After synchronization with current main, fresh Windows Guard #72 and Focused PR Validation #329 are running; do not claim those results until completed.
+- After synchronization with current main, Windows Guard #73 and Focused PR Validation #330 both passed on exact head `db18012f3d2d094a8dc3ed14b7b680b8025b93d1` (38 passed, 8 POSIX-only tests skipped). PR #220 remains draft and mergeable, but is not accepted locally.
 - Windows is the only active mutation backend. Existing targets are opened with exclusive share semantics and write-through; new targets use atomic `FILE_CREATE`. Handles remain pinned during backup, write and verification. Hard-linked targets, reparse points and 8.3 aliases are rejected.
 - Backup-root directories are created relative to pinned no-follow handles. Backup and manifest files use exclusive handles. The manifest records `prepared` before mutation and `applied` after byte verification. Rollback checks repository identity, target identity, hard-link count, operation/backup consistency, current hash and rollback availability.
 - POSIX apply and rollback explicitly fail closed. The unsafe POSIX mutation implementation has been removed because portable POSIX replace/delete cannot exclude uncoordinated writers.
 - Snyk reports exactly `You have used your limit of private tests`. The scan did not run; this is neither a vulnerability report nor a clean scan. No paid quota was purchased and the scanner was not disabled.
 - CodeRabbit's free OSS review limit has been reached. No fresh independent review of #220 has completed.
-- Remaining executor gates: fresh CI on #220's synchronized head; independent review when available; review inherited backup-root ACL and Windows namespace durability limits; local Windows 10 acceptance. Keep #220 draft and do not merge yet.
+- Remaining executor gates: independent review when available; review inherited backup-root ACL and Windows namespace durability limits; local Windows 10 acceptance. Keep #220 draft and do not merge yet.
 
 ## Verified remaining implementation gaps
 
@@ -72,16 +83,15 @@ Do not promote the runtime mode merely by changing configuration. Real write cap
 
 ## Next gates, in order
 
-1. Complete Windows Guard #72 and Focused PR Validation #329 on the synchronized PR #220 head.
-2. Obtain an independent security review when CodeRabbit's review quota resets; separately resolve the Snyk private-test quota or obtain equivalent coverage without hiding the check.
-3. Review backup-root ACL inheritance and document the limits of write-through/file flushes for sudden power loss; do not claim unverified namespace durability.
-4. Perform local Windows 10 acceptance: create/replace, backup, rollback, prepared-state recovery and concurrent-writer rejection.
-5. Only after those gates, integrate the executor into MissionEngine under issue #212: structured plans, allowlisted paths, isolated worktrees, fixed validator registry, checkpoints, guarded rollback and reviewable PR output.
+1. Obtain an independent security review when CodeRabbit's review quota resets; separately resolve the Snyk private-test quota or obtain equivalent coverage without hiding the check.
+2. Review backup-root ACL inheritance and document the limits of write-through/file flushes for sudden power loss; do not claim unverified namespace durability.
+3. Perform local Windows 10 acceptance for #220: create/replace, backup, rollback, prepared-state recovery and concurrent-writer rejection.
+4. Complete live authenticated UI acceptance for #222 on ChatGPT, Gemini and Grok; provider-specific oldest-history markers remain disabled until real evidence is stable and reviewed.
+5. Only after the executor gates, integrate it into MissionEngine under issue #212: structured plans, allowlisted paths, isolated worktrees, fixed validator registry, checkpoints, guarded rollback and reviewable PR output.
 6. Add a temporary-Git-repository E2E test, including negative tests for traversal, symlinks, secrets, arbitrary shell and rollback conflicts.
-7. Finish provider-specific virtualized-history fixtures and live local acceptance for ChatGPT, Gemini and Grok.
-8. Implement separate free-tier AI consultation (#211), with explicit opt-in and no paid API use.
-9. Build the Windows executable from validated main, preserve the local dirty checkout, then perform one controlled installation/health/worker/persistence smoke test.
-10. Only after the local runtime passes, enable bounded autonomous work in isolated worktrees. Keep approval for irreversible or high-impact actions and keep auto-merge disabled.
+7. Implement separate free-tier AI consultation (#211), with explicit opt-in and no paid API use.
+8. Build the Windows executable from validated main, preserve the local dirty checkout, then perform one controlled installation/health/worker/persistence smoke test.
+9. Only after the local runtime passes, enable bounded autonomous work in isolated worktrees. Keep approval for irreversible or high-impact actions and keep auto-merge disabled.
 
 ## Local-PC and quota boundary
 
