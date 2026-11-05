@@ -31,7 +31,10 @@ def test_provider_allowlist_rejects_non_provider_pages():
     session = AuthenticatedChromeSession("http://127.0.0.1:9222")
     assert session._check_provider_url("https://chatgpt.com/c/123")
     assert session._check_provider_url("https://gemini.google.com/app")
-    assert session._check_provider_url("https://grok.com/") 
+    assert session._check_provider_url("https://grok.com/")
+    assert session._check_provider_url("https://x.com/i/grok")
+    with pytest.raises(AuthenticatedChromeError, match="Grok interface"):
+        session._check_provider_url("https://x.com/home")
     with pytest.raises(AuthenticatedChromeError):
         session._check_provider_url("https://example.com/")
     with pytest.raises(AuthenticatedChromeError):
