@@ -203,3 +203,24 @@ def test_windows_filesystem_mutations_fail_closed(tmp_path):
 
     assert target.read_text(encoding="utf-8") == "unchanged\n"
     assert not (tmp_path / "backups").exists()
+
+
+@requires_posix_directory_handles
+def test_repository_root_replacement_after_initialization_is_rejected(tmp_path):
+    root = repository(tmp_path)
+    executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
+    pinned_root = tmp_path / "repo-pinned"
+    os.rename(root, pinned_root)
+
+    replacement_root = tmp_path / "repo"
+    replacement_root.mkdir()
+    (replacement_root / ".git").mkdir()
+    (replacement_root / "src").mkdir()
+    replacement_target = replacement_root / "src" / "module.py"
+    replacement_target.write_text("replacement-root-unchanged\\n", encoding="utf-8")
+
+    with pytest.raises(PatchRejected, match="Repository root changed"):
+        executor.apply_text("src/module.py", "must-not-write\\n")
+
+    assert replacement_target.read_text(encoding="utf-8") == "replacement-root-unchanged\\n"
+    assert not (tmp_path / "backups").exists()
