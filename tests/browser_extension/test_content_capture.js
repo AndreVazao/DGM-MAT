@@ -10,8 +10,12 @@ const source = fs.readFileSync(
   "utf8"
 );
 
-function makeMessage(index, role = index % 2 === 0 ? "user" : "assistant") {
-  const text = "Fixture turn " + index;
+function makeMessage(
+  index,
+  role = index % 2 === 0 ? "user" : "assistant",
+  options = {}
+) {
+  const text = options.text || "Fixture turn " + index;
   return {
     id: "",
     className: "",
@@ -19,7 +23,7 @@ function makeMessage(index, role = index % 2 === 0 ? "user" : "assistant") {
     isConnected: true,
     innerText: text,
     getAttribute(name) {
-      if (name === "data-message-id") return "message-" + index;
+      if (name === "data-message-id") return options.explicitId === false ? null : "message-" + index;
       if (name === "data-message-author-role") return role;
       return null;
     },
@@ -34,7 +38,15 @@ function makeMessage(index, role = index % 2 === 0 ? "user" : "assistant") {
 
 function createHarness(mode) {
   const all = Array.from({ length: 12 }, (_, index) => makeMessage(index));
-  let visible = all.slice(6, 10);
+  const ambiguousFirst = makeMessage(50, "user", {
+    text: "Repeated identical text-only turn",
+    explicitId: false
+  });
+  const ambiguousSecond = makeMessage(51, "user", {
+    text: "Repeated identical text-only turn",
+    explicitId: false
+  });
+  let visible = mode === "ambiguous-duplicate" ? [ambiguousFirst] : all.slice(6, 10);
   let olderLoaded = false;
   let topWaits = 0;
   let listener = null;
@@ -127,6 +139,9 @@ function createHarness(mode) {
     setTimeout(callback, milliseconds) {
       if (milliseconds === 500) {
         topWaits++;
+        if (mode === "ambiguous-duplicate" && topWaits === 1) {
+          visible = [ambiguousSecond];
+        }
         if (mode === "multi-window" && topWaits === 2) {
           olderLoaded = true;
           scroller.scrollHeight += 500;
@@ -210,6 +225,15 @@ async function testTopLoadingHardLimitIsExplicitlyTruncated() {
   assert.equal(response.data.oldest_boundary, "unknown");
 }
 
+async function testIdenticalTextOnlyTurnsAreMarkedAmbiguous() {
+  const harness = createHarness("ambiguous-duplicate");
+  const response = await harness.capture();
+  assert.equal(response.ok, true, response.error);
+  assert.equal(response.data.sequence_order_conflict, true);
+  assert.equal(response.data.truncated, true,
+    "identical text-only turns without stable provider IDs must not be silently deduplicated");
+}
+
 async function testScrollHardLimitIsExplicitlyTruncated() {
   const harness = createHarness("scroll-limit");
   const response = await harness.capture();
@@ -224,8 +248,9 @@ async function main() {
   await testVirtualizedHistoryWindowsAndDuplicates();
   await testMissingOldestMarkerRemainsPartialOrUnknown();
   await testTopLoadingHardLimitIsExplicitlyTruncated();
+  await testIdenticalTextOnlyTurnsAreMarkedAmbiguous();
   await testScrollHardLimitIsExplicitlyTruncated();
-  process.stdout.write("PASS: 4 deterministic virtualized-history capture fixtures\n");
+  process.stdout.write("PASS: 5 deterministic virtualized-history capture fixtures\n");
 }
 
 main().catch(error => {
