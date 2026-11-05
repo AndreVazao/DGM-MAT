@@ -9,7 +9,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import re
-import sys
 from typing import Any
 
 
@@ -26,6 +25,7 @@ class WindowsDirectoryHandleBackend:
     FILE_LIST_DIRECTORY = 0x0001
     FILE_TRAVERSE = 0x0020
     FILE_READ_ATTRIBUTES = 0x0080
+    FILE_READ_DATA = 0x0001
     FILE_WRITE_DATA = 0x0002
     DELETE = 0x00010000
     SYNCHRONIZE = 0x00100000
@@ -260,7 +260,7 @@ class WindowsDirectoryHandleBackend:
         name = self._validate_basename(name)
         access = self.FILE_READ_ATTRIBUTES | self.SYNCHRONIZE
         if writable:
-            access |= self.FILE_WRITE_DATA | self.DELETE
+            access |= self.FILE_READ_DATA | self.FILE_WRITE_DATA | self.DELETE
         else:
             access |= 0x80000000  # GENERIC_READ
         return self._nt_open(
@@ -273,7 +273,7 @@ class WindowsDirectoryHandleBackend:
 
     def create_file(self, parent_handle: Any, name: str) -> Any:
         name = self._validate_basename(name)
-        access = self.FILE_WRITE_DATA | self.FILE_READ_ATTRIBUTES | self.DELETE | self.SYNCHRONIZE
+        access = self.FILE_READ_DATA | self.FILE_WRITE_DATA | self.FILE_READ_ATTRIBUTES | self.DELETE | self.SYNCHRONIZE
         return self._nt_open(
             parent_handle,
             name,
