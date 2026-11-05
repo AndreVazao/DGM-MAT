@@ -2,6 +2,7 @@ const pairInput = document.getElementById("pair-code");
 const pairButton = document.getElementById("pair-button");
 const startButton = document.getElementById("start-button");
 const stopButton = document.getElementById("stop-button");
+const retryButton = document.getElementById("retry-button");
 const statusNode = document.getElementById("status");
 
 function showStatus(value, error = false) {
@@ -24,6 +25,7 @@ async function refresh() {
   try {
     const data = await send({ type: "DGM_GET_STATUS" });
     startButton.disabled = !data.paired || Boolean(data.run?.active);
+    retryButton.disabled = !data.can_retry;
     showStatus(data.last_status || (data.paired ? "Paired and ready." : "Pair with the local DGM-MAT PC."));
   } catch (error) {
     startButton.disabled = true;
@@ -54,6 +56,18 @@ startButton.addEventListener("click", async () => {
     if (!tab || !Number.isInteger(tab.id)) throw new Error("No active provider tab.");
     const result = await send({ type: "DGM_START_RECOVERY", tabId: tab.id });
     showStatus(result.finished ? "No pending conversations." : "Recovery started: " + result.next.title);
+  } catch (error) {
+    showStatus(error.message, true);
+  } finally {
+    await refresh();
+  }
+});
+
+retryButton.addEventListener("click", async () => {
+  retryButton.disabled = true;
+  try {
+    const result = await send({ type: "DGM_RETRY_CURRENT" });
+    showStatus(result.finished ? "No more pending conversations." : "Retry started: " + result.next.title);
   } catch (error) {
     showStatus(error.message, true);
   } finally {
