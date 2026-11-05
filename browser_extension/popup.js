@@ -3,6 +3,7 @@ const pairButton = document.getElementById("pair-button");
 const startButton = document.getElementById("start-button");
 const stopButton = document.getElementById("stop-button");
 const retryButton = document.getElementById("retry-button");
+const autoCheckbox = document.getElementById("auto-checkbox");
 const statusNode = document.getElementById("status");
 
 function showStatus(value, error = false) {
@@ -26,12 +27,33 @@ async function refresh() {
     const data = await send({ type: "DGM_GET_STATUS" });
     startButton.disabled = !data.paired || Boolean(data.run?.active);
     retryButton.disabled = !data.can_retry;
+    autoCheckbox.checked = Boolean(data.auto_enabled);
     showStatus(data.last_status || (data.paired ? "Paired and ready." : "Pair with the local DGM-MAT PC."));
   } catch (error) {
     startButton.disabled = true;
     showStatus(error.message, true);
   }
 }
+
+autoCheckbox.addEventListener("change", async () => {
+  autoCheckbox.disabled = true;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const result = await send({
+      type: "DGM_SET_AUTO_RECOVERY",
+      enabled: autoCheckbox.checked,
+      tabId: Number.isInteger(tab?.id) ? tab.id : null
+    });
+    showStatus(result.enabled
+      ? (result.started ? "Unattended recovery enabled and started." : "Unattended recovery enabled; it starts when an authenticated provider tab opens.")
+      : "Unattended recovery disabled.");
+  } catch (error) {
+    showStatus(error.message, true);
+    await refresh();
+  } finally {
+    autoCheckbox.disabled = false;
+  }
+});
 
 pairButton.addEventListener("click", async () => {
   pairButton.disabled = true;
