@@ -195,5 +195,14 @@ class RecoveryLedgerTests(unittest.TestCase):
         self.assertEqual(self.ledger.next_source().source_id, "a")
 
 
+    def test_provider_scoped_claim_does_not_consume_another_provider_queue(self) -> None:
+        self.add("chat-1", "2026-01-01", provider="chatgpt")
+        self.add("gemini-1", "2026-01-01", provider="gemini")
+        gemini = self.ledger.next_source(provider="gemini")
+        self.assertEqual(gemini.provider, "gemini")
+        chatgpt = self.ledger.next_source(provider="chatgpt")
+        self.assertEqual(chatgpt.provider, "chatgpt")
+
+
 if __name__ == "__main__":
     unittest.main()
