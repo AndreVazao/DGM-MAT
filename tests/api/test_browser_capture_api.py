@@ -75,7 +75,7 @@ def _capture(provider="chatgpt", source_id="conversation-1", url=None, content="
             {"message_id": "m2", "role": "assistant", "content": "Acknowledged.", "sequence": 1},
         ],
         "truncated": False,
-        "history_start_reached": True,
+        "history_start_reached": False,
         "adapter_version": "test",
     }
 
@@ -111,6 +111,8 @@ def test_discover_claim_archive_and_verify_local_capture(monkeypatch, tmp_path):
     assert result["status"] == "archived_and_hash_verified"
     assert result["message_count"] == 2
     assert result["full_history_verified"] is False
+    assert result["history_completeness"] == "partial_or_unknown"
+    assert result["oldest_boundary"] == "unknown"
 
     path = Path(result["archive_path"])
     assert path.is_file()
@@ -217,6 +219,9 @@ def test_ai_proposals_are_candidates_and_operator_confirmation_is_not_auto_decis
     client.post("/recovery/browser-capture/discover", json=_discovery())
     client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
     payload = _capture()
+    payload["top_load_steps"] = 7
+    payload["top_load_limit_reached"] = True
+    payload["truncated"] = True
     payload["messages"] = [
         {"message_id": "u1", "role": "user", "content": "Aprovo esta proposta, mas confirma primeiro o projeto.", "sequence": 0},
         {"message_id": "a1", "role": "assistant", "content": "I recommend keeping the current DGM-MAT recovery architecture.", "sequence": 1},
@@ -230,6 +235,10 @@ def test_ai_proposals_are_candidates_and_operator_confirmation_is_not_auto_decis
     assert summary["knowledge"]["decisions"] == 0
     assert summary["knowledge"]["proposals"] == 1
     assert summary["knowledge"]["review_tasks_open"] >= 2
+    saved = json.loads(Path(response.json()["archive_path"]).read_text(encoding="utf-8"))
+    assert saved["top_load_steps"] == 7
+    assert saved["top_load_limit_reached"] is True
+    assert saved["truncated"] is True
 
 
 def test_discovery_rejects_source_id_that_does_not_match_conversation_url(monkeypatch, tmp_path):
