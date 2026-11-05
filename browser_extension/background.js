@@ -62,8 +62,19 @@ async function claimAndNavigate(run, token) {
   run.current = result.next;
   run.updated_at = new Date().toISOString();
   await saveRun(run);
-  const reply = await sendToTab(run.tab_id, { type: "DGM_NAVIGATE_TO", url: result.next.url });
-  if (!reply || !reply.ok) throw new Error(reply?.error || "Could not navigate to the next conversation.");
+  try {
+    const reply = await sendToTab(run.tab_id, { type: "DGM_NAVIGATE_TO", url: result.next.url });
+    if (!reply || !reply.ok) throw new Error(reply?.error || "Could not navigate to the next conversation.");
+  } catch (error) {
+    await api("/recovery/browser-capture/block", {
+      provider: run.provider,
+      source_id: result.next.source_id,
+      status: "failed",
+      reason: "navigation_failed"
+    }, token).catch(() => {});
+    await stopRun(String(error.message || error));
+    throw error;
+  }
   return { finished: false, next: result.next };
 }
 
@@ -107,7 +118,27 @@ async function handlePageReady(message, sender) {
   const state = await readState();
   const run = state.run;
   if (!state.token || !run || !run.active || run.tab_id !== sender.tab.id) return;
-  if (message.provider !== run.provider || !run.current || message.source_id !== run.current.source_id) return;
+  if (message.blocked) {
+    await api("/recovery/browser-capture/block", {
+      provider: run.provider,
+      source_id: run.current.source_id,
+      status: message.blocked === "rate_limited" ? "blocked" : "blocked",
+      reason: message.blocked
+    }, state.token).catch(() => {});
+    await stopRun(message.blocked);
+    return;
+  }
+  if (message.provider !== run.provider || !run.current) return;
+  if (message.source_id !== run.current.source_id) {
+    await api("/recovery/browser-capture/block", {
+      provider: run.provider,
+      source_id: run.current.source_id,
+      status: "failed",
+      reason: "unexpected_conversation_identity"
+    }, state.token).catch(() => {});
+    await stopRun("Unexpected provider conversation identity; capture stopped.");
+    return;
+  }
 
   try {
     const captured = await sendToTab(run.tab_id, { type: "DGM_CAPTURE_CURRENT" });
@@ -127,6 +158,12 @@ async function handlePageReady(message, sender) {
     });
     await claimAndNavigate(run, state.token);
   } catch (error) {
+    await api("/recovery/browser-capture/block", {
+      provider: run.provider,
+      source_id: run.current.source_id,
+      status: "failed",
+      reason: "capture_or_archive_failed"
+    }, state.token).catch(() => {});
     await stopRun(String(error.message || error));
   }
 }
