@@ -129,3 +129,30 @@ def test_windows_backend_rejects_non_basename_components(name):
     backend = WindowsDirectoryHandleBackend()
     with pytest.raises(WindowsHandleError):
         backend._validate_basename(name)
+
+
+def test_exclusive_target_handle_blocks_external_write_and_rename(tmp_path):
+    root = tmp_path / "repo"
+    root.mkdir()
+    target = root / "target.txt"
+    target.write_bytes(b"original\\n")
+    backend = WindowsDirectoryHandleBackend()
+    root_handle = backend.open_root(root)
+    target_handle = None
+    try:
+        target_handle = backend.open_file(root_handle, "target.txt", exclusive=True)
+        assert backend.read_all(target_handle, max_bytes=100) == b"original\\n"
+        with pytest.raises(OSError):
+            target.write_bytes(b"external-change\\n")
+        with pytest.raises(OSError):
+            os.rename(target, root / "target-moved.txt")
+        backend.truncate_file(target_handle)
+        backend.write_all(target_handle, b"controlled-change\\n")
+        backend.reset_file_pointer(target_handle)
+        assert backend.read_all(target_handle, max_bytes=100) == b"controlled-change\\n"
+        assert target.exists()
+        assert not (root / "target-moved.txt").exists()
+    finally:
+        if target_handle:
+            backend.close(target_handle)
+        backend.close(root_handle)
