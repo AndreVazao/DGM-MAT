@@ -1,0 +1,39 @@
+name: Backup-First Executor Windows Guard
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "core/execution/backup_first_patch_executor.py"
+      - "core/execution/windows_handle_fs.py"
+      - "tests/execution/test_backup_first_patch_executor.py"
+      - "tests/execution/test_windows_handle_fs.py"
+      - ".github/workflows/backup-first-executor-windows.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-first-windows-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-fail-closed:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout reviewed revision
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install minimal test dependencies
+        run: python -m pip install pytest loguru
+      - name: Verify Windows mutations fail closed
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q tests/execution/test_backup_first_patch_executor.py tests/execution/test_windows_handle_fs.py
