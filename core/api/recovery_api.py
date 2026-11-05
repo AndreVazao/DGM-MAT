@@ -173,6 +173,144 @@ async def import_chatgpt_export(request: Request, format: str = Query(default="z
                 pass
 
 
+MAX_CONVERSATION_INBOX_FILES = 100
+MAX_CONVERSATION_INBOX_FILE_BYTES = 512 * 1024 * 1024
+MAX_CONVERSATION_INBOX_TOTAL_BYTES = 1024 * 1024 * 1024
+CONVERSATION_INBOX_PROVIDERS = ("chatgpt", "gemini", "grok")
+
+
+def _conversation_inbox_root() -> Path:
+    configured = os.getenv("DGM_CONVERSATION_IMPORT_DIR", "").strip()
+    root = Path(configured).expanduser() if configured else Path.home() / ".dgm-mat" / "conversation-imports"
+    root = root.resolve()
+    for provider in CONVERSATION_INBOX_PROVIDERS:
+        (root / provider).mkdir(parents=True, exist_ok=True)
+    return root
+
+
+@router.get("/inbox")
+def list_conversation_import_inbox():
+    """List provider export files without reading file contents."""
+    root = _conversation_inbox_root()
+    providers = []
+    for provider in CONVERSATION_INBOX_PROVIDERS:
+        folder = (root / provider).resolve()
+        if not folder.is_relative_to(root) or not folder.is_dir():
+            continue
+        files = []
+        for path in sorted(folder.iterdir(), key=lambda item: item.name.casefold())[:MAX_CONVERSATION_INBOX_FILES]:
+            if path.is_symlink() or not path.is_file():
+                continue
+            try:
+                size = path.stat().st_size
+            except OSError:
+                continue
+            supported = provider == "chatgpt" and path.suffix.casefold() in {".json", ".zip"}
+            files.append({
+                "name": path.name[:240],
+                "extension": path.suffix.casefold(),
+                "size_bytes": size,
+                "status": "ready_to_import" if supported and size <= MAX_CONVERSATION_INBOX_FILE_BYTES else (
+                    "awaiting_provider_adapter" if provider in {"gemini", "grok"} else "unsupported_or_too_large"
+                ),
+            })
+        providers.append({
+            "provider": provider,
+            "file_count": len(files),
+            "files": files,
+        })
+    return {
+        "inbox_root": str(root),
+        "providers": providers,
+        "provider_content_read": False,
+        "provider_accounts_accessed": False,
+        "source_files_modified": False,
+    }
+
+
+@router.post("/import/inbox")
+def import_conversation_inbox():
+    """Import supported local exports; unknown provider schemas remain untouched for later adapters."""
+    root = _conversation_inbox_root()
+    ledger = get_recovery_ledger()
+    imported = skipped = partial = failed = pending_schema = 0
+    total_bytes = 0
+    errors: list[str] = []
+    pending_files: list[str] = []
+    processed_files = 0
+
+    for provider in CONVERSATION_INBOX_PROVIDERS:
+        folder = (root / provider).resolve()
+        if not folder.is_relative_to(root) or not folder.is_dir():
+            continue
+        for path in sorted(folder.iterdir(), key=lambda item: item.name.casefold()):
+            if processed_files >= MAX_CONVERSATION_INBOX_FILES:
+                errors.append("inbox_file_limit_reached")
+                break
+            if path.is_symlink() or not path.is_file():
+                continue
+            processed_files += 1
+            try:
+                size = path.stat().st_size
+            except OSError:
+                failed += 1
+                errors.append(provider + ":file_stat_failed")
+                continue
+            total_bytes += size
+            if size > MAX_CONVERSATION_INBOX_FILE_BYTES or total_bytes > MAX_CONVERSATION_INBOX_TOTAL_BYTES:
+                failed += 1
+                errors.append(provider + ":size_limit_exceeded:" + path.name[:120])
+                continue
+            if provider != "chatgpt":
+                pending_schema += 1
+                pending_files.append(provider + "/" + path.name[:180])
+                continue
+            suffix = path.suffix.casefold()
+            if suffix not in {".json", ".zip"}:
+                pending_schema += 1
+                pending_files.append(provider + "/" + path.name[:180])
+                continue
+            try:
+                report = (
+                    import_chatgpt_conversations_json(
+                        path, root / "archive", ledger,
+                        original_location="inbox:chatgpt/" + path.name,
+                    )
+                    if suffix == ".json"
+                    else import_chatgpt_export_zip(
+                        path, root / "archive", ledger,
+                        original_location="inbox:chatgpt/" + path.name,
+                    )
+                )
+                imported += report.archived
+                skipped += report.skipped_existing
+                partial += report.partial
+                failed += report.failed
+                errors.extend(("chatgpt:" + item)[:240] for item in report.errors[:20])
+            except (ChatGPTExportError, OSError, ValueError) as exc:
+                failed += 1
+                errors.append("chatgpt:" + type(exc).__name__ + ":" + path.name[:120])
+
+    return {
+        "status": "completed_with_pending_adapters" if pending_schema else (
+            "completed_with_errors" if failed else "completed"
+        ),
+        "files_processed": processed_files,
+        "archived": imported,
+        "skipped_existing": skipped,
+        "partial": partial,
+        "failed": failed,
+        "pending_provider_adapters": pending_schema,
+        "pending_files": pending_files[:100],
+        "errors": errors[:100],
+        "source_count": ledger.source_count(),
+        "provider_access_used": False,
+        "source_files_modified": False,
+        "source_files_deleted": False,
+        "provider_deletion_attempted": False,
+    }
+
+
 MAX_RECOVERY_SEARCH_SOURCES = 500
 MAX_RECOVERY_SEARCH_BYTES = 32 * 1024 * 1024
 MAX_RECOVERY_SEARCH_FILE_BYTES = 4 * 1024 * 1024

@@ -72,7 +72,7 @@ class DGMHubMultiChatBridge:
         if (
             parsed.scheme != "http"
             or parsed.hostname not in {"127.0.0.1", "::1"}
-            or port != 8770
+            or port not in {8770, 8771}
             or parsed.username is not None
             or parsed.password is not None
             or parsed.path not in {"", "/"}
@@ -145,9 +145,22 @@ class DGMHubMultiChatBridge:
                     "enabled": False, "online": False, "ready": False,
                     "description": "Provider absent from Hub inventory.",
                 }
+        dgm_mat_provider = providers.get("dgm_mat")
+        dgm_mat_mode = str(
+            payload.get("dgm_mat_mode")
+            or (dgm_mat_provider.get("mode") if isinstance(dgm_mat_provider, dict) else "")
+            or "unknown"
+        ).casefold()
+        room_mode = {
+            "observer": "operator_led_observer_dgm_mat",
+            "respond": "operator_led_respond_dgm_mat",
+            "off": "dgm_mat_disconnected",
+        }.get(dgm_mat_mode, "operator_led_mode_unknown")
         return {
             "hub": "online",
-            "room_mode": "operator_led_observer_dgm_mat",
+            "room_mode": room_mode,
+            "dgm_mat_mode": dgm_mat_mode,
+            "dgm_mat_response_enabled": dgm_mat_mode == "respond",
             "dgm_mat_leadership": False,
             "providers": safe_providers,
             "ollama_included": False,

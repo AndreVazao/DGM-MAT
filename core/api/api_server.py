@@ -25,6 +25,7 @@ from core.api.provider_execution_api import router as provider_execution_router
 from core.api.recovery_api import router as recovery_router
 from core.api.repository_learning_api import router as repository_learning_router
 from core.api.auto_help_api import router as auto_help_router
+from core.api.conversation_archive_api import router as conversation_archive_router
 from core.api.local_auth_api import router as local_auth_router, session_manager
 from core.api.auth_middleware import LocalSessionAuthMiddleware
 from core.federation.node_identity import local_node
@@ -51,6 +52,7 @@ app.include_router(provider_execution_router)
 app.include_router(recovery_router)
 app.include_router(repository_learning_router)
 app.include_router(auto_help_router)
+app.include_router(conversation_archive_router)
 app.include_router(local_auth_router)
 
 

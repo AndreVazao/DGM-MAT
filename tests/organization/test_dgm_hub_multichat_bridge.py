@@ -12,6 +12,11 @@ from core.organization.dgm_hub_multichat_bridge import (
 )
 
 
+def test_bridge_accepts_configured_loopback_hub_test_port():
+    bridge = DGMHubMultiChatBridge("http://127.0.0.1:8771")
+    assert bridge.base_url == "http://127.0.0.1:8771"
+
+
 def test_bridge_rejects_non_loopback_hub_urls():
     for url in (
         "http://192.168.1.20:8770",
@@ -48,6 +53,8 @@ def test_status_exposes_only_allowlisted_providers_and_observer_mode(monkeypatch
 
     assert set(result["providers"]) == {"codex", "claude", "kilo", "llm7"}
     assert result["room_mode"] == "operator_led_observer_dgm_mat"
+    assert result["dgm_mat_mode"] == "observer"
+    assert result["dgm_mat_response_enabled"] is False
     assert result["dgm_mat_leadership"] is False
     assert result["paid_fallback"] is False
     assert result["ollama_included"] is False
@@ -172,3 +179,27 @@ def test_model_identity_is_not_inferred_from_provider_response_text(monkeypatch)
 
     assert result.results["llm7"]["model"] == "gpt-oss:20b"
     assert "GPT-4" in result.results["llm7"]["text"]
+
+
+def test_status_reports_operator_enabled_respond_mode_without_claiming_dgm_mat_leadership(monkeypatch):
+    bridge = DGMHubMultiChatBridge("http://127.0.0.1:8771")
+    monkeypatch.setattr(
+        bridge,
+        "_request_json",
+        lambda path, **kwargs: {
+            "hub": "online",
+            "dgm_mat_mode": "respond",
+            "providers": {
+                "dgm_mat": {"enabled": True, "online": True, "ready": True, "mode": "respond"},
+                "kilo": {"enabled": True, "online": True, "ready": True},
+                "llm7": {"enabled": True, "online": True, "ready": True},
+            },
+        },
+    )
+
+    result = bridge.get_status()
+
+    assert result["room_mode"] == "operator_led_respond_dgm_mat"
+    assert result["dgm_mat_mode"] == "respond"
+    assert result["dgm_mat_response_enabled"] is True
+    assert result["dgm_mat_leadership"] is False
