@@ -364,13 +364,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message.type === "DGM_GET_STATUS") {
     readState()
-      .then(state => chrome.storage.local.get("dgmRecoveryLastStatus").then(last => ({
-        paired: Boolean(state.token),
-        run: state.run,
-        auto_enabled: Boolean((await chrome.storage.local.get(AUTO_KEY))[AUTO_KEY]),
-        can_retry: Boolean(state.token && state.run && !state.run.active && (state.run.current || (state.run.blocked || []).length)),
-        last_status: last.dgmRecoveryLastStatus || "Ready."
-      })))
+      .then(async state => {
+        const [last, settings] = await Promise.all([
+          chrome.storage.local.get("dgmRecoveryLastStatus"),
+          chrome.storage.local.get(AUTO_KEY)
+        ]);
+        return {
+          paired: Boolean(state.token),
+          run: state.run,
+          auto_enabled: Boolean(settings[AUTO_KEY]),
+          can_retry: Boolean(state.token && state.run && !state.run.active && (state.run.current || (state.run.blocked || []).length)),
+          last_status: last.dgmRecoveryLastStatus || "Ready."
+        };
+      })
       .then(data => sendResponse({ ok: true, data }))
       .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
     return true;
