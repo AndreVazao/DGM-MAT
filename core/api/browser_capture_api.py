@@ -13,7 +13,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -67,9 +67,8 @@ def _validate_provider_url(provider: str, value: str, source_id: str | None = No
             match = re.search(r"/app/([A-Za-z0-9_-]+)(?:/|$)", parsed.path)
         else:
             route_match = re.search(r"/(?:chat|c|i/grok)/([A-Za-z0-9_-]+)(?:/|$)", parsed.path)
-            query_id = parsed.query and dict(
-                part.split("=", 1) for part in parsed.query.split("&") if "=" in part
-            ).get("conversation")
+            query_values = parse_qs(parsed.query)
+            query_id = (query_values.get("conversation") or query_values.get("id") or [None])[0]
             candidate = route_match.group(1) if route_match else query_id
             if candidate != source_id:
                 raise ValueError("source ID does not match the Grok conversation URL")
