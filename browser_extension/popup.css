@@ -12,3 +12,6 @@ button { border: 0; background: #2563eb; color: white; font-weight: 650; cursor:
 button.secondary { background: #666; }
 button:disabled { opacity: .45; cursor: not-allowed; }
 #status { min-height: 32px; margin: 0; overflow-wrap: anywhere; }
+
+label.toggle { display: flex; align-items: flex-start; gap: 8px; font-weight: 500; }
+label.toggle input { width: auto; margin: 2px 0 0; flex: 0 0 auto; }
