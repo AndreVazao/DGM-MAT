@@ -67,6 +67,7 @@ def test_browser_capture_routes_are_operator_only():
         ("/recovery/browser-capture/discover", "POST"),
         ("/recovery/browser-capture/next", "POST"),
         ("/recovery/browser-capture/capture", "POST"),
+        ("/recovery/browser-capture/block", "POST"),
         ("/recovery/browser-capture/retry", "POST"),
     ):
         route = classify_request_path(path, method)
@@ -150,3 +151,18 @@ def test_capture_requires_discovery_and_does_not_claim_full_history(monkeypatch,
     client, _ = _client(monkeypatch, tmp_path)
     response = client.post("/recovery/browser-capture/capture", json=_capture())
     assert response.status_code == 404
+
+
+def test_provider_block_is_checkpointed_without_retry_or_bypass(monkeypatch, tmp_path):
+    client, ledger = _client(monkeypatch, tmp_path)
+    client.post("/recovery/browser-capture/discover", json=_discovery())
+    client.post("/recovery/browser-capture/next", json={})
+    response = client.post("/recovery/browser-capture/block", json={
+        "provider": "chatgpt",
+        "source_id": "conversation-1",
+        "status": "blocked",
+        "reason": "blocked_login",
+    })
+    assert response.status_code == 200
+    assert ledger.get("chatgpt", "conversation-1").capture_status == "blocked"
+    assert client.post("/recovery/browser-capture/next", json={}).json()["status"] == "queue_empty"
