@@ -75,7 +75,7 @@ def _capture(provider="chatgpt", source_id="conversation-1", url=None, content="
             {"message_id": "m2", "role": "assistant", "content": "Acknowledged.", "sequence": 1},
         ],
         "truncated": False,
-        "history_start_reached": True,
+        "history_start_reached": False,
         "adapter_version": "test",
     }
 
@@ -111,6 +111,8 @@ def test_discover_claim_archive_and_verify_local_capture(monkeypatch, tmp_path):
     assert result["status"] == "archived_and_hash_verified"
     assert result["message_count"] == 2
     assert result["full_history_verified"] is False
+    assert result["history_completeness"] == "partial_or_unknown"
+    assert result["oldest_boundary"] == "unknown"
 
     path = Path(result["archive_path"])
     assert path.is_file()
