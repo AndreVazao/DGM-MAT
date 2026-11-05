@@ -416,8 +416,6 @@ class BackupFirstPatchExecutor:
             )
             if target_handle is None:
                 raise PatchRollbackError("Patched target is missing; refusing an unverified rollback.")
-            if backend.file_link_count(target_handle) != 1:
-                raise PatchRollbackError("Target has multiple hard links; refusing rollback outside the selected worktree.")
             expected_identity = manifest.get("target_identity")
             actual_identity = backend.file_identity(target_handle)
             if backend.file_link_count(target_handle) != 1:
