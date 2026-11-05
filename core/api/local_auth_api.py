@@ -160,6 +160,9 @@ def create_pairing_code(request: Request, response: Response):
 def pair_mobile_client(payload: PairingRequest, request: Request):
     """Exchange a short-lived PC-local pairing code for a short-lived operator session."""
     global _pairing_digest, _pairing_expires_at
+    if not _is_loopback(request):
+        raise HTTPException(status_code=403, detail="Pairing is loopback-only.")
+    _check_origin(request)
     client_key = "pair:" + (request.client.host if request.client else "unknown")
     _rate_limit(client_key)
     supplied_digest = hashlib.sha256(payload.code.encode("utf-8")).digest()
