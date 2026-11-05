@@ -275,7 +275,7 @@ async function testProviderDomMismatchFailsClosed() {
   const harness = createHarness("dom-mismatch", "chatgpt");
   const response = await harness.capture();
   assert.equal(response.ok, false);
-  assert.match(response.error, /No message containers were recognized/);
+  assert.match(response.error, /did not expose recognizable message containers/);
 }
 
 async function testIdenticalTextOnlyTurnsAreMarkedAmbiguous() {
