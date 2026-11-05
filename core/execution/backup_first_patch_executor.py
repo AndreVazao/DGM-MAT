@@ -563,8 +563,6 @@ class BackupFirstPatchExecutor:
                 or tuple(repository_identity) != self._repo_identity
             ):
                 raise PatchRollbackError("Backup belongs to a different repository identity.")
-            if manifest.get("rollback_available") is not True:
-                raise PatchRollbackError("This backup has already been rolled back.")
             operation = manifest.get("operation")
             backup_file_value = manifest.get("backup_file")
             if (
