@@ -2,43 +2,44 @@
 Data: 2026-11-05  
 Branch: `fix/backup-first-executor-win32-2026-11-05`  
 PR: [#219](https://github.com/AndreVazao/DGM-MAT/pull/219) — draft, não integrada  
-Último head com CI verificado: `cf1ac4b9633be0cd467093fae27a9fe9e80cf430`
+Head validado: `d86d8a784f4d687fc79d23fe8d0022c97aa17590`
 
-## Estado técnico verificado
+## Estado técnico atual
 
-- POSIX: operações relativas a directory descriptors, `O_NOFOLLOW`, identidade do root, backup externo verificado e rollback condicionado ao hash atual.
-- Windows: navegação relativa a handles, `FILE_OPEN_REPARSE_POINT`, rejeição de reparse points e directory handles que bloqueiam renomeação concorrente.
-- Windows target existente: o executor abre o ficheiro com handle exclusivo (share mode apenas leitura), mantém-no aberto durante backup e alteração e escreve in-place através do handle. Isto bloqueia novos handles com acesso de escrita/delete durante a operação; se houver um handle incompatível já aberto, a operação falha fechada.
-- Windows target novo: criação nativa `FILE_CREATE` é atómica; o handle criado fica exclusivo durante a escrita.
-- Antes da alteração é criado e verificado o backup externo e é persistido um manifesto em estado `prepared`. Depois da escrita, os bytes são relidos/verificados e o manifesto passa a `applied`.
-- Rollback verifica a identidade do ficheiro (volume serial + file index). Para estado `applied`, também exige o hash resultante esperado; para estado `prepared`, pode recuperar uma escrita interrompida, desde que a identidade seja a mesma.
-- Testes Windows incluem bloqueio de escrita/rename concorrente, backup/replace/manifest/rollback, criação/rollback, recuperação de escrita parcial e recusa de rollback sobre conteúdo/identidade substituídos.
+- **Windows é o único backend de mutação ativo.** O executor valida o top-level real do Git com `git rev-parse --show-toplevel` e rejeita pastas aninhadas/falsas.
+- A navegação começa na raiz da unidade e percorre cada componente através de handles. Entradas são abertas com `FILE_OPEN_REPARSE_POINT`; junctions e outros reparse points são rejeitados.
+- Componentes de caminhos Windows com padrão de alias 8.3 (`~N`) são rejeitados para impedir bypass da lista de caminhos protegidos.
+- Handles de diretórios permanecem abertos sem `FILE_SHARE_DELETE`, bloqueando rename/delete concorrente dos diretórios enquanto decorre a operação.
+- O backup root é criado componente a componente relativamente a handles fixados; não é usado `Path.mkdir` no caminho Windows.
+- Ficheiros de destino existentes são abertos com share mode exclusivo (read sharing apenas), mantendo o handle durante leitura, backup, escrita in-place e verificação. A operação falha fechada se existir um handle incompatível.
+- Ficheiros novos usam `FILE_CREATE` atómico e permanecem exclusivos durante a escrita.
+- Destinos com hard links são rejeitados, tanto em apply como em rollback, para não modificar caminhos adicionais fora da worktree.
+- Backups e manifestos usam handles exclusivos durante escrita/verificação; criação pede `FILE_WRITE_THROUGH` e as escritas fazem `FlushFileBuffers`.
+- Antes da mutação é persistido um manifesto `prepared`; depois da escrita e verificação do conteúdo passa a `applied`. O rollback valida schema, `rollback_available`, operação/backup coerentes, identidade da worktree, identidade do ficheiro e hash do conteúdo aplicado. A recuperação de estado `prepared` está coberta por teste.
+- POSIX: apply e rollback **falham fechados**. Não existe uma primitiva POSIX portátil de replace/delete condicional capaz de excluir writers que não cooperam com um lock. A implementação POSIX insegura foi removida, em vez de continuar acessível.
 
-## Evidência CI
+## Evidência CI no head indicado
 
 | Workflow | Run | Resultado |
 |---|---:|---|
-| Focused PR Validation | #290 / 42064020938 | SUCCESS |
-| Backup-First Executor Windows Guard | #38 / 42064020752 | SUCCESS |
+| Backup-First Executor Windows Guard | #66 / 42067353068 | **SUCCESS** |
+| Focused PR Validation | #321 / 42067353472 | **SUCCESS** |
 
-O Windows Guard executou os testes nativos; 7 testes POSIX-only foram corretamente ignorados no runner Windows. O Focused PR Validation compilou e executou os regressions selecionados com sucesso.
+O Windows Guard executou os testes nativos em Windows. O Focused PR Validation compilou as fontes Python e executou os regressions selecionados. Esta evidência é para o head `d86d8a7`.
 
-## Bloqueios que impedem integração
+## Revisão independente e scanner
 
-1. **Revisão de segurança independente:** solicitada ao CodeRabbit para a semântica de share modes, NT APIs, recuperação de manifesto, identidade do target, lifecycle dos handles e corridas residuais. A revisão ainda não foi concluída.
-2. **Snyk:** o status GitHub do check `security/snyk (andrevazao)` foi diagnosticado como `You have used your limit of private tests`. A análise Snyk não foi executada por limite de quota; não há vulnerabilidade reportada, mas também não há scan limpo. Não foi comprada quota nem desativado o scanner.
-3. **Aceitação local:** falta validar o ciclo completo no Windows 10 do utilizador. CI hospedado não substitui esse teste.
-4. **MissionEngine:** integração com o motor de missões ainda não feita. Issue #212 permanece aberta.
+- CodeRabbit publicou anteriormente 20 comentários acionáveis. Foram tratados os pontos relevantes sobre a corrida do target Windows, hard links, backup-root path-based, manifestos POSIX, identidade da worktree, aliases 8.3, consistência do manifesto e rollback repetido.
+- Um pedido de revisão do head atual foi aceite pelo bot às 16:43 UTC; ainda não existe uma nova revisão publicada para confirmar as alterações mais recentes. Um pedido anterior tinha sido limitado por rate limit.
+- O check Snyk devolve exatamente `You have used your limit of private tests`. O scan não foi executado. Isto não é uma vulnerabilidade reportada nem um scan limpo. Não foi comprada quota e o scanner não foi desativado.
 
-## Alterações de qualidade
+## Gates ainda abertos
 
-- Removidas definições duplicadas dos helpers Windows.
-- Removidos helpers Windows obsoletos que faziam operações sem manter o target bloqueado.
-- Substituído o teste antigo de fail-closed Windows por testes de integração E2E.
-- Corrigido o teste de recuperação do manifesto preparado.
-- Cleanup de handles no rollback garante que o handle do diretório raiz não é fechado duas vezes.
-- SAFE continua por defeito; auto-merge continua desativado; não há execução de shell arbitrário.
+1. Obter revisão independente atualizada, sobretudo sobre ACL herdada do backup root e durabilidade dos metadados de diretório em caso de perda abrupta de energia.
+2. Resolver a indisponibilidade de quota Snyk ou obter cobertura equivalente sem ocultar o check.
+3. Executar aceitação local no Windows 10 do utilizador: criação/replace, backup, rollback, crash-recovery e bloqueio de writers concorrentes.
+4. Só depois ligar o executor ao MissionEngine via issue #212, com worktree isolada, plano estruturado, allowlist de validadores, checkpoints e rollback.
 
 ## Decisão
 
-**Ainda não integrar.** Os workflows atuais passaram e a corrida anterior de substituição do target foi redesenhada usando handles exclusivos e escrita in-place. A integração depende agora da revisão de segurança independente, diagnóstico do erro Snyk e aceitação local Windows 10. Só depois ligar a primitiva ao MissionEngine, com worktree isolada, plano estruturado, allowlist de validadores, checkpoints e rollback.
+**Não integrar ainda.** Os dois workflows passaram no head indicado, mas CI não substitui revisão independente nem ensaio no PC real. O executor continua desligado do MissionEngine, não executa shell arbitrário, não concede autonomia de escrita por si só e não ativa auto-merge. SAFE permanece por defeito, `approval_required=true`, `auto_merge_enabled=false`.
