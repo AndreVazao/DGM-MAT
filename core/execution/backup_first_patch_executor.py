@@ -52,6 +52,8 @@ class BackupFirstPatchExecutor:
         max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
     ) -> None:
         self.repo_root = Path(repo_root).expanduser().resolve(strict=True)
+        root_identity = self.repo_root.stat()
+        self._repo_identity = (root_identity.st_dev, root_identity.st_ino)
         if not self.repo_root.is_dir():
             raise PatchRejected("repo_root must be an existing directory.")
         if not ((self.repo_root / ".git").exists() or (self.repo_root / ".git").is_file()):
@@ -141,6 +143,9 @@ class BackupFirstPatchExecutor:
         flags |= getattr(os, "O_CLOEXEC", 0)
         current_fd = os.open(self.repo_root, flags)
         try:
+            opened_root = os.fstat(current_fd)
+            if (opened_root.st_dev, opened_root.st_ino) != self._repo_identity:
+                raise PatchRejected("Repository root changed after executor initialization.")
             for part in parts[:-1]:
                 next_fd = os.open(part, flags, dir_fd=current_fd)
                 os.close(current_fd)
