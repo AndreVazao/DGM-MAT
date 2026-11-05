@@ -36,6 +36,10 @@ async function api(path, body, token) {
     body: JSON.stringify(body || {})
   });
   const payload = await response.json().catch(() => ({}));
+  if (response.status === 401 && token) {
+    await chrome.storage.local.remove([TOKEN_KEY, TOKEN_EXPIRY_KEY]);
+    throw new Error("The local DGM-MAT session expired or the API restarted. Pair the extension again.");
+  }
   if (!response.ok) throw new Error(payload.detail || ("DGM-MAT API returned HTTP " + response.status));
   return payload;
 }
