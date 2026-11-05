@@ -104,7 +104,7 @@ def test_existing_file_requires_matching_expected_hash(tmp_path):
     assert target.read_text(encoding="utf-8") == "old\n"
 
 
-@pytest.mark.parametrize("path", ["../outside.txt", "/etc/passwd", ".env", "secrets/key.txt", ".git/config", "id_rsa"])
+@pytest.mark.parametrize("path", ["../outside.txt", "/etc/passwd", ".env", "secrets/key.txt", "secre~1/key.txt", ".git/config", "id_rsa"])
 def test_protected_and_escaping_paths_are_rejected(tmp_path, path):
     root = repository(tmp_path)
     executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
@@ -213,6 +213,8 @@ def test_windows_backup_first_replace_and_rollback(tmp_path):
     assert rolled_back["rollback_available"] is False
     persisted = json.loads((backup_dir / "manifest.json").read_text(encoding="utf-8"))
     assert persisted["rollback_available"] is False
+    with pytest.raises(PatchRollbackError, match="already been rolled back"):
+        executor.rollback(result["backup_id"])
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Native Windows integration test.")
@@ -440,3 +442,27 @@ def test_posix_mutation_is_rejected_until_conditional_writes_are_available(tmp_p
 
     assert target.read_bytes() == original
     assert not (tmp_path / "backups").exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows manifest identity integration test.")
+def test_windows_rollback_rejects_manifest_from_different_repository_identity(tmp_path):
+    root = repository(tmp_path)
+    target = root / "src" / "module.py"
+    original = b"original"
+    target.write_bytes(original)
+    backup_root = tmp_path / "backups"
+    executor = BackupFirstPatchExecutor(root, backup_root=backup_root)
+    result = executor.apply_text(
+        "src/module.py",
+        "patched",
+        expected_sha256=digest(original),
+    )
+    manifest_path = backup_root / result["backup_id"] / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["repository_identity"] = [0, 0]
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    with pytest.raises(PatchRollbackError, match="repository identity"):
+        executor.rollback(result["backup_id"])
+
+    assert target.read_bytes() == b"patched"
