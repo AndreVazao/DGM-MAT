@@ -125,3 +125,29 @@ def test_status_poll_stops_at_queued_action_waiting_for_operator():
         sleep=lambda _seconds: None,
     )
     assert mission["action_id"] == 42
+
+
+def test_mission_status_rejects_invalid_id_before_http_request():
+    calls = []
+    with pytest.raises(ValueError, match="ID de missão inválido"):
+        fetch_mission_checkpoint(
+            "../other-endpoint",
+            request=lambda *args, **kwargs: calls.append((args, kwargs)),
+        )
+    assert calls == []
+
+
+def test_mission_submit_rejects_invalid_returned_id():
+    calls = []
+
+    def request(method, suffix, **kwargs):
+        calls.append((method, suffix))
+        return Response(201, {
+            "status": "success",
+            "mission_id": "../../other-endpoint",
+        })
+
+    with pytest.raises(RuntimeError, match="Resposta sem confirmação válida"):
+        submit_mission_once(request, "test mission")
+
+    assert calls == [("POST", "/missions")]
