@@ -83,7 +83,7 @@ class BackupFirstPatchExecutor:
     def _relative_target(self, raw_path: str) -> tuple[Path, str]:
         if not isinstance(raw_path, str) or not raw_path.strip():
             raise PatchRejected("A non-empty repository-relative path is required.")
-        normalized = raw_path.replace("\\\\", "/")
+        normalized = raw_path.replace("\\", "/")
         raw_parts = normalized.split("/")
         pure = PurePosixPath(normalized)
         if pure.is_absolute() or any(part in {"", ".", ".."} for part in raw_parts):
