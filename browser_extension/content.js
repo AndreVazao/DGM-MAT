@@ -268,9 +268,9 @@
       let stableTopRounds = 0;
       let previousTopHeight = scroller.scrollHeight;
       let previousTopMessageCount = collected.size;
-      while (topLoadSteps < 20 && stableTopRounds < 3) {
+      while (topLoadSteps < 20 && stableTopRounds < 4) {
         scroller.scrollTop = 0;
-        await sleep(250);
+        await sleep(500);
         collectVisible();
         const currentHeight = scroller.scrollHeight;
         const currentMessageCount = collected.size;
