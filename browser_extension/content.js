@@ -57,6 +57,7 @@
     const provider = providerForUrl(location.href);
     if (!provider) throw new Error("This tab is not an allowed AI provider page.");
     const found = new Map();
+    let truncated = false;
 
     function collectLinks() {
       if (isConversationUrl(location.href, provider)) {
@@ -109,13 +110,18 @@
             collectLinks();
             steps++;
           }
+          if (steps >= 40 || found.size >= 500) {
+            if (scroller.scrollTop < scroller.scrollHeight - scroller.clientHeight - 4 || found.size >= 500) {
+              truncated = true;
+            }
+          }
         } finally {
           scroller.scrollTop = originalTop;
         }
       }
     }
     collectLinks();
-    return { provider, items: [...found.values()] };
+    return { provider, items: [...found.values()], truncated };
   }
 
   function visibleText(element) {
