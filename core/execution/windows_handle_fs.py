@@ -89,6 +89,23 @@ class WindowsDirectoryHandleBackend:
                 ("ReparseTag", wintypes.DWORD),
             ]
 
+        class BY_HANDLE_FILE_INFORMATION(ctypes.Structure):
+            _fields_ = [
+                ("dwFileAttributes", wintypes.DWORD),
+                ("ftCreationTime", wintypes.FILETIME),
+                ("ftLastAccessTime", wintypes.FILETIME),
+                ("ftLastWriteTime", wintypes.FILETIME),
+                ("dwVolumeSerialNumber", wintypes.DWORD),
+                ("nFileSizeHigh", wintypes.DWORD),
+                ("nFileSizeLow", wintypes.DWORD),
+                ("nNumberOfLinks", wintypes.DWORD),
+                ("nFileIndexHigh", wintypes.DWORD),
+                ("nFileIndexLow", wintypes.DWORD),
+            ]
+
+        class FILE_DISPOSITION_INFO(ctypes.Structure):
+            _fields_ = [("DeleteFile", wintypes.BOOLEAN)]
+
         class FILE_RENAME_INFO(ctypes.Structure):
             _fields_ = [
                 ("ReplaceIfExists", wintypes.BOOLEAN),
@@ -109,6 +126,8 @@ class WindowsDirectoryHandleBackend:
         self.OBJECT_ATTRIBUTES = OBJECT_ATTRIBUTES
         self.IO_STATUS_BLOCK = IO_STATUS_BLOCK
         self.FILE_ATTRIBUTE_TAG_INFO = FILE_ATTRIBUTE_TAG_INFO
+        self.BY_HANDLE_FILE_INFORMATION = BY_HANDLE_FILE_INFORMATION
+        self.FILE_DISPOSITION_INFO = FILE_DISPOSITION_INFO
         self.FILE_RENAME_INFO = FILE_RENAME_INFO
         self.FILE_RENAME_INFO_EX = FILE_RENAME_INFO_EX
 
@@ -140,6 +159,10 @@ class WindowsDirectoryHandleBackend:
             wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD
         ]
         self.kernel32.GetFileInformationByHandleEx.restype = wintypes.BOOL
+        self.kernel32.GetFileInformationByHandle.argtypes = [
+            wintypes.HANDLE, ctypes.POINTER(BY_HANDLE_FILE_INFORMATION)
+        ]
+        self.kernel32.GetFileInformationByHandle.restype = wintypes.BOOL
         self.kernel32.ReadFile.argtypes = [
             wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD,
             ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p
@@ -215,9 +238,11 @@ class WindowsDirectoryHandleBackend:
             0,
         )
         if status < 0:
-            raise WindowsHandleError(
+            error = WindowsHandleError(
                 f"NtCreateFile failed with NTSTATUS 0x{status & 0xFFFFFFFF:08X}."
             )
+            error.ntstatus = status & 0xFFFFFFFF
+            raise error
         if not handle.value:
             raise WindowsHandleError("NtCreateFile returned an empty handle.")
         try:
@@ -308,6 +333,14 @@ class WindowsDirectoryHandleBackend:
             options=self.FILE_NON_DIRECTORY_FILE | self.FILE_SYNCHRONOUS_IO_NONALERT | self.FILE_OPEN_REPARSE_POINT,
         )
 
+    def open_file_optional(self, parent_handle: Any, name: str, *, writable: bool = False) -> Any | None:
+        try:
+            return self.open_file(parent_handle, name, writable=writable)
+        except WindowsHandleError as exc:
+            if getattr(exc, "ntstatus", None) in {0xC0000034, 0xC000003A}:
+                return None
+            raise
+
     def create_file(self, parent_handle: Any, name: str) -> Any:
         name = self._validate_basename(name)
         access = self.FILE_READ_DATA | self.FILE_WRITE_DATA | self.FILE_READ_ATTRIBUTES | self.DELETE | self.SYNCHRONIZE
@@ -325,8 +358,7 @@ class WindowsDirectoryHandleBackend:
             self.FILE_LIST_DIRECTORY
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
-            | self.FILE_WRITE_DATA
-            | self.FILE_DELETE_CHILD
+            | self.DELETE
             | self.SYNCHRONIZE
         )
         return self._nt_open(
@@ -409,6 +441,29 @@ class WindowsDirectoryHandleBackend:
             raise WindowsHandleError(
                 f"NtSetInformationFile(FileRenameInformation) failed with NTSTATUS 0x{status & 0xFFFFFFFF:08X}."
             )
+    def file_identity(self, handle: Any) -> tuple[int, int]:
+        info = self.BY_HANDLE_FILE_INFORMATION()
+        if not self.kernel32.GetFileInformationByHandle(handle, self.ctypes.byref(info)):
+            self._raise_last_error("GetFileInformationByHandle")
+        file_index = (int(info.nFileIndexHigh) << 32) | int(info.nFileIndexLow)
+        return int(info.dwVolumeSerialNumber), file_index
+
+    def delete_handle(self, handle: Any) -> None:
+        info = self.FILE_DISPOSITION_INFO()
+        info.DeleteFile = 1
+        io_status = self.IO_STATUS_BLOCK()
+        status = self.ntdll.NtSetInformationFile(
+            handle,
+            self.ctypes.byref(io_status),
+            self.ctypes.byref(info),
+            self.ctypes.sizeof(info),
+            13,  # FileDispositionInformation
+        )
+        if status < 0:
+            raise WindowsHandleError(
+                f"NtSetInformationFile(FileDispositionInformation) failed with NTSTATUS 0x{status & 0xFFFFFFFF:08X}."
+            )
+
     def close(self, handle: Any) -> None:
         if handle and getattr(handle, "value", handle):
             if not self.kernel32.CloseHandle(handle):
