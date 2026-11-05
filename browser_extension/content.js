@@ -233,24 +233,30 @@
     const scroller = findScrollContainer(provider);
     const originalTop = scroller.scrollTop;
     const collected = new Map();
-    let sequence = 0;
+    let firstSeen = 0;
     let steps = 0;
     let stableBottomRounds = 0;
 
-    function collectVisible() {
+    function collectVisible(phase, topStep = 0) {
       const nodes = messageNodes(provider);
-      for (const node of nodes) {
+      for (let index = 0; index < nodes.length; index++) {
+        const node = nodes[index];
         const content = visibleText(node);
         if (!content) continue;
         const role = roleFor(node, provider);
-        const id = messageIdentity(node, role, content, sequence++);
+        const id = messageIdentity(node, role, content, firstSeen++);
         if (!collected.has(id)) {
           collected.set(id, {
-            message_id: id,
-            role,
-            content: content.slice(0, 100000),
-            sequence: collected.size,
-            timestamp: node.querySelector("time[datetime]")?.getAttribute("datetime") || null
+            message: {
+              message_id: id,
+              role,
+              content: content.slice(0, 100000),
+              timestamp: node.querySelector("time[datetime]")?.getAttribute("datetime") || null
+            },
+            phase,
+            top_step: topStep,
+            scroll_top: scroller.scrollTop,
+            dom_index: index
           });
         }
       }
@@ -264,14 +270,14 @@
       // sufficient evidence that the oldest messages have loaded.
       scroller.scrollTop = 0;
       await sleep(350);
-      collectVisible();
+      collectVisible("top", 0);
       let stableTopRounds = 0;
       let previousTopHeight = scroller.scrollHeight;
       let previousTopMessageCount = collected.size;
       while (topLoadSteps < 20 && stableTopRounds < 4) {
         scroller.scrollTop = 0;
         await sleep(500);
-        collectVisible();
+        collectVisible("top", topLoadSteps + 1);
         const currentHeight = scroller.scrollHeight;
         const currentMessageCount = collected.size;
         if (currentHeight > previousTopHeight || currentMessageCount > previousTopMessageCount) {
@@ -295,7 +301,7 @@
           scroller.scrollTop = Math.min(max, before + Math.max(300, scroller.clientHeight * 0.75));
         }
         await sleep(250);
-        collectVisible();
+        collectVisible("scroll", 0);
         steps++;
       }
     } finally {
@@ -303,7 +309,18 @@
     }
 
     if (!collected.size) throw new Error("No message containers were recognized; nothing was archived.");
-    const messages = [...collected.values()];
+    // The initial rendered window may be newer than windows fetched later
+    // while pinned at scrollTop=0. Order top-loading snapshots newest-to-oldest
+    // in reverse observation order, then append downward-scroll windows by
+    // ascending scroll position. Stable message IDs deduplicate overlap.
+    const orderedEntries = [...collected.values()].sort((left, right) => {
+      if (left.phase !== right.phase) return left.phase === "top" ? -1 : 1;
+      if (left.phase === "top") {
+        return right.top_step - left.top_step || left.dom_index - right.dom_index;
+      }
+      return left.scroll_top - right.scroll_top || left.dom_index - right.dom_index;
+    });
+    const messages = orderedEntries.map(entry => entry.message);
     messages.forEach((message, index) => { message.sequence = index; });
     const unknownRoleCount = messages.filter(message => message.role === "unknown").length;
     return {
