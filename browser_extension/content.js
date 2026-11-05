@@ -281,6 +281,7 @@
     if (!collected.size) throw new Error("No message containers were recognized; nothing was archived.");
     const messages = [...collected.values()];
     messages.forEach((message, index) => { message.sequence = index; });
+    const unknownRoleCount = messages.filter(message => message.role === "unknown").length;
     return {
       provider,
       source_id: sourceId,
@@ -288,7 +289,12 @@
       url: location.href,
       messages,
       truncated: steps >= 100,
-      history_start_reached: true,
+      // The top of the currently rendered DOM is not proof of oldest provider history.
+      history_start_reached: false,
+      oldest_boundary: "unknown",
+      messages_total: messages.length,
+      unknown_role_count: unknownRoleCount,
+      scroll_steps: steps,
       adapter_version: VERSION,
       captured_at: new Date().toISOString()
     };
