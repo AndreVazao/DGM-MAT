@@ -162,6 +162,10 @@ class BrowserCaptureRequest(BaseModel):
     messages: list[BrowserMessage] = Field(min_length=1, max_length=MAX_MESSAGES)
     truncated: bool = False
     history_start_reached: bool = False
+    oldest_boundary: Literal["confirmed", "unknown", "limit"] = "unknown"
+    messages_total: int = Field(default=0, ge=0, le=MAX_MESSAGES)
+    unknown_role_count: int = Field(default=0, ge=0, le=MAX_MESSAGES)
+    scroll_steps: int = Field(default=0, ge=0, le=1000)
     adapter_version: str = Field(default="0.1.0", max_length=40)
     captured_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -326,6 +330,18 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "message_count": len(ordered),
         "truncated": payload.truncated,
         "history_start_reached": payload.history_start_reached,
+        "oldest_boundary": payload.oldest_boundary,
+        "messages_total": payload.messages_total or len(ordered),
+        "unknown_role_count": payload.unknown_role_count,
+        "scroll_steps": payload.scroll_steps,
+        "history_completeness": (
+            "oldest_boundary_confirmed"
+            if payload.oldest_boundary == "confirmed"
+            and payload.history_start_reached
+            and not payload.truncated
+            and payload.unknown_role_count == 0
+            else "partial_or_unknown"
+        ),
         # Hash integrity is distinct from proof that every historical message was rendered.
         "completeness": "visible_snapshot",
         "full_history_verified": False,
