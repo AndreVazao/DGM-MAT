@@ -116,6 +116,7 @@ class BrowserConversationItem(BaseModel):
 class BrowserDiscoveryRequest(BaseModel):
     provider: Literal["chatgpt", "gemini", "grok"]
     items: list[BrowserConversationItem] = Field(min_length=1, max_length=MAX_DISCOVERY_ITEMS)
+    truncated: bool = False
 
     model_config = ConfigDict(extra="forbid")
 
@@ -203,6 +204,7 @@ def discover_browser_conversations(payload: BrowserDiscoveryRequest):
         "pending": pending,
         "already_processed": already_processed,
         "rejected": rejected,
+        "discovery_truncated": payload.truncated,
         "errors": errors[:50],
     }
 
