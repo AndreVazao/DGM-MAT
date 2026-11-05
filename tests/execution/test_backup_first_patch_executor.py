@@ -350,3 +350,28 @@ def test_windows_executor_rejects_hard_linked_target(tmp_path):
     assert target.read_bytes() == original
     assert external.read_bytes() == original
     assert not (tmp_path / "backups").exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows hard-link rollback test.")
+def test_windows_rollback_refuses_hard_linked_target(tmp_path):
+    root = repository(tmp_path)
+    target = root / "src" / "module.py"
+    external = tmp_path / "outside-hardlink.py"
+    original = b"original\\n"
+    target.write_bytes(original)
+    executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
+    result = executor.apply_text(
+        "src/module.py",
+        "patched\\n",
+        expected_sha256=digest(original),
+    )
+    try:
+        os.link(target, external)
+    except OSError as exc:
+        pytest.skip(f"Hard-link creation is unavailable: {type(exc).__name__}")
+
+    with pytest.raises(PatchRollbackError, match="multiple hard links"):
+        executor.rollback(result["backup_id"])
+
+    assert target.read_bytes() == b"patched\\n"
+    assert external.read_bytes() == b"patched\\n"
