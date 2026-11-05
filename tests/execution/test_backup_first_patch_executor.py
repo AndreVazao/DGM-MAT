@@ -11,6 +11,13 @@ from core.execution.backup_first_patch_executor import (
 )
 
 
+
+
+requires_posix_directory_handles = pytest.mark.skipif(
+    os.name != "posix",
+    reason="Filesystem mutation is deliberately disabled without secure POSIX directory handles.",
+)
+
 def repository(tmp_path):
     root = tmp_path / "repo"
     root.mkdir()
@@ -23,6 +30,7 @@ def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+@requires_posix_directory_handles
 def test_replace_creates_verified_backup_and_rollback_restores_original(tmp_path):
     root = repository(tmp_path)
     backup_root = tmp_path / "backups"
@@ -47,6 +55,7 @@ def test_replace_creates_verified_backup_and_rollback_restores_original(tmp_path
     assert rolled_back["rollback_available"] is False
 
 
+@requires_posix_directory_handles
 def test_create_can_be_rolled_back_by_removing_only_created_file(tmp_path):
     root = repository(tmp_path)
     executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
@@ -59,6 +68,7 @@ def test_create_can_be_rolled_back_by_removing_only_created_file(tmp_path):
     assert not (root / "src" / "new.py").exists()
 
 
+@requires_posix_directory_handles
 def test_original_file_size_is_bounded_before_backup_or_replacement(tmp_path):
     root = repository(tmp_path)
     target = root / "src" / "large.txt"
@@ -81,6 +91,7 @@ def test_original_file_size_is_bounded_before_backup_or_replacement(tmp_path):
     assert not (tmp_path / "backups").exists()
 
 
+@requires_posix_directory_handles
 def test_existing_file_requires_matching_expected_hash(tmp_path):
     root = repository(tmp_path)
     target = root / "src" / "module.py"
@@ -123,6 +134,7 @@ def test_backup_root_inside_repository_is_rejected(tmp_path):
         BackupFirstPatchExecutor(root, backup_root=root / ".backups")
 
 
+@requires_posix_directory_handles
 def test_rollback_refuses_to_overwrite_changes_made_after_patch(tmp_path):
     root = repository(tmp_path)
     target = root / "src" / "module.py"
