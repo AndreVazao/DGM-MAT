@@ -247,51 +247,44 @@
         return;
       }
 
-      const offsets = [];
-      uniqueIds.forEach((id, index) => {
-        const existingIndex = orderedIds.indexOf(id);
-        if (existingIndex >= 0) offsets.push(existingIndex - index);
-      });
-
-      if (offsets.length) {
-        const offset = offsets[0];
-        if (offsets.some(value => value !== offset)) {
-          sequenceOrderConflict = true;
-          for (const id of uniqueIds) {
-            if (!orderedIds.includes(id)) orderedIds.push(id);
-          }
-          return;
+      let index = 0;
+      while (index < uniqueIds.length) {
+        if (orderedIds.includes(uniqueIds[index])) {
+          index++;
+          continue;
         }
-        const minOffset = Math.min(0, offset);
-        const maxOffset = Math.max(orderedIds.length, offset + uniqueIds.length);
-        const merged = new Array(maxOffset - minOffset).fill(null);
-        orderedIds.forEach((id, index) => {
-          merged[index - minOffset] = id;
-        });
-        uniqueIds.forEach((id, index) => {
-          const position = offset + index - minOffset;
-          if (merged[position] && merged[position] !== id) {
+
+        const runStart = index;
+        while (index < uniqueIds.length && !orderedIds.includes(uniqueIds[index])) {
+          index++;
+        }
+        const newRun = uniqueIds.slice(runStart, index);
+        const previousId = runStart > 0 ? uniqueIds[runStart - 1] : null;
+        const nextId = index < uniqueIds.length ? uniqueIds[index] : null;
+        const previousIndex = previousId ? orderedIds.indexOf(previousId) : -1;
+        const nextIndex = nextId ? orderedIds.indexOf(nextId) : -1;
+
+        if (previousIndex >= 0 && nextIndex >= 0) {
+          if (previousIndex >= nextIndex) {
             sequenceOrderConflict = true;
-            return;
+            orderedIds.push(...newRun);
+          } else {
+            // Insert the newly observed turns into the gap between stable anchors.
+            orderedIds.splice(nextIndex, 0, ...newRun);
           }
-          merged[position] = id;
-        });
-        if (!sequenceOrderConflict) {
-          orderedIds.splice(0, orderedIds.length, ...merged.filter(Boolean));
+        } else if (previousIndex >= 0) {
+          orderedIds.splice(previousIndex + 1, 0, ...newRun);
+        } else if (nextIndex >= 0) {
+          orderedIds.splice(nextIndex, 0, ...newRun);
+        } else if (phase === "top") {
+          // A disjoint top snapshot is an older history window.
+          orderedIds.unshift(...newRun);
         } else {
-          for (const id of uniqueIds) {
-            if (!orderedIds.includes(id)) orderedIds.push(id);
-          }
+          // A disjoint downward-scroll snapshot is later in the conversation.
+          orderedIds.push(...newRun);
         }
-        return;
       }
-
-      // Disjoint top snapshots represent successively older provider windows;
-      // disjoint downward-scroll snapshots represent later conversation turns.
-      if (phase === "top") orderedIds.unshift(...uniqueIds);
-      else orderedIds.push(...uniqueIds);
     }
-
     function collectVisible(phase) {
       const nodes = messageNodes(provider);
       const snapshotIds = [];
