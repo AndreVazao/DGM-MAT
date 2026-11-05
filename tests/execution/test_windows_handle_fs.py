@@ -180,3 +180,32 @@ def test_ensure_directory_rejects_existing_reparse_component(tmp_path):
 
     with pytest.raises(WindowsHandleError, match="Reparse-point"):
         backend.ensure_directory(junction / "backup-root")
+
+
+def test_relative_handle_rename_without_replace_preserves_existing_file(tmp_path):
+    root = tmp_path / "repo"
+    source = root / "src"
+    source.mkdir(parents=True)
+    target = source / "module.py"
+    target.write_bytes(b"existing\\n")
+    backend = WindowsDirectoryHandleBackend()
+    root_handle = backend.open_root(root)
+    source_handle = backend.open_child_directory(root_handle, "src")
+    temporary_handle = None
+    try:
+        temporary_handle = backend.create_file(source_handle, ".dgm-temp-03", exclusive=True)
+        backend.write_all(temporary_handle, b"replacement\\n")
+        with pytest.raises(WindowsHandleError):
+            backend.rename_relative(
+                temporary_handle,
+                None,
+                "module.py",
+                replace_existing=False,
+            )
+        assert target.read_bytes() == b"existing\\n"
+        assert (source / ".dgm-temp-03").exists()
+    finally:
+        if temporary_handle:
+            backend.close(temporary_handle)
+        backend.close(source_handle)
+        backend.close(root_handle)
