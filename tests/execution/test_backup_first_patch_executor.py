@@ -58,6 +58,28 @@ def test_create_can_be_rolled_back_by_removing_only_created_file(tmp_path):
     assert not (root / "src" / "new.py").exists()
 
 
+def test_original_file_size_is_bounded_before_backup_or_replacement(tmp_path):
+    root = repository(tmp_path)
+    target = root / "src" / "large.txt"
+    original = b"x" * 11
+    target.write_bytes(original)
+    executor = BackupFirstPatchExecutor(
+        root,
+        backup_root=tmp_path / "backups",
+        max_file_bytes=10,
+    )
+
+    with pytest.raises(PatchRejected, match="Original file exceeds"):
+        executor.apply_text(
+            "src/large.txt",
+            "small",
+            expected_sha256=digest(original),
+        )
+
+    assert target.read_bytes() == original
+    assert not (tmp_path / "backups").exists()
+
+
 def test_existing_file_requires_matching_expected_hash(tmp_path):
     root = repository(tmp_path)
     target = root / "src" / "module.py"
