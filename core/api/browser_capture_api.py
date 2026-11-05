@@ -253,6 +253,8 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
 
     record = {
         "schema_version": 1,
+        "id": payload.source_id,
+        "conversation_id": payload.source_id,
         "provider": payload.provider,
         "source_id": payload.source_id,
         "title": " ".join(payload.title.split())[:500],
@@ -312,6 +314,45 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
     if actual_digest != digest:
         raise HTTPException(status_code=500, detail="Archive integrity verification failed.")
 
+    index_status = "pending"
+    index_summary: dict = {}
+    normalized_destination = folder / (digest + ".normalized.json")
+    try:
+        from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
+        from core.conversation_intelligence.telescope_archive_importer import redact_conversation_text
+        from core.storage.storage_manager import storage_manager
+
+        normalized_record = dict(record)
+        normalized_record["title"] = redact_conversation_text(record["title"])
+        normalized_record["messages"] = [
+            {**message, "content": redact_conversation_text(message["content"])}
+            for message in record["messages"]
+        ]
+        normalized_bytes = (
+            json.dumps(normalized_record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\\n"
+        ).encode("utf-8")
+        if not normalized_destination.exists():
+            descriptor = os.open(
+                normalized_destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+            )
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(normalized_bytes)
+                stream.flush()
+                os.fsync(stream.fileno())
+        cognition = storage_manager.get_path("cognition") / "conversation_intelligence"
+        pipeline = ConversationIntelligencePipeline(
+            progress_store_path=cognition / "progress.sqlite3",
+            knowledge_store_path=cognition / "knowledge.sqlite3",
+        )
+        audits = pipeline.ingest_file(normalized_destination, provider=payload.provider)
+        index_summary = pipeline.summarize(audits)
+        index_status = "indexed"
+    except Exception as exc:
+        # Archival integrity is independent from intelligence indexing. Keep the
+        # raw capture and allow a later indexing retry; never lose a good archive.
+        index_status = "failed"
+        index_summary = {"error_type": type(exc).__name__}
+
     ledger.checkpoint(
         payload.provider,
         payload.source_id,
@@ -319,7 +360,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         completeness="visible_snapshot",
         raw_archive_path=str(destination),
         raw_sha256=digest,
-        index_status="pending",
+        index_status=index_status,
         detail="visible UI snapshot archived; full history not independently verified",
         pipeline="authenticated_browser_capture",
     )
@@ -330,6 +371,9 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "message_count": len(ordered),
         "sha256": digest,
         "archive_path": str(destination),
+        "normalized_archive_path": str(normalized_destination) if normalized_destination.is_file() else None,
+        "index_status": index_status,
+        "index_summary": index_summary,
         "completeness": "visible_snapshot",
         "full_history_verified": False,
         "truncated": payload.truncated,
