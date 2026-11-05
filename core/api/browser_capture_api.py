@@ -356,7 +356,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         existing_fingerprint_record.pop("captured_at", None)
         existing_fingerprint_record.pop("content_fingerprint", None)
         existing_fingerprint = hashlib.sha256((
-            json.dumps(existing_fingerprint_record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\\n"
+            json.dumps(existing_fingerprint_record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
         ).encode("utf-8")).hexdigest()
         if record.get("content_fingerprint") != content_fingerprint or existing_fingerprint != content_fingerprint:
             raise HTTPException(status_code=500, detail="Existing archive fingerprint mismatch.")
