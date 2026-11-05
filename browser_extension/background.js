@@ -261,6 +261,7 @@ async function handlePageReady(message, sender) {
       reason: message.blocked
     }, state.token).catch(() => {});
     await stopRun(message.blocked);
+    await startNextAutoProvider(run.provider);
     return;
   }
   if (message.provider !== run.provider || !run.current) return;
@@ -272,6 +273,7 @@ async function handlePageReady(message, sender) {
       reason: "unexpected_conversation_identity"
     }, state.token).catch(() => {});
     await stopRun("Unexpected provider conversation identity; capture stopped.");
+    await startNextAutoProvider(run.provider);
     return;
   }
 
@@ -302,6 +304,7 @@ async function handlePageReady(message, sender) {
       reason: "capture_or_archive_failed"
     }, state.token).catch(() => {});
     await stopRun(String(error.message || error));
+    await startNextAutoProvider(run.provider);
   }
 }
 
