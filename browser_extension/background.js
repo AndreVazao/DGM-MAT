@@ -137,7 +137,7 @@ async function startRecovery(tabId) {
   return await claimAndNavigate(run, state.token);
 }
 
-async function retryCurrent() {
+async function retryCurrent(tabId) {
   const state = await readState();
   const run = state.run;
   if (!state.token || !run || run.active) {
@@ -146,6 +146,9 @@ async function retryCurrent() {
   run.blocked = Array.isArray(run.blocked) ? run.blocked : [];
   const candidate = run.current || run.blocked[0];
   if (!candidate) throw new Error("There is no blocked conversation to retry.");
+  if (!Number.isInteger(tabId)) throw new Error("Open the provider tab you want to retry first.");
+  run.tab_id = tabId;
+  run.provider = candidate.provider || run.provider;
   const query = "?provider=" + encodeURIComponent(candidate.provider || run.provider) +
     "&source_id=" + encodeURIComponent(candidate.source_id);
   await api("/recovery/browser-capture/retry" + query, {}, state.token);
@@ -246,7 +249,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   if (message.type === "DGM_RETRY_CURRENT") {
-    retryCurrent()
+    retryCurrent(Number(message.tabId))
       .then(result => sendResponse({ ok: true, data: result }))
       .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
     return true;
