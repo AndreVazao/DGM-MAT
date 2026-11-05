@@ -12,7 +12,14 @@ async function readState() {
   const expiresAt = Number(data[TOKEN_EXPIRY_KEY] || 0);
   if (!token || Date.now() >= expiresAt) {
     await chrome.storage.local.remove([TOKEN_KEY, TOKEN_EXPIRY_KEY]);
-    return { token: "", run: data[RUN_KEY] || null };
+    const run = data[RUN_KEY] || null;
+    if (run?.active) {
+      run.active = false;
+      run.last_error = "local_session_expired";
+      run.updated_at = new Date().toISOString();
+      await saveRun(run);
+    }
+    return { token: "", run };
   }
   return { token, run: data[RUN_KEY] || null };
 }
@@ -101,7 +108,7 @@ async function startRecovery(tabId) {
     active: true,
     provider,
     tab_id: tabId,
-    discovered: discovered.registered,
+    discovered: discovered.pending,
     captured: 0,
     current: null,
     started_at: new Date().toISOString(),
@@ -109,7 +116,7 @@ async function startRecovery(tabId) {
     last_error: ""
   };
   await saveRun(run);
-  await chrome.storage.local.set({ dgmRecoveryLastStatus: discovered.registered + " conversation(s) queued from " + provider + "." });
+  await chrome.storage.local.set({ dgmRecoveryLastStatus: discovered.pending + " pending conversation(s) queued from " + provider + "." });
   return await claimAndNavigate(run, state.token);
 }
 
