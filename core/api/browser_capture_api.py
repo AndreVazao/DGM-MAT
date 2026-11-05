@@ -352,7 +352,13 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
             record = json.loads(destination.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             raise HTTPException(status_code=500, detail="Existing archive cannot be decoded.") from exc
-        if record.get("content_fingerprint") != content_fingerprint:
+        existing_fingerprint_record = dict(record)
+        existing_fingerprint_record.pop("captured_at", None)
+        existing_fingerprint_record.pop("content_fingerprint", None)
+        existing_fingerprint = hashlib.sha256((
+            json.dumps(existing_fingerprint_record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\\n"
+        ).encode("utf-8")).hexdigest()
+        if record.get("content_fingerprint") != content_fingerprint or existing_fingerprint != content_fingerprint:
             raise HTTPException(status_code=500, detail="Existing archive fingerprint mismatch.")
     elif actual_digest != hashlib.sha256(encoded).hexdigest():
         raise HTTPException(status_code=500, detail="Archive integrity verification failed.")
