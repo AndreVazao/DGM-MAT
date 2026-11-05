@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import subprocess
 
 import pytest
 
@@ -21,7 +22,11 @@ requires_posix_directory_handles = pytest.mark.skip(
 def repository(tmp_path):
     root = tmp_path / "repo"
     root.mkdir()
-    (root / ".git").mkdir()
+    subprocess.run(
+        ["git", "init", "--quiet", str(root)],
+        check=True,
+        capture_output=True,
+    )
     (root / "src").mkdir()
     return root
 
