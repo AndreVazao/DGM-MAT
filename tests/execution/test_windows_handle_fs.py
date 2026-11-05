@@ -156,3 +156,27 @@ def test_exclusive_target_handle_blocks_external_write_and_rename(tmp_path):
         if target_handle:
             backend.close(target_handle)
         backend.close(root_handle)
+
+
+def test_ensure_directory_creates_nested_path_relative_to_handles(tmp_path):
+    backend = WindowsDirectoryHandleBackend()
+    destination = tmp_path / "new-backup-root" / "nested"
+    handle = backend.ensure_directory(destination)
+    try:
+        assert destination.is_dir()
+    finally:
+        backend.close(handle)
+
+
+def test_ensure_directory_rejects_existing_reparse_component(tmp_path):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    junction = tmp_path / "redirect"
+    try:
+        os.symlink(outside, junction, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"Directory symlink creation unavailable: {type(exc).__name__}")
+    backend = WindowsDirectoryHandleBackend()
+
+    with pytest.raises(WindowsHandleError, match="Reparse-point"):
+        backend.ensure_directory(junction / "backup-root")
