@@ -171,6 +171,8 @@ def browser_capture_status():
 def discover_browser_conversations(payload: BrowserDiscoveryRequest):
     ledger = _ledger()
     registered = 0
+    pending = 0
+    already_processed = 0
     rejected = 0
     errors: list[str] = []
     for item in payload.items:
@@ -186,6 +188,11 @@ def discover_browser_conversations(payload: BrowserDiscoveryRequest):
                 capture_status="discovered",
             ))
             registered += 1
+            saved = ledger.get(payload.provider, item.source_id)
+            if saved and saved.capture_status == "discovered":
+                pending += 1
+            elif saved:
+                already_processed += 1
         except (ValueError, OSError) as exc:
             rejected += 1
             errors.append(type(exc).__name__ + ":" + item.source_id[:80])
@@ -194,6 +201,8 @@ def discover_browser_conversations(payload: BrowserDiscoveryRequest):
         "provider": payload.provider,
         "discovered": len(payload.items),
         "registered": registered,
+        "pending": pending,
+        "already_processed": already_processed,
         "rejected": rejected,
         "errors": errors[:50],
     }
