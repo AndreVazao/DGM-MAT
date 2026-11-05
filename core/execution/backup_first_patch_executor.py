@@ -532,6 +532,8 @@ class BackupFirstPatchExecutor:
         encoded = content.encode("utf-8")
         if len(encoded) > self.max_file_bytes:
             raise PatchRejected("Patch content exceeds the configured size limit.")
+        if os.name == "nt":
+            return self._apply_text_windows(relative_path, encoded, expected_sha256)
 
         # Keep the static policy checks, but never use the returned path for writes.
         _, normalized = self._relative_target(relative_path)
