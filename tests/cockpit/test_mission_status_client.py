@@ -56,7 +56,6 @@ def test_mission_status_returns_none_for_not_yet_visible_checkpoint():
 def test_mission_status_rejects_mismatched_checkpoint():
     with pytest.raises(ValueError, match="checkpoint de missão inválido"):
         fetch_mission_checkpoint(
-            "http://127.0.0.1:8181/runtime",
             "mission_b55c3887",
             request=lambda *args, **kwargs: Response(
                 200, {"mission_id": "mission_ffffffff", "status": "COMPLETED"}
@@ -67,7 +66,6 @@ def test_mission_status_rejects_mismatched_checkpoint():
 def test_mission_status_surfaces_http_error_without_claiming_failure():
     with pytest.raises(RuntimeError, match="HTTP 503"):
         fetch_mission_checkpoint(
-            "http://127.0.0.1:8181/runtime",
             "mission_b55c3887",
             request=lambda *args, **kwargs: Response(503),
         )
