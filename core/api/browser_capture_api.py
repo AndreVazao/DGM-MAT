@@ -200,18 +200,6 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
     source = ledger.get(payload.provider, payload.source_id)
     if source is None:
         raise HTTPException(status_code=404, detail="Conversation was not discovered before capture.")
-    if source.capture_status not in {"in_progress", "discovered"}:
-        # Idempotent retries return the existing archive when the content is unchanged.
-        if source.raw_sha256:
-            return {
-                "status": "already_archived",
-                "provider": source.provider,
-                "source_id": source.source_id,
-                "sha256": source.raw_sha256,
-                "capture_status": source.capture_status,
-            }
-        raise HTTPException(status_code=409, detail="Conversation is not in a capturable state.")
-
     ordered = sorted(payload.messages, key=lambda item: (item.sequence, item.message_id))
     if len({item.message_id for item in ordered}) != len(ordered):
         raise HTTPException(status_code=422, detail="Duplicate message IDs in capture.")
@@ -247,6 +235,17 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         raise HTTPException(status_code=400, detail="Invalid archive destination.")
     folder.mkdir(parents=True, exist_ok=True)
     destination = folder / (digest + ".capture.json")
+    if destination.exists() and source.raw_sha256 == digest:
+        if RecoveryLedger.sha256_file(destination) != digest:
+            raise HTTPException(status_code=500, detail="Existing archive integrity verification failed.")
+        return {
+            "status": "already_archived",
+            "provider": source.provider,
+            "source_id": source.source_id,
+            "sha256": digest,
+            "capture_status": source.capture_status,
+            "archive_path": str(destination),
+        }
     if not destination.exists():
         descriptor = None
         try:
