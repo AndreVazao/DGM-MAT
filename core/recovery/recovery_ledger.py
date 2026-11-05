@@ -146,15 +146,25 @@ class RecoveryLedger:
                 source.attempts, now, now,
             ))
 
-    def next_source(self, pipeline: str = "conversation_recovery") -> RecoverySource | None:
-        """Claim one source in deterministic order, or an explicitly requested retry."""
+    def next_source(
+        self, pipeline: str = "conversation_recovery", provider: str | None = None
+    ) -> RecoverySource | None:
+        """Claim one source in deterministic order, optionally scoped to one provider."""
         with self._connection() as db:
             db.execute("BEGIN IMMEDIATE")
-            retry = db.execute("""
-                SELECT s.* FROM recovery_retry_queue q
-                JOIN recovery_sources s USING (provider, source_id)
-                ORDER BY q.requested_at, q.provider, q.source_id LIMIT 1
-            """).fetchone()
+            if provider:
+                retry = db.execute("""
+                    SELECT s.* FROM recovery_retry_queue q
+                    JOIN recovery_sources s USING (provider, source_id)
+                    WHERE q.provider=?
+                    ORDER BY q.requested_at, q.provider, q.source_id LIMIT 1
+                """, (provider,)).fetchone()
+            else:
+                retry = db.execute("""
+                    SELECT s.* FROM recovery_retry_queue q
+                    JOIN recovery_sources s USING (provider, source_id)
+                    ORDER BY q.requested_at, q.provider, q.source_id LIMIT 1
+                """).fetchone()
             if retry is not None:
                 row = retry
                 db.execute(
@@ -165,11 +175,18 @@ class RecoveryLedger:
                 # The cursor is an audit/progress marker, not an eligibility filter.
                 # New discoveries can belong to older dates or sort before the last
                 # checkpoint; selecting all pending rows prevents silently skipping them.
-                row = db.execute("""
-                    SELECT * FROM recovery_sources
-                    WHERE capture_status='discovered'
-                    ORDER BY provider, source_date, source_id LIMIT 1
-                """).fetchone()
+                if provider:
+                    row = db.execute("""
+                        SELECT * FROM recovery_sources
+                        WHERE capture_status='discovered' AND provider=?
+                        ORDER BY source_date, source_id LIMIT 1
+                    """, (provider,)).fetchone()
+                else:
+                    row = db.execute("""
+                        SELECT * FROM recovery_sources
+                        WHERE capture_status='discovered'
+                        ORDER BY provider, source_date, source_id LIMIT 1
+                    """).fetchone()
             if row is None:
                 return None
             now = time.time()
