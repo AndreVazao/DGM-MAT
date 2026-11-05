@@ -122,3 +122,10 @@ def test_open_root_blocks_root_directory_replacement(tmp_path):
         assert root.is_dir()
     finally:
         backend.close(root_handle)
+
+
+@pytest.mark.parametrize("name", ["..", ".", "nested/file.py", "nested\\\\file.py", "C:drive-relative.py", "trailing.", "trailing "])
+def test_windows_backend_rejects_non_basename_components(name):
+    backend = WindowsDirectoryHandleBackend()
+    with pytest.raises(WindowsHandleError):
+        backend._validate_basename(name)
