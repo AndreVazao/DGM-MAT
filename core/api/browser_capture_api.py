@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, urlparse
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from core.api.recovery_api import get_recovery_ledger
 from core.recovery.recovery_ledger import RecoveryLedger, RecoveryLedgerError, RecoverySource
 
 router = APIRouter(prefix="/recovery/browser-capture", tags=["browser-conversation-capture"])
@@ -48,9 +49,9 @@ def _knowledge_id(kind: str, provider: str, source_id: str, message_id: str = ""
 
 
 def _ledger() -> RecoveryLedger:
-    configured = os.getenv("DGM_RECOVERY_LEDGER_PATH", "").strip()
-    path = Path(configured).expanduser() if configured else Path.home() / ".dgm-mat" / "recovery-ledger.sqlite3"
-    return RecoveryLedger(path)
+    # Reuse the existing recovery API's cached ledger so every importer,
+    # inventory endpoint and browser capture shares one source of truth.
+    return get_recovery_ledger()
 
 
 def _archive_root() -> Path:
