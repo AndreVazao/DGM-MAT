@@ -375,3 +375,51 @@ def test_windows_rollback_refuses_hard_linked_target(tmp_path):
 
     assert target.read_bytes() == b"patched\\n"
     assert external.read_bytes() == b"patched\\n"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows hard-link integration test.")
+def test_windows_apply_rejects_hard_linked_target_without_mutation(tmp_path):
+    root = repository(tmp_path)
+    target = root / "src" / "module.py"
+    linked = root / "src" / "linked-copy.py"
+    original = b"original-content"
+    target.write_bytes(original)
+    try:
+        os.link(target, linked)
+    except OSError as exc:
+        pytest.skip(f"Hard-link creation unavailable: {type(exc).__name__}")
+    backup_root = tmp_path / "backups"
+    executor = BackupFirstPatchExecutor(root, backup_root=backup_root)
+
+    with pytest.raises(PatchRejected, match="hard-linked"):
+        executor.apply_text(
+            "src/module.py",
+            "replacement",
+            expected_sha256=digest(original),
+        )
+
+    assert target.read_bytes() == original
+    assert linked.read_bytes() == original
+    assert not backup_root.exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows hard-link integration test.")
+def test_windows_rollback_rejects_target_that_becomes_hard_linked(tmp_path):
+    root = repository(tmp_path)
+    target = root / "src" / "module.py"
+    linked = root / "src" / "linked-copy.py"
+    original = b"original-content"
+    target.write_bytes(original)
+    executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
+    result = executor.apply_text(
+        "src/module.py",
+        "patched-content",
+        expected_sha256=digest(original),
+    )
+    os.link(target, linked)
+
+    with pytest.raises(PatchRollbackError, match="Hard-linked"):
+        executor.rollback(result["backup_id"])
+
+    assert target.read_bytes() == b"patched-content"
+    assert linked.read_bytes() == b"patched-content"
