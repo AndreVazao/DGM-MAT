@@ -264,3 +264,12 @@ def test_provider_scoped_next_never_claims_another_ai_queue(monkeypatch, tmp_pat
     gemini_next = client.post("/recovery/browser-capture/next", json={"provider": "gemini"}).json()
     assert chat_next["next"]["provider"] == "chatgpt"
     assert gemini_next["next"]["provider"] == "gemini"
+
+
+def test_discovery_reports_when_visible_list_scan_hits_bound(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    payload = _discovery()
+    payload["truncated"] = True
+    response = client.post("/recovery/browser-capture/discover", json=payload)
+    assert response.status_code == 200
+    assert response.json()["discovery_truncated"] is True
