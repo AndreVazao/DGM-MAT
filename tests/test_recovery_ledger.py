@@ -171,3 +171,15 @@ class RecoveryLedgerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+    def test_late_discovery_before_cursor_is_still_claimed(self) -> None:
+        self.add("z", "2026-01-10")
+        first = self.ledger.next_source()
+        self.assertEqual(first.source_id, "z")
+        self.ledger.checkpoint("chatgpt", "z", capture_status="captured")
+        # A later UI scan can discover an older conversation after the cursor moved.
+        self.add("a", "2025-01-01")
+        next_item = self.ledger.next_source()
+        self.assertIsNotNone(next_item)
+        self.assertEqual(next_item.source_id, "a")
