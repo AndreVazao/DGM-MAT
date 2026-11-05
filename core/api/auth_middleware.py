@@ -11,11 +11,17 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from core.api.security_policy import SecurityScope, classify_request_path, classify_route
 
 
-_ALLOWED_ORIGINS = {
-    "http://127.0.0.1:8181",
-    "http://localhost:8181",
-    "https://localhost",
-}
+def _allowed_origins() -> set[str]:
+    import os
+    origins = {
+        "http://127.0.0.1:8181",
+        "http://localhost:8181",
+        "https://localhost",
+    }
+    extension_id = os.getenv("DGM_CHROME_EXTENSION_ID", "").strip()
+    if len(extension_id) == 32 and all(char in "abcdefghijklmnop" for char in extension_id):
+        origins.add("chrome-extension://" + extension_id)
+    return origins
 
 
 def _header(scope: Scope, name: bytes) -> str | None:
