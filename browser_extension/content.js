@@ -202,6 +202,13 @@
     const sourceId = sourceIdForUrl(location.href, provider);
     if (!sourceId) throw new Error("This provider page does not expose a recognized conversation ID.");
 
+    for (let attempt = 0; attempt < 12 && messageNodes(provider).length === 0; attempt++) {
+      await sleep(500);
+    }
+    if (messageNodes(provider).length === 0) {
+      throw new Error("Provider UI did not expose recognizable message containers.");
+    }
+
     const scroller = findScrollContainer();
     const originalTop = scroller.scrollTop;
     const collected = new Map();
@@ -303,6 +310,10 @@
   chrome.runtime.sendMessage({
     type: "DGM_PROVIDER_PAGE_READY",
     url: location.href,
-    provider: providerForUrl(location.href)
+    provider: providerForUrl(location.href),
+    source_id: (() => {
+      const provider = providerForUrl(location.href);
+      return provider ? sourceIdForUrl(location.href, provider) : null;
+    })()
   }).catch(() => {});
 })();
