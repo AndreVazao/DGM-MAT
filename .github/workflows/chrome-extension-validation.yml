@@ -15,6 +15,7 @@ on:
       - "core/recovery/**"
       - "core/conversation_intelligence/**"
       - "core/storage/**"
+      - "tests/browser_extension/**"
       - "tests/test_browser_extension_manifest.py"
       - "tests/api/test_browser_capture_api.py"
       - "tests/api/test_extension_pairing_origin.py"
@@ -43,6 +44,8 @@ jobs:
           node --check browser_extension/background.js
           node --check browser_extension/content.js
           node --check browser_extension/popup.js
+      - name: Run deterministic virtualized-history fixtures
+        run: node tests/browser_extension/test_content_capture.js
       - name: Validate extension manifest JSON
         run: python -m json.tool browser_extension/manifest.json > /dev/null
       - name: Set up Python
