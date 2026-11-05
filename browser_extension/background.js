@@ -350,7 +350,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   if (message.type === "DGM_SET_AUTO_RECOVERY") {
-    setAutoRecovery(Boolean(message.enabled), Number(message.tabId))
+    setAutoRecovery(Boolean(message.enabled), Number.isInteger(message.tabId) ? message.tabId : null)
       .then(data => sendResponse({ ok: true, data }))
       .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
     return true;
