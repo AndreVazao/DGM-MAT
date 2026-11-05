@@ -5,6 +5,9 @@ const CLIENT_ID = "dgm-mat-chrome-extension";
 const RUN_KEY = "dgmRecoveryRun";
 const TOKEN_KEY = "dgmRecoveryToken";
 const TOKEN_EXPIRY_KEY = "dgmRecoveryTokenExpiresAt";
+const AUTO_KEY = "dgmRecoveryAutoEnabled";
+const PROVIDER_TABS_KEY = "dgmRecoveryProviderTabs";
+let startInProgress = false;
 
 async function readState() {
   const data = await chrome.storage.local.get([TOKEN_KEY, TOKEN_EXPIRY_KEY, RUN_KEY]);
@@ -62,6 +65,52 @@ async function sendToTab(tabId, message) {
   return chrome.tabs.sendMessage(tabId, message);
 }
 
+async function rememberProviderTab(provider, tabId) {
+  if (!provider || !Number.isInteger(tabId)) return;
+  const stored = await chrome.storage.local.get(PROVIDER_TABS_KEY);
+  const tabs = stored[PROVIDER_TABS_KEY] || {};
+  tabs[provider] = tabId;
+  await chrome.storage.local.set({ [PROVIDER_TABS_KEY]: tabs });
+}
+
+async function startNextAutoProvider(excludeProvider) {
+  const state = await readState();
+  if (!state.token || state.run?.active) return { started: false };
+  const stored = await chrome.storage.local.get([AUTO_KEY, PROVIDER_TABS_KEY]);
+  if (!stored[AUTO_KEY]) return { started: false };
+  const tabs = stored[PROVIDER_TABS_KEY] || {};
+  for (const provider of ["chatgpt", "gemini", "grok"]) {
+    if (provider === excludeProvider || !Number.isInteger(tabs[provider])) continue;
+    try {
+      const result = await startRecovery(tabs[provider], false);
+      if (!result.finished) return { started: true, provider };
+    } catch (error) {
+      await chrome.storage.local.set({
+        dgmRecoveryLastStatus: "Automatic start for " + provider + " stopped: " + String(error.message || error)
+      });
+    }
+  }
+  return { started: false };
+}
+
+async function setAutoRecovery(enabled, tabId) {
+  await chrome.storage.local.set({ [AUTO_KEY]: Boolean(enabled) });
+  if (!enabled) {
+    await chrome.storage.local.set({
+      dgmRecoveryLastStatus: "Automatic recovery disabled. Any active queue continues until stopped or finished."
+    });
+    return { enabled: false };
+  }
+  if (Number.isInteger(tabId)) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab && tab.id === tabId) {
+      const result = await startRecovery(tabId);
+      return { enabled: true, started: !result.finished };
+    }
+  }
+  return { enabled: true, started: false };
+}
+
 async function claimAndNavigate(run, token) {
   const result = await api("/recovery/browser-capture/next", { provider: run.provider }, token);
   if (result.status !== "claimed" || !result.next) {
@@ -110,7 +159,10 @@ async function pair(code) {
   return { expires_at: expiry, scopes: result.scopes || [] };
 }
 
-async function startRecovery(tabId) {
+async function startRecovery(tabId, chainOnEmpty = true) {
+  if (startInProgress) throw new Error("A provider recovery start is already being prepared.");
+  startInProgress = true;
+  try {
   const state = await readState();
   if (!state.token) throw new Error("Pair this extension with DGM-MAT first.");
   const reply = await sendToTab(tabId, { type: "DGM_DISCOVER_VISIBLE" });
@@ -138,7 +190,12 @@ async function startRecovery(tabId) {
   };
   await saveRun(run);
   await chrome.storage.local.set({ dgmRecoveryLastStatus: discovered.pending + " pending conversation(s) queued from " + provider + "." });
-  return await claimAndNavigate(run, state.token);
+  const result = await claimAndNavigate(run, state.token);
+  if (result.finished && chainOnEmpty) await startNextAutoProvider(provider);
+  return result;
+  } finally {
+    startInProgress = false;
+  }
 }
 
 async function retryCurrent(tabId) {
@@ -178,9 +235,23 @@ async function stopByOperator() {
 
 async function handlePageReady(message, sender) {
   if (!sender.tab || !Number.isInteger(sender.tab.id)) return;
+  await rememberProviderTab(message.provider, sender.tab.id);
   const state = await readState();
   const run = state.run;
-  if (!state.token || !run || !run.active || run.tab_id !== sender.tab.id) return;
+  if (!state.token) return;
+  if (!run || !run.active) {
+    const settings = await chrome.storage.local.get(AUTO_KEY);
+    if (settings[AUTO_KEY] && message.provider) {
+      try { await startRecovery(sender.tab.id); }
+      catch (error) {
+        await chrome.storage.local.set({
+          dgmRecoveryLastStatus: "Automatic recovery could not start: " + String(error.message || error)
+        });
+      }
+    }
+    return;
+  }
+  if (run.tab_id !== sender.tab.id) return;
   if (message.blocked) {
     await api("/recovery/browser-capture/block", {
       provider: run.provider,
@@ -220,7 +291,8 @@ async function handlePageReady(message, sender) {
     await chrome.storage.local.set({
       dgmRecoveryLastStatus: "Archived " + run.captured + "/" + run.discovered + ": " + result.source_id
     });
-    await claimAndNavigate(run, state.token);
+    const next = await claimAndNavigate(run, state.token);
+    if (next.finished) await startNextAutoProvider(run.provider);
   } catch (error) {
     await api("/recovery/browser-capture/block", {
       provider: run.provider,
@@ -231,6 +303,21 @@ async function handlePageReady(message, sender) {
     await stopRun(String(error.message || error));
   }
 }
+
+chrome.tabs.onRemoved.addListener(tabId => {
+  chrome.storage.local.get(PROVIDER_TABS_KEY).then(stored => {
+    const tabs = stored[PROVIDER_TABS_KEY] || {};
+    let changed = false;
+    for (const [provider, knownTabId] of Object.entries(tabs)) {
+      if (knownTabId === tabId) {
+        delete tabs[provider];
+        changed = true;
+      }
+    }
+    if (changed) return chrome.storage.local.set({ [PROVIDER_TABS_KEY]: tabs });
+    return undefined;
+  }).catch(() => {});
+});
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message.type !== "string") return false;
@@ -258,11 +345,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
     return true;
   }
+  if (message.type === "DGM_SET_AUTO_RECOVERY") {
+    setAutoRecovery(Boolean(message.enabled), Number(message.tabId))
+      .then(data => sendResponse({ ok: true, data }))
+      .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+    return true;
+  }
   if (message.type === "DGM_GET_STATUS") {
     readState()
       .then(state => chrome.storage.local.get("dgmRecoveryLastStatus").then(last => ({
         paired: Boolean(state.token),
         run: state.run,
+        auto_enabled: Boolean((await chrome.storage.local.get(AUTO_KEY))[AUTO_KEY]),
         can_retry: Boolean(state.token && state.run && !state.run.active && (state.run.current || (state.run.blocked || []).length)),
         last_status: last.dgmRecoveryLastStatus || "Ready."
       })))
