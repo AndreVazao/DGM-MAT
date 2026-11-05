@@ -27,6 +27,7 @@ def test_extension_only_matches_chatgpt_gemini_and_grok_origins():
     assert any("chatgpt.com" in item for item in matches)
     assert any("chat.openai.com" in item for item in matches)
     assert any("gemini.google.com" in item for item in matches)
+    assert any("bard.google.com" in item for item in matches)
     assert any("grok.com" in item for item in matches)
     assert any("x.com/i/grok" in item for item in matches)
     assert len(matches) == 5
