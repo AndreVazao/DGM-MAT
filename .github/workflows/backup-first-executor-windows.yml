@@ -6,7 +6,9 @@ on:
     branches: [main]
     paths:
       - "core/execution/backup_first_patch_executor.py"
+      - "core/execution/windows_handle_fs.py"
       - "tests/execution/test_backup_first_patch_executor.py"
+      - "tests/execution/test_windows_handle_fs.py"
       - ".github/workflows/backup-first-executor-windows.yml"
 
 permissions:
@@ -34,4 +36,4 @@ jobs:
       - name: Verify Windows mutations fail closed
         env:
           PYTHONPATH: .
-        run: python -m pytest -q tests/execution/test_backup_first_patch_executor.py
+        run: python -m pytest -q tests/execution/test_backup_first_patch_executor.py tests/execution/test_windows_handle_fs.py
