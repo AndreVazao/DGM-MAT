@@ -20,23 +20,22 @@ DGM-MAT is **not yet ready for unattended autonomous development**. The current 
 - Artifact expiry: 2026-11-19.
 - Live acceptance against authenticated ChatGPT, Gemini and Grok sessions remains outstanding (#208); provider-confirmed oldest-history and deterministic multi-window fixtures remain outstanding (#215).
 
-### PR #214 — blocked, do not merge
+### PR #214 / PR #217 — executor security gate remains open
 
-- Branch: `fix/backup-first-executor-rebased-2026-11-05`.
-- Earlier focused validation #239 passed for the previous implementation; it does not validate the latest changes.
-- Latest code head: `9108381e16507d2258fa8abf64fe19c0ab53a865`.
-- The latest implementation uses POSIX `O_DIRECTORY | O_NOFOLLOW` directory-handle traversal and basename-relative atomic rename; original bytes are read from the pinned directory handle, the external backup is verified from those bytes, and rollback uses the same guarded path.
+- PR #214 was closed without merge; its branch was retained.
+- Clean-base replacement: draft PR #217, branch `fix/backup-first-executor-dirfd-2026-11-05`, based directly on current main.
+- Current PR head: `f25a6878e4abc858e1f524764b527a813aa69672`.
+- Implementation uses POSIX `O_DIRECTORY | O_NOFOLLOW` directory-handle traversal and basename-relative atomic rename; original bytes are read from the pinned directory handle, the external backup is verified from those bytes, and rollback uses the same guarded path.
 - A deterministic regression swaps the visible parent path to an outside symlink after opening the directory handle and asserts that the outside target remains unchanged.
-- Windows mutations explicitly fail closed before backup or write because a native Windows handle backend is not yet implemented.
-- **Validation gap:** no CI run has yet been observed for the latest head. Do not treat earlier #239 as evidence for this implementation.
+- Windows mutations explicitly fail closed before creating a backup or mutating a file because a native Windows handle backend is not yet implemented.
+- Focused PR Validation #251 is running; compilation and test selection completed, dependency installation was still in progress at the last check. No current-head test pass is claimed yet.
 - **Residual threat-model limit:** POSIX handle anchoring addresses parent-path symlink substitution, but does not claim containment if a hostile same-user process physically relocates the already-open directory outside the worktree. This needs independent review or a stricter operational boundary.
 - The Snyk status is an external integration error, not a vulnerability result; no clean Snyk result is claimed.
-- Do not merge until current-head tests pass, the residual filesystem threat model is accepted or further hardened, and the supported Windows runtime has an appropriate native backend or remains explicitly unavailable.
-
+- Keep PR #217 in draft until current-head tests pass, the residual filesystem threat model is accepted or further hardened, and the supported Windows runtime has an appropriate native backend or remains explicitly unavailable.
 ### PR #207 — closed as superseded
 
 - Closed without merge; its branch was not deleted.
-- PR #214 is the current-main replacement and remains blocked by the security gate above.
+- PR #217 is the clean-base replacement and remains in draft behind the security gate above.
 
 ## Verified remaining implementation gaps
 
