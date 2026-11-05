@@ -307,23 +307,29 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "completeness": "visible_snapshot",
         "full_history_verified": False,
     }
-    encoded = (json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
+    fingerprint_record = dict(record)
+    fingerprint_record.pop("captured_at", None)
+    fingerprint_bytes = (
+        json.dumps(fingerprint_record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode("utf-8")
+    content_fingerprint = hashlib.sha256(fingerprint_bytes).hexdigest()
+    record["content_fingerprint"] = content_fingerprint
+    encoded = (
+        json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode("utf-8")
     if len(encoded) > MAX_CAPTURE_BYTES:
         raise HTTPException(status_code=413, detail="Conversation capture exceeds the 20 MiB limit.")
-    digest = hashlib.sha256(encoded).hexdigest()
     source_key = hashlib.sha256(payload.source_id.encode("utf-8")).hexdigest()[:32]
     folder = (_archive_root() / "browser-ui" / payload.provider / source_key).resolve()
     archive_root = (_archive_root() / "browser-ui" / payload.provider).resolve()
     if not folder.is_relative_to(archive_root):
         raise HTTPException(status_code=400, detail="Invalid archive destination.")
     folder.mkdir(parents=True, exist_ok=True)
-    destination = folder / (digest + ".capture.json")
+    destination = folder / (content_fingerprint + ".capture.json")
     if destination.is_symlink():
         raise HTTPException(status_code=400, detail="Symlink archive destinations are denied.")
     archive_reused = destination.exists()
-    if archive_reused and RecoveryLedger.sha256_file(destination) != digest:
-        raise HTTPException(status_code=500, detail="Existing archive integrity verification failed.")
-    if not destination.exists():
+    if not archive_reused:
         descriptor = None
         try:
             descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -333,7 +339,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
                 stream.flush()
                 os.fsync(stream.fileno())
         except FileExistsError:
-            pass
+            archive_reused = True
         except OSError as exc:
             if descriptor is not None:
                 os.close(descriptor)
@@ -341,8 +347,16 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
             raise HTTPException(status_code=500, detail="Local conversation archive write failed.") from exc
 
     actual_digest = RecoveryLedger.sha256_file(destination)
-    if actual_digest != digest:
+    if archive_reused:
+        try:
+            record = json.loads(destination.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise HTTPException(status_code=500, detail="Existing archive cannot be decoded.") from exc
+        if record.get("content_fingerprint") != content_fingerprint:
+            raise HTTPException(status_code=500, detail="Existing archive fingerprint mismatch.")
+    elif actual_digest != hashlib.sha256(encoded).hexdigest():
         raise HTTPException(status_code=500, detail="Archive integrity verification failed.")
+    digest = actual_digest
 
     index_status = "pending"
     index_summary: dict = {}
