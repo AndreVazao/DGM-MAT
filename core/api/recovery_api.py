@@ -38,8 +38,10 @@ def recovery_status():
         "source_count": ledger.source_count(),
         "capture_status_counts": counts,
         "provider_connectors_enabled": False,
+        "browser_ui_capture_api": True,
+        "browser_extension_origin_configured": bool(os.getenv("DGM_CHROME_EXTENSION_ID", "").strip()),
         "provider_deletion_enabled": False,
-        "integration_status": "ledger_only",
+        "integration_status": "ledger_and_authenticated_browser_ui",
     }
 
 
