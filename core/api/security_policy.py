@@ -41,6 +41,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("POST",), "/recovery/browser-capture/discover", SecurityScope.OPERATOR, "Registers provider conversation links discovered in visible authenticated UI."),
     RouteClassification(("POST",), "/recovery/browser-capture/next", SecurityScope.OPERATOR, "Claims the next discovered conversation for sequential local UI capture."),
     RouteClassification(("POST",), "/recovery/browser-capture/capture", SecurityScope.OPERATOR, "Archives visible conversation messages locally with SHA-256 integrity verification."),
+    RouteClassification(("POST",), "/recovery/browser-capture/block", SecurityScope.OPERATOR, "Records a provider login, challenge, rate-limit or capture failure without bypassing it."),
     RouteClassification(("POST",), "/recovery/browser-capture/retry", SecurityScope.OPERATOR, "Queues one explicitly selected browser conversation for retry."),
     RouteClassification(("GET",), "/recovery/sources", SecurityScope.OPERATOR, "Read-only paginated recovery source inventory."),
     RouteClassification(("GET",), "/recovery/local-ai-sources", SecurityScope.OPERATOR, "Read-only local AI application and browser-history metadata; no transcript or credential access."),
