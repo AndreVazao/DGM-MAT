@@ -202,20 +202,41 @@ def consult_hub_agents(payload: HubAgentConsultRequest, request: Request):
         text = result.get("text") or ""
         status = result.get("status", "unknown")
         if status != "ok" or not text.strip():
-            engine.pause_specialist_collaboration(
-                collaboration_id,
-                reason=(
-                    f"Hub provider status={status}; capacity/quota state is not inferred. "
-                    "No automatic retry or paid fallback was attempted."
-                ),
+            provider_message = text[:1200] if isinstance(text, str) else ""
+            normalized_status = str(status).strip().casefold().replace("-", "_")
+            capacity_limited = normalized_status in {
+                "rate_limit", "rate_limited", "rate_limit_exceeded",
+                "quota", "quota_exceeded", "capacity", "capacity_exhausted",
+                "waiting_for_free_capacity",
+            }
+            is_timeout = normalized_status in {"timeout", "timed_out", "deadline_exceeded"}
+            reason = (
+                f"Hub provider status={status}; "
+                f"provider_message={provider_message or 'not supplied'}; "
+                "no automatic retry or paid fallback was attempted."
             )
+            if capacity_limited:
+                engine.pause_specialist_collaboration(
+                    collaboration_id,
+                    reason=reason,
+                )
+                outcome = "WAITING_FOR_FREE_CAPACITY"
+            else:
+                engine.collaboration_store.mark_paused(
+                    collaboration_id,
+                    reason=reason,
+                )
+                outcome = "PROVIDER_TIMEOUT" if is_timeout else "PROVIDER_FAILED"
             responses.append({
                 "provider_id": provider,
                 "collaboration_id": collaboration_id,
-                "status": "WAITING_FOR_FREE_CAPACITY",
+                "status": outcome,
+                "provider_status": status,
+                "message": provider_message or "Provider did not return a usable response.",
                 "result_trusted": False,
                 "review_required": False,
-                "provider_status": status,
+                "retry_attempted": False,
+                "paid_fallback": False,
             })
             continue
 
@@ -297,7 +318,7 @@ def consult_hub_agents(payload: HubAgentConsultRequest, request: Request):
         "providers": responses,
         "paid_fallback": False,
         "free_capacity_attested_by_operator": True,
-        "quota_limitation": "The Hub does not expose numeric remaining quota; rate/capacity errors stop the consultation without retry.",
+        "quota_limitation": "The Hub does not expose numeric remaining quota; only explicit rate/quota/capacity statuses are classified as free-capacity limits. Timeouts and other provider failures are reported separately.",
         "all_results_untrusted": True,
         "audit_warning": audit_warning,
     }

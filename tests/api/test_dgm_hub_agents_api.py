@@ -186,11 +186,71 @@ def test_failed_provider_result_is_partial_and_not_promoted_as_validated(monkeyp
     assert result["provider_count"] == 1
     assert result["successful_count"] == 0
     assert result["paused_count"] == 1
-    assert result["providers"][0]["status"] == "WAITING_FOR_FREE_CAPACITY"
+    assert result["providers"][0]["status"] == "PROVIDER_TIMEOUT"
+    assert result["providers"][0]["provider_status"] == "timeout"
+    assert result["providers"][0]["retry_attempted"] is False
     assert result["providers"][0]["review_required"] is False
     assert engine.results == []
+    packet = engine.collaboration_store.list_packets()[0]
+    assert packet.status.value == "PAUSED"
+    assert "provider_message=not supplied" in packet.blocked_reason
+    assert engine.paused == []
+
+
+
+def test_rate_limit_remains_waiting_for_free_capacity_not_generic_failure(monkeypatch, tmp_path):
+    bridge = FakeBridge(
+        task=HubTaskResult(
+            task_id="hub-task-rate-limit",
+            conversation_id="dgm-mat-room-rate-limit",
+            results={
+                "llm7": {
+                    "provider": "llm7", "status": "rate_limited",
+                    "text": "Free request capacity exhausted.",
+                    "model": "gpt-oss:20b", "duration_seconds": 2.0, "truncated": False,
+                }
+            },
+        )
+    )
+    engine = FakeEngine(tmp_path)
+    monkeypatch.setattr(api, "_bridge", lambda: bridge)
+    monkeypatch.setattr(api, "_mission_engine", lambda: engine)
+
+    result = api.consult_hub_agents(_payload(providers=["llm7"]), _request())
+
+    assert result["status"] == "partial"
+    assert result["providers"][0]["status"] == "WAITING_FOR_FREE_CAPACITY"
+    assert result["providers"][0]["message"] == "Free request capacity exhausted."
+    packet = engine.collaboration_store.list_packets()[0]
+    assert packet.status.value == "WAITING_FOR_FREE_CAPACITY"
     assert len(engine.paused) == 1
 
+
+def test_other_provider_errors_are_reported_as_provider_failures(monkeypatch, tmp_path):
+    bridge = FakeBridge(
+        task=HubTaskResult(
+            task_id="hub-task-error",
+            conversation_id="dgm-mat-room-error",
+            results={
+                "claude": {
+                    "provider": "claude", "status": "error",
+                    "text": "CLI process exited unexpectedly.",
+                    "model": None, "duration_seconds": 3.0, "truncated": False,
+                }
+            },
+        )
+    )
+    engine = FakeEngine(tmp_path)
+    monkeypatch.setattr(api, "_bridge", lambda: bridge)
+    monkeypatch.setattr(api, "_mission_engine", lambda: engine)
+
+    result = api.consult_hub_agents(_payload(providers=["claude"]), _request())
+
+    assert result["status"] == "partial"
+    assert result["providers"][0]["status"] == "PROVIDER_FAILED"
+    assert result["providers"][0]["message"] == "CLI process exited unexpectedly."
+    assert engine.collaboration_store.list_packets()[0].status.value == "PAUSED"
+    assert engine.paused == []
 
 def test_secret_like_context_is_rejected_before_any_provider_call(monkeypatch, tmp_path):
     bridge = FakeBridge()

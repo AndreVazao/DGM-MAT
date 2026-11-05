@@ -25,6 +25,7 @@ def _now() -> str:
 class CollaborationStatus(str, Enum):
     PREPARED = "PREPARED"
     WAITING_FOR_FREE_CAPACITY = "WAITING_FOR_FREE_CAPACITY"
+    PAUSED = "PAUSED"
     RESULT_RECEIVED = "RESULT_RECEIVED"
     VALIDATED = "VALIDATED"
     REJECTED = "REJECTED"
@@ -202,6 +203,18 @@ class SpecialistCollaborationStore:
             if packet.status in {CollaborationStatus.VALIDATED, CollaborationStatus.REJECTED}:
                 raise ValueError(f"Cannot pause a terminal collaboration: {packet.status.value}")
             packet.status = CollaborationStatus.WAITING_FOR_FREE_CAPACITY
+            packet.blocked_reason = _validate_text(reason, "reason", required=True, max_chars=2000)
+            packet.updated_at = _now()
+            self._write(packet)
+            return packet
+
+    def mark_paused(self, collaboration_id: str, *, reason: str) -> CollaborationPacket:
+        """Pause a handoff for a non-quota failure without mislabeling it as a free-tier limit."""
+        with self._lock:
+            packet = self._read(collaboration_id)
+            if packet.status in {CollaborationStatus.VALIDATED, CollaborationStatus.REJECTED}:
+                raise ValueError(f"Cannot pause a terminal collaboration: {packet.status.value}")
+            packet.status = CollaborationStatus.PAUSED
             packet.blocked_reason = _validate_text(reason, "reason", required=True, max_chars=2000)
             packet.updated_at = _now()
             self._write(packet)
