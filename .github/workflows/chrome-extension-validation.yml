@@ -52,7 +52,16 @@ jobs:
       - name: Install focused test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install fastapi httpx pydantic pytest loguru
+          python -m pip install fastapi httpx pydantic pytest loguru pip-audit bandit
+      - name: Audit focused runtime dependencies
+        run: pip-audit
+      - name: Run Bandit on changed security-sensitive Python modules
+        run: |
+          bandit -q -lll \
+            core/api/browser_capture_api.py \
+            core/api/local_auth_api.py \
+            core/api/auth_middleware.py \
+            core/api/security_policy.py
       - name: Run browser recovery security and API regressions
         env:
           PYTHONPATH: .
