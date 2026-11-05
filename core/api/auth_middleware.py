@@ -88,7 +88,7 @@ class LocalSessionAuthMiddleware:
                 return
             if method == "OPTIONS":
                 origin = _header(scope, b"origin")
-                if origin is not None and origin not in _ALLOWED_ORIGINS:
+                if origin is not None and origin not in _allowed_origins():
                     await self._http_error(send, 403, "Origin is not allowed.")
                     return
                 await self.app(scope, receive, send)
