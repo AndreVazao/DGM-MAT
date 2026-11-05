@@ -11,6 +11,7 @@ on:
       - "core/api/auth_middleware.py"
       - "core/api/security_policy.py"
       - "core/api/api_server.py"
+      - "core/api/recovery_api.py"
       - "core/recovery/**"
       - "core/conversation_intelligence/**"
       - "core/storage/**"
