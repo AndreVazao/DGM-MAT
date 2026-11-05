@@ -347,6 +347,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
             and not payload.truncated
             and payload.unknown_role_count == 0
             and not payload.sequence_order_conflict
+            and payload.messages_total in {0, len(ordered)}
             else "partial_or_unknown"
         ),
         # Hash integrity is distinct from proof that every historical message was rendered.
