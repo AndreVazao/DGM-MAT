@@ -176,6 +176,16 @@ async function startRecovery(tabId, chainOnEmpty = true) {
   if (!reply || !reply.ok) throw new Error(reply?.error || "Could not read the visible conversation list.");
   const { provider, items } = reply.data;
   if (!Array.isArray(items) || !items.length) throw new Error("No accessible conversations were found on this provider page.");
+  const settings = await chrome.storage.local.get(AUTO_KEY);
+  const previous = state.run;
+  if (settings[AUTO_KEY] && previous?.current && !previous.active &&
+      previous.current.provider === provider &&
+      (previous.last_error === "provider_tab_closed" ||
+       /session expired|API restarted/i.test(previous.last_error || ""))) {
+    const retryQuery = "?provider=" + encodeURIComponent(provider) +
+      "&source_id=" + encodeURIComponent(previous.current.source_id);
+    await api("/recovery/browser-capture/retry" + retryQuery, {}, state.token);
+  }
   const discovered = await api("/recovery/browser-capture/discover", { provider, items, truncated: Boolean(reply.data.truncated) }, state.token);
   const previousBlocked = Array.isArray(state.run?.blocked) ? [...state.run.blocked] : [];
   if (state.run?.current && !state.run.active &&
@@ -315,20 +325,38 @@ async function handlePageReady(message, sender) {
   }
 }
 
-chrome.tabs.onRemoved.addListener(tabId => {
-  chrome.storage.local.get(PROVIDER_TABS_KEY).then(stored => {
-    const tabs = stored[PROVIDER_TABS_KEY] || {};
-    let changed = false;
-    for (const [provider, knownTabId] of Object.entries(tabs)) {
-      if (knownTabId === tabId) {
-        delete tabs[provider];
-        changed = true;
-      }
+async function handleProviderTabRemoved(tabId) {
+  const state = await readState();
+  const stored = await chrome.storage.local.get(PROVIDER_TABS_KEY);
+  const tabs = stored[PROVIDER_TABS_KEY] || {};
+  let changed = false;
+  for (const [provider, knownTabId] of Object.entries(tabs)) {
+    if (knownTabId === tabId) {
+      delete tabs[provider];
+      changed = true;
     }
-    if (changed) return chrome.storage.local.set({ [PROVIDER_TABS_KEY]: tabs });
-    return undefined;
-  }).catch(() => {});
+  }
+  if (changed) await chrome.storage.local.set({ [PROVIDER_TABS_KEY]: tabs });
+
+  if (state.run?.active && state.run.tab_id === tabId) {
+    if (state.token && state.run.current) {
+      await api("/recovery/browser-capture/block", {
+        provider: state.run.provider,
+        source_id: state.run.current.source_id,
+        status: "failed",
+        reason: "provider_tab_closed"
+      }, state.token).catch(() => {});
+    }
+    const interruptedProvider = state.run.provider;
+    await stopRun("provider_tab_closed");
+    await startNextAutoProvider(interruptedProvider);
+  }
+}
+
+chrome.tabs.onRemoved.addListener(tabId => {
+  handleProviderTabRemoved(tabId).catch(() => {});
 });
+
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message.type !== "string") return false;
