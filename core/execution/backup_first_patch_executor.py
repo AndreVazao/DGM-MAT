@@ -612,6 +612,68 @@ class BackupFirstPatchExecutor:
         finally:
             os.close(parent_fd)
 
+    def _rollback_windows(self, backup_id: str) -> dict[str, Any]:
+        backend = self._windows_backend
+        if backend is None:
+            raise PatchRollbackError("Native Windows handle backend is unavailable.")
+        try:
+            backend._validate_basename(backup_id)
+            backup_root_handle = backend.open_root(self.backup_root)
+            backup_dir_handle = backend.open_child_directory(backup_root_handle, backup_id)
+            manifest_handle = backend.open_file(backup_dir_handle, "manifest.json")
+            try:
+                manifest = json.loads(backend.read_all(manifest_handle, max_bytes=1_000_000).decode("utf-8"))
+            finally:
+                backend.close(manifest_handle)
+            if manifest.get("schema") != "dgm-mat.backup-first-patch.v1":
+                raise PatchRollbackError("Unsupported backup manifest.")
+            if Path(manifest.get("repository", "")).resolve() != self.repo_root:
+                raise PatchRollbackError("Backup belongs to a different repository.")
+            relative_path = manifest.get("relative_path", "")
+            _, normalized = self._relative_target(relative_path)
+            if normalized != relative_path:
+                raise PatchRollbackError("Backup path normalization mismatch.")
+            root_handle, parent_handle, target_name = self._open_parent_handles_windows(normalized)
+            current = self._read_at_windows(parent_handle, target_name)
+            if current is None or self._sha256(current) != manifest.get("result_sha256"):
+                raise PatchRollbackError("Current file changed after the patch; refusing to overwrite newer work.")
+            if manifest.get("backup_file"):
+                expected = self.backup_root / backup_id / "original.bin"
+                if Path(manifest["backup_file"]) != expected:
+                    raise PatchRollbackError("Backup file path does not match the selected backup.")
+                backup_handle = backend.open_file(backup_dir_handle, "original.bin")
+                try:
+                    original = backend.read_all(backup_handle, max_bytes=self.max_file_bytes)
+                finally:
+                    backend.close(backup_handle)
+                if self._sha256(original) != manifest.get("original_sha256"):
+                    raise PatchRollbackError("Original backup hash verification failed.")
+                self._write_atomic_windows(parent_handle, target_name, original, replace_existing=True)
+                restored = self._read_at_windows(parent_handle, target_name)
+                restored_sha = self._sha256(restored or b"")
+                if restored_sha != manifest.get("original_sha256"):
+                    raise PatchRollbackError("Restored file hash verification failed.")
+            else:
+                self._delete_target_windows(parent_handle, target_name)
+                restored_sha = None
+            manifest["rolled_back_at"] = datetime.now(timezone.utc).isoformat()
+            manifest["rollback_result_sha256"] = restored_sha
+            manifest["rollback_available"] = False
+            self._write_manifest_windows(backup_dir_handle, manifest, replace_existing=True)
+            return manifest
+        except (PatchRejected, PatchRollbackError):
+            raise
+        except Exception as exc:
+            raise PatchRollbackError("Native Windows rollback failed; preserve the backup for manual recovery.") from exc
+        finally:
+            for handle_name in ("parent_handle", "root_handle", "backup_dir_handle", "backup_root_handle"):
+                handle = locals().get(handle_name)
+                if handle is not None and handle is not locals().get("root_handle") or (handle_name == "root_handle" and handle is not None):
+                    try:
+                        backend.close(handle)
+                    except Exception:
+                        pass
+
     def rollback(self, backup_id: str) -> dict[str, Any]:
         """Restore original bytes through a pinned no-follow directory handle."""
         if not isinstance(backup_id, str) or not backup_id or "/" in backup_id or "\\" in backup_id:
