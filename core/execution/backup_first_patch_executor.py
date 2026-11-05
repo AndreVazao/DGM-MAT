@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -56,8 +57,18 @@ class BackupFirstPatchExecutor:
         self._windows_backend: WindowsDirectoryHandleBackend | None = None
         if not self.repo_root.is_dir():
             raise PatchRejected("repo_root must be an existing directory.")
-        if not ((self.repo_root / ".git").exists() or (self.repo_root / ".git").is_file()):
-            raise PatchRejected("repo_root must be a Git working tree.")
+        try:
+            git_root = subprocess.run(
+                ["git", "-C", str(self.repo_root), "rev-parse", "--show-toplevel"],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            ).stdout.strip()
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            raise PatchRejected("repo_root must be a valid Git working tree.") from exc
+        if not git_root or Path(git_root).resolve() != self.repo_root:
+            raise PatchRejected("repo_root must be the top-level directory of the selected Git worktree.")
         if isinstance(max_file_bytes, bool) or not isinstance(max_file_bytes, int):
             raise ValueError("max_file_bytes must be an integer.")
         if not 1 <= max_file_bytes <= 10_000_000:
