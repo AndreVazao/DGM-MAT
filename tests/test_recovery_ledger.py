@@ -169,10 +169,6 @@ class RecoveryLedgerTests(unittest.TestCase):
             self.ledger.checkpoint("chatgpt", "missing", capture_status="captured")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
     def test_late_discovery_before_cursor_is_still_claimed(self) -> None:
         self.add("z", "2026-01-10")
         first = self.ledger.next_source()
@@ -183,7 +179,6 @@ if __name__ == "__main__":
         next_item = self.ledger.next_source()
         self.assertIsNotNone(next_item)
         self.assertEqual(next_item.source_id, "a")
-
 
     def test_rate_limited_source_is_checkpointed_and_requires_explicit_retry(self) -> None:
         self.add("a", "2026-01-01")
@@ -198,3 +193,7 @@ if __name__ == "__main__":
         self.assertIsNone(self.ledger.next_source())
         self.ledger.request_retry("chatgpt", "a", "cooldown elapsed")
         self.assertEqual(self.ledger.next_source().source_id, "a")
+
+
+if __name__ == "__main__":
+    unittest.main()
