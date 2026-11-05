@@ -185,6 +185,7 @@ async function testVirtualizedHistoryWindowsAndDuplicates() {
   assert.equal(data.oldest_boundary, "unknown",
     "no provider-confirmed oldest marker exists in this fixture");
   assert.equal(data.truncated, false);
+  assert.equal(data.sequence_order_conflict, false);
   assert.ok(data.top_load_steps >= 2);
   assert.ok(harness.getScrollCalls() > 0);
 }
