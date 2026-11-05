@@ -93,10 +93,15 @@ class BackupFirstPatchExecutor:
         if any(part in self.PROTECTED_PARTS for part in lowered):
             raise PatchRejected("Protected credential, browser or VCS paths are denied.")
         name = pure.name.casefold()
-        if name in self.PROTECTED_NAMES or Path(name).suffix in self.PROTECTED_SUFFIXES:
+        if name in self.PROTECTED_NAMES or name.startswith(".env.") or name.startswith(".env-") or Path(name).suffix in self.PROTECTED_SUFFIXES:
             raise PatchRejected("Protected credential/key files are denied.")
 
         target = self.repo_root.joinpath(*pure.parts)
+        cursor = self.repo_root
+        for part in pure.parts[:-1]:
+            cursor = cursor / part
+            if cursor.is_symlink():
+                raise PatchRejected("Symbolic-link path components are denied.")
         parent = target.parent
         try:
             resolved_parent = parent.resolve(strict=True)
