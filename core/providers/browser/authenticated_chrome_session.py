@@ -87,8 +87,8 @@ class AuthenticatedChromeSession:
             raise AuthenticatedChromeError("Invalid Chrome CDP port") from exc
         if port is None or not 1 <= port <= 65535:
             raise AuthenticatedChromeError("An explicit valid Chrome CDP port is required")
-        if parsed.query or parsed.fragment:
-            raise AuthenticatedChromeError("CDP URL query strings and fragments are denied")
+        if parsed.path not in {"", "/"} or parsed.query or parsed.fragment:
+            raise AuthenticatedChromeError("Only the Chrome CDP root endpoint is allowed")
         return value.strip().rstrip("/")
 
     def _check_provider_url(self, url: str) -> str:
@@ -132,6 +132,7 @@ class AuthenticatedChromeSession:
                     continue
                 provider_pages.append(page)
             if not provider_pages:
+                self.close()
                 raise AuthenticatedChromeError(
                     "No open page from an allowed provider was found in Chrome"
                 )
