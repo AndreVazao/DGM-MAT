@@ -47,7 +47,6 @@ def test_mission_status_uses_single_durable_checkpoint():
 
 def test_mission_status_returns_none_for_not_yet_visible_checkpoint():
     result = fetch_mission_checkpoint(
-        "http://127.0.0.1:8181/runtime",
         "mission_b55c3887",
         request=lambda *args, **kwargs: Response(404),
     )
