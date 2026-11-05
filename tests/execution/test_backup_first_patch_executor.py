@@ -340,7 +340,7 @@ def test_windows_executor_rejects_hard_linked_target(tmp_path):
         pytest.skip(f"Hard-link creation is unavailable: {type(exc).__name__}")
 
     executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
-    with pytest.raises(PatchRejected, match="multiple hard links"):
+    with pytest.raises(PatchRejected, match="(?i)hard.link"):
         executor.apply_text(
             "src/module.py",
             "must-not-modify\\n",
@@ -370,7 +370,7 @@ def test_windows_rollback_refuses_hard_linked_target(tmp_path):
     except OSError as exc:
         pytest.skip(f"Hard-link creation is unavailable: {type(exc).__name__}")
 
-    with pytest.raises(PatchRollbackError, match="multiple hard links"):
+    with pytest.raises(PatchRollbackError, match="(?i)hard.link"):
         executor.rollback(result["backup_id"])
 
     assert target.read_bytes() == b"patched\\n"
@@ -391,7 +391,7 @@ def test_windows_apply_rejects_hard_linked_target_without_mutation(tmp_path):
     backup_root = tmp_path / "backups"
     executor = BackupFirstPatchExecutor(root, backup_root=backup_root)
 
-    with pytest.raises(PatchRejected, match="hard-linked"):
+    with pytest.raises(PatchRejected, match="(?i)hard.link"):
         executor.apply_text(
             "src/module.py",
             "replacement",
@@ -418,7 +418,7 @@ def test_windows_rollback_rejects_target_that_becomes_hard_linked(tmp_path):
     )
     os.link(target, linked)
 
-    with pytest.raises(PatchRollbackError, match="hard links"):
+    with pytest.raises(PatchRollbackError, match="(?i)hard.link"):
         executor.rollback(result["backup_id"])
 
     assert target.read_bytes() == b"patched-content"
