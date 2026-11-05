@@ -187,10 +187,16 @@ def pair_mobile_client(payload: PairingRequest, request: Request):
     if not valid:
         raise HTTPException(status_code=401, detail="Código de emparelhamento inválido, expirado ou já utilizado.")
 
-    token, principal = session_manager.create_session(
-        subject=payload.client_id,
-        scopes={"local-client", "operator"},
-    )
+    if payload.client_id == "dgm-mat-chrome-extension":
+        token, principal = extension_session_manager.create_session(
+            subject=payload.client_id,
+            scopes={"browser-capture"},
+        )
+    else:
+        token, principal = session_manager.create_session(
+            subject=payload.client_id,
+            scopes={"local-client", "operator"},
+        )
     return {
         "access_token": token,
         "token_type": "Bearer",
