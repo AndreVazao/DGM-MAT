@@ -48,6 +48,8 @@ def _route_for_scope(scope: Scope, routes: list[Any]) -> tuple[Any | None, str]:
 def _required_scope(scope: SecurityScope) -> str | None:
     if scope is SecurityScope.PUBLIC_HEALTH:
         return None
+    if scope is SecurityScope.BROWSER_CAPTURE:
+        return "browser-capture"
     if scope in {SecurityScope.LOCAL_CLIENT, SecurityScope.LOCAL_STATIC_CLIENT, SecurityScope.LOCAL_DOCUMENTATION}:
         return "local-client"
     if scope in {SecurityScope.OPERATOR, SecurityScope.PROVIDER_API, SecurityScope.PROVIDER_OPERATOR}:
@@ -64,10 +66,14 @@ class LocalSessionAuthMiddleware:
     known routes without a classification are denied.
     """
 
-    def __init__(self, app: ASGIApp, *, routes: list[Any], session_manager: Any):
+    def __init__(
+        self, app: ASGIApp, *, routes: list[Any], session_manager: Any,
+        additional_session_managers: tuple[Any, ...] = (),
+    ):
         self.app = app
         self.routes = routes
         self.session_manager = session_manager
+        self.additional_session_managers = additional_session_managers
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] not in {"http", "websocket"}:
@@ -136,6 +142,11 @@ class LocalSessionAuthMiddleware:
             scheme, separator, token = authorization.partition(" ")
             if separator and scheme.casefold() == "bearer" and token and token.strip() == token and " " not in token and "\t" not in token:
                 principal = self.session_manager.authenticate(token)
+                if principal is None:
+                    for manager in self.additional_session_managers:
+                        principal = manager.authenticate(token)
+                        if principal is not None:
+                            break
 
         if principal is None:
             if route_type == "websocket":
