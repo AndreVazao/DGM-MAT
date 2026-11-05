@@ -12,6 +12,14 @@ from core.organization.dgm_hub_multichat_bridge import (
 )
 
 
+def test_default_bridge_targets_operational_hub_port_and_allows_slow_nim(monkeypatch):
+    monkeypatch.delenv("DGM_HUB_MULTICHAT_URL", raising=False)
+    bridge = DGMHubMultiChatBridge()
+
+    assert bridge.base_url == "http://127.0.0.1:8771"
+    assert bridge.task_timeout == 300.0
+
+
 def test_bridge_accepts_configured_loopback_hub_test_port():
     bridge = DGMHubMultiChatBridge("http://127.0.0.1:8771")
     assert bridge.base_url == "http://127.0.0.1:8771"
@@ -217,4 +225,7 @@ def test_project_audit_prompt_rejects_unsupported_repository_assumptions():
     assert "nunca simules comandos" in prompt
     assert "Não assumas que existem Matrix" in prompt
     assert "FACTOS COM EVIDÊNCIA" in prompt
+    assert "cita o ID exato em cada facto" in prompt
+    assert "nunca inventes IDs" in prompt
+    assert "NÃO VERIFICADA" in prompt
     assert "Não transformes recomendações genéricas em erros detetados" in prompt
