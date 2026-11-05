@@ -390,12 +390,19 @@ class WindowsDirectoryHandleBackend:
             access |= 0x80000000  # GENERIC_READ
         # Exclusive target handles deny new write/delete opens for their lifetime.
         share_mode = self.FILE_SHARE_READ if exclusive else None
+        options = (
+            self.FILE_NON_DIRECTORY_FILE
+            | self.FILE_SYNCHRONOUS_IO_NONALERT
+            | self.FILE_OPEN_REPARSE_POINT
+        )
+        if writable or exclusive:
+            options |= self.FILE_WRITE_THROUGH
         return self._nt_open(
             parent_handle,
             name,
             access=access,
             disposition=self.FILE_OPEN,
-            options=self.FILE_NON_DIRECTORY_FILE | self.FILE_SYNCHRONOUS_IO_NONALERT | self.FILE_OPEN_REPARSE_POINT,
+            options=options,
             share_mode=share_mode,
         )
 
