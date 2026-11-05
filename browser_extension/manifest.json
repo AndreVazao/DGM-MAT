@@ -31,6 +31,7 @@
         "https://chatgpt.com/*",
         "https://chat.openai.com/*",
         "https://gemini.google.com/*",
+        "https://bard.google.com/*",
         "https://grok.com/*",
         "https://x.com/i/grok*"
       ],
