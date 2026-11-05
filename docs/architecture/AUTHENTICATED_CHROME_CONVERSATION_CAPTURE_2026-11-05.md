@@ -42,6 +42,23 @@ Forbidden:
 
 A CDP endpoint grants control of the visible browser and must be treated as a powerful local capability. Bind to loopback only, require explicit configuration, validate the exact browser target/origin before capture, and never expose the debugging port to the network.
 
+
+## Chrome version and default-profile constraint
+
+Chrome 136 and later no longer honor remote-debugging-port/pipe switches against the default Chrome data directory. A separate non-standard user-data directory is required for the classic CDP port workflow. Playwright also warns that automating the regular default Chrome profile is unsupported and recommends a separate profile. Therefore the CDP primitive in this branch is a supported path only when Chrome has an explicitly enabled loopback debugging endpoint; it must not be represented as a way to silently attach to the user's ordinary Chrome profile.
+
+For the operator's existing authenticated default Chrome profile, evaluate these routes in order:
+1. Chrome DevTools MCP auto-connect on Chrome 144+ after the operator explicitly enables Remote Debugging in chrome://inspect/#remote-debugging and approves Chrome's connection prompt. The approval is a deliberate browser security control; never attempt to suppress it.
+2. A narrowly permissioned DGM-MAT Chrome extension using normal content scripts on the three provider origins, with a one-time operator pairing to the local DGM-MAT API. It must not request cookies, webRequest, browsing-history, storage or broad all-sites permissions.
+3. A dedicated DGM-MAT Chrome profile with the operator signing in manually, then a loopback CDP endpoint. Do not copy the regular Chrome profile or its authentication data.
+
+The implementation must detect which route is available and report the exact blocker rather than trying to read profile files or bypass Chrome's security boundary.
+
+Official references:
+- Chrome 136 remote-debugging change: https://developer.chrome.com/blog/remote-debugging-port
+- Chrome DevTools MCP auto-connect and approval: https://developer.chrome.com/blog/chrome-devtools-mcp-debug-your-browser-session
+- Playwright CDP attachment and default-profile warning: https://playwright.dev/python/docs/api/class-browsertype
+
 ## Capture pipeline
 
 1. **Discover:** use existing local metadata inventory to find provider origins and conversation route IDs. Do not treat history as proof that a conversation still exists.
