@@ -305,15 +305,30 @@
     return false;
   });
 
+  function detectBlockedPage() {
+    const path = location.pathname.toLowerCase();
+    const text = (document.body?.innerText || "").slice(0, 12000).toLowerCase();
+    if (/\/(?:auth|login|signin|sign-in)(?:\/|$)/.test(path) ||
+        /sign in to continue|log in to continue|session expired|please sign in/.test(text)) {
+      return "blocked_login";
+    }
+    if (/captcha|verify you are human|unusual traffic|security challenge/.test(text)) {
+      return "blocked_challenge";
+    }
+    if (/too many requests|rate limit|try again later/.test(text)) {
+      return "rate_limited";
+    }
+    return "";
+  }
+
   // Notify the service worker after every provider-page load. It only acts when
   // the operator explicitly started a recovery run in this tab.
+  const readyProvider = providerForUrl(location.href);
   chrome.runtime.sendMessage({
     type: "DGM_PROVIDER_PAGE_READY",
     url: location.href,
-    provider: providerForUrl(location.href),
-    source_id: (() => {
-      const provider = providerForUrl(location.href);
-      return provider ? sourceIdForUrl(location.href, provider) : null;
-    })()
+    provider: readyProvider,
+    source_id: readyProvider ? sourceIdForUrl(location.href, readyProvider) : null,
+    blocked: detectBlockedPage()
   }).catch(() => {});
 })();
