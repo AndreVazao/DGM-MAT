@@ -418,7 +418,7 @@ def test_windows_rollback_rejects_target_that_becomes_hard_linked(tmp_path):
     )
     os.link(target, linked)
 
-    with pytest.raises(PatchRollbackError, match="Hard-linked"):
+    with pytest.raises(PatchRollbackError, match="hard links"):
         executor.rollback(result["backup_id"])
 
     assert target.read_bytes() == b"patched-content"
