@@ -484,6 +484,12 @@ class WindowsDirectoryHandleBackend:
         file_index = (int(info.nFileIndexHigh) << 32) | int(info.nFileIndexLow)
         return int(info.dwVolumeSerialNumber), file_index
 
+    def file_link_count(self, handle: Any) -> int:
+        info = self.BY_HANDLE_FILE_INFORMATION()
+        if not self.kernel32.GetFileInformationByHandle(handle, self.ctypes.byref(info)):
+            self._raise_last_error("GetFileInformationByHandle")
+        return int(info.nNumberOfLinks)
+
     def delete_handle(self, handle: Any) -> None:
         info = self.FILE_DISPOSITION_INFO()
         info.DeleteFile = 1
