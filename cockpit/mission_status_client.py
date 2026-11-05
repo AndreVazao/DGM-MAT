@@ -1,6 +1,7 @@
 """Small, Qt-independent client for reading one durable mission checkpoint."""
 from __future__ import annotations
 
+import re
 import time
 from typing import Any, Callable
 
@@ -13,6 +14,8 @@ def fetch_mission_checkpoint(
     request: Callable[..., Any],
 ) -> dict[str, Any] | None:
     """Fetch one mission by ID; never enumerate the full mission collection."""
+    if not isinstance(mission_id, str) or not re.fullmatch(r"mission_[0-9a-f]{8}", mission_id):
+        raise ValueError("ID de missão inválido.")
     response = request(
         "GET",
         f"/missions/{mission_id}",
@@ -50,10 +53,16 @@ def submit_mission_once(
             f"O runtime recusou o pedido (HTTP {response.status_code}). Não foi assumido sucesso."
         )
     data = response.json()
-    if not isinstance(data, dict) or data.get("status") != "success" or not data.get("mission_id"):
+    mission_id = data.get("mission_id") if isinstance(data, dict) else None
+    if (
+        not isinstance(data, dict)
+        or data.get("status") != "success"
+        or not isinstance(mission_id, str)
+        or not re.fullmatch(r"mission_[0-9a-f]{8}", mission_id)
+    ):
         error = data.get("error") if isinstance(data, dict) else None
         raise RuntimeError(
-            f"O pedido não foi aceite. {error or 'Resposta sem confirmação de criação.'}"
+            f"O pedido não foi aceite. {error or 'Resposta sem confirmação válida de criação.'}"
         )
     return data
 
