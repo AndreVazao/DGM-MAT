@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import stat
 from datetime import datetime, timezone
@@ -111,6 +112,11 @@ class BackupFirstPatchExecutor:
             raise PatchRejected("Absolute paths, empty segments and traversal are denied.")
         if pure.parts and ":" in pure.parts[0]:
             raise PatchRejected("Drive-qualified paths are denied.")
+        if os.name == "nt" and any(
+            re.search(r"~[0-9](?:\\.[A-Z0-9]{0,3})?$", part, re.IGNORECASE)
+            for part in pure.parts
+        ):
+            raise PatchRejected("Windows 8.3 short-name path components are denied.")
         lowered = [part.casefold() for part in pure.parts]
         if any(part in self.PROTECTED_PARTS for part in lowered):
             raise PatchRejected("Protected credential, browser or VCS paths are denied.")
@@ -357,6 +363,7 @@ class BackupFirstPatchExecutor:
                 "backup_id": backup_id,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "repository": str(self.repo_root),
+                "repository_identity": list(self._repo_identity),
                 "relative_path": normalized,
                 "operation": "replace" if existed else "create",
                 "original_sha256": original_sha,
@@ -550,6 +557,22 @@ class BackupFirstPatchExecutor:
                 raise PatchRollbackError("This backup has already been rolled back.")
             if Path(manifest.get("repository", "")).resolve() != self.repo_root:
                 raise PatchRollbackError("Backup belongs to a different repository.")
+            repository_identity = manifest.get("repository_identity")
+            if (
+                not isinstance(repository_identity, list)
+                or tuple(repository_identity) != self._repo_identity
+            ):
+                raise PatchRollbackError("Backup belongs to a different repository identity.")
+            if manifest.get("rollback_available") is not True:
+                raise PatchRollbackError("This backup has already been rolled back.")
+            operation = manifest.get("operation")
+            backup_file_value = manifest.get("backup_file")
+            if (
+                (operation == "replace" and not backup_file_value)
+                or (operation == "create" and backup_file_value is not None)
+                or operation not in {"replace", "create"}
+            ):
+                raise PatchRollbackError("Backup operation and original-file metadata are inconsistent.")
             relative_path = manifest.get("relative_path", "")
             _, normalized = self._relative_target(relative_path)
             if normalized != relative_path:
