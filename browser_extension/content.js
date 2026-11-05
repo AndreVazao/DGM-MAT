@@ -234,6 +234,7 @@
     const originalTop = scroller.scrollTop;
     const collected = new Map();
     const orderedIds = [];
+    const seenNodeObjects = new WeakSet();
     let sequenceOrderConflict = false;
     let steps = 0;
     let stableBottomRounds = 0;
@@ -299,8 +300,17 @@
         const content = visibleText(node);
         if (!content) continue;
         const role = roleFor(node, provider);
+        const explicitId = node.getAttribute("data-message-id") || node.id;
         const id = messageIdentity(node, role, content, collected.size + index);
         snapshotIds.push(id);
+        const repeatedNodeObject = seenNodeObjects.has(node);
+        seenNodeObjects.add(node);
+        if (collected.has(id) && !explicitId && !repeatedNodeObject) {
+          // Identical text-only turns cannot be distinguished from a virtualized
+          // duplicate without a provider message ID. Preserve the snapshot but
+          // mark it truncated rather than silently claiming every turn survived.
+          sequenceOrderConflict = true;
+        }
         if (!collected.has(id)) {
           collected.set(id, {
             message_id: id,
@@ -359,10 +369,10 @@
     }
 
     if (!collected.size) throw new Error("No message containers were recognized; nothing was archived.");
-    // The initial rendered window may be newer than windows fetched later
-    // while pinned at scrollTop=0. Order top-loading snapshots newest-to-oldest
-    // in reverse observation order, then append downward-scroll windows by
-    // ascending scroll position. Stable message IDs deduplicate overlap.
+    // Merge each DOM window against stable message IDs. Overlapping IDs
+    // establish a relative offset; disjoint top windows are older and prepend,
+    // while disjoint downward-scroll windows append. Ambiguous overlaps mark
+    // the capture truncated instead of asserting a trustworthy sequence.
     const messages = orderedIds
       .map(id => collected.get(id))
       .filter(Boolean);
