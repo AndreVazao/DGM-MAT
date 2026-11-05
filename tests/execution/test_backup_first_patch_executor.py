@@ -106,7 +106,10 @@ def test_symlink_escape_is_rejected(tmp_path):
     root = repository(tmp_path)
     outside = tmp_path / "outside"
     outside.mkdir()
-    (root / "src" / "linked").symlink_to(outside, target_is_directory=True)
+    try:
+        (root / "src" / "linked").symlink_to(outside, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"Symlink creation is unavailable in this test environment: {type(exc).__name__}")
     executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
 
     with pytest.raises(PatchRejected):
