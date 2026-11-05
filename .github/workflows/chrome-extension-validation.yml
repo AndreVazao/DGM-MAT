@@ -44,7 +44,7 @@ jobs:
       - name: Install focused test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install fastapi httpx pydantic pytest
+          python -m pip install fastapi httpx pydantic pytest loguru
       - name: Run browser recovery security and API regressions
         env:
           PYTHONPATH: .
