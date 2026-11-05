@@ -273,3 +273,12 @@ def test_discovery_reports_when_visible_list_scan_hits_bound(monkeypatch, tmp_pa
     response = client.post("/recovery/browser-capture/discover", json=payload)
     assert response.status_code == 200
     assert response.json()["discovery_truncated"] is True
+
+
+def test_retry_unknown_source_returns_not_found(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    response = client.post(
+        "/recovery/browser-capture/retry?provider=chatgpt&source_id=missing",
+        json={},
+    )
+    assert response.status_code == 404
