@@ -203,3 +203,18 @@ def test_status_reports_operator_enabled_respond_mode_without_claiming_dgm_mat_l
     assert result["dgm_mat_mode"] == "respond"
     assert result["dgm_mat_response_enabled"] is True
     assert result["dgm_mat_leadership"] is False
+
+
+def test_project_audit_prompt_rejects_unsupported_repository_assumptions():
+    prompt = DGMHubMultiChatBridge.build_prompt(
+        "Audit the current DGM-MAT repository.",
+        "No repository files or CI evidence were supplied.",
+    )
+
+    assert "DevOps God Mode" in prompt
+    assert "não um módulo de matemática" in prompt
+    assert "NÃO VERIFICADO" in prompt
+    assert "nunca simules comandos" in prompt
+    assert "Não assumas que existem Matrix" in prompt
+    assert "FACTOS COM EVIDÊNCIA" in prompt
+    assert "Não transformes recomendações genéricas em erros detetados" in prompt
