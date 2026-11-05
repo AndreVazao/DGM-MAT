@@ -307,8 +307,6 @@ class BackupFirstPatchExecutor:
             )
             existed = target_handle is not None
             if existed:
-                if backend.file_link_count(target_handle) != 1:
-                    raise PatchRejected("Files with multiple hard links are denied to prevent writes outside the worktree.")
                 target_identity = backend.file_identity(target_handle)
                 if backend.file_link_count(target_handle) != 1:
                     raise PatchRejected(
@@ -327,8 +325,7 @@ class BackupFirstPatchExecutor:
             backup_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + "-" + uuid4().hex[:12]
             backup_file = self.backup_root / backup_id / "original.bin" if existed else None
             try:
-                self.backup_root.mkdir(parents=True, exist_ok=True)
-                backup_root_handle = backend.open_root(self.backup_root)
+                backup_root_handle = backend.ensure_directory(self.backup_root)
                 backup_dir_handle = backend.create_directory(backup_root_handle, backup_id)
                 if original is not None:
                     backup_handle = backend.create_file(backup_dir_handle, "original.bin", exclusive=True)
