@@ -401,3 +401,9 @@ class WindowsDirectoryHandleBackend:
             buffer_size,
         ):
             self._raise_last_error("SetFileInformationByHandle(FileRenameInfoEx)")
+
+
+    def close(self, handle: Any) -> None:
+        if handle and getattr(handle, "value", handle):
+            if not self.kernel32.CloseHandle(handle):
+                self._raise_last_error("CloseHandle")
