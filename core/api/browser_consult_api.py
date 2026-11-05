@@ -88,7 +88,11 @@ def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok"], r
         item = _store().claim_next(provider)
         if item is None:
             return {"status": "queue_empty", "next": None}
-        _audit("command.sent", "prompt_released_to_extension", request, provider)
+        try:
+            _audit("command.sent", "prompt_released_to_extension", request, provider)
+        except AuditWriteError:
+            _store().block(item["consultation_id"], reason="interrupted")
+            raise
         return {
             "status": "claimed",
             "next": {
@@ -107,7 +111,11 @@ def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok"], r
 def complete_browser_consultation(payload: BrowserConsultResultRequest, request: Request):
     try:
         result = _store().finish(payload.consultation_id, response_text=payload.response_text)
-        _audit("command.completed", result["status"], request, result["provider"])
+        try:
+            _audit("command.completed", result["status"], request, result["provider"])
+            result["audit_warning"] = None
+        except AuditWriteError:
+            result["audit_warning"] = "completion_audit_unavailable"
         return result
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Consultation not found.") from exc
@@ -119,7 +127,11 @@ def complete_browser_consultation(payload: BrowserConsultResultRequest, request:
 def block_browser_consultation(payload: BrowserConsultBlockRequest, request: Request):
     try:
         result = _store().block(payload.consultation_id, reason=payload.reason)
-        _audit("command.blocked", result["status"], request, result["provider"])
+        try:
+            _audit("command.blocked", result["status"], request, result["provider"])
+            result["audit_warning"] = None
+        except AuditWriteError:
+            result["audit_warning"] = "block_audit_unavailable"
         return result
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Consultation not found.") from exc
