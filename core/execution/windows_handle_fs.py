@@ -309,6 +309,52 @@ class WindowsDirectoryHandleBackend:
             self.close(current)
             raise
 
+    def ensure_directory(self, directory_path: str | Path) -> Any:
+        """Create missing local directory components relative to pinned handles."""
+        raw_path = Path(directory_path).expanduser()
+        if ".." in raw_path.parts:
+            raise WindowsHandleError("Parent traversal is denied in backup directory paths.")
+        path = raw_path.absolute()
+        if not path.drive or str(path).startswith("\\\\"):
+            raise WindowsHandleError("A local absolute backup directory path is required.")
+        access = (
+            self.FILE_LIST_DIRECTORY
+            | self.FILE_TRAVERSE
+            | self.FILE_READ_ATTRIBUTES
+            | self.SYNCHRONIZE
+        )
+        current = self._nt_open(
+            None,
+            "\\??\\" + path.anchor,
+            access=access,
+            disposition=self.FILE_OPEN,
+            options=(
+                self.FILE_DIRECTORY_FILE
+                | self.FILE_SYNCHRONOUS_IO_NONALERT
+                | self.FILE_OPEN_REPARSE_POINT
+            ),
+        )
+        try:
+            for component in path.parts[1:]:
+                try:
+                    child = self.open_child_directory(current, component)
+                except WindowsHandleError as exc:
+                    if getattr(exc, "ntstatus", None) not in {0xC0000034, 0xC000003A}:
+                        raise
+                    try:
+                        child = self.create_directory(current, component)
+                    except WindowsHandleError as create_exc:
+                        if getattr(create_exc, "ntstatus", None) != 0xC0000035:
+                            raise
+                        # A concurrent creator won; reopen no-follow and verify.
+                        child = self.open_child_directory(current, component)
+                self.close(current)
+                current = child
+            return current
+        except Exception:
+            self.close(current)
+            raise
+
     def open_child_directory(self, parent_handle: Any, name: str) -> Any:
         name = self._validate_basename(name)
         access = (
