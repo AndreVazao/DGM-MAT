@@ -471,3 +471,43 @@ def test_windows_rollback_rejects_manifest_from_different_repository_identity(tm
         executor.rollback(result["backup_id"])
 
     assert target.read_bytes() == b"patched"
+
+
+def test_fake_git_marker_is_not_accepted_as_worktree(tmp_path):
+    root = tmp_path / "fake-repo"
+    root.mkdir()
+    (root / ".git").mkdir()
+    (root / "src").mkdir()
+
+    with pytest.raises(PatchRejected, match="valid Git working tree"):
+        BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
+
+
+def test_nested_directory_is_not_accepted_as_worktree_root(tmp_path):
+    root = repository(tmp_path)
+    nested = root / "src" / "nested"
+    nested.mkdir()
+    (nested / ".git").mkdir()
+
+    with pytest.raises(PatchRejected, match="top-level directory"):
+        BackupFirstPatchExecutor(nested, backup_root=tmp_path / "backups")
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows manifest validation test.")
+def test_windows_rollback_rejects_inconsistent_operation_backup_metadata(tmp_path):
+    root = repository(tmp_path)
+    target = root / "src" / "new.py"
+    backup_root = tmp_path / "backups"
+    executor = BackupFirstPatchExecutor(root, backup_root=backup_root)
+    result = executor.apply_text("src/new.py", "created")
+
+    manifest_path = backup_root / result["backup_id"] / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["operation"] = "replace"
+    manifest["backup_file"] = None
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    with pytest.raises(PatchRollbackError, match="inconsistent"):
+        executor.rollback(result["backup_id"])
+
+    assert target.read_text(encoding="utf-8") == "created"
