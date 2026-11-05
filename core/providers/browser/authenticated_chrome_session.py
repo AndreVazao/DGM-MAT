@@ -101,6 +101,12 @@ class AuthenticatedChromeSession:
             raise AuthenticatedChromeError(
                 f"Page origin is outside the provider allowlist: {host}"
             )
+        # x.com is a general social network; allow only the Grok UI route.
+        if host == "x.com" or host.endswith(".x.com"):
+            if not (parsed.path == "/i/grok" or parsed.path.startswith("/i/grok/")):
+                raise AuthenticatedChromeError(
+                    "Only the Grok interface path on x.com is allowed"
+                )
         return url
 
     def attach(self) -> dict[str, Any]:
