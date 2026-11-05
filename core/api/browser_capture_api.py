@@ -208,9 +208,11 @@ def discover_browser_conversations(payload: BrowserDiscoveryRequest):
 
 
 @router.post("/next")
-def claim_next_browser_conversation():
+def claim_next_browser_conversation(payload: BrowserNextRequest):
     ledger = _ledger()
-    source = ledger.next_source(pipeline="authenticated_browser_capture")
+    source = ledger.next_source(
+        pipeline="authenticated_browser_capture", provider=payload.provider
+    )
     if source is None:
         return {"status": "queue_empty", "next": None}
     return {
@@ -224,6 +226,12 @@ def claim_next_browser_conversation():
             "attempt": source.attempts,
         },
     }
+
+
+class BrowserNextRequest(BaseModel):
+    provider: Literal["chatgpt", "gemini", "grok"]
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class BrowserCaptureBlockRequest(BaseModel):
