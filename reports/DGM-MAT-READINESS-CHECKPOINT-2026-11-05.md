@@ -23,12 +23,15 @@ DGM-MAT is **not yet ready for unattended autonomous development**. The current 
 ### PR #214 — blocked, do not merge
 
 - Branch: `fix/backup-first-executor-rebased-2026-11-05`.
-- Latest reviewed commit: `d566ad4ffae7bc0e028f252d2df88b8d729d23c2`.
-- Focused PR Validation #239: success.
-- The executor has bounded UTF-8 writes, expected SHA-256 checks, external backup verification, atomic replacement, manifests and guarded rollback.
-- **Blocking security defect:** a parent directory can still be swapped for a symlink after validation and before path-based backup/write. The existing check does not eliminate this TOCTOU race.
+- Earlier focused validation #239 passed for the previous implementation; it does not validate the latest changes.
+- Latest code head: `9108381e16507d2258fa8abf64fe19c0ab53a865`.
+- The latest implementation uses POSIX `O_DIRECTORY | O_NOFOLLOW` directory-handle traversal and basename-relative atomic rename; original bytes are read from the pinned directory handle, the external backup is verified from those bytes, and rollback uses the same guarded path.
+- A deterministic regression swaps the visible parent path to an outside symlink after opening the directory handle and asserts that the outside target remains unchanged.
+- Windows mutations explicitly fail closed before backup or write because a native Windows handle backend is not yet implemented.
+- **Validation gap:** no CI run has yet been observed for the latest head. Do not treat earlier #239 as evidence for this implementation.
+- **Residual threat-model limit:** POSIX handle anchoring addresses parent-path symlink substitution, but does not claim containment if a hostile same-user process physically relocates the already-open directory outside the worktree. This needs independent review or a stricter operational boundary.
 - The Snyk status is an external integration error, not a vulnerability result; no clean Snyk result is claimed.
-- Do not merge until race-resistant handling is implemented for the supported Windows runtime and a deterministic concurrent-swap regression proves containment.
+- Do not merge until current-head tests pass, the residual filesystem threat model is accepted or further hardened, and the supported Windows runtime has an appropriate native backend or remains explicitly unavailable.
 
 ### PR #207 — closed as superseded
 
