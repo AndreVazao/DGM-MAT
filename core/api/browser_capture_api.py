@@ -34,11 +34,11 @@ MAX_MESSAGE_CHARS = 100_000
 MAX_CAPTURE_BYTES = 20 * 1024 * 1024
 SAFE_ID = re.compile(r"^[A-Za-z0-9._:-]{1,200}$")
 PROPOSAL_MARKERS = re.compile(
-    r"\b(i recommend|i suggest|i propose|we should|you should|recommendation|suggested approach|recomendo|sugiro|proponho|devemos|a minha recomendação|a solução proposta)\\b",
+    r"\b(i recommend|i suggest|i propose|we should|you should|recommendation|suggested approach|recomendo|sugiro|proponho|devemos|a minha recomendação|a solução proposta)\b",
     re.IGNORECASE,
 )
 CONFIRMATION_MARKERS = re.compile(
-    r"\b(aprovo|aprovado|confirmo|autorizo|approved|i approve|confirmed|andré ok)\\b",
+    r"\b(aprovo|aprovado|confirmo|autorizo|approved|i approve|confirmed|andré ok)\b",
     re.IGNORECASE,
 )
 
