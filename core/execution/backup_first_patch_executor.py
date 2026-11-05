@@ -307,6 +307,8 @@ class BackupFirstPatchExecutor:
             )
             existed = target_handle is not None
             if existed:
+                if backend.file_link_count(target_handle) != 1:
+                    raise PatchRejected("Files with multiple hard links are denied to prevent writes outside the worktree.")
                 original = backend.read_all(target_handle, max_bytes=self.max_file_bytes)
                 target_identity = backend.file_identity(target_handle)
             original_sha = self._sha256(original) if original is not None else None
@@ -549,6 +551,8 @@ class BackupFirstPatchExecutor:
             )
             if target_handle is None:
                 raise PatchRollbackError("Patched target is missing; refusing an unverified rollback.")
+            if backend.file_link_count(target_handle) != 1:
+                raise PatchRollbackError("Target has multiple hard links; refusing rollback outside the selected worktree.")
             expected_identity = manifest.get("target_identity")
             actual_identity = backend.file_identity(target_handle)
             if not isinstance(expected_identity, dict) or (
