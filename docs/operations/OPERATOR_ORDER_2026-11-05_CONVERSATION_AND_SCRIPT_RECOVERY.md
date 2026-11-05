@@ -24,7 +24,7 @@ Leave DGM-MAT as the only application/agent intended to perform ongoing work on 
 ## Conversation and script recovery
 
 1. Inventory all available conversation sources for ChatGPT, Grok and Gemini, distinguishing metadata-only records, complete transcript exports, partial sources and inaccessible sources.
-2. Search only user-accessible local folders and explicitly authorized official exports. Do not scrape logged-in websites or access cookies, tokens, private sessions, passwords or authentication stores.
+2. The operator has now explicitly authorized DGM-MAT to capture real conversations from ChatGPT, Gemini and Grok through the already-authenticated browser UI, one conversation at a time. Use only normal rendered page content on explicit provider allowlists; do not inspect/export cookies, tokens, passwords, localStorage, IndexedDB, browser profile databases or authentication stores. Do not reverse-engineer hidden/private APIs, bypass CAPTCHA/MFA/paywalls/rate limits, send messages, edit/delete conversations or change account settings. If login/challenge/rate-limit or inaccessible content is encountered, stop that provider and record a precise blocker. This newer instruction supersedes the earlier export-only/no-logged-in-website restriction.
 3. Preserve source archives and original files unchanged. Compute hashes and record source paths, sizes, timestamps and provider identity. Import copies only.
 4. Parse supported JSON/HTML/text exports with the existing conversation-intelligence pipeline. Metadata is not a transcript.
 5. Extract scripts/configurations with provenance: provider, conversation ID/title, source file, message/turn reference when available, language, project, purpose, date/version, dependencies, hash and extraction status.
@@ -49,7 +49,7 @@ The operator explicitly authorizes integrating the useful work from old branches
 
 Start a resumable, read-only mission with the goal:
 
-> Inventariar as fontes locais de conversas ChatGPT, Grok e Gemini, verificar a disponibilidade de exportações oficiais e preparar a recuperação catalogada de scripts e configurações sem alterar os originais.
+> Inventariar fontes locais e capturar, através da interface autenticada do Chrome, conversas reais de ChatGPT, Grok e Gemini, uma a uma; preservar originais, checkpoint por conversa, importar para memória local e recuperar scripts/configurações com proveniência.
 
 In parallel, prepare the GitHub branch ledger and focused PRs for useful unique work. The mission must checkpoint and resume; it must not wait for all exports to be present before cataloguing known sources.
 
