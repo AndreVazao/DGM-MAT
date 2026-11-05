@@ -69,15 +69,23 @@ class BackupFirstPatchExecutor:
             if backup_root is not None
             else Path.home() / ".dgm-mat" / "patch-backups" / self.repo_root.name
         )
-        self.backup_root = configured.resolve(strict=False)
+        if ".." in configured.parts:
+            raise PatchRejected("Parent traversal is denied in backup storage paths.")
+        resolved_backup_root = configured.resolve(strict=False)
         try:
-            self.backup_root.relative_to(self.repo_root)
+            resolved_backup_root.relative_to(self.repo_root)
         except ValueError:
             pass
         else:
             raise PatchRejected("Backup storage must be outside the Git worktree.")
-        if self.backup_root == self.repo_root:
+        if resolved_backup_root == self.repo_root:
             raise PatchRejected("Backup storage must be outside the Git worktree.")
+        # Windows resolves every existing component through pinned no-follow
+        # handles at operation time; retain the lexical path so junctions are
+        # rejected instead of silently canonicalized away.
+        self.backup_root = (
+            configured.absolute() if os.name == "nt" else resolved_backup_root
+        )
         if os.name == "nt":
             self._windows_backend = WindowsDirectoryHandleBackend()
             root_handle = self._windows_backend.open_root(self.repo_root)
