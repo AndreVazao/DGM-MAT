@@ -396,7 +396,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
             content = str(message.get("content", "")).strip()
             if not content or not message_id:
                 continue
-            evidence_ref = f"archive-sha256:{digest}#message:{message_id}"
+            evidence_ref = f"provider:{payload.provider}/archive-sha256:{digest}#message:{message_id}"
             if role == "user":
                 intent_id = _knowledge_id("intent", payload.provider, payload.source_id, message_id)
                 knowledge.save_intent(UserIntent(
@@ -445,7 +445,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
             knowledge.create_review_task(
                 task_id=_knowledge_id("proposal-review", payload.provider, payload.source_id),
                 item_type="proposal",
-                item_id=payload.source_id,
+                item_id=knowledge_conversation_id,
                 reason="Review AI-generated proposal candidates; acceptance has not been inferred.",
                 evidence=proposal_evidence[:100],
             )
@@ -462,9 +462,9 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
             knowledge.create_review_task(
                 task_id=_knowledge_id("project-attribution-review", payload.provider, payload.source_id),
                 item_type="coverage",
-                item_id=payload.source_id,
+                item_id=knowledge_conversation_id,
                 reason="Project and owner attribution remain unknown; review conversation evidence.",
-                evidence=[f"archive-sha256:{digest}"],
+                evidence=[f"provider:{payload.provider}/archive-sha256:{digest}"],
             )
 
         index_summary["knowledge"] = knowledge.summary()
