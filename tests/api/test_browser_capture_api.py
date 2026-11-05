@@ -256,7 +256,7 @@ def test_rediscovery_does_not_requeue_already_verified_conversation(monkeypatch,
 def test_provider_scoped_next_never_claims_another_ai_queue(monkeypatch, tmp_path):
     client, _ = _client(monkeypatch, tmp_path)
     chat = _discovery("chatgpt", "conversation-1")
-    gemini = _discovery("gemini", "conversation-2")
+    gemini = _discovery("gemini", "conversation-2", "https://gemini.google.com/app/conversation-2")
     client.post("/recovery/browser-capture/discover", json=chat)
     client.post("/recovery/browser-capture/discover", json=gemini)
 
