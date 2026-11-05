@@ -45,6 +45,8 @@ class WindowsDirectoryHandleBackend:
     FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400
     FILE_ATTRIBUTE_TAG_INFO_CLASS = 9
     FILE_RENAME_INFO_CLASS = 3
+    FILE_RENAME_INFO_EX_CLASS = 22
+    FILE_RENAME_REPLACE_IF_EXISTS = 0x00000001
 
     _BASENAME_RE = re.compile(r"^[^\\/:*?\"<>|\x00]+$")
 
@@ -96,11 +98,20 @@ class WindowsDirectoryHandleBackend:
                 ("FileName", ctypes.c_wchar * 1),
             ]
 
+        class FILE_RENAME_INFO_EX(ctypes.Structure):
+            _fields_ = [
+                ("Flags", wintypes.DWORD),
+                ("RootDirectory", wintypes.HANDLE),
+                ("FileNameLength", wintypes.DWORD),
+                ("FileName", ctypes.c_wchar * 1),
+            ]
+
         self.UNICODE_STRING = UNICODE_STRING
         self.OBJECT_ATTRIBUTES = OBJECT_ATTRIBUTES
         self.IO_STATUS_BLOCK = IO_STATUS_BLOCK
         self.FILE_ATTRIBUTE_TAG_INFO = FILE_ATTRIBUTE_TAG_INFO
         self.FILE_RENAME_INFO = FILE_RENAME_INFO
+        self.FILE_RENAME_INFO_EX = FILE_RENAME_INFO_EX
 
         self.ntdll.NtCreateFile.argtypes = [
             ctypes.POINTER(wintypes.HANDLE),
@@ -372,22 +383,21 @@ class WindowsDirectoryHandleBackend:
         target_name = self._validate_basename(target_name)
         encoded = target_name.encode("utf-16-le")
         header_size = 20 if self.ctypes.sizeof(self.wintypes.HANDLE) == 8 else 12
-        buffer_size = header_size + len(encoded) + 2
+        buffer_size = header_size + len(encoded)
         buffer = self.ctypes.create_string_buffer(buffer_size)
-        info = self.ctypes.cast(buffer, self.ctypes.POINTER(self.FILE_RENAME_INFO)).contents
-        info.ReplaceIfExists = 1 if replace_existing else 0
-        info.RootDirectory = parent_handle
+        info = self.ctypes.cast(
+            buffer, self.ctypes.POINTER(self.FILE_RENAME_INFO_EX)
+        ).contents
+        info.Flags = self.FILE_RENAME_REPLACE_IF_EXISTS if replace_existing else 0
+        info.RootDirectory = parent_handle.value
         info.FileNameLength = len(encoded)
-        self.ctypes.memmove(self.ctypes.addressof(buffer) + header_size, encoded, len(encoded))
+        self.ctypes.memmove(
+            self.ctypes.addressof(buffer) + header_size, encoded, len(encoded)
+        )
         if not self.kernel32.SetFileInformationByHandle(
             source_handle,
-            self.FILE_RENAME_INFO_CLASS,
+            self.FILE_RENAME_INFO_EX_CLASS,
             buffer,
             buffer_size,
         ):
-            self._raise_last_error("SetFileInformationByHandle(FileRenameInfo)")
-
-    def close(self, handle: Any) -> None:
-        if handle and getattr(handle, "value", handle):
-            if not self.kernel32.CloseHandle(handle):
-                self._raise_last_error("CloseHandle")
+            self._raise_last_error("SetFileInformationByHandle(FileRenameInfoEx)")
