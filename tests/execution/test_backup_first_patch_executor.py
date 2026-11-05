@@ -186,23 +186,51 @@ def test_parent_directory_symlink_swap_after_open_cannot_redirect_patch(tmp_path
     assert result["relative_path"] == "src/module.py"
 
 
-def test_windows_filesystem_mutations_fail_closed(tmp_path):
-    if os.name != "nt":
-        pytest.skip("Windows-specific fail-closed assertion.")
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows integration test.")
+def test_windows_backup_first_replace_and_rollback(tmp_path):
     root = repository(tmp_path)
     target = root / "src" / "module.py"
-    target.write_text("unchanged\n", encoding="utf-8")
-    executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
+    original = b"value = 1\\n"
+    target.write_bytes(original)
+    backup_root = tmp_path / "backups"
+    executor = BackupFirstPatchExecutor(root, backup_root=backup_root)
 
-    with pytest.raises(PatchRejected, match="Secure directory-handle writes are unavailable"):
-        executor.apply_text(
-            "src/module.py",
-            "must-not-write\n",
-            expected_sha256=digest(target.read_bytes()),
-        )
+    result = executor.apply_text(
+        "src/module.py",
+        "value = 2\\n",
+        expected_sha256=digest(original),
+    )
 
-    assert target.read_text(encoding="utf-8") == "unchanged\n"
-    assert not (tmp_path / "backups").exists()
+    assert target.read_bytes() == b"value = 2\\n"
+    backup_dir = backup_root / result["backup_id"]
+    assert (backup_dir / "original.bin").read_bytes() == original
+    manifest = json.loads((backup_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["result_sha256"] == digest(b"value = 2\\n")
+    assert manifest["original_sha256"] == digest(original)
+
+    rolled_back = executor.rollback(result["backup_id"])
+    assert target.read_bytes() == original
+    assert rolled_back["rollback_available"] is False
+    persisted = json.loads((backup_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert persisted["rollback_available"] is False
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows integration test.")
+def test_windows_backup_first_create_and_rollback(tmp_path):
+    root = repository(tmp_path)
+    target = root / "src" / "created.py"
+    backup_root = tmp_path / "backups"
+    executor = BackupFirstPatchExecutor(root, backup_root=backup_root)
+
+    result = executor.apply_text("src/created.py", "print('safe')\\n")
+
+    assert target.read_text(encoding="utf-8") == "print('safe')\\n"
+    assert result["operation"] == "create"
+    assert (backup_root / result["backup_id"] / "manifest.json").is_file()
+
+    rolled_back = executor.rollback(result["backup_id"])
+    assert not target.exists()
+    assert rolled_back["rollback_available"] is False
 
 
 @requires_posix_directory_handles
