@@ -233,35 +233,85 @@
     const scroller = findScrollContainer(provider);
     const originalTop = scroller.scrollTop;
     const collected = new Map();
-    let firstSeen = 0;
+    const orderedIds = [];
+    let sequenceOrderConflict = false;
     let steps = 0;
     let stableBottomRounds = 0;
 
-    function collectVisible(phase, topStep = 0) {
+    function mergeVisibleOrder(snapshotIds, phase) {
+      const uniqueIds = [...new Set(snapshotIds)];
+      if (!uniqueIds.length) return;
+      if (!orderedIds.length) {
+        orderedIds.push(...uniqueIds);
+        return;
+      }
+
+      const offsets = [];
+      uniqueIds.forEach((id, index) => {
+        const existingIndex = orderedIds.indexOf(id);
+        if (existingIndex >= 0) offsets.push(existingIndex - index);
+      });
+
+      if (offsets.length) {
+        const offset = offsets[0];
+        if (offsets.some(value => value !== offset)) {
+          sequenceOrderConflict = true;
+          for (const id of uniqueIds) {
+            if (!orderedIds.includes(id)) orderedIds.push(id);
+          }
+          return;
+        }
+        const minOffset = Math.min(0, offset);
+        const maxOffset = Math.max(orderedIds.length, offset + uniqueIds.length);
+        const merged = new Array(maxOffset - minOffset).fill(null);
+        orderedIds.forEach((id, index) => {
+          merged[index - minOffset] = id;
+        });
+        uniqueIds.forEach((id, index) => {
+          const position = offset + index - minOffset;
+          if (merged[position] && merged[position] !== id) {
+            sequenceOrderConflict = true;
+            return;
+          }
+          merged[position] = id;
+        });
+        if (!sequenceOrderConflict) {
+          orderedIds.splice(0, orderedIds.length, ...merged.filter(Boolean));
+        } else {
+          for (const id of uniqueIds) {
+            if (!orderedIds.includes(id)) orderedIds.push(id);
+          }
+        }
+        return;
+      }
+
+      // Disjoint top snapshots represent successively older provider windows;
+      // disjoint downward-scroll snapshots represent later conversation turns.
+      if (phase === "top") orderedIds.unshift(...uniqueIds);
+      else orderedIds.push(...uniqueIds);
+    }
+
+    function collectVisible(phase) {
       const nodes = messageNodes(provider);
+      const snapshotIds = [];
       for (let index = 0; index < nodes.length; index++) {
         const node = nodes[index];
         const content = visibleText(node);
         if (!content) continue;
         const role = roleFor(node, provider);
-        const id = messageIdentity(node, role, content, firstSeen++);
+        const id = messageIdentity(node, role, content, collected.size + index);
+        snapshotIds.push(id);
         if (!collected.has(id)) {
           collected.set(id, {
-            message: {
-              message_id: id,
-              role,
-              content: content.slice(0, 100000),
-              timestamp: node.querySelector("time[datetime]")?.getAttribute("datetime") || null
-            },
-            phase,
-            top_step: topStep,
-            scroll_top: scroller.scrollTop,
-            dom_index: index
+            message_id: id,
+            role,
+            content: content.slice(0, 100000),
+            timestamp: node.querySelector("time[datetime]")?.getAttribute("datetime") || null
           });
         }
       }
+      mergeVisibleOrder(snapshotIds, phase);
     }
-
     let topLoadSteps = 0;
     let topLoadLimitReached = false;
     try {
@@ -270,14 +320,14 @@
       // sufficient evidence that the oldest messages have loaded.
       scroller.scrollTop = 0;
       await sleep(350);
-      collectVisible("top", 0);
+      collectVisible("top");
       let stableTopRounds = 0;
       let previousTopHeight = scroller.scrollHeight;
       let previousTopMessageCount = collected.size;
       while (topLoadSteps < 20 && stableTopRounds < 4) {
         scroller.scrollTop = 0;
         await sleep(500);
-        collectVisible("top", topLoadSteps + 1);
+        collectVisible("top");
         const currentHeight = scroller.scrollHeight;
         const currentMessageCount = collected.size;
         if (currentHeight > previousTopHeight || currentMessageCount > previousTopMessageCount) {
@@ -301,7 +351,7 @@
           scroller.scrollTop = Math.min(max, before + Math.max(300, scroller.clientHeight * 0.75));
         }
         await sleep(250);
-        collectVisible("scroll", 0);
+        collectVisible("scroll");
         steps++;
       }
     } finally {
@@ -313,15 +363,11 @@
     // while pinned at scrollTop=0. Order top-loading snapshots newest-to-oldest
     // in reverse observation order, then append downward-scroll windows by
     // ascending scroll position. Stable message IDs deduplicate overlap.
-    const orderedEntries = [...collected.values()].sort((left, right) => {
-      if (left.phase !== right.phase) return left.phase === "top" ? -1 : 1;
-      if (left.phase === "top") {
-        return right.top_step - left.top_step || left.dom_index - right.dom_index;
-      }
-      return left.scroll_top - right.scroll_top || left.dom_index - right.dom_index;
-    });
-    const messages = orderedEntries.map(entry => entry.message);
+    const messages = orderedIds
+      .map(id => collected.get(id))
+      .filter(Boolean);
     messages.forEach((message, index) => { message.sequence = index; });
+    if (messages.length !== collected.size) sequenceOrderConflict = true;
     const unknownRoleCount = messages.filter(message => message.role === "unknown").length;
     return {
       provider,
@@ -329,7 +375,7 @@
       title: conversationTitle(null, location.href),
       url: location.href,
       messages,
-      truncated: steps >= 100 || topLoadLimitReached,
+      truncated: steps >= 100 || topLoadLimitReached || sequenceOrderConflict,
       // Reaching the current DOM top is not proof of oldest provider history.
       history_start_reached: false,
       oldest_boundary: "unknown",
@@ -338,6 +384,7 @@
       scroll_steps: steps,
       top_load_steps: topLoadSteps,
       top_load_limit_reached: topLoadLimitReached,
+      sequence_order_conflict: sequenceOrderConflict,
       adapter_version: VERSION,
       captured_at: new Date().toISOString()
     };
