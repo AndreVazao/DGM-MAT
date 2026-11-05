@@ -46,6 +46,12 @@ async function stopRun(reason) {
   if (state.run) {
     state.run.active = false;
     state.run.last_error = reason || "";
+    if (state.run.current) {
+      state.run.blocked = Array.isArray(state.run.blocked) ? state.run.blocked : [];
+      if (!state.run.blocked.some(item => item.source_id === state.run.current.source_id)) {
+        state.run.blocked.push(state.run.current);
+      }
+    }
     state.run.updated_at = new Date().toISOString();
     await saveRun(state.run);
   }
@@ -63,8 +69,13 @@ async function claimAndNavigate(run, token) {
     run.current = null;
     run.updated_at = new Date().toISOString();
     await saveRun(run);
-    await chrome.storage.local.set({ dgmRecoveryLastStatus: "Queue finished. All discovered conversations were processed." });
-    return { finished: true };
+    const blockedCount = Array.isArray(run.blocked) ? run.blocked.length : 0;
+    await chrome.storage.local.set({
+      dgmRecoveryLastStatus: blockedCount
+        ? "Queue finished. " + blockedCount + " conversation(s) remain blocked for explicit retry."
+        : "Queue finished. All pending discovered conversations were archived."
+    });
+    return { finished: true, blocked: blockedCount };
   }
   run.current = result.next;
   run.updated_at = new Date().toISOString();
@@ -104,12 +115,18 @@ async function startRecovery(tabId) {
   const { provider, items } = reply.data;
   if (!Array.isArray(items) || !items.length) throw new Error("No accessible conversations were found on this provider page.");
   const discovered = await api("/recovery/browser-capture/discover", { provider, items }, state.token);
+  const previousBlocked = Array.isArray(state.run?.blocked) ? [...state.run.blocked] : [];
+  if (state.run?.current && !state.run.active &&
+      !previousBlocked.some(item => item.source_id === state.run.current.source_id)) {
+    previousBlocked.push(state.run.current);
+  }
   const run = {
     active: true,
     provider,
     tab_id: tabId,
     discovered: discovered.pending,
     captured: 0,
+    blocked: previousBlocked,
     current: null,
     started_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -123,11 +140,14 @@ async function startRecovery(tabId) {
 async function retryCurrent() {
   const state = await readState();
   const run = state.run;
-  if (!state.token || !run || run.active || !run.current) {
-    throw new Error("There is no blocked conversation to retry.");
+  if (!state.token || !run || run.active) {
+    throw new Error("There is no available blocked conversation to retry.");
   }
-  const query = "?provider=" + encodeURIComponent(run.provider) +
-    "&source_id=" + encodeURIComponent(run.current.source_id);
+  run.blocked = Array.isArray(run.blocked) ? run.blocked : [];
+  const candidate = run.current || run.blocked[0];
+  if (!candidate) throw new Error("There is no blocked conversation to retry.");
+  const query = "?provider=" + encodeURIComponent(candidate.provider || run.provider) +
+    "&source_id=" + encodeURIComponent(candidate.source_id);
   await api("/recovery/browser-capture/retry" + query, {}, state.token);
   run.active = true;
   run.last_error = "";
@@ -181,6 +201,7 @@ async function handlePageReady(message, sender) {
     if (!captured || !captured.ok) throw new Error(captured?.error || "Provider page capture failed.");
     const result = await api("/recovery/browser-capture/capture", captured.data, state.token);
     run.captured += 1;
+    run.blocked = (run.blocked || []).filter(item => item.source_id !== result.source_id);
     run.last_capture = {
       source_id: result.source_id,
       message_count: result.message_count,
@@ -235,7 +256,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(state => chrome.storage.local.get("dgmRecoveryLastStatus").then(last => ({
         paired: Boolean(state.token),
         run: state.run,
-        can_retry: Boolean(state.token && state.run && !state.run.active && state.run.current),
+        can_retry: Boolean(state.token && state.run && !state.run.active && (state.run.current || (state.run.blocked || []).length)),
         last_status: last.dgmRecoveryLastStatus || "Ready."
       })))
       .then(data => sendResponse({ ok: true, data }))
