@@ -191,6 +191,7 @@ async function startRecovery(tabId, chainOnEmpty = true) {
   await saveRun(run);
   await chrome.storage.local.set({ dgmRecoveryLastStatus: discovered.pending + " pending conversation(s) queued from " + provider + "." });
   const result = await claimAndNavigate(run, state.token);
+  startInProgress = false;
   if (result.finished && chainOnEmpty) await startNextAutoProvider(provider);
   return result;
   } finally {
