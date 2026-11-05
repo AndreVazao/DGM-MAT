@@ -23,7 +23,8 @@
 | feat/external-agent-readiness-probe-2026-11-03 | 17 | 36 | Unique readiness/governance work; inspect/tests |
 | feat/telescope-metadata-only-2026-11-03 | 2 | 33 | Metadata inventory work; compare with current recovery implementation |
 | fix/frozen-external-runtime-dependencies-2026-11-04 | 1 | 11 | PR #203; currently conflicts with recovery base, do not merge yet |
-| fix/backup-first-executor-rebased-2026-11-05 | 11 | 6 | PR #214; POSIX no-follow dirfd hardening and swap regression added; latest head awaits CI and independent review; Windows mutation fails closed |
+| fix/backup-first-executor-rebased-2026-11-05 | closed/superseded | — | PR #214 closed without merge; branch retained for audit |
+| fix/backup-first-executor-dirfd-2026-11-05 | 2 | 0 | Draft PR #217 from current main; POSIX no-follow dirfd implementation, symlink-swap test; Focused PR Validation #251 running; Windows mutation fails closed |
 | fix/conversation-completeness-evidence-2026-11-05 | merged | 0 | PR #216 merged as `31608eb`; bounded virtualized top-loading evidence added; live provider acceptance remains open |
 | recovery/dgm-mat-overnight-2026-11-05 | 3 | 1 before this ledger update | Active recovery branch; PR #204 targets main |
 
