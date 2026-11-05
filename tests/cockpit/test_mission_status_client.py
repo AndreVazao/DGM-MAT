@@ -33,7 +33,6 @@ def test_mission_status_uses_single_durable_checkpoint():
         })
 
     result = fetch_mission_checkpoint(
-        "http://127.0.0.1:8181/runtime",
         "mission_b55c3887",
         request=request,
     )
@@ -102,7 +101,6 @@ def test_two_status_timeouts_retry_get_without_resubmitting_mission():
     mission = wait_for_mission_checkpoint(
         created["mission_id"],
         lambda mission_id: fetch_mission_checkpoint(
-            "http://127.0.0.1:8181/runtime",
             mission_id,
             request=request,
         ),
