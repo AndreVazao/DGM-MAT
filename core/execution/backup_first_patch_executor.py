@@ -17,6 +17,8 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from uuid import uuid4
 
+from core.execution.windows_handle_fs import WindowsDirectoryHandleBackend, WindowsHandleError
+
 
 class PatchRejected(ValueError):
     """A proposed patch violates the repository or backup policy."""
@@ -52,8 +54,7 @@ class BackupFirstPatchExecutor:
         max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
     ) -> None:
         self.repo_root = Path(repo_root).expanduser().resolve(strict=True)
-        root_identity = self.repo_root.stat()
-        self._repo_identity = (root_identity.st_dev, root_identity.st_ino)
+        self._windows_backend: WindowsDirectoryHandleBackend | None = None
         if not self.repo_root.is_dir():
             raise PatchRejected("repo_root must be an existing directory.")
         if not ((self.repo_root / ".git").exists() or (self.repo_root / ".git").is_file()):
@@ -77,6 +78,16 @@ class BackupFirstPatchExecutor:
             raise PatchRejected("Backup storage must be outside the Git worktree.")
         if self.backup_root == self.repo_root:
             raise PatchRejected("Backup storage must be outside the Git worktree.")
+        if os.name == "nt":
+            self._windows_backend = WindowsDirectoryHandleBackend()
+            root_handle = self._windows_backend.open_root(self.repo_root)
+            try:
+                self._repo_identity = self._windows_backend.file_identity(root_handle)
+            finally:
+                self._windows_backend.close(root_handle)
+        else:
+            root_identity = self.repo_root.stat()
+            self._repo_identity = (root_identity.st_dev, root_identity.st_ino)
 
     @staticmethod
     def _sha256(data: bytes) -> str:
