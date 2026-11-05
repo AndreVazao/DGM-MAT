@@ -14,9 +14,8 @@ from core.execution.backup_first_patch_executor import (
 
 
 
-requires_posix_directory_handles = pytest.mark.skipif(
-    os.name != "posix",
-    reason="Filesystem mutation is deliberately disabled without secure POSIX directory handles.",
+requires_posix_directory_handles = pytest.mark.skip(
+    reason="POSIX mutation is intentionally fail-closed until conditional replacement/deletion can exclude uncoordinated writers.",
 )
 
 def repository(tmp_path):
@@ -124,9 +123,8 @@ def test_symlink_escape_is_rejected(tmp_path):
         pytest.skip(f"Symlink creation is unavailable in this test environment: {type(exc).__name__}")
     executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
 
-    with pytest.raises(PatchRejected):
-        executor.apply_text("src/linked/escape.py", "blocked\n")
-
+    with pytest.raises(PatchRejected, match="Symbolic-link"):
+        executor._relative_target("src/linked/escape.py")
 
 def test_backup_root_inside_repository_is_rejected(tmp_path):
     root = repository(tmp_path)
@@ -150,6 +148,7 @@ def test_rollback_refuses_to_overwrite_changes_made_after_patch(tmp_path):
     assert target.read_text(encoding="utf-8") == "later change\n"
 
 
+@pytest.mark.skip(reason="POSIX mutation is intentionally fail-closed.")
 def test_parent_directory_symlink_swap_after_open_cannot_redirect_patch(tmp_path, monkeypatch):
     if os.name != "posix":
         pytest.skip("Pinned dir_fd regression requires POSIX directory handles.")
@@ -423,3 +422,21 @@ def test_windows_rollback_rejects_target_that_becomes_hard_linked(tmp_path):
 
     assert target.read_bytes() == b"patched-content"
     assert linked.read_bytes() == b"patched-content"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX-only fail-closed policy.")
+def test_posix_mutation_is_rejected_until_conditional_writes_are_available(tmp_path):
+    root = repository(tmp_path)
+    target = root / "src" / "module.py"
+    original = b"keep unchanged"
+    target.write_bytes(original)
+    executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
+
+    with pytest.raises(PatchRejected, match="POSIX mutation is disabled"):
+        executor.apply_text("src/module.py", "must-not-write")
+
+    with pytest.raises(PatchRollbackError, match="POSIX rollback is disabled"):
+        executor.rollback("untrusted-id")
+
+    assert target.read_bytes() == original
+    assert not (tmp_path / "backups").exists()
