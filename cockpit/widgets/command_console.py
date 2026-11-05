@@ -90,17 +90,13 @@ class _RuntimeRequestWorker(QThread):
 
     def _poll_mission(self, mission_id: str, *, timeout_seconds: int = 65) -> None:
         deadline = time.monotonic() + timeout_seconds
-        consecutive_timeouts = 0
         while time.monotonic() < deadline:
             try:
                 mission = self._mission(mission_id)
-                consecutive_timeouts = 0
             except requests.Timeout:
-                consecutive_timeouts += 1
                 # A mission was already created. A slow status read is not a
                 # failed mission and must never cause a second POST /missions.
-                if consecutive_timeouts >= 3:
-                    break
+                # Keep retrying this read-only lookup until the actual deadline.
                 time.sleep(2)
                 continue
             if mission is None:
