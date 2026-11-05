@@ -253,3 +253,27 @@ def test_repository_root_replacement_after_initialization_is_rejected(tmp_path):
 
     assert replacement_target.read_text(encoding="utf-8") == "replacement-root-unchanged\\n"
     assert not (tmp_path / "backups").exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows integration test.")
+def test_windows_rollback_refuses_replaced_target_identity(tmp_path):
+    root = repository(tmp_path)
+    target = root / "src" / "module.py"
+    original = b"before\\n"
+    target.write_bytes(original)
+    executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
+    result = executor.apply_text(
+        "src/module.py",
+        "after\\n",
+        expected_sha256=digest(original),
+    )
+
+    moved = target.with_name("module-original-after-patch.py")
+    os.rename(target, moved)
+    target.write_bytes(b"newer independent file\\n")
+
+    with pytest.raises(PatchRollbackError, match="identity changed"):
+        executor.rollback(result["backup_id"])
+
+    assert target.read_bytes() == b"newer independent file\\n"
+    assert moved.read_bytes() == b"after\\n"
