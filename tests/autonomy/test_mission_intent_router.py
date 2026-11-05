@@ -153,3 +153,13 @@ def test_repository_research_without_status_request_remains_local_research():
     assert decision.intent == "local_research"
     assert decision.supported is True
     assert decision.requires_approval is False
+
+
+def test_repository_documentation_search_is_not_misrouted_to_inventory():
+    decision = classify_mission_intent(
+        "search local repository documentation for allowed mission states"
+    )
+
+    assert decision.intent == "local_research"
+    assert decision.supported is True
+    assert decision.requires_approval is False
