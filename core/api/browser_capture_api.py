@@ -207,7 +207,7 @@ def claim_next_browser_conversation():
 class BrowserCaptureBlockRequest(BaseModel):
     provider: Literal["chatgpt", "gemini", "grok"]
     source_id: str = Field(min_length=1, max_length=200)
-    status: Literal["blocked", "failed"] = "blocked"
+    status: Literal["blocked", "rate_limited", "failed"] = "blocked"
     reason: str = Field(min_length=1, max_length=300)
 
     model_config = ConfigDict(extra="forbid")
