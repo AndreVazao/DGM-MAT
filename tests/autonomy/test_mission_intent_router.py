@@ -133,3 +133,23 @@ def test_audit_cannot_hide_a_mutating_request():
     assert decision.intent == "unsupported"
     assert decision.supported is False
     assert decision.requires_approval is True
+
+
+def test_repository_research_and_status_report_routes_to_read_only_inventory():
+    decision = classify_mission_intent(
+        "faz uma pesquisa nas repos Barbuidos e reporta os seus estados"
+    )
+
+    assert decision.intent == "list_repositories"
+    assert decision.supported is True
+    assert decision.requires_approval is False
+
+
+def test_repository_research_without_status_request_remains_local_research():
+    decision = classify_mission_intent(
+        "pesquisa nas repos por documentação de autenticação"
+    )
+
+    assert decision.intent == "local_research"
+    assert decision.supported is True
+    assert decision.requires_approval is False
