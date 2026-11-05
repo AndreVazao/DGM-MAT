@@ -151,7 +151,29 @@ class BackupFirstPatchExecutor:
 
         target, normalized = self._relative_target(relative_path)
         existed = target.exists()
-        original = target.read_bytes() if existed else None
+        original = None
+        if existed:
+            # Bound the original before reading it into memory. Compare the opened
+            # file identity with a no-follow path stat so a swapped symlink is
+            # rejected before any backup or write is attempted.
+            try:
+                with target.open("rb") as source:
+                    opened = os.fstat(source.fileno())
+                    if opened.st_size > self.max_file_bytes:
+                        raise PatchRejected("Original file exceeds the configured size limit.")
+                    original = source.read(self.max_file_bytes + 1)
+                    if len(original) > self.max_file_bytes:
+                        raise PatchRejected("Original file exceeds the configured size limit.")
+                current = target.lstat()
+                if (
+                    os.path.islink(target)
+                    or (opened.st_dev, opened.st_ino) != (current.st_dev, current.st_ino)
+                ):
+                    raise PatchRejected("Target changed during the guarded read.")
+            except PatchRejected:
+                raise
+            except OSError as exc:
+                raise PatchRejected("Original file could not be read safely.") from exc
         original_sha = self._sha256(original) if original is not None else None
         if existed:
             if not isinstance(expected_sha256, str) or expected_sha256.casefold() != original_sha:
