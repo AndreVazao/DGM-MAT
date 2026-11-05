@@ -276,7 +276,7 @@ class BackupFirstPatchExecutor:
         if backend is None:
             raise PatchBackupError("Native Windows handle backend is unavailable.")
         temporary = f".dgm-manifest-{uuid4().hex}.tmp"
-        handle = backend.create_file(backup_dir_handle, temporary)
+        handle = backend.create_file(backup_dir_handle, temporary, exclusive=True)
         promoted = False
         try:
             payload = (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
@@ -341,7 +341,7 @@ class BackupFirstPatchExecutor:
                         backend.write_all(backup_handle, original)
                     finally:
                         backend.close(backup_handle)
-                    verify_handle = backend.open_file(backup_dir_handle, "original.bin")
+                    verify_handle = backend.open_file(backup_dir_handle, "original.bin", exclusive=True)
                     try:
                         if self._sha256(backend.read_all(verify_handle, max_bytes=self.max_file_bytes)) != original_sha:
                             raise PatchBackupError("Backup hash does not match the original file.")
@@ -532,7 +532,7 @@ class BackupFirstPatchExecutor:
             backend._validate_basename(backup_id)
             backup_root_handle = backend.open_root(self.backup_root)
             backup_dir_handle = backend.open_child_directory(backup_root_handle, backup_id)
-            manifest_handle = backend.open_file(backup_dir_handle, "manifest.json")
+            manifest_handle = backend.open_file(backup_dir_handle, "manifest.json", exclusive=True)
             try:
                 manifest = json.loads(
                     backend.read_all(manifest_handle, max_bytes=1_000_000).decode("utf-8")
@@ -586,7 +586,7 @@ class BackupFirstPatchExecutor:
                 expected_backup = self.backup_root / backup_id / "original.bin"
                 if Path(manifest["backup_file"]) != expected_backup:
                     raise PatchRollbackError("Backup file path does not match the selected backup.")
-                backup_handle = backend.open_file(backup_dir_handle, "original.bin")
+                backup_handle = backend.open_file(backup_dir_handle, "original.bin", exclusive=True)
                 try:
                     original = backend.read_all(backup_handle, max_bytes=self.max_file_bytes)
                 finally:
