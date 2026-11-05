@@ -309,8 +309,12 @@ class BackupFirstPatchExecutor:
             if existed:
                 if backend.file_link_count(target_handle) != 1:
                     raise PatchRejected("Files with multiple hard links are denied to prevent writes outside the worktree.")
-                original = backend.read_all(target_handle, max_bytes=self.max_file_bytes)
                 target_identity = backend.file_identity(target_handle)
+                if backend.file_link_count(target_handle) != 1:
+                    raise PatchRejected(
+                        "Windows hard-linked targets are denied because in-place updates would modify other paths."
+                    )
+                original = backend.read_all(target_handle, max_bytes=self.max_file_bytes)
             original_sha = self._sha256(original) if original is not None else None
             if existed and (
                 not isinstance(expected_sha256, str)
@@ -555,6 +559,10 @@ class BackupFirstPatchExecutor:
                 raise PatchRollbackError("Target has multiple hard links; refusing rollback outside the selected worktree.")
             expected_identity = manifest.get("target_identity")
             actual_identity = backend.file_identity(target_handle)
+            if backend.file_link_count(target_handle) != 1:
+                raise PatchRollbackError(
+                    "Hard-linked target detected; refusing rollback that could modify another path."
+                )
             if not isinstance(expected_identity, dict) or (
                 expected_identity.get("volume_serial") != actual_identity[0]
                 or expected_identity.get("file_index") != actual_identity[1]
