@@ -66,7 +66,9 @@ startButton.addEventListener("click", async () => {
 retryButton.addEventListener("click", async () => {
   retryButton.disabled = true;
   try {
-    const result = await send({ type: "DGM_RETRY_CURRENT" });
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !Number.isInteger(tab.id)) throw new Error("Open the provider tab to retry first.");
+    const result = await send({ type: "DGM_RETRY_CURRENT", tabId: tab.id });
     showStatus(result.finished ? "No more pending conversations." : "Retry started: " + result.next.title);
   } catch (error) {
     showStatus(error.message, true);
