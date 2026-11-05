@@ -24,7 +24,7 @@
 | feat/telescope-metadata-only-2026-11-03 | 2 | 33 | Metadata inventory work; compare with current recovery implementation |
 | fix/frozen-external-runtime-dependencies-2026-11-04 | 1 | 11 | PR #203; currently conflicts with recovery base, do not merge yet |
 | fix/backup-first-executor-rebased-2026-11-05 | closed/superseded | — | PR #214 closed without merge; branch retained for audit |
-| fix/backup-first-executor-dirfd-2026-11-05 | 7 | 5 | Draft PR #217; POSIX no-follow dirfd + pinned root identity, symlink/root-swap regressions; current-head Linux #256 passed (14 passed, 1 skipped); Windows Guard #4 running; Windows writes fail closed |
+| fix/backup-first-executor-dirfd-2026-11-05 | 7 | 6 | Draft PR #217; POSIX no-follow dirfd + pinned root identity, symlink/root-swap regressions; current-head Linux #256 passed (15 passed, 1 skipped); Windows Guard #4 passed (9 passed, 7 POSIX-only skips); Windows writes fail closed |
 | fix/conversation-completeness-evidence-2026-11-05 | merged | 0 | PR #216 merged as `31608eb`; bounded virtualized top-loading evidence added; live provider acceptance remains open |
 | recovery/dgm-mat-overnight-2026-11-05 | 3 | 1 before this ledger update | Active recovery branch; PR #204 targets main |
 
