@@ -288,3 +288,11 @@ def test_browser_capture_reuses_the_shared_recovery_ledger(monkeypatch, tmp_path
     shared = RecoveryLedger(tmp_path / "shared.sqlite3")
     monkeypatch.setattr(browser_capture_api, "get_recovery_ledger", lambda: shared)
     assert browser_capture_api._ledger() is shared
+
+
+def test_immutable_archive_writer_is_atomic_and_never_overwrites(tmp_path):
+    destination = tmp_path / "immutable.json"
+    assert browser_capture_api._write_immutable_bytes(destination, b"first-version") is True
+    assert browser_capture_api._write_immutable_bytes(destination, b"second-version") is False
+    assert destination.read_bytes() == b"first-version"
+    assert list(tmp_path.glob(".dgm-capture-*.tmp")) == []
