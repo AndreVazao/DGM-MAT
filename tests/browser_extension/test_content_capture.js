@@ -52,13 +52,17 @@ function createHarness(mode, provider = "chatgpt") {
     text: "Repeated identical text-only turn",
     explicitId: false
   }, provider);
-  let visible = mode === "ambiguous-duplicate" ? [ambiguousFirst] : all.slice(6, 10);
+  let visible = mode === "dom-mismatch" ? [] : mode === "ambiguous-duplicate" ? [ambiguousFirst] : all.slice(6, 10);
   let olderLoaded = false;
   let topWaits = 0;
   let listener = null;
   let scrollCalls = 0;
 
   function updateVisible(top) {
+    if (mode === "dom-mismatch") {
+      visible = [];
+      return;
+    }
     if (mode === "ambiguous-duplicate") {
       visible = topWaits >= 1 ? [ambiguousSecond] : [ambiguousFirst];
       return;
@@ -266,6 +270,13 @@ async function testTopLoadingHardLimitIsExplicitlyTruncated() {
   assert.equal(response.data.oldest_boundary, "unknown");
 }
 
+async function testProviderDomMismatchFailsClosed() {
+  const harness = createHarness("dom-mismatch", "chatgpt");
+  const response = await harness.capture();
+  assert.equal(response.ok, false);
+  assert.match(response.error, /No message containers were recognized/);
+}
+
 async function testIdenticalTextOnlyTurnsAreMarkedAmbiguous() {
   const harness = createHarness("ambiguous-duplicate");
   const response = await harness.capture();
@@ -290,9 +301,10 @@ async function main() {
   await testProviderScopedSelectorsRemainSupported();
   await testMissingOldestMarkerRemainsPartialOrUnknown();
   await testTopLoadingHardLimitIsExplicitlyTruncated();
+  await testProviderDomMismatchFailsClosed();
   await testIdenticalTextOnlyTurnsAreMarkedAmbiguous();
   await testScrollHardLimitIsExplicitlyTruncated();
-  process.stdout.write("PASS: 6 deterministic virtualized-history capture fixtures\n");
+  process.stdout.write("PASS: 7 deterministic virtualized-history capture fixtures\n");
 }
 
 main().catch(error => {
