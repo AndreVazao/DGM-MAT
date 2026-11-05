@@ -4,7 +4,7 @@
   const VERSION = "0.1.0";
   const PROVIDER_HOSTS = {
     chatgpt: new Set(["chatgpt.com", "chat.openai.com"]),
-    gemini: new Set(["gemini.google.com"]),
+    gemini: new Set(["gemini.google.com", "bard.google.com"]),
     grok: new Set(["grok.com", "x.com"])
   };
 
