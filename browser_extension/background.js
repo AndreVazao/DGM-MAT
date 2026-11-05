@@ -63,7 +63,7 @@ async function sendToTab(tabId, message) {
 }
 
 async function claimAndNavigate(run, token) {
-  const result = await api("/recovery/browser-capture/next", {}, token);
+  const result = await api("/recovery/browser-capture/next", { provider: run.provider }, token);
   if (result.status !== "claimed" || !result.next) {
     run.active = false;
     run.current = null;
