@@ -263,3 +263,17 @@ def test_github_worktree_sync_mission_waits_for_operator_approval(tmp_path, monk
     assert result["handler"] == "repository_sync_worktree"
     assert result["operator_approved"] is True
     assert result["authoritative_worktree_unchanged"] is True
+
+
+def test_repository_state_research_auto_approves_only_read_only_inventory():
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    mission = engine.create_mission(
+        "faz uma pesquisa nas repos Barbuidos e reporta os seus estados",
+        "Observed real cockpit request; bounded workspace inventory is read-only",
+    )
+
+    action = engine.action_queue.get_action(mission.metadata["action_id"])
+    assert mission.status == MissionStatus.QUEUED
+    assert action["status"] == "APPROVED"
+    assert action["approved_by"] == "system_auto"
+    assert action["is_approved"] is True
