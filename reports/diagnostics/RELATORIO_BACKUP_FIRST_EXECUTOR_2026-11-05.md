@@ -2,39 +2,43 @@
 Data: 2026-11-05  
 Branch: `fix/backup-first-executor-win32-2026-11-05`  
 PR: [#219](https://github.com/AndreVazao/DGM-MAT/pull/219) — draft, não integrada  
-Head validado: `cf1dab9a0a6ba935d299d17f71bb87f874d375a4`
+Último head com CI verificado: `cf1ac4b9633be0cd467093fae27a9fe9e80cf430`
 
-## Estado verificado
+## Estado técnico verificado
 
-- O executor POSIX usa operações relativas a directory descriptors, `O_NOFOLLOW`, validação do root identity, backup externo verificado e rollback condicionado ao hash atual.
-- O backend Windows usa `NtCreateFile` com diretórios ancorados por handles, `FILE_OPEN_REPARSE_POINT`, rejeição de reparse points, operações de ficheiros relativas ao handle e operações nativas de rename/delete.
-- O caminho Windows do executor executa leitura limitada, precondição SHA-256, criação/verificação do backup externo, persistência de manifesto, verificação pós-escrita e rollback para substituição/criação.
-- Testes Windows E2E cobrem substituição + backup + manifesto + rollback e criação + rollback.
+- POSIX: operações relativas a directory descriptors, `O_NOFOLLOW`, identidade do root, backup externo verificado e rollback condicionado ao hash atual.
+- Windows: navegação relativa a handles, `FILE_OPEN_REPARSE_POINT`, rejeição de reparse points e directory handles que bloqueiam renomeação concorrente.
+- Windows target existente: o executor abre o ficheiro com handle exclusivo (share mode apenas leitura), mantém-no aberto durante backup e alteração e escreve in-place através do handle. Isto bloqueia novos handles com acesso de escrita/delete durante a operação; se houver um handle incompatível já aberto, a operação falha fechada.
+- Windows target novo: criação nativa `FILE_CREATE` é atómica; o handle criado fica exclusivo durante a escrita.
+- Antes da alteração é criado e verificado o backup externo e é persistido um manifesto em estado `prepared`. Depois da escrita, os bytes são relidos/verificados e o manifesto passa a `applied`.
+- Rollback verifica a identidade do ficheiro (volume serial + file index). Para estado `applied`, também exige o hash resultante esperado; para estado `prepared`, pode recuperar uma escrita interrompida, desde que a identidade seja a mesma.
+- Testes Windows incluem bloqueio de escrita/rename concorrente, backup/replace/manifest/rollback, criação/rollback, recuperação de escrita parcial e recusa de rollback sobre conteúdo/identidade substituídos.
 
-## Evidência CI no head acima
+## Evidência CI
 
 | Workflow | Run | Resultado |
 |---|---:|---|
-| Focused PR Validation | #279 / 42062369810 | SUCCESS |
-| Backup-First Executor Windows Guard | #27 / 42062369227 | SUCCESS |
+| Focused PR Validation | #290 / 42064020938 | SUCCESS |
+| Backup-First Executor Windows Guard | #38 / 42064020752 | SUCCESS |
 
-O Windows Guard anterior #25 falhou porque ainda exigia que todas as escritas Windows fossem recusadas. Essa asserção obsoleta foi substituída pelos testes de integração E2E. Os testes específicos POSIX são corretamente ignorados no runner Windows.
+O Windows Guard executou os testes nativos; 7 testes POSIX-only foram corretamente ignorados no runner Windows. O Focused PR Validation compilou e executou os regressions selecionados com sucesso.
 
 ## Bloqueios que impedem integração
 
-1. **TOCTOU no target Windows ainda não resolvido.** O executor faz leitura/releitura e depois substitui o nome relativo ao diretório ancorado. Um processo hostil com o mesmo utilizador pode, em teoria, trocar/modificar a entrada entre a última leitura e o rename. O código não reivindica proteção contra esta corrida. É necessária uma estratégia validada de locking do target/atualização via handle ou outro mecanismo com precondição atómica.
-2. **Snyk:** o check `security/snyk (andrevazao)` está em estado `error`. Isto não prova vulnerabilidade nem constitui scan limpo; a causa precisa de ser diagnosticada.
+1. **Revisão de segurança independente:** solicitada ao CodeRabbit para a semântica de share modes, NT APIs, recuperação de manifesto, identidade do target, lifecycle dos handles e corridas residuais. A revisão ainda não foi concluída.
+2. **Snyk:** o check `security/snyk (andrevazao)` continua em estado `error`. Isto não prova vulnerabilidade nem constitui scan limpo; a causa precisa de ser diagnosticada.
 3. **Aceitação local:** falta validar o ciclo completo no Windows 10 do utilizador. CI hospedado não substitui esse teste.
-4. **MissionEngine:** a integração com o motor de missões ainda não foi feita. Issue #212 permanece aberta.
-5. **Autonomia:** este executor não autoriza shell arbitrário, não altera permissões globais, não ativa auto-merge e não promove o modo SAFE.
+4. **MissionEngine:** integração com o motor de missões ainda não feita. Issue #212 permanece aberta.
 
-## Alterações de qualidade feitas nesta revisão
+## Alterações de qualidade
 
-- Removidas definições duplicadas dos helpers Windows no executor.
-- Substituído o teste antigo de fail-closed Windows por testes de ciclo real.
-- Corrigida a importação JSON usada na validação do manifesto.
-- Mantida a PR em draft e atualizada a descrição para explicitar o bloqueio TOCTOU.
+- Removidas definições duplicadas dos helpers Windows.
+- Removidos helpers Windows obsoletos que faziam operações sem manter o target bloqueado.
+- Substituído o teste antigo de fail-closed Windows por testes de integração E2E.
+- Corrigido o teste de recuperação do manifesto preparado.
+- Cleanup de handles no rollback garante que o handle do diretório raiz não é fechado duas vezes.
+- SAFE continua por defeito; auto-merge continua desativado; não há execução de shell arbitrário.
 
 ## Decisão
 
-**Não integrar ainda.** O CI atual passou, mas a segurança da substituição concorrente no Windows, o erro Snyk e a aceitação local continuam como gates. A integração com MissionEngine só deve avançar depois de a primitiva estar aprovada, mantendo SAFE por defeito, worktree isolada, allowlist de testes e rollback sem sobrescrever trabalho mais recente.
+**Ainda não integrar.** Os workflows atuais passaram e a corrida anterior de substituição do target foi redesenhada usando handles exclusivos e escrita in-place. A integração depende agora da revisão de segurança independente, diagnóstico do erro Snyk e aceitação local Windows 10. Só depois ligar a primitiva ao MissionEngine, com worktree isolada, plano estruturado, allowlist de validadores, checkpoints e rollback.
