@@ -244,6 +244,44 @@ class BrowserConsultStore:
         result["attempts"] = int(row["attempts"]) + 1
         return result
 
+    def block(self, consultation_id: str, *, reason: str) -> dict[str, Any]:
+        mapping = {
+            "rate_limited": "BLOCKED_RATE_LIMIT",
+            "blocked_login": "BLOCKED_LOGIN",
+            "blocked_challenge": "BLOCKED_CHALLENGE",
+            "ui_mismatch": "BLOCKED_UI_MISMATCH",
+            "interrupted": "BLOCKED_INTERRUPTED",
+            "secret_content": "BLOCKED_SECRET_CONTENT",
+        }
+        if reason not in mapping:
+            raise ValueError("unsupported consultation blocker")
+        now = datetime.now(timezone.utc)
+        cooldown_until = (now + timedelta(hours=6)).isoformat()
+        with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT provider, status FROM browser_consultations WHERE consultation_id=?",
+                (consultation_id,),
+            ).fetchone()
+            if row is None or row["status"] != "RUNNING":
+                db.rollback()
+                raise ValueError("consultation is not running")
+            status = mapping[reason]
+            db.execute(
+                "UPDATE browser_consultations SET status=?, completed_at=?, error_type=? WHERE consultation_id=?",
+                (status, now.isoformat(), reason, consultation_id),
+            )
+            db.execute("""
+                INSERT INTO browser_consult_provider_state(provider, cooldown_until, last_status, last_consultation_id)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(provider) DO UPDATE SET
+                    cooldown_until=excluded.cooldown_until,
+                    last_status=excluded.last_status,
+                    last_consultation_id=excluded.last_consultation_id
+            """, (row["provider"], cooldown_until, status, consultation_id))
+            db.commit()
+        return {"consultation_id": consultation_id, "provider": row["provider"], "status": status, "automatic_retry": False}
+
     def finish(self, consultation_id: str, *, response_text: str, provider_status: str = "ok") -> dict[str, Any]:
         if not isinstance(response_text, str) or not response_text.strip():
             raise ValueError("response_text is required")
