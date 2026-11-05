@@ -72,8 +72,11 @@ async function claimAndNavigate(run, token) {
     const blockedCount = Array.isArray(run.blocked) ? run.blocked.length : 0;
     await chrome.storage.local.set({
       dgmRecoveryLastStatus: blockedCount
-        ? "Queue finished. " + blockedCount + " conversation(s) remain blocked for explicit retry."
-        : "Queue finished. All pending discovered conversations were archived."
+        ? "Queue finished. " + blockedCount + " conversation(s) remain blocked for explicit retry." +
+          (run.discovery_truncated ? " The provider list scan also hit its safety limit; scan again later." : "")
+        : run.discovery_truncated
+          ? "Queue finished for discovered items, but the list scan hit its safety limit. Scan again to find remaining conversations."
+          : "Queue finished. All pending discovered conversations were archived."
     });
     return { finished: true, blocked: blockedCount };
   }
@@ -114,7 +117,7 @@ async function startRecovery(tabId) {
   if (!reply || !reply.ok) throw new Error(reply?.error || "Could not read the visible conversation list.");
   const { provider, items } = reply.data;
   if (!Array.isArray(items) || !items.length) throw new Error("No accessible conversations were found on this provider page.");
-  const discovered = await api("/recovery/browser-capture/discover", { provider, items }, state.token);
+  const discovered = await api("/recovery/browser-capture/discover", { provider, items, truncated: Boolean(reply.data.truncated) }, state.token);
   const previousBlocked = Array.isArray(state.run?.blocked) ? [...state.run.blocked] : [];
   if (state.run?.current && !state.run.active &&
       !previousBlocked.some(item => item.source_id === state.run.current.source_id)) {
@@ -125,6 +128,7 @@ async function startRecovery(tabId) {
     provider,
     tab_id: tabId,
     discovered: discovered.pending,
+    discovery_truncated: Boolean(discovered.discovery_truncated),
     captured: 0,
     blocked: previousBlocked,
     current: null,
