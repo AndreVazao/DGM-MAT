@@ -18,7 +18,7 @@ The current repository already contains:
 - conversation intelligence records, message roles, user intents, AI proposals, decisions and relationships in `core/conversation_intelligence/models.py`;
 - a governed Playwright session in `core/providers/browser/governed_browser_session.py`.
 
-The current browser session launches an isolated unauthenticated context. It does not attach to the operator's Chrome session. The Chrome source inventory reads metadata only. Gemini and Grok export adapters are not yet validated. Therefore the requested authenticated UI capture is **not yet implemented or proven**.
+The existing GovernedBrowserSession still launches an isolated unauthenticated context. This branch now adds AuthenticatedChromeSession, a loopback-only Playwright CDP attachment primitive that reads visible page text and requires explicit tab selection when multiple provider tabs exist. It never reads browser storage or closes the user's Chrome process. The Chrome source inventory still reads metadata only; provider-specific conversation enumeration/capture adapters, archive ingestion wiring and live local acceptance are not yet implemented. Therefore end-to-end conversation recovery is **not yet operational or proven**.
 
 ## Approved browser boundary
 
