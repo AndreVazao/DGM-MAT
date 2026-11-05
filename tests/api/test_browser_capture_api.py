@@ -80,7 +80,7 @@ def _capture(provider="chatgpt", source_id="conversation-1", url=None, content="
     }
 
 
-def test_browser_capture_routes_are_operator_only():
+def test_browser_capture_routes_use_narrow_extension_scope():
     for path, method in (
         ("/recovery/browser-capture/status", "GET"),
         ("/recovery/browser-capture/discover", "POST"),
@@ -91,7 +91,7 @@ def test_browser_capture_routes_are_operator_only():
     ):
         route = classify_request_path(path, method)
         assert route is not None
-        assert route.scope is SecurityScope.OPERATOR
+        assert route.scope is SecurityScope.BROWSER_CAPTURE
 
 
 def test_discover_claim_archive_and_verify_local_capture(monkeypatch, tmp_path):
