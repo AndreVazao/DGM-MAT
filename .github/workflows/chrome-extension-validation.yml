@@ -62,6 +62,7 @@ jobs:
             tests/api/test_browser_capture_api.py \
             tests/api/test_extension_pairing_origin.py \
             tests/api/test_extension_session_scope.py \
+            tests/api/test_recovery_api.py \
             tests/test_recovery_ledger.py
       - name: Package unpacked Chrome extension
         run: |
