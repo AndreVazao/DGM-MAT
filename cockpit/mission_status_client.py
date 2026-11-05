@@ -1,14 +1,13 @@
 """Small, Qt-independent client for reading one durable mission checkpoint."""
 from __future__ import annotations
 
+import time
 from typing import Any, Callable
 
 import requests
-import time
 
 
 def fetch_mission_checkpoint(
-    api_url: str,
     mission_id: str,
     *,
     request: Callable[..., Any],
