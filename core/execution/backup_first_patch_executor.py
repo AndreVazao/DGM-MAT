@@ -600,12 +600,22 @@ class BackupFirstPatchExecutor:
                 "Native Windows rollback failed; preserve the backup for manual recovery."
             ) from exc
         finally:
-            for handle in (target_handle, parent_handle, root_handle, backup_dir_handle, backup_root_handle):
+            for handle in (target_handle, backup_dir_handle, backup_root_handle):
                 if handle is not None:
                     try:
                         backend.close(handle)
                     except Exception:
                         pass
+            if parent_handle is not None and parent_handle is not root_handle:
+                try:
+                    backend.close(parent_handle)
+                except Exception:
+                    pass
+            if root_handle is not None:
+                try:
+                    backend.close(root_handle)
+                except Exception:
+                    pass
 
     def rollback(self, backup_id: str) -> dict[str, Any]:
         """Restore original bytes through a pinned no-follow directory handle."""
