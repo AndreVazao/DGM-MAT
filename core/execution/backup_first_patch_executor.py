@@ -11,8 +11,6 @@ import hashlib
 import json
 import os
 import re
-import shutil
-import stat
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -146,108 +144,6 @@ class BackupFirstPatchExecutor:
         if resolved_target.exists() and not resolved_target.is_file():
             raise PatchRejected("Only regular files can be patched.")
         return resolved_target, pure.as_posix()
-
-    @staticmethod
-    def _require_secure_directory_fd_support() -> None:
-        """Fail closed where the platform cannot anchor operations to directory handles."""
-        required = {"O_NOFOLLOW", "O_DIRECTORY"}
-        if os.name != "posix" or any(not hasattr(os, name) for name in required):
-            raise PatchRejected(
-                "Secure directory-handle writes are unavailable on this platform; refusing filesystem mutation."
-            )
-        if any(operation not in os.supports_dir_fd for operation in (os.open, os.rename, os.unlink)):
-            raise PatchRejected(
-                "Secure dir_fd filesystem operations are unavailable; refusing filesystem mutation."
-            )
-
-    def _open_parent_fd(self, normalized: str) -> tuple[int, str]:
-        """Open each parent component without following links and pin the final directory."""
-        self._require_secure_directory_fd_support()
-        parts = PurePosixPath(normalized).parts
-        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
-        flags |= getattr(os, "O_CLOEXEC", 0)
-        current_fd = os.open(self.repo_root, flags)
-        try:
-            opened_root = os.fstat(current_fd)
-            if (opened_root.st_dev, opened_root.st_ino) != self._repo_identity:
-                raise PatchRejected("Repository root changed after executor initialization.")
-            for part in parts[:-1]:
-                next_fd = os.open(part, flags, dir_fd=current_fd)
-                os.close(current_fd)
-                current_fd = next_fd
-            return current_fd, parts[-1]
-        except Exception:
-            os.close(current_fd)
-            raise
-
-    def _read_at(self, parent_fd: int, name: str) -> bytes | None:
-        flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
-        try:
-            fd = os.open(name, flags, dir_fd=parent_fd)
-        except FileNotFoundError:
-            return None
-        except OSError as exc:
-            raise PatchRejected("Target could not be opened without following links.") from exc
-        try:
-            info = os.fstat(fd)
-            if not stat.S_ISREG(info.st_mode):
-                raise PatchRejected("Only regular files can be patched.")
-            if info.st_size > self.max_file_bytes:
-                raise PatchRejected("Original file exceeds the configured size limit.")
-            chunks = []
-            total = 0
-            while True:
-                chunk = os.read(fd, min(65536, self.max_file_bytes + 1 - total))
-                if not chunk:
-                    break
-                chunks.append(chunk)
-                total += len(chunk)
-                if total > self.max_file_bytes:
-                    raise PatchRejected("Original file exceeds the configured size limit.")
-            return b"".join(chunks)
-        finally:
-            os.close(fd)
-
-    @staticmethod
-    def _write_all(fd: int, data: bytes) -> None:
-        view = memoryview(data)
-        while view:
-            written = os.write(fd, view)
-            if written <= 0:
-                raise OSError("Short write while creating guarded patch file.")
-            view = view[written:]
-
-    def _write_atomic_at(self, parent_fd: int, name: str, data: bytes) -> None:
-        """Write and replace a basename relative to a pinned, no-follow directory handle."""
-        temporary = f".dgm-patch-{uuid4().hex}.tmp"
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
-        flags |= getattr(os, "O_CLOEXEC", 0)
-        fd = os.open(temporary, flags, 0o600, dir_fd=parent_fd)
-        try:
-            self._write_all(fd, data)
-            os.fsync(fd)
-        except Exception:
-            os.close(fd)
-            try:
-                os.unlink(temporary, dir_fd=parent_fd)
-            except OSError:
-                pass
-            raise
-        else:
-            os.close(fd)
-        try:
-            os.rename(
-                temporary, name,
-                src_dir_fd=parent_fd,
-                dst_dir_fd=parent_fd,
-            )
-            os.fsync(parent_fd)
-        except Exception:
-            try:
-                os.unlink(temporary, dir_fd=parent_fd)
-            except OSError:
-                pass
-            raise
 
     def _open_parent_handles_windows(self, normalized: str) -> tuple[Any, Any, str]:
         backend = self._windows_backend
@@ -457,83 +353,6 @@ class BackupFirstPatchExecutor:
             )
         return self._apply_text_windows(relative_path, encoded, expected_sha256)
 
-        # Legacy POSIX implementation below is retained only for reference and
-        # is unreachable while the platform gate above remains in place.
-        _, normalized = self._relative_target(relative_path)
-        parent_fd, target_name = self._open_parent_fd(normalized)
-        try:
-            original = self._read_at(parent_fd, target_name)
-            existed = original is not None
-            original_sha = self._sha256(original) if original is not None else None
-            if existed:
-                if not isinstance(expected_sha256, str) or expected_sha256.casefold() != original_sha:
-                    raise PatchRejected("Existing-file replacement requires a matching expected_sha256.")
-            elif expected_sha256 is not None:
-                raise PatchRejected("expected_sha256 must be omitted when creating a new file.")
-
-            backup_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + "-" + uuid4().hex[:12]
-            backup_dir = self.backup_root / backup_id
-            backup_file: Path | None = None
-            self.backup_root.mkdir(parents=True, exist_ok=True)
-            backup_dir.mkdir(parents=True, exist_ok=False)
-
-            try:
-                if original is not None:
-                    backup_file = backup_dir / "original.bin"
-                    try:
-                        with backup_file.open("xb") as stream:
-                            stream.write(original)
-                            stream.flush()
-                            os.fsync(stream.fileno())
-                        if self._sha256(backup_file.read_bytes()) != original_sha:
-                            raise PatchBackupError("Backup hash does not match the original file.")
-                    except Exception as exc:
-                        shutil.rmtree(backup_dir, ignore_errors=True)
-                        raise PatchBackupError("Could not create and verify the original-file backup.") from exc
-
-                try:
-                    # Recheck immediately before promotion. The operation remains
-                    # anchored to the already-open directory even if its path is
-                    # concurrently replaced with a symlink.
-                    current = self._read_at(parent_fd, target_name)
-                    if (self._sha256(current) if current is not None else None) != original_sha:
-                        raise PatchRejected("Target changed after the guarded read; refusing replacement.")
-                    self._write_atomic_at(parent_fd, target_name, encoded)
-                    result = self._read_at(parent_fd, target_name)
-                    result_sha = self._sha256(result or b"")
-                    if result_sha != self._sha256(encoded):
-                        raise OSError("Post-write SHA-256 mismatch.")
-                    manifest = {
-                        "schema": "dgm-mat.backup-first-patch.v1",
-                        "backup_id": backup_id,
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                        "repository": str(self.repo_root),
-                        "relative_path": normalized,
-                        "operation": "replace" if existed else "create",
-                        "original_sha256": original_sha,
-                        "result_sha256": result_sha,
-                        "backup_file": str(backup_file) if backup_file else None,
-                        "rollback_available": True,
-                    }
-                    (backup_dir / "manifest.json").write_text(
-                        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-                        encoding="utf-8",
-                    )
-                except Exception:
-                    if existed and backup_file and backup_file.exists():
-                        self._write_atomic_at(parent_fd, target_name, backup_file.read_bytes())
-                    elif not existed:
-                        try:
-                            os.unlink(target_name, dir_fd=parent_fd)
-                            os.fsync(parent_fd)
-                        except FileNotFoundError:
-                            pass
-                    raise
-            except Exception:
-                raise
-            return manifest
-        finally:
-            os.close(parent_fd)
 
     def _rollback_windows(self, backup_id: str) -> dict[str, Any]:
         backend = self._windows_backend
@@ -661,68 +480,10 @@ class BackupFirstPatchExecutor:
                     pass
 
     def rollback(self, backup_id: str) -> dict[str, Any]:
-        """Restore original bytes through a pinned no-follow directory handle."""
+        """Restore original bytes only through the native guarded platform backend."""
         if os.name != "nt":
             raise PatchRollbackError(
                 "POSIX rollback is disabled until conditional target deletion/replacement "
                 "can exclude uncoordinated writers safely."
             )
         return self._rollback_windows(backup_id)
-        if not isinstance(backup_id, str) or not backup_id or "/" in backup_id or "\\" in backup_id:
-            raise PatchRejected("Invalid backup ID.")
-        backup_dir = (self.backup_root / backup_id).resolve(strict=True)
-        try:
-            backup_dir.relative_to(self.backup_root)
-        except ValueError as exc:
-            raise PatchRejected("Backup ID escapes backup storage.") from exc
-        manifest_path = backup_dir / "manifest.json"
-        if not manifest_path.is_file():
-            raise PatchRollbackError("Backup manifest is missing.")
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        if manifest.get("schema") != "dgm-mat.backup-first-patch.v1":
-            raise PatchRollbackError("Unsupported backup manifest.")
-        if Path(manifest.get("repository", "")).resolve() != self.repo_root:
-            raise PatchRollbackError("Backup belongs to a different repository.")
-
-        relative_path = manifest.get("relative_path", "")
-        _, normalized = self._relative_target(relative_path)
-        if normalized != relative_path:
-            raise PatchRollbackError("Backup path normalization mismatch.")
-        parent_fd, target_name = self._open_parent_fd(normalized)
-        try:
-            current = self._read_at(parent_fd, target_name)
-            if current is None or self._sha256(current) != manifest.get("result_sha256"):
-                raise PatchRollbackError(
-                    "Current file changed after the patch; refusing to overwrite newer work."
-                )
-
-            backup_file_value = manifest.get("backup_file")
-            if backup_file_value:
-                backup_file = Path(backup_file_value).resolve(strict=True)
-                try:
-                    backup_file.relative_to(backup_dir)
-                except ValueError as exc:
-                    raise PatchRollbackError("Backup file escapes its backup directory.") from exc
-                original = backup_file.read_bytes()
-                if self._sha256(original) != manifest.get("original_sha256"):
-                    raise PatchRollbackError("Original backup hash verification failed.")
-                self._write_atomic_at(parent_fd, target_name, original)
-                restored = self._read_at(parent_fd, target_name)
-                restored_sha = self._sha256(restored or b"")
-                if restored_sha != manifest.get("original_sha256"):
-                    raise PatchRollbackError("Restored file hash verification failed.")
-            else:
-                os.unlink(target_name, dir_fd=parent_fd)
-                os.fsync(parent_fd)
-                restored_sha = None
-        finally:
-            os.close(parent_fd)
-
-        manifest["rolled_back_at"] = datetime.now(timezone.utc).isoformat()
-        manifest["rollback_result_sha256"] = restored_sha
-        manifest["rollback_available"] = False
-        manifest_path.write_text(
-            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
-        return manifest
