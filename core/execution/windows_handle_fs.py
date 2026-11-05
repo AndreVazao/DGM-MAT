@@ -26,7 +26,6 @@ class WindowsDirectoryHandleBackend:
     FILE_READ_ATTRIBUTES = 0x0080
     FILE_READ_DATA = 0x0001
     FILE_WRITE_DATA = 0x0002
-    FILE_DELETE_CHILD = 0x0040
     DELETE = 0x00010000
     SYNCHRONIZE = 0x00100000
 
@@ -244,8 +243,6 @@ class WindowsDirectoryHandleBackend:
             self.FILE_LIST_DIRECTORY
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
-            | self.FILE_WRITE_DATA
-            | self.FILE_DELETE_CHILD
             | self.SYNCHRONIZE
         )
         # Start at the drive root and resolve each component relative to the
