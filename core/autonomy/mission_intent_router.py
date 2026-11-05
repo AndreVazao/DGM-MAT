@@ -109,6 +109,7 @@ def classify_mission_intent(goal: str) -> IntentDecision:
 
     has_repository = bool(word_set & _REPOSITORY_WORDS)
     has_read_verb = bool(word_set & _READ_VERBS)
+    has_repository_state = bool(word_set & (_STATUS_WORDS | {"estados", "states"}))
     has_summary = bool(word_set & (_SUMMARY_WORDS | _ANALYSIS_SUMMARY_WORDS)) or {"visao", "geral"}.issubset(word_set)
     has_architecture_target = bool(word_set & _ARCHITECTURE_TARGET_WORDS)
     # Host diagnostics map only to fixed, read-only command IDs in CommandExecutor.
@@ -147,6 +148,19 @@ def classify_mission_intent(goal: str) -> IntentDecision:
             "system_summary", True, 0.94, False,
             "Matched the fixed read-only host/system summary command.",
         )
+    # A request to research repositories and report their states is a
+    # bounded workspace inventory, not a search of DGM-MAT's own source tree.
+    # Route it to the existing read-only repository scanner so it can auto-run.
+    if (
+        has_repository
+        and has_repository_state
+        and bool(word_set & _LOCAL_RESEARCH_VERBS)
+    ):
+        return IntentDecision(
+            "list_repositories", True, 0.98, False,
+            "Matched a read-only workspace repository inventory/status request.",
+        )
+
     if has_summary and has_architecture_target:
         return IntentDecision(
             "architecture_summary", True, 0.96, False,
