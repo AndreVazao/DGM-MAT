@@ -3,28 +3,46 @@
   "execution_mode": "SAFE",
   "modes": {
     "SAFE": {
-      "execution_permissions": ["read", "test"],
+      "execution_permissions": [
+        "read",
+        "test"
+      ],
       "auto_merge": false,
       "self_modification": false
     },
     "ANALYZE_ONLY": {
-      "execution_permissions": ["read"],
+      "execution_permissions": [
+        "read"
+      ],
       "auto_merge": false,
       "self_modification": false
     },
     "APPROVAL_REQUIRED": {
-      "execution_permissions": ["read", "write", "test"],
+      "execution_permissions": [
+        "read",
+        "write",
+        "test"
+      ],
       "auto_merge": false,
       "self_modification": true
     },
     "AUTONOMOUS_PATCHING": {
-      "execution_permissions": ["read", "write", "test"],
-      "auto_merge": true,
+      "execution_permissions": [
+        "read",
+        "write",
+        "test"
+      ],
+      "auto_merge": false,
       "self_modification": true
     },
     "STRATEGIC_EVOLUTION": {
-      "execution_permissions": ["read", "write", "test", "delete"],
-      "auto_merge": true,
+      "execution_permissions": [
+        "read",
+        "write",
+        "test",
+        "delete"
+      ],
+      "auto_merge": false,
       "self_modification": true
     }
   },
