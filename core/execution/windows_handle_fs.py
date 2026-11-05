@@ -372,7 +372,7 @@ class WindowsDirectoryHandleBackend:
         target_name = self._validate_basename(target_name)
         encoded = target_name.encode("utf-16-le")
         header_size = 20 if self.ctypes.sizeof(self.wintypes.HANDLE) == 8 else 12
-        buffer_size = header_size + len(encoded)
+        buffer_size = header_size + len(encoded) + 2
         buffer = self.ctypes.create_string_buffer(buffer_size)
         info = self.ctypes.cast(buffer, self.ctypes.POINTER(self.FILE_RENAME_INFO)).contents
         info.ReplaceIfExists = 1 if replace_existing else 0
