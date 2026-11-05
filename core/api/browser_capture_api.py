@@ -554,7 +554,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "provider": payload.provider,
         "source_id": payload.source_id,
         "message_count": len(ordered),
-        "messages_total": len(ordered),
+        "messages_total": payload.messages_total or len(ordered),
         "unknown_role_count": sum(1 for item in ordered if item.role == "unknown"),
         "scroll_steps": payload.scroll_steps,
         "top_load_steps": payload.top_load_steps,
