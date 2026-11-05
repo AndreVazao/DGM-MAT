@@ -22,11 +22,16 @@ _lock = threading.Lock()
 _attempts: dict[str, list[float]] = {}
 _RATE_WINDOW_SECONDS = 60.0
 _MAX_ATTEMPTS_PER_WINDOW = 8
-_ALLOWED_ORIGINS = {
-    "http://127.0.0.1:8181",
-    "http://localhost:8181",
-    "https://localhost",
-}
+def _allowed_origins() -> set[str]:
+    origins = {
+        "http://127.0.0.1:8181",
+        "http://localhost:8181",
+        "https://localhost",
+    }
+    extension_id = os.getenv("DGM_CHROME_EXTENSION_ID", "").strip()
+    if len(extension_id) == 32 and all(char in "abcdefghijklmnop" for char in extension_id):
+        origins.add("chrome-extension://" + extension_id)
+    return origins
 
 
 class SessionRequest(BaseModel):
