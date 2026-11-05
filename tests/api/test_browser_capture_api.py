@@ -305,3 +305,87 @@ def test_immutable_archive_writer_is_atomic_and_never_overwrites(tmp_path):
     assert browser_capture_api._write_immutable_bytes(destination, b"second-version") is False
     assert destination.read_bytes() == b"first-version"
     assert list(tmp_path.glob(".dgm-capture-*.tmp")) == []
+
+
+def test_sequence_order_conflict_is_archived_but_never_claimed_complete(monkeypatch, tmp_path):
+    client, ledger = _client(monkeypatch, tmp_path)
+    client.post("/recovery/browser-capture/discover", json=_discovery())
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
+    payload = _capture()
+    payload["sequence_order_conflict"] = True
+
+    response = client.post("/recovery/browser-capture/capture", json=payload)
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["sequence_order_conflict"] is True
+    assert result["truncated"] is False
+    assert result["history_completeness"] == "partial_or_unknown"
+    assert result["full_history_verified"] is False
+    record = json.loads(Path(result["archive_path"]).read_text(encoding="utf-8"))
+    assert record["sequence_order_conflict"] is True
+    assert ledger.get("chatgpt", "conversation-1").completeness == "visible_snapshot"
+
+
+def test_reported_message_count_mismatch_forces_partial_history(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        browser_capture_api,
+        "PROVIDER_OLDEST_BOUNDARY_EVIDENCE",
+        {"chatgpt": {"fixture-oldest-marker"}},
+    )
+    client.post("/recovery/browser-capture/discover", json=_discovery())
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
+    payload = _capture()
+    payload["messages_total"] = 3
+    payload["history_start_reached"] = True
+    payload["oldest_boundary"] = "confirmed"
+    payload["oldest_boundary_evidence"] = "fixture-oldest-marker"
+
+    response = client.post("/recovery/browser-capture/capture", json=payload)
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message_count"] == 2
+    assert result["messages_total"] == 3
+    assert result["history_completeness"] == "partial_or_unknown"
+    assert result["full_history_verified"] is False
+
+
+def test_client_cannot_self_assert_unregistered_oldest_boundary(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    client.post("/recovery/browser-capture/discover", json=_discovery())
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
+    payload = _capture()
+    payload["messages_total"] = 2
+    payload["history_start_reached"] = True
+    payload["oldest_boundary"] = "confirmed"
+    payload["oldest_boundary_evidence"] = "invented-dom-marker"
+
+    response = client.post("/recovery/browser-capture/capture", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["history_completeness"] == "partial_or_unknown"
+    assert response.json()["full_history_verified"] is False
+
+
+def test_allowlisted_provider_boundary_evidence_can_confirm_history(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        browser_capture_api,
+        "PROVIDER_OLDEST_BOUNDARY_EVIDENCE",
+        {"chatgpt": {"fixture-oldest-marker"}},
+    )
+    client.post("/recovery/browser-capture/discover", json=_discovery())
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
+    payload = _capture()
+    payload["messages_total"] = 2
+    payload["history_start_reached"] = True
+    payload["oldest_boundary"] = "confirmed"
+    payload["oldest_boundary_evidence"] = "fixture-oldest-marker"
+
+    response = client.post("/recovery/browser-capture/capture", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["history_completeness"] == "oldest_boundary_confirmed"
+    assert response.json()["full_history_verified"] is False
