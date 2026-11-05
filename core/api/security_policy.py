@@ -15,6 +15,7 @@ class SecurityScope(str, Enum):
     PUBLIC_HEALTH = "public-health"
     LOCAL_CLIENT = "local-client"
     OPERATOR = "operator"
+    BROWSER_CAPTURE = "browser-capture"
     PROVIDER_API = "provider-api"
     PROVIDER_OPERATOR = "provider-operator"
     LOCAL_DOCUMENTATION = "local-documentation"
@@ -37,12 +38,12 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("WS",), "/runtime/ws", SecurityScope.LOCAL_CLIENT, "Compatibility realtime stream; currently unauthenticated."),
     RouteClassification(("GET",), "/health", SecurityScope.PUBLIC_HEALTH, "Minimal process health check."),
     RouteClassification(("GET",), "/recovery/status", SecurityScope.OPERATOR, "Read-only recovery ledger progress; no provider access or deletion."),
-    RouteClassification(("GET",), "/recovery/browser-capture/status", SecurityScope.OPERATOR, "Aggregate visible-UI browser capture progress; no transcript bodies."),
-    RouteClassification(("POST",), "/recovery/browser-capture/discover", SecurityScope.OPERATOR, "Registers provider conversation links discovered in visible authenticated UI."),
-    RouteClassification(("POST",), "/recovery/browser-capture/next", SecurityScope.OPERATOR, "Claims the next discovered conversation for sequential local UI capture."),
-    RouteClassification(("POST",), "/recovery/browser-capture/capture", SecurityScope.OPERATOR, "Archives visible conversation messages locally with SHA-256 integrity verification."),
-    RouteClassification(("POST",), "/recovery/browser-capture/block", SecurityScope.OPERATOR, "Records a provider login, challenge, rate-limit or capture failure without bypassing it."),
-    RouteClassification(("POST",), "/recovery/browser-capture/retry", SecurityScope.OPERATOR, "Queues one explicitly selected browser conversation for retry."),
+    RouteClassification(("GET",), "/recovery/browser-capture/status", SecurityScope.BROWSER_CAPTURE, "Aggregate visible-UI browser capture progress; no transcript bodies."),
+    RouteClassification(("POST",), "/recovery/browser-capture/discover", SecurityScope.BROWSER_CAPTURE, "Registers provider conversation links discovered in visible authenticated UI."),
+    RouteClassification(("POST",), "/recovery/browser-capture/next", SecurityScope.BROWSER_CAPTURE, "Claims the next discovered conversation for sequential local UI capture."),
+    RouteClassification(("POST",), "/recovery/browser-capture/capture", SecurityScope.BROWSER_CAPTURE, "Archives visible conversation messages locally with SHA-256 integrity verification."),
+    RouteClassification(("POST",), "/recovery/browser-capture/block", SecurityScope.BROWSER_CAPTURE, "Records a provider login, challenge, rate-limit or capture failure without bypassing it."),
+    RouteClassification(("POST",), "/recovery/browser-capture/retry", SecurityScope.BROWSER_CAPTURE, "Queues one explicitly selected browser conversation for retry."),
     RouteClassification(("GET",), "/recovery/sources", SecurityScope.OPERATOR, "Read-only paginated recovery source inventory."),
     RouteClassification(("GET",), "/recovery/local-ai-sources", SecurityScope.OPERATOR, "Read-only local AI application and browser-history metadata; no transcript or credential access."),
     RouteClassification(("GET",), "/recovery/search", SecurityScope.OPERATOR, "Bounded search over imported recovery metadata and indexed ChatGPT message text."),
