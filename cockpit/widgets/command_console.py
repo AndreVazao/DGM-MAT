@@ -41,16 +41,21 @@ class _RuntimeRequestWorker(QThread):
         )
 
     def _mission(self, mission_id: str) -> dict[str, Any] | None:
-        response = self._request("GET", "/missions", timeout=(2, 5))
-        if response.status_code != 200:
-            raise RuntimeError(f"Não foi possível consultar as missões (HTTP {response.status_code}).")
-        data = response.json()
-        if not isinstance(data, list):
-            raise ValueError("O runtime devolveu uma lista de missões inválida.")
-        return next(
-            (item for item in data if isinstance(item, dict) and item.get("mission_id") == mission_id),
-            None,
+        # Query the durable checkpoint directly. The collection endpoint reloads
+        # every active mission and becomes progressively slower as history grows.
+        response = self._request(
+            "GET", f"/missions/{mission_id}", timeout=(2, 8)
         )
+        if response.status_code == 404:
+            return None
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Não foi possível consultar a missão {mission_id} (HTTP {response.status_code})."
+            )
+        data = response.json()
+        if not isinstance(data, dict) or data.get("mission_id") != mission_id:
+            raise ValueError("O runtime devolveu um checkpoint de missão inválido.")
+        return data
 
     def _finish_from_mission(self, mission: dict[str, Any]) -> bool:
         status = str(mission.get("status", "UNKNOWN")).upper()
@@ -98,8 +103,19 @@ class _RuntimeRequestWorker(QThread):
 
     def _poll_mission(self, mission_id: str, *, timeout_seconds: int = 65) -> None:
         deadline = time.monotonic() + timeout_seconds
+        consecutive_timeouts = 0
         while time.monotonic() < deadline:
-            mission = self._mission(mission_id)
+            try:
+                mission = self._mission(mission_id)
+                consecutive_timeouts = 0
+            except requests.Timeout:
+                consecutive_timeouts += 1
+                # A mission was already created. A slow status read is not a
+                # failed mission and must never cause a second POST /missions.
+                if consecutive_timeouts >= 3:
+                    break
+                time.sleep(2)
+                continue
             if mission is None:
                 raise RuntimeError(f"A missão {mission_id} ainda não aparece na consulta do runtime.")
             if self._finish_from_mission(mission):
@@ -121,7 +137,7 @@ class _RuntimeRequestWorker(QThread):
         self.completed.emit(
             "Sistema",
             f"A missão {mission_id} continua sem estado final após {timeout_seconds}s. "
-            "Não voltei a submetê-la para evitar duplicar trabalho. Verifica o runtime e consulta a missão antes de repetir.",
+            "A consulta de estado falhou ou demorou repetidamente. Não voltei a submetê-la para evitar duplicar trabalho. Consulta esta missão antes de repetir.",
             "error",
         )
 
