@@ -305,3 +305,23 @@ def test_immutable_archive_writer_is_atomic_and_never_overwrites(tmp_path):
     assert browser_capture_api._write_immutable_bytes(destination, b"second-version") is False
     assert destination.read_bytes() == b"first-version"
     assert list(tmp_path.glob(".dgm-capture-*.tmp")) == []
+
+
+def test_sequence_order_conflict_is_archived_but_never_claimed_complete(monkeypatch, tmp_path):
+    client, ledger = _client(monkeypatch, tmp_path)
+    client.post("/recovery/browser-capture/discover", json=_discovery())
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
+    payload = _capture()
+    payload["sequence_order_conflict"] = True
+
+    response = client.post("/recovery/browser-capture/capture", json=payload)
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["sequence_order_conflict"] is True
+    assert result["truncated"] is False
+    assert result["history_completeness"] == "partial_or_unknown"
+    assert result["full_history_verified"] is False
+    record = json.loads(Path(result["archive_path"]).read_text(encoding="utf-8"))
+    assert record["sequence_order_conflict"] is True
+    assert ledger.get("chatgpt", "conversation-1").completeness == "visible_snapshot"
