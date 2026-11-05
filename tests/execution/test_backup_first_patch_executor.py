@@ -325,3 +325,28 @@ def test_windows_rollback_refuses_newer_content_with_same_file_identity(tmp_path
         executor.rollback(result["backup_id"])
 
     assert target.read_bytes() == b"newer-content-same-file\\n"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows hard-link integration test.")
+def test_windows_executor_rejects_hard_linked_target(tmp_path):
+    root = repository(tmp_path)
+    target = root / "src" / "module.py"
+    external = tmp_path / "outside-hardlink.py"
+    original = b"original-hardlink-content\\n"
+    target.write_bytes(original)
+    try:
+        os.link(target, external)
+    except OSError as exc:
+        pytest.skip(f"Hard-link creation is unavailable: {type(exc).__name__}")
+
+    executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
+    with pytest.raises(PatchRejected, match="multiple hard links"):
+        executor.apply_text(
+            "src/module.py",
+            "must-not-modify\\n",
+            expected_sha256=digest(original),
+        )
+
+    assert target.read_bytes() == original
+    assert external.read_bytes() == original
+    assert not (tmp_path / "backups").exists()
