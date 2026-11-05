@@ -275,8 +275,6 @@ class WindowsDirectoryHandleBackend:
             self.FILE_LIST_DIRECTORY
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
-            | self.FILE_WRITE_DATA
-            | self.FILE_DELETE_CHILD
             | self.SYNCHRONIZE
         )
         return self._nt_open(
