@@ -345,6 +345,93 @@ class BackupFirstPatchExecutor:
         finally:
             backend.close(handle)
 
+    def _apply_text_windows(self, relative_path: str, encoded: bytes, expected_sha256: str | None) -> dict[str, Any]:
+        backend = self._windows_backend
+        if backend is None:
+            raise PatchRejected("Native Windows handle backend is unavailable.")
+        _, normalized = self._relative_target(relative_path)
+        root_handle, parent_handle, target_name = self._open_parent_handles_windows(normalized)
+        backup_root_handle = backup_dir_handle = None
+        patch_applied = False
+        original = None
+        existed = False
+        try:
+            original = self._read_at_windows(parent_handle, target_name)
+            existed = original is not None
+            original_sha = self._sha256(original) if existed else None
+            if existed and (not isinstance(expected_sha256, str) or expected_sha256.casefold() != original_sha):
+                raise PatchRejected("Existing-file replacement requires a matching expected_sha256.")
+            if not existed and expected_sha256 is not None:
+                raise PatchRejected("expected_sha256 must be omitted when creating a new file.")
+            backup_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + "-" + uuid4().hex[:12]
+            backup_dir = self.backup_root / backup_id
+            backup_file = backup_dir / "original.bin" if existed else None
+            try:
+                self.backup_root.mkdir(parents=True, exist_ok=True)
+                backup_root_handle = backend.open_root(self.backup_root)
+                backup_dir_handle = backend.create_directory(backup_root_handle, backup_id)
+                if original is not None:
+                    backup_handle = backend.create_file(backup_dir_handle, "original.bin")
+                    try:
+                        backend.write_all(backup_handle, original)
+                    finally:
+                        backend.close(backup_handle)
+                    verify_handle = backend.open_file(backup_dir_handle, "original.bin")
+                    try:
+                        if self._sha256(backend.read_all(verify_handle, max_bytes=self.max_file_bytes)) != original_sha:
+                            raise PatchBackupError("Backup hash does not match the original file.")
+                    finally:
+                        backend.close(verify_handle)
+            except PatchBackupError:
+                raise
+            except Exception as exc:
+                raise PatchBackupError("Could not create and verify the original-file backup.") from exc
+            current = self._read_at_windows(parent_handle, target_name)
+            if (self._sha256(current) if current is not None else None) != original_sha:
+                raise PatchRejected("Target changed after the guarded read; refusing replacement.")
+            self._write_atomic_windows(parent_handle, target_name, encoded, replace_existing=existed)
+            patch_applied = True
+            result = self._read_at_windows(parent_handle, target_name)
+            result_sha = self._sha256(result or b"")
+            if result_sha != self._sha256(encoded):
+                raise OSError("Post-write SHA-256 mismatch.")
+            manifest = {
+                "schema": "dgm-mat.backup-first-patch.v1",
+                "backup_id": backup_id,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "repository": str(self.repo_root),
+                "relative_path": normalized,
+                "operation": "replace" if existed else "create",
+                "original_sha256": original_sha,
+                "result_sha256": result_sha,
+                "backup_file": str(backup_file) if backup_file else None,
+                "rollback_available": True,
+            }
+            self._write_manifest_windows(backup_dir_handle, manifest, replace_existing=False)
+            return manifest
+        except Exception as exc:
+            if patch_applied:
+                try:
+                    if existed and original is not None:
+                        self._write_atomic_windows(parent_handle, target_name, original, replace_existing=True)
+                    else:
+                        self._delete_target_windows(parent_handle, target_name)
+                except Exception as rollback_exc:
+                    raise PatchRollbackError("Patch failed and automatic rollback could not be verified; preserve the backup for recovery.") from rollback_exc
+            if isinstance(exc, (PatchRejected, PatchBackupError, PatchRollbackError)):
+                raise
+            if isinstance(exc, WindowsHandleError):
+                raise PatchRejected(str(exc)) from exc
+            raise
+        finally:
+            if backup_dir_handle is not None:
+                backend.close(backup_dir_handle)
+            if backup_root_handle is not None:
+                backend.close(backup_root_handle)
+            if parent_handle is not root_handle:
+                backend.close(parent_handle)
+            backend.close(root_handle)
+
     def apply_text(
         self,
         relative_path: str,
