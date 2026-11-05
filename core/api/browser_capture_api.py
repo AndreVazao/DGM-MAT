@@ -399,6 +399,8 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
             raise OSError("normalized archive symlink is denied")
         if not normalized_destination.exists():
             _write_immutable_bytes(normalized_destination, normalized_bytes)
+        if normalized_destination.is_symlink():
+            raise OSError("normalized archive symlink is denied")
         normalized_digest = hashlib.sha256(normalized_bytes).hexdigest()
         if RecoveryLedger.sha256_file(normalized_destination) != normalized_digest:
             raise OSError("normalized archive integrity verification failed")
