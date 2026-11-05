@@ -183,6 +183,12 @@ class WindowsDirectoryHandleBackend:
             wintypes.HANDLE, ctypes.POINTER(ctypes.c_longlong)
         ]
         self.kernel32.GetFileSizeEx.restype = wintypes.BOOL
+        self.kernel32.SetFilePointerEx.argtypes = [
+            wintypes.HANDLE, ctypes.c_longlong, ctypes.POINTER(ctypes.c_longlong), wintypes.DWORD
+        ]
+        self.kernel32.SetFilePointerEx.restype = wintypes.BOOL
+        self.kernel32.SetEndOfFile.argtypes = [wintypes.HANDLE]
+        self.kernel32.SetEndOfFile.restype = wintypes.BOOL
 
     def _raise_last_error(self, operation: str) -> None:
         code = self.ctypes.get_last_error()
@@ -207,6 +213,7 @@ class WindowsDirectoryHandleBackend:
         access: int,
         disposition: int,
         options: int,
+        share_mode: int | None = None,
     ) -> Any:
         ctypes = self.ctypes
         wintypes = self.wintypes
@@ -231,7 +238,7 @@ class WindowsDirectoryHandleBackend:
             ctypes.byref(io_status),
             None,
             self.FILE_ATTRIBUTE_NORMAL,
-            self.FILE_SHARE_READ | self.FILE_SHARE_WRITE,
+            (self.FILE_SHARE_READ | self.FILE_SHARE_WRITE) if share_mode is None else share_mode,
             disposition,
             options,
             None,
@@ -318,24 +325,43 @@ class WindowsDirectoryHandleBackend:
             options=self.FILE_DIRECTORY_FILE | self.FILE_SYNCHRONOUS_IO_NONALERT | self.FILE_OPEN_REPARSE_POINT,
         )
 
-    def open_file(self, parent_handle: Any, name: str, *, writable: bool = False) -> Any:
+    def open_file(
+        self,
+        parent_handle: Any,
+        name: str,
+        *,
+        writable: bool = False,
+        exclusive: bool = False,
+    ) -> Any:
         name = self._validate_basename(name)
         access = self.FILE_READ_ATTRIBUTES | self.SYNCHRONIZE
         if writable:
             access |= self.FILE_READ_DATA | self.FILE_WRITE_DATA | self.DELETE
+        elif exclusive:
+            access |= self.FILE_READ_DATA | self.FILE_WRITE_DATA
         else:
             access |= 0x80000000  # GENERIC_READ
+        # Exclusive target handles deny new write/delete opens for their lifetime.
+        share_mode = self.FILE_SHARE_READ if exclusive else None
         return self._nt_open(
             parent_handle,
             name,
             access=access,
             disposition=self.FILE_OPEN,
             options=self.FILE_NON_DIRECTORY_FILE | self.FILE_SYNCHRONOUS_IO_NONALERT | self.FILE_OPEN_REPARSE_POINT,
+            share_mode=share_mode,
         )
 
-    def open_file_optional(self, parent_handle: Any, name: str, *, writable: bool = False) -> Any | None:
+    def open_file_optional(
+        self,
+        parent_handle: Any,
+        name: str,
+        *,
+        writable: bool = False,
+        exclusive: bool = False,
+    ) -> Any | None:
         try:
-            return self.open_file(parent_handle, name, writable=writable)
+            return self.open_file(parent_handle, name, writable=writable, exclusive=exclusive)
         except WindowsHandleError as exc:
             if getattr(exc, "ntstatus", None) in {0xC0000034, 0xC000003A}:
                 return None
@@ -390,6 +416,15 @@ class WindowsDirectoryHandleBackend:
         if total != size.value:
             raise WindowsHandleError("File changed or ended during the bounded read.")
         return b"".join(chunks)
+
+    def reset_file_pointer(self, handle: Any) -> None:
+        if not self.kernel32.SetFilePointerEx(handle, 0, None, 0):
+            self._raise_last_error("SetFilePointerEx(FILE_BEGIN)")
+
+    def truncate_file(self, handle: Any) -> None:
+        self.reset_file_pointer(handle)
+        if not self.kernel32.SetEndOfFile(handle):
+            self._raise_last_error("SetEndOfFile")
 
     def write_all(self, handle: Any, data: bytes) -> None:
         offset = 0
