@@ -99,6 +99,7 @@ def test_discover_claim_archive_and_verify_local_capture(monkeypatch, tmp_path):
     discovered = client.post("/recovery/browser-capture/discover", json=_discovery())
     assert discovered.status_code == 200
     assert discovered.json()["registered"] == 1
+    assert discovered.json()["pending"] == 1
 
     claimed = client.post("/recovery/browser-capture/next", json={})
     assert claimed.status_code == 200
@@ -236,3 +237,15 @@ def test_discovery_rejects_source_id_that_does_not_match_conversation_url(monkey
     assert response.status_code == 200
     assert response.json()["registered"] == 0
     assert ledger.source_count() == 0
+
+
+def test_rediscovery_does_not_requeue_already_verified_conversation(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    client.post("/recovery/browser-capture/discover", json=_discovery())
+    client.post("/recovery/browser-capture/next", json={})
+    client.post("/recovery/browser-capture/capture", json=_capture())
+    response = client.post("/recovery/browser-capture/discover", json=_discovery())
+    assert response.status_code == 200
+    assert response.json()["registered"] == 1
+    assert response.json()["pending"] == 0
+    assert response.json()["already_processed"] == 1
