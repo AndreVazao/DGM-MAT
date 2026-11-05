@@ -282,3 +282,9 @@ def test_retry_unknown_source_returns_not_found(monkeypatch, tmp_path):
         json={},
     )
     assert response.status_code == 404
+
+
+def test_browser_capture_reuses_the_shared_recovery_ledger(monkeypatch, tmp_path):
+    shared = RecoveryLedger(tmp_path / "shared.sqlite3")
+    monkeypatch.setattr(browser_capture_api, "get_recovery_ledger", lambda: shared)
+    assert browser_capture_api._ledger() is shared
