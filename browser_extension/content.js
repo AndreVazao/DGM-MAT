@@ -139,7 +139,7 @@
       '[data-message-id]'
     ];
     const nodes = selectors.flatMap(selector => [...document.querySelectorAll(selector)]);
-    return [...new Set(nodes)].filter(node => !nodes.some(other => other !== node && other.contains(node)));
+    return [...new Set(nodes)].filter(node => !nodes.some(other => other !== node && node.contains(other)));
   }
 
   function roleFor(node, provider) {
@@ -156,10 +156,13 @@
       node.getAttribute("data-message-author-role"),
       node.getAttribute("data-author"),
       node.getAttribute("data-role"),
-      node.getAttribute("aria-label")
+      node.getAttribute("aria-label"),
+      node.getAttribute("data-testid"),
+      typeof node.className === "string" ? node.className : "",
+      typeof node.parentElement?.className === "string" ? node.parentElement.className : ""
     ].filter(Boolean).join(" ").toLowerCase();
-    if (/\b(user|you)\b/.test(role)) return "user";
-    if (/\b(assistant|grok|model|ai)\b/.test(role)) return "assistant";
+    if (/\b(user|you|human|prompt|query)\b/.test(role) || /justify-end|self-end/.test(role)) return "user";
+    if (/\b(assistant|grok|model|ai|response)\b/.test(role) || /justify-start|self-start/.test(role)) return "assistant";
     return "unknown";
   }
 
@@ -177,8 +180,20 @@
     return "visible-" + (hash >>> 0).toString(16);
   }
 
-  function findScrollContainer() {
-    const candidates = [document.scrollingElement, ...document.querySelectorAll("main, [role='main'], div")].filter(Boolean);
+  function findScrollContainer(provider) {
+    const messageAncestors = new Set();
+    for (const node of messageNodes(provider)) {
+      let parent = node.parentElement;
+      for (let depth = 0; parent && depth < 10; depth++, parent = parent.parentElement) {
+        messageAncestors.add(parent);
+      }
+    }
+    const candidates = [
+      ...messageAncestors,
+      document.querySelector("main"),
+      document.querySelector("[role='main']"),
+      document.scrollingElement
+    ].filter(Boolean);
     let best = document.scrollingElement;
     let score = 0;
     for (const element of candidates) {
@@ -209,7 +224,7 @@
       throw new Error("Provider UI did not expose recognizable message containers.");
     }
 
-    const scroller = findScrollContainer();
+    const scroller = findScrollContainer(provider);
     const originalTop = scroller.scrollTop;
     const collected = new Map();
     let sequence = 0;
@@ -229,7 +244,7 @@
             role,
             content: content.slice(0, 100000),
             sequence: collected.size,
-            timestamp: null
+            timestamp: node.querySelector("time[datetime]")?.getAttribute("datetime") || null
           });
         }
       }
