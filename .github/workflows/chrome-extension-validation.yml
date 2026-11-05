@@ -13,6 +13,7 @@ on:
       - "tests/test_browser_extension_manifest.py"
       - "tests/api/test_browser_capture_api.py"
       - "tests/api/test_extension_pairing_origin.py"
+      - "tests/api/test_extension_session_scope.py"
 
 permissions:
   contents: read
