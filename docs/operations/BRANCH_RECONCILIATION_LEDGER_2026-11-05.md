@@ -23,6 +23,8 @@
 | feat/external-agent-readiness-probe-2026-11-03 | 17 | 36 | Unique readiness/governance work; inspect/tests |
 | feat/telescope-metadata-only-2026-11-03 | 2 | 33 | Metadata inventory work; compare with current recovery implementation |
 | fix/frozen-external-runtime-dependencies-2026-11-04 | 1 | 11 | PR #203; currently conflicts with recovery base, do not merge yet |
+| fix/backup-first-executor-rebased-2026-11-05 | 1 | 0 | PR #214; backup-first primitive remains blocked on Windows TOCTOU hardening and Snyk integration status |
+| fix/conversation-completeness-evidence-2026-11-05 | merged | 0 | PR #216 merged as `31608eb`; bounded virtualized top-loading evidence added; live provider acceptance remains open |
 | recovery/dgm-mat-overnight-2026-11-05 | 3 | 1 before this ledger update | Active recovery branch; PR #204 targets main |
 
 ## DGM-MAT-Mobile
@@ -113,6 +115,8 @@ PR #3 and #4 share head branch and commit f31b643355eedc23d14d774fac96091898d1e2
 |---|---|---|
 | DGM-MAT #203 | Not mergeable; frozen runtime dependency branch conflicts with recovery base | Rebase/port by focused PR only after comparing unique code/tests |
 | DGM-MAT #204 | Mergeable; Focused PR Validation and Snyk status were pending at last check | Wait for CI/security result; no merge while pending |
+| DGM-MAT #214 | Open; focused validation #239 passed, but parent-directory TOCTOU remains unresolved; Snyk external check error | Keep blocked; implement race-resistant Windows path handling and deterministic concurrent-swap tests |
+| DGM-MAT #216 | Merged as `31608eb`; Focused PR Validation #243 and Chrome Extension Validation #79 passed | Complete live UI acceptance in #208 and provider-confirmed history-boundary work in #215 |
 | DGM-MAT-Mobile #3/#4 | Same head commit; Maestro UI smoke run was in progress | Wait for one successful run, merge #3 once, close #4 duplicate |
 | Office-Kit #25 | Not mergeable | Reconcile adapter bridge against current main and #26 recovery |
 | VAZAO-EVSE #2 | Git mergeable, but engineering gate remains provisional | Review evidence and checks; do not treat as final component approval |
