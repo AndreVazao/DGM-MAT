@@ -23,6 +23,7 @@ from core.api.governance_api import router as governance_router
 from core.api.dgm_hub_agents_api import router as dgm_hub_agents_router
 from core.api.provider_execution_api import router as provider_execution_router
 from core.api.recovery_api import router as recovery_router
+from core.api.browser_capture_api import router as browser_capture_router
 from core.api.repository_learning_api import router as repository_learning_router
 from core.api.auto_help_api import router as auto_help_router
 from core.api.conversation_archive_api import router as conversation_archive_router
