@@ -166,6 +166,8 @@ class BrowserCaptureRequest(BaseModel):
     messages_total: int = Field(default=0, ge=0, le=MAX_MESSAGES)
     unknown_role_count: int = Field(default=0, ge=0, le=MAX_MESSAGES)
     scroll_steps: int = Field(default=0, ge=0, le=1000)
+    top_load_steps: int = Field(default=0, ge=0, le=20)
+    top_load_limit_reached: bool = False
     adapter_version: str = Field(default="0.1.0", max_length=40)
     captured_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -334,6 +336,8 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "messages_total": payload.messages_total or len(ordered),
         "unknown_role_count": payload.unknown_role_count,
         "scroll_steps": payload.scroll_steps,
+        "top_load_steps": payload.top_load_steps,
+        "top_load_limit_reached": payload.top_load_limit_reached,
         "history_completeness": (
             "oldest_boundary_confirmed"
             if payload.oldest_boundary == "confirmed"
@@ -543,6 +547,8 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "messages_total": len(ordered),
         "unknown_role_count": sum(1 for item in ordered if item.role == "unknown"),
         "scroll_steps": payload.scroll_steps,
+        "top_load_steps": payload.top_load_steps,
+        "top_load_limit_reached": payload.top_load_limit_reached,
         "history_start_reached": payload.history_start_reached,
         "oldest_boundary": payload.oldest_boundary,
         "history_completeness": record["history_completeness"],
