@@ -113,6 +113,35 @@ async function startRecovery(tabId) {
   return await claimAndNavigate(run, state.token);
 }
 
+async function retryCurrent() {
+  const state = await readState();
+  const run = state.run;
+  if (!state.token || !run || run.active || !run.current) {
+    throw new Error("There is no blocked conversation to retry.");
+  }
+  const query = "?provider=" + encodeURIComponent(run.provider) +
+    "&source_id=" + encodeURIComponent(run.current.source_id);
+  await api("/recovery/browser-capture/retry" + query, {}, state.token);
+  run.active = true;
+  run.last_error = "";
+  run.updated_at = new Date().toISOString();
+  await saveRun(run);
+  return await claimAndNavigate(run, state.token);
+}
+
+async function stopByOperator() {
+  const state = await readState();
+  if (state.token && state.run?.active && state.run.current) {
+    await api("/recovery/browser-capture/block", {
+      provider: state.run.provider,
+      source_id: state.run.current.source_id,
+      status: "blocked",
+      reason: "operator_stopped"
+    }, state.token).catch(() => {});
+  }
+  await stopRun("Stopped by operator.");
+}
+
 async function handlePageReady(message, sender) {
   if (!sender.tab || !Number.isInteger(sender.tab.id)) return;
   const state = await readState();
@@ -183,8 +212,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   if (message.type === "DGM_STOP_RECOVERY") {
-    stopRun("Stopped by operator.")
+    stopByOperator()
       .then(() => sendResponse({ ok: true }))
+      .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+    return true;
+  }
+  if (message.type === "DGM_RETRY_CURRENT") {
+    retryCurrent()
+      .then(result => sendResponse({ ok: true, data: result }))
       .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
     return true;
   }
@@ -193,6 +228,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(state => chrome.storage.local.get("dgmRecoveryLastStatus").then(last => ({
         paired: Boolean(state.token),
         run: state.run,
+        can_retry: Boolean(state.token && state.run && !state.run.active && state.run.current),
         last_status: last.dgmRecoveryLastStatus || "Ready."
       })))
       .then(data => sendResponse({ ok: true, data }))
