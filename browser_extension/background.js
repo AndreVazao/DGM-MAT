@@ -122,7 +122,7 @@ async function handlePageReady(message, sender) {
     await api("/recovery/browser-capture/block", {
       provider: run.provider,
       source_id: run.current.source_id,
-      status: message.blocked === "rate_limited" ? "blocked" : "blocked",
+      status: message.blocked === "rate_limited" ? "rate_limited" : "blocked",
       reason: message.blocked
     }, state.token).catch(() => {});
     await stopRun(message.blocked);
