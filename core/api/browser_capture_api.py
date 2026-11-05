@@ -302,17 +302,9 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
     destination = folder / (digest + ".capture.json")
     if destination.is_symlink():
         raise HTTPException(status_code=400, detail="Symlink archive destinations are denied.")
-    if destination.exists() and source.raw_sha256 == digest:
-        if RecoveryLedger.sha256_file(destination) != digest:
-            raise HTTPException(status_code=500, detail="Existing archive integrity verification failed.")
-        return {
-            "status": "already_archived",
-            "provider": source.provider,
-            "source_id": source.source_id,
-            "sha256": digest,
-            "capture_status": source.capture_status,
-            "archive_path": str(destination),
-        }
+    archive_reused = destination.exists() and source.raw_sha256 == digest
+    if archive_reused and RecoveryLedger.sha256_file(destination) != digest:
+        raise HTTPException(status_code=500, detail="Existing archive integrity verification failed.")
     if not destination.exists():
         descriptor = None
         try:
@@ -476,7 +468,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         pipeline="authenticated_browser_capture",
     )
     return {
-        "status": "archived_and_hash_verified",
+        "status": "already_archived" if archive_reused else "archived_and_hash_verified",
         "provider": payload.provider,
         "source_id": payload.source_id,
         "message_count": len(ordered),
