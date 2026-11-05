@@ -1,9 +1,9 @@
 """Backup-first, repository-scoped text patch application.
 
-This primitive is intentionally not wired to mission execution yet. It provides
-an auditable, reversible write boundary for the governed development pipeline.
-It never executes commands, follows symlinks, writes outside one Git worktree,
-or modifies protected credential/system paths.
+This primitive is intentionally not wired to mission execution yet. Native
+Windows mutations use pinned, exclusive handles. POSIX mutation is deliberately
+fail-closed until a portable conditional replace/delete primitive can exclude
+uncoordinated writers. The executor never runs commands.
 """
 from __future__ import annotations
 
@@ -443,10 +443,15 @@ class BackupFirstPatchExecutor:
         encoded = content.encode("utf-8")
         if len(encoded) > self.max_file_bytes:
             raise PatchRejected("Patch content exceeds the configured size limit.")
-        if os.name == "nt":
-            return self._apply_text_windows(relative_path, encoded, expected_sha256)
+        if os.name != "nt":
+            raise PatchRejected(
+                "POSIX mutation is disabled: portable conditional replacement and rollback "
+                "cannot exclude uncoordinated writers safely."
+            )
+        return self._apply_text_windows(relative_path, encoded, expected_sha256)
 
-        # Keep the static policy checks, but never use the returned path for writes.
+        # Legacy POSIX implementation below is retained only for reference and
+        # is unreachable while the platform gate above remains in place.
         _, normalized = self._relative_target(relative_path)
         parent_fd, target_name = self._open_parent_fd(normalized)
         try:
@@ -636,8 +641,12 @@ class BackupFirstPatchExecutor:
 
     def rollback(self, backup_id: str) -> dict[str, Any]:
         """Restore original bytes through a pinned no-follow directory handle."""
-        if os.name == "nt":
-            return self._rollback_windows(backup_id)
+        if os.name != "nt":
+            raise PatchRollbackError(
+                "POSIX rollback is disabled until conditional target deletion/replacement "
+                "can exclude uncoordinated writers safely."
+            )
+        return self._rollback_windows(backup_id)
         if not isinstance(backup_id, str) or not backup_id or "/" in backup_id or "\\" in backup_id:
             raise PatchRejected("Invalid backup ID.")
         backup_dir = (self.backup_root / backup_id).resolve(strict=True)
