@@ -64,7 +64,7 @@
         source_id: id,
         title: conversationTitle(null, location.href),
         url: location.href,
-        source_date: new Date().toISOString()
+        source_date: "unknown-date"
       });
     }
 
@@ -78,7 +78,7 @@
         source_id: id,
         title: conversationTitle(anchor, url),
         url: url.href,
-        source_date: new Date().toISOString()
+        source_date: "unknown-date"
       });
       if (found.size >= 500) break;
     }
@@ -131,9 +131,7 @@
   }
 
   function messageIdentity(node, role, content, index) {
-    const explicit = node.getAttribute("data-message-id") ||
-      node.getAttribute("data-testid") ||
-      node.id;
+    const explicit = node.getAttribute("data-message-id") || node.id;
     if (explicit) return explicit.slice(0, 180);
     // Text-derived IDs are stable across scroll windows; duplicate identical turns
     // remain a documented selector limitation until provider DOM IDs are available.
@@ -143,7 +141,7 @@
       hash ^= value.charCodeAt(i);
       hash = Math.imul(hash, 16777619);
     }
-    return "visible-" + (hash >>> 0).toString(16) + "-" + index;
+    return "visible-" + (hash >>> 0).toString(16);
   }
 
   function findScrollContainer() {
