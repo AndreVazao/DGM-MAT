@@ -10,6 +10,7 @@ import json
 import os
 import re
 import time
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -32,6 +33,19 @@ MAX_MESSAGES = 3000
 MAX_MESSAGE_CHARS = 100_000
 MAX_CAPTURE_BYTES = 20 * 1024 * 1024
 SAFE_ID = re.compile(r"^[A-Za-z0-9._:-]{1,200}$")
+PROPOSAL_MARKERS = re.compile(
+    r"\\b(i recommend|i suggest|i propose|we should|you should|recommendation|suggested approach|recomendo|sugiro|proponho|devemos|a minha recomendação|a solução proposta)\\b",
+    re.IGNORECASE,
+)
+CONFIRMATION_MARKERS = re.compile(
+    r"\\b(aprovo|aprovado|confirmo|autorizo|approved|i approve|confirmed|andré ok)\\b",
+    re.IGNORECASE,
+)
+
+
+def _knowledge_id(kind: str, provider: str, source_id: str, message_id: str = "") -> str:
+    seed = "\\0".join((kind, provider, source_id, message_id))
+    return hashlib.sha256(seed.encode("utf-8")).hexdigest()[:32]
 
 
 def _ledger() -> RecoveryLedger:
@@ -257,6 +271,10 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "conversation_id": payload.source_id,
         "provider": payload.provider,
         "source_id": payload.source_id,
+        "participants": [
+            {"participant_id": "operator", "role": "user"},
+            {"participant_id": payload.provider, "role": "assistant"},
+        ],
         "title": " ".join(payload.title.split())[:500],
         "source_url": source_url,
         "source_date": source.source_date,
@@ -350,6 +368,95 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         )
         audits = pipeline.ingest_file(normalized_destination, provider=payload.provider)
         index_summary = pipeline.summarize(audits)
+        knowledge = pipeline.knowledge_store
+        intent_ids: list[str] = []
+        proposal_ids: list[str] = []
+        intent_evidence: list[str] = []
+        proposal_evidence: list[str] = []
+        from core.conversation_intelligence.models import AIProposal, UserIntent
+
+        for message in normalized_record["messages"]:
+            role = str(message.get("role", "unknown")).casefold()
+            message_id = str(message.get("message_id", ""))
+            content = str(message.get("content", "")).strip()
+            if not content or not message_id:
+                continue
+            evidence_ref = f"archive-sha256:{digest}#message:{message_id}"
+            if role == "user":
+                intent_id = _knowledge_id("intent", payload.provider, payload.source_id, message_id)
+                knowledge.save_intent(UserIntent(
+                    intent_id=intent_id,
+                    statement=content,
+                    status="unverified",
+                    source_conversation_id=payload.source_id,
+                    source_message_id=message_id,
+                    observed_at=message.get("timestamp") or payload.captured_at,
+                    evidence=[evidence_ref],
+                    confidence=0.35,
+                    reviewed_by_user=False,
+                ))
+                intent_ids.append(intent_id)
+                intent_evidence.append(evidence_ref)
+                if CONFIRMATION_MARKERS.search(content):
+                    knowledge.create_review_task(
+                        task_id=_knowledge_id("possible-confirmation-review", payload.provider, payload.source_id, message_id),
+                        item_type="intent",
+                        item_id=intent_id,
+                        reason="Possible operator confirmation phrase; verify its context before recording a decision.",
+                        evidence=[evidence_ref],
+                    )
+            elif role in {"assistant", "model"} and PROPOSAL_MARKERS.search(content):
+                proposal_id = _knowledge_id("proposal", payload.provider, payload.source_id, message_id)
+                knowledge.save_proposal(AIProposal(
+                    proposal_id=proposal_id,
+                    statement=content,
+                    source_conversation_id=payload.source_id,
+                    source_message_id=message_id,
+                    accepted=None,
+                    decision_id=None,
+                ))
+                proposal_ids.append(proposal_id)
+                proposal_evidence.append(evidence_ref)
+
+        if intent_ids:
+            knowledge.create_review_task(
+                task_id=_knowledge_id("intent-review", payload.provider, payload.source_id),
+                item_type="intent",
+                item_id=payload.source_id,
+                reason="Review extracted operator requests and confirm project/owner attribution.",
+                evidence=intent_evidence[:100],
+            )
+        if proposal_ids:
+            knowledge.create_review_task(
+                task_id=_knowledge_id("proposal-review", payload.provider, payload.source_id),
+                item_type="proposal",
+                item_id=payload.source_id,
+                reason="Review AI-generated proposal candidates; acceptance has not been inferred.",
+                evidence=proposal_evidence[:100],
+            )
+
+        suggested_project = next(
+            (audit.suggested_project for audit in audits if audit.suggested_project),
+            None,
+        )
+        if suggested_project:
+            current_source = ledger.get(payload.provider, payload.source_id)
+            if current_source:
+                ledger.register(replace(current_source, project_key=str(suggested_project)[:200]))
+        else:
+            knowledge.create_review_task(
+                task_id=_knowledge_id("project-attribution-review", payload.provider, payload.source_id),
+                item_type="coverage",
+                item_id=payload.source_id,
+                reason="Project and owner attribution remain unknown; review conversation evidence.",
+                evidence=[f"archive-sha256:{digest}"],
+            )
+
+        index_summary["knowledge"] = knowledge.summary()
+        index_summary["intent_candidates"] = len(intent_ids)
+        index_summary["proposal_candidates"] = len(proposal_ids)
+        index_summary["suggested_project"] = suggested_project
+        index_summary["confirmed_decisions_created"] = 0
         index_status = "indexed"
     except Exception as exc:
         # Archival integrity is independent from intelligence indexing. Keep the
