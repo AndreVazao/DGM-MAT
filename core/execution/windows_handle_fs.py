@@ -126,6 +126,14 @@ class WindowsDirectoryHandleBackend:
             wintypes.ULONG,
         ]
         self.ntdll.NtCreateFile.restype = ctypes.c_long
+        self.ntdll.NtSetInformationFile.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(IO_STATUS_BLOCK),
+            ctypes.c_void_p,
+            wintypes.ULONG,
+            wintypes.ULONG,
+        ]
+        self.ntdll.NtSetInformationFile.restype = ctypes.c_long
         self.kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
         self.kernel32.CloseHandle.restype = wintypes.BOOL
         self.kernel32.GetFileInformationByHandleEx.argtypes = [
@@ -377,29 +385,30 @@ class WindowsDirectoryHandleBackend:
     ) -> None:
         target_name = self._validate_basename(target_name)
         encoded = target_name.encode("utf-16-le")
-        header_size = self.FILE_RENAME_INFO_EX.FileName.offset
-        # Allocate sizeof(struct) + payload as required by the native structure
-        # contract; the filename itself begins at offsetof(FileName).
-        buffer_size = self.ctypes.sizeof(self.FILE_RENAME_INFO_EX) + len(encoded)
+        header_size = self.FILE_RENAME_INFO.FileName.offset
+        buffer_size = self.ctypes.sizeof(self.FILE_RENAME_INFO) + len(encoded)
         buffer = self.ctypes.create_string_buffer(buffer_size)
         info = self.ctypes.cast(
-            buffer, self.ctypes.POINTER(self.FILE_RENAME_INFO_EX)
+            buffer, self.ctypes.POINTER(self.FILE_RENAME_INFO)
         ).contents
-        info.Flags = self.FILE_RENAME_REPLACE_IF_EXISTS if replace_existing else 0
+        info.ReplaceIfExists = 1 if replace_existing else 0
         info.RootDirectory = parent_handle.value
         info.FileNameLength = len(encoded)
         self.ctypes.memmove(
             self.ctypes.addressof(buffer) + header_size, encoded, len(encoded)
         )
-        if not self.kernel32.SetFileInformationByHandle(
+        io_status = self.IO_STATUS_BLOCK()
+        status = self.ntdll.NtSetInformationFile(
             source_handle,
-            self.FILE_RENAME_INFO_EX_CLASS,
+            self.ctypes.byref(io_status),
             buffer,
             buffer_size,
-        ):
-            self._raise_last_error("SetFileInformationByHandle(FileRenameInfoEx)")
-
-
+            10,  # FileRenameInformation
+        )
+        if status < 0:
+            raise WindowsHandleError(
+                f"NtSetInformationFile(FileRenameInformation) failed with NTSTATUS 0x{status & 0xFFFFFFFF:08X}."
+            )
     def close(self, handle: Any) -> None:
         if handle and getattr(handle, "value", handle):
             if not self.kernel32.CloseHandle(handle):
