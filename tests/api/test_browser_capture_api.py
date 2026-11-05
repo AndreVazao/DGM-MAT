@@ -16,6 +16,23 @@ def _client(monkeypatch, tmp_path):
     ledger = RecoveryLedger(tmp_path / "ledger.sqlite3")
     monkeypatch.setattr(browser_capture_api, "_ledger", lambda: ledger)
     monkeypatch.setenv("DGM_RECOVERY_ARCHIVE_ROOT", str(tmp_path / "archive"))
+    from core.conversation_intelligence import pipeline as pipeline_module
+    from core.storage.storage_manager import storage_manager
+
+    class FakePipeline:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def ingest_file(self, path, provider=None):
+            self.path = Path(path)
+            self.provider = provider
+            return []
+
+        def summarize(self, audits):
+            return {"conversation_count": 1, "artifact_count": 0, "projects": [], "errors": 0, "warnings": 0}
+
+    monkeypatch.setattr(pipeline_module, "ConversationIntelligencePipeline", FakePipeline)
+    monkeypatch.setattr(storage_manager, "get_path", lambda name: tmp_path / "storage" / name)
     app = FastAPI()
     app.include_router(browser_capture_api.router)
     return TestClient(app), ledger
@@ -166,3 +183,20 @@ def test_provider_block_is_checkpointed_without_retry_or_bypass(monkeypatch, tmp
     assert response.status_code == 200
     assert ledger.get("chatgpt", "conversation-1").capture_status == "blocked"
     assert client.post("/recovery/browser-capture/next", json={}).json()["status"] == "queue_empty"
+
+
+def test_raw_capture_is_preserved_and_redacted_copy_is_indexed(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    client.post("/recovery/browser-capture/discover", json=_discovery())
+    client.post("/recovery/browser-capture/next", json={})
+    payload = _capture(content="Example configuration: api_key=sk-abcdefghijklmnopqrstuvwxyz123456")
+    response = client.post("/recovery/browser-capture/capture", json=payload)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["index_status"] == "indexed"
+    raw = Path(result["archive_path"]).read_text(encoding="utf-8")
+    normalized = Path(result["normalized_archive_path"]).read_text(encoding="utf-8")
+    assert "sk-abcdefghijklmnopqrstuvwxyz123456" in raw
+    assert "sk-abcdefghijklmnopqrstuvwxyz123456" not in normalized
+    assert "[REDACTED" in normalized
+    assert result["index_summary"]["conversation_count"] == 1
