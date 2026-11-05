@@ -388,7 +388,7 @@ class BackupFirstPatchExecutor:
             self._write_manifest_windows(backup_dir_handle, manifest, replace_existing=True)
             return manifest
         except Exception as exc:
-            if target_handle is not None and target_identity is not None:
+            if target_handle is not None and (target_identity is not None or not existed):
                 try:
                     if existed and original is not None:
                         backend.truncate_file(target_handle)
