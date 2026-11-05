@@ -38,6 +38,7 @@ class WindowsDirectoryHandleBackend:
     FILE_DIRECTORY_FILE = 0x00000001
     FILE_NON_DIRECTORY_FILE = 0x00000040
     FILE_OPEN_REPARSE_POINT = 0x00200000
+    FILE_WRITE_THROUGH = 0x00000002
     FILE_SYNCHRONOUS_IO_NONALERT = 0x00000020
 
     FILE_ATTRIBUTE_NORMAL = 0x00000080
@@ -421,7 +422,7 @@ class WindowsDirectoryHandleBackend:
             name,
             access=access,
             disposition=self.FILE_CREATE,
-            options=self.FILE_NON_DIRECTORY_FILE | self.FILE_SYNCHRONOUS_IO_NONALERT,
+            options=self.FILE_NON_DIRECTORY_FILE | self.FILE_SYNCHRONOUS_IO_NONALERT | self.FILE_WRITE_THROUGH,
             share_mode=self.FILE_SHARE_READ if exclusive else None,
         )
 
@@ -439,7 +440,7 @@ class WindowsDirectoryHandleBackend:
             name,
             access=access,
             disposition=self.FILE_CREATE,
-            options=self.FILE_DIRECTORY_FILE | self.FILE_SYNCHRONOUS_IO_NONALERT,
+            options=self.FILE_DIRECTORY_FILE | self.FILE_SYNCHRONOUS_IO_NONALERT | self.FILE_WRITE_THROUGH,
         )
 
     def read_all(self, handle: Any, *, max_bytes: int) -> bytes:
