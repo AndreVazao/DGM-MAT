@@ -351,27 +351,38 @@ class BackupFirstPatchExecutor:
             raise PatchRejected("Native Windows handle backend is unavailable.")
         _, normalized = self._relative_target(relative_path)
         root_handle, parent_handle, target_name = self._open_parent_handles_windows(normalized)
-        backup_root_handle = backup_dir_handle = None
-        patch_applied = False
-        original = None
+        backup_root_handle = backup_dir_handle = target_handle = None
+        manifest: dict[str, Any] | None = None
+        target_identity: tuple[int, int] | None = None
         existed = False
+        original: bytes | None = None
         try:
-            original = self._read_at_windows(parent_handle, target_name)
-            existed = original is not None
-            original_sha = self._sha256(original) if existed else None
-            if existed and (not isinstance(expected_sha256, str) or expected_sha256.casefold() != original_sha):
+            # Existing targets are opened exclusively: the handle denies new
+            # write/delete opens and remains pinned through backup and mutation.
+            target_handle = backend.open_file_optional(
+                parent_handle, target_name, exclusive=True
+            )
+            existed = target_handle is not None
+            if existed:
+                original = backend.read_all(target_handle, max_bytes=self.max_file_bytes)
+                target_identity = backend.file_identity(target_handle)
+            original_sha = self._sha256(original) if original is not None else None
+            if existed and (
+                not isinstance(expected_sha256, str)
+                or expected_sha256.casefold() != original_sha
+            ):
                 raise PatchRejected("Existing-file replacement requires a matching expected_sha256.")
             if not existed and expected_sha256 is not None:
                 raise PatchRejected("expected_sha256 must be omitted when creating a new file.")
+
             backup_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + "-" + uuid4().hex[:12]
-            backup_dir = self.backup_root / backup_id
-            backup_file = backup_dir / "original.bin" if existed else None
+            backup_file = self.backup_root / backup_id / "original.bin" if existed else None
             try:
                 self.backup_root.mkdir(parents=True, exist_ok=True)
                 backup_root_handle = backend.open_root(self.backup_root)
                 backup_dir_handle = backend.create_directory(backup_root_handle, backup_id)
                 if original is not None:
-                    backup_handle = backend.create_file(backup_dir_handle, "original.bin")
+                    backup_handle = backend.create_file(backup_dir_handle, "original.bin", exclusive=True)
                     try:
                         backend.write_all(backup_handle, original)
                     finally:
@@ -386,15 +397,7 @@ class BackupFirstPatchExecutor:
                 raise
             except Exception as exc:
                 raise PatchBackupError("Could not create and verify the original-file backup.") from exc
-            current = self._read_at_windows(parent_handle, target_name)
-            if (self._sha256(current) if current is not None else None) != original_sha:
-                raise PatchRejected("Target changed after the guarded read; refusing replacement.")
-            self._write_atomic_windows(parent_handle, target_name, encoded, replace_existing=existed)
-            patch_applied = True
-            result = self._read_at_windows(parent_handle, target_name)
-            result_sha = self._sha256(result or b"")
-            if result_sha != self._sha256(encoded):
-                raise OSError("Post-write SHA-256 mismatch.")
+
             manifest = {
                 "schema": "dgm-mat.backup-first-patch.v1",
                 "backup_id": backup_id,
@@ -403,27 +406,68 @@ class BackupFirstPatchExecutor:
                 "relative_path": normalized,
                 "operation": "replace" if existed else "create",
                 "original_sha256": original_sha,
-                "result_sha256": result_sha,
+                "result_sha256": self._sha256(encoded),
                 "backup_file": str(backup_file) if backup_file else None,
+                "target_identity": (
+                    {"volume_serial": target_identity[0], "file_index": target_identity[1]}
+                    if target_identity else None
+                ),
+                "state": "prepared",
                 "rollback_available": True,
             }
+            # A prepared manifest is durable before changing target bytes.
             self._write_manifest_windows(backup_dir_handle, manifest, replace_existing=False)
+
+            if existed:
+                assert target_handle is not None
+                backend.truncate_file(target_handle)
+                backend.write_all(target_handle, encoded)
+                backend.reset_file_pointer(target_handle)
+                result = backend.read_all(target_handle, max_bytes=self.max_file_bytes)
+            else:
+                # FILE_CREATE is atomic: a concurrent creator wins or we do.
+                target_handle = backend.create_file(parent_handle, target_name, exclusive=True)
+                target_identity = backend.file_identity(target_handle)
+                manifest["target_identity"] = {
+                    "volume_serial": target_identity[0],
+                    "file_index": target_identity[1],
+                }
+                self._write_manifest_windows(backup_dir_handle, manifest, replace_existing=True)
+                backend.write_all(target_handle, encoded)
+                backend.reset_file_pointer(target_handle)
+                result = backend.read_all(target_handle, max_bytes=self.max_file_bytes)
+
+            result_sha = self._sha256(result)
+            if result_sha != self._sha256(encoded):
+                raise OSError("Post-write SHA-256 mismatch.")
+            manifest["state"] = "applied"
+            manifest["applied_at"] = datetime.now(timezone.utc).isoformat()
+            self._write_manifest_windows(backup_dir_handle, manifest, replace_existing=True)
             return manifest
         except Exception as exc:
-            if patch_applied:
+            if target_handle is not None and target_identity is not None:
                 try:
                     if existed and original is not None:
-                        self._write_atomic_windows(parent_handle, target_name, original, replace_existing=True)
+                        backend.truncate_file(target_handle)
+                        backend.write_all(target_handle, original)
+                        backend.reset_file_pointer(target_handle)
+                        restored = backend.read_all(target_handle, max_bytes=self.max_file_bytes)
+                        if self._sha256(restored) != self._sha256(original):
+                            raise PatchRollbackError("Automatic Windows rollback verification failed.")
                     else:
-                        self._delete_target_windows(parent_handle, target_name)
+                        backend.delete_handle(target_handle)
                 except Exception as rollback_exc:
-                    raise PatchRollbackError("Patch failed and automatic rollback could not be verified; preserve the backup for recovery.") from rollback_exc
+                    raise PatchRollbackError(
+                        "Patch failed and automatic rollback could not be verified; preserve the backup for recovery."
+                    ) from rollback_exc
             if isinstance(exc, (PatchRejected, PatchBackupError, PatchRollbackError)):
                 raise
             if isinstance(exc, WindowsHandleError):
                 raise PatchRejected(str(exc)) from exc
             raise
         finally:
+            if target_handle is not None:
+                backend.close(target_handle)
             if backup_dir_handle is not None:
                 backend.close(backup_dir_handle)
             if backup_root_handle is not None:
@@ -529,30 +573,58 @@ class BackupFirstPatchExecutor:
         backend = self._windows_backend
         if backend is None:
             raise PatchRollbackError("Native Windows handle backend is unavailable.")
+        backup_root_handle = backup_dir_handle = root_handle = parent_handle = target_handle = None
         try:
             backend._validate_basename(backup_id)
             backup_root_handle = backend.open_root(self.backup_root)
             backup_dir_handle = backend.open_child_directory(backup_root_handle, backup_id)
             manifest_handle = backend.open_file(backup_dir_handle, "manifest.json")
             try:
-                manifest = json.loads(backend.read_all(manifest_handle, max_bytes=1_000_000).decode("utf-8"))
+                manifest = json.loads(
+                    backend.read_all(manifest_handle, max_bytes=1_000_000).decode("utf-8")
+                )
             finally:
                 backend.close(manifest_handle)
             if manifest.get("schema") != "dgm-mat.backup-first-patch.v1":
                 raise PatchRollbackError("Unsupported backup manifest.")
+            if manifest.get("rollback_available") is not True:
+                raise PatchRollbackError("This backup has already been rolled back.")
             if Path(manifest.get("repository", "")).resolve() != self.repo_root:
                 raise PatchRollbackError("Backup belongs to a different repository.")
             relative_path = manifest.get("relative_path", "")
             _, normalized = self._relative_target(relative_path)
             if normalized != relative_path:
                 raise PatchRollbackError("Backup path normalization mismatch.")
+
             root_handle, parent_handle, target_name = self._open_parent_handles_windows(normalized)
-            current = self._read_at_windows(parent_handle, target_name)
-            if current is None or self._sha256(current) != manifest.get("result_sha256"):
+            created = manifest.get("operation") == "create"
+            target_handle = backend.open_file_optional(
+                parent_handle,
+                target_name,
+                writable=created,
+                exclusive=True,
+            )
+            if target_handle is None:
+                raise PatchRollbackError("Patched target is missing; refusing an unverified rollback.")
+            expected_identity = manifest.get("target_identity")
+            actual_identity = backend.file_identity(target_handle)
+            if not isinstance(expected_identity, dict) or (
+                expected_identity.get("volume_serial") != actual_identity[0]
+                or expected_identity.get("file_index") != actual_identity[1]
+            ):
+                raise PatchRollbackError("Target file identity changed after the patch; refusing rollback.")
+
+            current = backend.read_all(target_handle, max_bytes=self.max_file_bytes)
+            current_sha = self._sha256(current)
+            state = manifest.get("state")
+            if state == "applied" and current_sha != manifest.get("result_sha256"):
                 raise PatchRollbackError("Current file changed after the patch; refusing to overwrite newer work.")
+            if state not in {"prepared", "applied"}:
+                raise PatchRollbackError("Backup manifest is not in a recoverable state.")
+
             if manifest.get("backup_file"):
-                expected = self.backup_root / backup_id / "original.bin"
-                if Path(manifest["backup_file"]) != expected:
+                expected_backup = self.backup_root / backup_id / "original.bin"
+                if Path(manifest["backup_file"]) != expected_backup:
                     raise PatchRollbackError("Backup file path does not match the selected backup.")
                 backup_handle = backend.open_file(backup_dir_handle, "original.bin")
                 try:
@@ -561,27 +633,32 @@ class BackupFirstPatchExecutor:
                     backend.close(backup_handle)
                 if self._sha256(original) != manifest.get("original_sha256"):
                     raise PatchRollbackError("Original backup hash verification failed.")
-                self._write_atomic_windows(parent_handle, target_name, original, replace_existing=True)
-                restored = self._read_at_windows(parent_handle, target_name)
-                restored_sha = self._sha256(restored or b"")
+                backend.truncate_file(target_handle)
+                backend.write_all(target_handle, original)
+                backend.reset_file_pointer(target_handle)
+                restored = backend.read_all(target_handle, max_bytes=self.max_file_bytes)
+                restored_sha = self._sha256(restored)
                 if restored_sha != manifest.get("original_sha256"):
                     raise PatchRollbackError("Restored file hash verification failed.")
             else:
-                self._delete_target_windows(parent_handle, target_name)
+                backend.delete_handle(target_handle)
                 restored_sha = None
+
             manifest["rolled_back_at"] = datetime.now(timezone.utc).isoformat()
             manifest["rollback_result_sha256"] = restored_sha
+            manifest["state"] = "rolled_back"
             manifest["rollback_available"] = False
             self._write_manifest_windows(backup_dir_handle, manifest, replace_existing=True)
             return manifest
         except (PatchRejected, PatchRollbackError):
             raise
         except Exception as exc:
-            raise PatchRollbackError("Native Windows rollback failed; preserve the backup for manual recovery.") from exc
+            raise PatchRollbackError(
+                "Native Windows rollback failed; preserve the backup for manual recovery."
+            ) from exc
         finally:
-            for handle_name in ("parent_handle", "root_handle", "backup_dir_handle", "backup_root_handle"):
-                handle = locals().get(handle_name)
-                if handle is not None and handle is not locals().get("root_handle") or (handle_name == "root_handle" and handle is not None):
+            for handle in (target_handle, parent_handle, root_handle, backup_dir_handle, backup_root_handle):
+                if handle is not None:
                     try:
                         backend.close(handle)
                     except Exception:
