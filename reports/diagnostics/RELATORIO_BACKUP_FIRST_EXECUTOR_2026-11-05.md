@@ -26,7 +26,7 @@ O Windows Guard executou os testes nativos; 7 testes POSIX-only foram corretamen
 ## Bloqueios que impedem integração
 
 1. **Revisão de segurança independente:** solicitada ao CodeRabbit para a semântica de share modes, NT APIs, recuperação de manifesto, identidade do target, lifecycle dos handles e corridas residuais. A revisão ainda não foi concluída.
-2. **Snyk:** o check `security/snyk (andrevazao)` continua em estado `error`. Isto não prova vulnerabilidade nem constitui scan limpo; a causa precisa de ser diagnosticada.
+2. **Snyk:** o status GitHub do check `security/snyk (andrevazao)` foi diagnosticado como `You have used your limit of private tests`. A análise Snyk não foi executada por limite de quota; não há vulnerabilidade reportada, mas também não há scan limpo. Não foi comprada quota nem desativado o scanner.
 3. **Aceitação local:** falta validar o ciclo completo no Windows 10 do utilizador. CI hospedado não substitui esse teste.
 4. **MissionEngine:** integração com o motor de missões ainda não feita. Issue #212 permanece aberta.
 
