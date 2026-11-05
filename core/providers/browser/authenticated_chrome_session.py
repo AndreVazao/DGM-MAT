@@ -5,7 +5,6 @@ storage, browser profile files, credentials or provider-private endpoints.
 """
 from __future__ import annotations
 
-import ipaddress
 from dataclasses import dataclass
 from urllib.parse import urlparse
 from typing import Any
@@ -49,7 +48,7 @@ class AuthenticatedChromeSession:
         self.cdp_url = self._validate_cdp_url(cdp_url)
         if not 1000 <= timeout_ms <= 60000:
             raise ValueError("timeout_ms must be between 1000 and 60000")
-        hosts = allowed_hosts or self.DEFAULT_PROVIDER_HOSTS
+        hosts = self.DEFAULT_PROVIDER_HOSTS if allowed_hosts is None else allowed_hosts
         normalized = {self._normalize_host(host) for host in hosts}
         if not normalized:
             raise AuthenticatedChromeError("At least one provider host must be allowed")
@@ -136,10 +135,23 @@ class AuthenticatedChromeSession:
                 raise AuthenticatedChromeError(
                     "No open page from an allowed provider was found in Chrome"
                 )
-            # Prefer the last active provider page, matching Chrome's context order.
-            self._page = provider_pages[-1]
-            self._page.set_default_timeout(self.timeout_ms)
-            return self.info()
+            if len(provider_pages) == 1:
+                self._page = provider_pages[0]
+                self._page.set_default_timeout(self.timeout_ms)
+            # With multiple provider tabs, retain the connection but require
+            # explicit page selection; never guess which account/tab to read.
+            return {
+                "attached": True,
+                "selected": self._page is not None,
+                "pages": [
+                    {"url": page.url, "title": page.title()}
+                    for page in provider_pages
+                ],
+            }
+        except AuthenticatedChromeError as exc:
+            if self._browser is None:
+                self.close()
+            raise
         except Exception:
             self.close()
             raise
