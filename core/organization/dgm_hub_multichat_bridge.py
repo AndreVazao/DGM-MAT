@@ -138,6 +138,8 @@ class DGMHubMultiChatBridge:
                     "enabled": item.get("enabled") is True,
                     "online": item.get("online") is True,
                     "ready": item.get("ready") is True,
+                    "transport_online": item.get("transport_online") is True,
+                    "response_verified": item.get("response_verified") is True,
                     "description": str(item.get("description", ""))[:240],
                 }
             else:
@@ -288,5 +290,10 @@ class DGMHubMultiChatBridge:
                 # Model identity comes only from Hub transport metadata, never model self-claims.
                 "model": str(result["model"])[:160] if isinstance(result.get("model"), str) else None,
                 "duration_seconds": result.get("duration_seconds"),
+                "grounding_status": str(result.get("grounding_status", "not_reported"))[:100],
+                "evidence_refs": [
+                    ref for ref in result.get("evidence_refs", [])
+                    if isinstance(ref, str) and ref in {f"E{index}" for index in range(1, 65)}
+                ][:64],
             }
         return HubTaskResult(task_id, conversation_id, normalized)
