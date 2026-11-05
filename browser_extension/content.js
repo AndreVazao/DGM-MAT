@@ -382,6 +382,7 @@
       // Reaching the current DOM top is not proof of oldest provider history.
       history_start_reached: false,
       oldest_boundary: "unknown",
+      oldest_boundary_evidence: "",
       messages_total: messages.length,
       unknown_role_count: unknownRoleCount,
       scroll_steps: steps,
