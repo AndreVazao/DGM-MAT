@@ -210,7 +210,7 @@ class RecoveryLedger:
         These sources are retried only through request_retry(), avoiding an endless loop.
         No deletion is performed.
         """
-        allowed = {"discovered", "in_progress", "partial", "captured", "verified", "blocked", "failed"}
+        allowed = {"discovered", "in_progress", "partial", "captured", "verified", "blocked", "rate_limited", "failed"}
         if capture_status not in allowed:
             raise ValueError(f"unsupported capture_status: {capture_status}")
         if raw_sha256 and (
@@ -241,7 +241,7 @@ class RecoveryLedger:
             """, (
                 capture_status, completeness, raw_archive_path, raw_sha256,
                 index_status, repo_status, tree_revision,
-                detail if capture_status in {"blocked", "failed", "partial"} else "",
+                detail if capture_status in {"blocked", "rate_limited", "failed", "partial"} else "",
                 now, provider, source_id,
             ))
             db.execute("""
@@ -272,7 +272,7 @@ class RecoveryLedger:
                 """).fetchall()
                 last = None
             for item in completed:
-                if item["capture_status"] not in {"captured", "verified", "partial", "blocked", "failed"}:
+                if item["capture_status"] not in {"captured", "verified", "partial", "blocked", "rate_limited", "failed"}:
                     break
                 last = (item["provider"], item["source_date"], item["source_id"])
             if last is not None and (cursor is None or last != (
