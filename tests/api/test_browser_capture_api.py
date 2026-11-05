@@ -325,3 +325,22 @@ def test_sequence_order_conflict_is_archived_but_never_claimed_complete(monkeypa
     record = json.loads(Path(result["archive_path"]).read_text(encoding="utf-8"))
     assert record["sequence_order_conflict"] is True
     assert ledger.get("chatgpt", "conversation-1").completeness == "visible_snapshot"
+
+
+def test_reported_message_count_mismatch_forces_partial_history(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    client.post("/recovery/browser-capture/discover", json=_discovery())
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
+    payload = _capture()
+    payload["messages_total"] = 3
+    payload["history_start_reached"] = True
+    payload["oldest_boundary"] = "confirmed"
+
+    response = client.post("/recovery/browser-capture/capture", json=payload)
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message_count"] == 2
+    assert result["messages_total"] == 3
+    assert result["history_completeness"] == "partial_or_unknown"
+    assert result["full_history_verified"] is False
