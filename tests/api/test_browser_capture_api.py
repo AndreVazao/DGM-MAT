@@ -22,6 +22,8 @@ def _client(monkeypatch, tmp_path):
     class FakePipeline:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
+            from core.conversation_intelligence.knowledge_store import ConversationKnowledgeStore
+            self.knowledge_store = ConversationKnowledgeStore(kwargs["knowledge_store_path"])
 
         def ingest_file(self, path, provider=None):
             self.path = Path(path)
@@ -200,3 +202,28 @@ def test_raw_capture_is_preserved_and_redacted_copy_is_indexed(monkeypatch, tmp_
     assert "sk-abcdefghijklmnopqrstuvwxyz123456" not in normalized
     assert "[REDACTED" in normalized
     assert result["index_summary"]["conversation_count"] == 1
+    assert result["index_summary"]["intent_candidates"] == 1
+    assert result["index_summary"]["proposal_candidates"] == 0
+    assert result["index_summary"]["confirmed_decisions_created"] == 0
+    assert result["index_summary"]["knowledge"]["intents"] == 1
+    assert result["index_summary"]["knowledge"]["decisions"] == 0
+
+
+def test_ai_proposals_are_candidates_and_operator_confirmation_is_not_auto_decision(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    client.post("/recovery/browser-capture/discover", json=_discovery())
+    client.post("/recovery/browser-capture/next", json={})
+    payload = _capture()
+    payload["messages"] = [
+        {"message_id": "u1", "role": "user", "content": "Aprovo esta proposta, mas confirma primeiro o projeto.", "sequence": 0},
+        {"message_id": "a1", "role": "assistant", "content": "I recommend keeping the current DGM-MAT recovery architecture.", "sequence": 1},
+    ]
+    response = client.post("/recovery/browser-capture/capture", json=payload)
+    assert response.status_code == 200
+    summary = response.json()["index_summary"]
+    assert summary["intent_candidates"] == 1
+    assert summary["proposal_candidates"] == 1
+    assert summary["confirmed_decisions_created"] == 0
+    assert summary["knowledge"]["decisions"] == 0
+    assert summary["knowledge"]["proposals"] == 1
+    assert summary["knowledge"]["review_tasks_open"] >= 2
