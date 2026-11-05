@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any
 
 from cockpit.api_client import authenticated_request, LocalApiAuthenticationError
+from cockpit.mission_status_client import fetch_mission_checkpoint
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QFont, QTextCursor
 from PySide6.QtWidgets import (
@@ -41,21 +42,7 @@ class _RuntimeRequestWorker(QThread):
         )
 
     def _mission(self, mission_id: str) -> dict[str, Any] | None:
-        # Query the durable checkpoint directly. The collection endpoint reloads
-        # every active mission and becomes progressively slower as history grows.
-        response = self._request(
-            "GET", f"/missions/{mission_id}", timeout=(2, 8)
-        )
-        if response.status_code == 404:
-            return None
-        if response.status_code != 200:
-            raise RuntimeError(
-                f"Não foi possível consultar a missão {mission_id} (HTTP {response.status_code})."
-            )
-        data = response.json()
-        if not isinstance(data, dict) or data.get("mission_id") != mission_id:
-            raise ValueError("O runtime devolveu um checkpoint de missão inválido.")
-        return data
+        return fetch_mission_checkpoint(self.api_url, mission_id, request=self._request)
 
     def _finish_from_mission(self, mission: dict[str, Any]) -> bool:
         status = str(mission.get("status", "UNKNOWN")).upper()
