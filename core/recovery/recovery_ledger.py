@@ -162,23 +162,14 @@ class RecoveryLedger:
                     (row["provider"], row["source_id"]),
                 )
             else:
-                cursor = db.execute(
-                    "SELECT * FROM recovery_cursor WHERE pipeline=?", (pipeline,)
-                ).fetchone()
-                if cursor:
-                    row = db.execute("""
-                        SELECT * FROM recovery_sources
-                        WHERE (provider, source_date, source_id) > (?, ?, ?)
-                          AND capture_status='discovered'
-                        ORDER BY provider, source_date, source_id LIMIT 1
-                    """, (cursor["last_provider"], cursor["last_source_date"],
-                          cursor["last_source_id"])).fetchone()
-                else:
-                    row = db.execute("""
-                        SELECT * FROM recovery_sources
-                        WHERE capture_status='discovered'
-                        ORDER BY provider, source_date, source_id LIMIT 1
-                    """).fetchone()
+                # The cursor is an audit/progress marker, not an eligibility filter.
+                # New discoveries can belong to older dates or sort before the last
+                # checkpoint; selecting all pending rows prevents silently skipping them.
+                row = db.execute("""
+                    SELECT * FROM recovery_sources
+                    WHERE capture_status='discovered'
+                    ORDER BY provider, source_date, source_id LIMIT 1
+                """).fetchone()
             if row is None:
                 return None
             now = time.time()
