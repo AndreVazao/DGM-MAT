@@ -11,7 +11,7 @@ import hashlib
 import json
 import os
 import shutil
-import tempfile
+import stat
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -160,7 +160,7 @@ class BackupFirstPatchExecutor:
             raise PatchRejected("Target could not be opened without following links.") from exc
         try:
             info = os.fstat(fd)
-            if not os.path.stat.S_ISREG(info.st_mode):
+            if not stat.S_ISREG(info.st_mode):
                 raise PatchRejected("Only regular files can be patched.")
             if info.st_size > self.max_file_bytes:
                 raise PatchRejected("Original file exceeds the configured size limit.")
@@ -311,7 +311,7 @@ class BackupFirstPatchExecutor:
             os.close(parent_fd)
 
     def rollback(self, backup_id: str) -> dict[str, Any]:
-        """Restore the original bytes only if the current file still matches this patch."""
+        """Restore original bytes through a pinned no-follow directory handle."""
         if not isinstance(backup_id, str) or not backup_id or "/" in backup_id or "\\" in backup_id:
             raise PatchRejected("Invalid backup ID.")
         backup_dir = (self.backup_root / backup_id).resolve(strict=True)
@@ -327,33 +327,46 @@ class BackupFirstPatchExecutor:
             raise PatchRollbackError("Unsupported backup manifest.")
         if Path(manifest.get("repository", "")).resolve() != self.repo_root:
             raise PatchRollbackError("Backup belongs to a different repository.")
-        target, normalized = self._relative_target(manifest.get("relative_path", ""))
-        if normalized != manifest.get("relative_path"):
-            raise PatchRollbackError("Backup path normalization mismatch.")
-        if not target.is_file() or self._sha256(target.read_bytes()) != manifest.get("result_sha256"):
-            raise PatchRollbackError("Current file changed after the patch; refusing to overwrite newer work.")
 
-        backup_file_value = manifest.get("backup_file")
-        if backup_file_value:
-            backup_file = Path(backup_file_value).resolve(strict=True)
-            try:
-                backup_file.relative_to(backup_dir)
-            except ValueError as exc:
-                raise PatchRollbackError("Backup file escapes its backup directory.") from exc
-            original = backup_file.read_bytes()
-            if self._sha256(original) != manifest.get("original_sha256"):
-                raise PatchRollbackError("Original backup hash verification failed.")
-            self._write_atomic(target, original)
-            restored_sha = self._sha256(target.read_bytes())
-        else:
-            target.unlink()
-            restored_sha = None
+        relative_path = manifest.get("relative_path", "")
+        _, normalized = self._relative_target(relative_path)
+        if normalized != relative_path:
+            raise PatchRollbackError("Backup path normalization mismatch.")
+        parent_fd, target_name = self._open_parent_fd(normalized)
+        try:
+            current = self._read_at(parent_fd, target_name)
+            if current is None or self._sha256(current) != manifest.get("result_sha256"):
+                raise PatchRollbackError(
+                    "Current file changed after the patch; refusing to overwrite newer work."
+                )
+
+            backup_file_value = manifest.get("backup_file")
+            if backup_file_value:
+                backup_file = Path(backup_file_value).resolve(strict=True)
+                try:
+                    backup_file.relative_to(backup_dir)
+                except ValueError as exc:
+                    raise PatchRollbackError("Backup file escapes its backup directory.") from exc
+                original = backup_file.read_bytes()
+                if self._sha256(original) != manifest.get("original_sha256"):
+                    raise PatchRollbackError("Original backup hash verification failed.")
+                self._write_atomic_at(parent_fd, target_name, original)
+                restored = self._read_at(parent_fd, target_name)
+                restored_sha = self._sha256(restored or b"")
+                if restored_sha != manifest.get("original_sha256"):
+                    raise PatchRollbackError("Restored file hash verification failed.")
+            else:
+                os.unlink(target_name, dir_fd=parent_fd)
+                os.fsync(parent_fd)
+                restored_sha = None
+        finally:
+            os.close(parent_fd)
 
         manifest["rolled_back_at"] = datetime.now(timezone.utc).isoformat()
         manifest["rollback_result_sha256"] = restored_sha
         manifest["rollback_available"] = False
         manifest_path.write_text(
-            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n",
             encoding="utf-8",
         )
         return manifest
