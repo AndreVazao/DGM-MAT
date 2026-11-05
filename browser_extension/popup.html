@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DGM-MAT Recovery</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header>
+      <strong>DGM-MAT</strong>
+      <span>Conversation recovery</span>
+    </header>
+    <section id="pair-section">
+      <label for="pair-code">One-time pairing code</label>
+      <input id="pair-code" type="password" autocomplete="off" spellcheck="false" placeholder="Code from the local DGM-MAT PC">
+      <button id="pair-button" type="button">Pair with DGM-MAT</button>
+    </section>
+    <section>
+      <button id="start-button" type="button" disabled>Scan and recover this provider</button>
+      <button id="stop-button" type="button" class="secondary">Stop recovery</button>
+    </section>
+    <p id="status" role="status">Checking local connection…</p>
+    <small>Only visible conversation content is read. No cookies, passwords or hidden provider APIs.</small>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
