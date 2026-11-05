@@ -389,6 +389,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         proposal_evidence: list[str] = []
         from core.conversation_intelligence.models import AIProposal, UserIntent
 
+        knowledge_conversation_id = f"{payload.provider}:{payload.source_id}"
         for message in normalized_record["messages"]:
             role = str(message.get("role", "unknown")).casefold()
             message_id = str(message.get("message_id", ""))
@@ -402,7 +403,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
                     intent_id=intent_id,
                     statement=content,
                     status="unverified",
-                    source_conversation_id=payload.source_id,
+                    source_conversation_id=knowledge_conversation_id,
                     source_message_id=message_id,
                     observed_at=message.get("timestamp") or payload.captured_at,
                     evidence=[evidence_ref],
@@ -424,7 +425,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
                 knowledge.save_proposal(AIProposal(
                     proposal_id=proposal_id,
                     statement=content,
-                    source_conversation_id=payload.source_id,
+                    source_conversation_id=knowledge_conversation_id,
                     source_message_id=message_id,
                     accepted=None,
                     decision_id=None,
@@ -436,7 +437,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
             knowledge.create_review_task(
                 task_id=_knowledge_id("intent-review", payload.provider, payload.source_id),
                 item_type="intent",
-                item_id=payload.source_id,
+                item_id=knowledge_conversation_id,
                 reason="Review extracted operator requests and confirm project/owner attribution.",
                 evidence=intent_evidence[:100],
             )
