@@ -32,7 +32,8 @@ DGM-MAT is **not yet ready for unattended autonomous development**. The current 
 - Windows Guard run #2 passed on the previous head; run #4 is in progress for the current head. No current-head Windows pass is claimed until #4 completes.
 - **Residual threat-model limit:** POSIX handle anchoring addresses parent-path symlink substitution and root-path replacement, but does not claim containment if a hostile same-user process physically relocates an already-open directory outside the worktree. This needs independent review or a stricter operational boundary.
 - Snyk continues to report an external integration error, not a vulnerability finding; no clean Snyk result is claimed.
-- Keep PR #217 in draft until current-head Linux and Windows validations pass, the residual filesystem threat model is accepted or further hardened, and the supported Windows runtime has an appropriate native backend or remains explicitly unavailable.
+- Native Windows handle backend is tracked in issue [#218](https://github.com/AndreVazao/DGM-MAT/issues/218); Windows currently fails closed by design.
+- Keep PR #217 in draft until current-head Linux and Windows validations pass, the residual filesystem threat model is accepted or further hardened, and issue #218 provides a reviewed native Windows backend (or the Windows limitation is explicitly accepted for a non-Windows-only deployment).
 ### PR #207 — closed as superseded
 
 - Closed without merge; its branch was not deleted.
