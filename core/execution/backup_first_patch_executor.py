@@ -316,7 +316,7 @@ class BackupFirstPatchExecutor:
         handle = backend.create_file(backup_dir_handle, temporary)
         promoted = False
         try:
-            payload = (json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n").encode("utf-8")
+            payload = (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
             backend.write_all(handle, payload)
             backend.rename_relative(
                 handle,
