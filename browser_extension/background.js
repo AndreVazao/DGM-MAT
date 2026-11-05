@@ -107,7 +107,7 @@ async function handlePageReady(message, sender) {
   const state = await readState();
   const run = state.run;
   if (!state.token || !run || !run.active || run.tab_id !== sender.tab.id) return;
-  if (message.provider !== run.provider || !run.current || message.url !== run.current.url) return;
+  if (message.provider !== run.provider || !run.current || message.source_id !== run.current.source_id) return;
 
   try {
     const captured = await sendToTab(run.tab_id, { type: "DGM_CAPTURE_CURRENT" });
