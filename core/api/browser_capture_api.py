@@ -48,7 +48,7 @@ def _archive_root() -> Path:
     return resolved
 
 
-def _validate_provider_url(provider: str, value: str) -> str:
+def _validate_provider_url(provider: str, value: str, source_id: str | None = None) -> str:
     if provider not in PROVIDER_HOSTS:
         raise ValueError("unsupported provider")
     parsed = urlparse(value)
@@ -60,6 +60,22 @@ def _validate_provider_url(provider: str, value: str) -> str:
     if provider == "grok" and host == "x.com":
         if not (parsed.path == "/i/grok" or parsed.path.startswith("/i/grok/")):
             raise ValueError("x.com URL is not the Grok interface")
+    if source_id is not None:
+        if provider == "chatgpt":
+            match = re.search(r"/c/([A-Za-z0-9_-]+)(?:/|$)", parsed.path)
+        elif provider == "gemini":
+            match = re.search(r"/app/([A-Za-z0-9_-]+)(?:/|$)", parsed.path)
+        else:
+            route_match = re.search(r"/(?:chat|c|i/grok)/([A-Za-z0-9_-]+)(?:/|$)", parsed.path)
+            query_id = parsed.query and dict(
+                part.split("=", 1) for part in parsed.query.split("&") if "=" in part
+            ).get("conversation")
+            candidate = route_match.group(1) if route_match else query_id
+            if candidate != source_id:
+                raise ValueError("source ID does not match the Grok conversation URL")
+            return value
+        if not match or match.group(1) != source_id:
+            raise ValueError("source ID does not match the provider conversation URL")
     return value
 
 
@@ -146,7 +162,7 @@ def discover_browser_conversations(payload: BrowserDiscoveryRequest):
     errors: list[str] = []
     for item in payload.items:
         try:
-            source_url = _validate_provider_url(payload.provider, item.url)
+            source_url = _validate_provider_url(payload.provider, item.url, item.source_id)
             ledger.register(RecoverySource(
                 provider=payload.provider,
                 source_id=item.source_id,
@@ -192,7 +208,7 @@ def claim_next_browser_conversation():
 @router.post("/capture")
 def archive_browser_conversation(payload: BrowserCaptureRequest):
     try:
-        source_url = _validate_provider_url(payload.provider, payload.url)
+        source_url = _validate_provider_url(payload.provider, payload.url, payload.source_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
