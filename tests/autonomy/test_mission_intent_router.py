@@ -163,3 +163,13 @@ def test_repository_documentation_search_is_not_misrouted_to_inventory():
     assert decision.intent == "local_research"
     assert decision.supported is True
     assert decision.requires_approval is False
+
+
+def test_external_repository_status_research_is_not_auto_routed_locally():
+    decision = classify_mission_intent(
+        "search the web for repositories and report their states"
+    )
+
+    assert decision.intent == "unsupported"
+    assert decision.supported is False
+    assert decision.requires_approval is True
