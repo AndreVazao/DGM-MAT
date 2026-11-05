@@ -1321,19 +1321,19 @@ class MissionEngine:
         normalized = unicodedata.normalize("NFKD", str(goal).casefold())
         normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
         match = re.search(
-            r"\\b(?:repos?|repositories|repositorios)\\b\\s+"
-            r"(?:(?:chamadas?|denominadas?|named|called)\\s+)?"
-            r"(.+?)(?=\\s+(?:e\\s+(?:reporta|mostra|apresenta|lista)|"
-            r"and\\s+(?:report|show|list)|com\\s+(?:o\\s+)?estado|"
-            r"with\\s+status)\\b|[.;]|$)",
+            r"\b(?:repos?|repositories|repositorios)\b\s+"
+            r"(?:(?:chamadas?|denominadas?|named|called)\s+)?"
+            r"(.+?)(?=\s+(?:e\s+(?:reporta|mostra|apresenta|lista)|"
+            r"and\s+(?:report|show|list)|com\s+(?:o\s+)?estado|"
+            r"with\s+status)\b|[.;]|$)",
             normalized,
         )
         if not match:
             return []
-        segment = match.group(1).strip(" \\t,;:.")
+        segment = match.group(1).strip(" \t,;:.")
         if not segment:
             return []
-        parts = re.split(r"\\s+(?:e|and)\\s+|[,;]", segment)
+        parts = re.split(r"\s+(?:e|and)\s+|[,;]", segment)
         ignored = {"as", "os", "a", "o", "the", "my", "meus", "minhas", "todos", "todas", "all"}
         names = []
         for part in parts:
