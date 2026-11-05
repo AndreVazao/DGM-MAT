@@ -282,6 +282,8 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         raise HTTPException(status_code=400, detail="Invalid archive destination.")
     folder.mkdir(parents=True, exist_ok=True)
     destination = folder / (digest + ".capture.json")
+    if destination.is_symlink():
+        raise HTTPException(status_code=400, detail="Symlink archive destinations are denied.")
     if destination.exists() and source.raw_sha256 == digest:
         if RecoveryLedger.sha256_file(destination) != digest:
             raise HTTPException(status_code=500, detail="Existing archive integrity verification failed.")
@@ -331,6 +333,8 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         normalized_bytes = (
             json.dumps(normalized_record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\\n"
         ).encode("utf-8")
+        if normalized_destination.is_symlink():
+            raise OSError("normalized archive symlink is denied")
         if not normalized_destination.exists():
             descriptor = os.open(
                 normalized_destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
