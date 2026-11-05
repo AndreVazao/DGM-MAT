@@ -15,6 +15,7 @@ from core.providers.browser.authenticated_chrome_session import (
     "http://127.0.0.1",
     "http://user:pass@127.0.0.1:9222",
     "http://127.0.0.1:9222?token=x",
+    "http://127.0.0.1:9222/devtools/browser/abc",
 ])
 def test_cdp_endpoint_requires_explicit_loopback_http_without_credentials(url):
     with pytest.raises(AuthenticatedChromeError):
@@ -123,3 +124,10 @@ def test_attach_requires_explicit_selection_when_multiple_provider_tabs_exist(mo
 
     session.close()
     assert playwright_instance.stopped is True
+
+
+def test_empty_provider_allowlist_is_rejected():
+    with pytest.raises(AuthenticatedChromeError, match="At least one"):
+        AuthenticatedChromeSession(
+            "http://127.0.0.1:9222", allowed_hosts=[]
+        )
