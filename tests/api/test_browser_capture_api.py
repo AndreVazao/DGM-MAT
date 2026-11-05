@@ -202,6 +202,8 @@ def test_raw_capture_is_preserved_and_redacted_copy_is_indexed(monkeypatch, tmp_
     assert "sk-abcdefghijklmnopqrstuvwxyz123456" in raw
     assert "sk-abcdefghijklmnopqrstuvwxyz123456" not in normalized
     assert "[REDACTED" in normalized
+    normalized_record = json.loads(normalized)
+    assert normalized_record["messages"][0]["role"] == "user"
     assert result["index_summary"]["conversation_count"] == 1
     assert result["index_summary"]["intent_candidates"] == 1
     assert result["index_summary"]["proposal_candidates"] == 0
