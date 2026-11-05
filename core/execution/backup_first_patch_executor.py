@@ -235,6 +235,116 @@ class BackupFirstPatchExecutor:
                 pass
             raise
 
+    def _open_parent_handles_windows(self, normalized: str) -> tuple[Any, Any, str]:
+        backend = self._windows_backend
+        if backend is None:
+            raise PatchRejected("Native Windows handle backend is unavailable.")
+        parts = PurePosixPath(normalized).parts
+        root_handle = backend.open_root(self.repo_root)
+        parent_handle = root_handle
+        try:
+            if backend.file_identity(root_handle) != self._repo_identity:
+                raise PatchRejected("Repository root changed after executor initialization.")
+            for part in parts[:-1]:
+                child_handle = backend.open_child_directory(parent_handle, part)
+                if parent_handle is not root_handle:
+                    backend.close(parent_handle)
+                parent_handle = child_handle
+            return root_handle, parent_handle, parts[-1]
+        except Exception:
+            if parent_handle is not root_handle:
+                backend.close(parent_handle)
+            backend.close(root_handle)
+            raise
+
+    def _read_at_windows(self, parent_handle: Any, name: str) -> bytes | None:
+        backend = self._windows_backend
+        if backend is None:
+            raise PatchRejected("Native Windows handle backend is unavailable.")
+        handle = backend.open_file_optional(parent_handle, name)
+        if handle is None:
+            return None
+        try:
+            return backend.read_all(handle, max_bytes=self.max_file_bytes)
+        except WindowsHandleError as exc:
+            raise PatchRejected(str(exc)) from exc
+        finally:
+            backend.close(handle)
+
+    def _write_atomic_windows(
+        self,
+        parent_handle: Any,
+        name: str,
+        data: bytes,
+        *,
+        replace_existing: bool,
+    ) -> None:
+        backend = self._windows_backend
+        if backend is None:
+            raise PatchRejected("Native Windows handle backend is unavailable.")
+        temporary = f".dgm-patch-{uuid4().hex}.tmp"
+        handle = backend.create_file(parent_handle, temporary)
+        promoted = False
+        try:
+            backend.write_all(handle, data)
+            backend.rename_relative(
+                handle,
+                None,
+                name,
+                replace_existing=replace_existing,
+            )
+            promoted = True
+        finally:
+            if not promoted:
+                try:
+                    backend.delete_handle(handle)
+                except Exception:
+                    pass
+            backend.close(handle)
+
+    def _write_manifest_windows(
+        self,
+        backup_dir_handle: Any,
+        manifest: dict[str, Any],
+        *,
+        replace_existing: bool,
+    ) -> None:
+        backend = self._windows_backend
+        if backend is None:
+            raise PatchBackupError("Native Windows handle backend is unavailable.")
+        temporary = f".dgm-manifest-{uuid4().hex}.tmp"
+        handle = backend.create_file(backup_dir_handle, temporary)
+        promoted = False
+        try:
+            payload = (json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n").encode("utf-8")
+            backend.write_all(handle, payload)
+            backend.rename_relative(
+                handle,
+                None,
+                "manifest.json",
+                replace_existing=replace_existing,
+            )
+            promoted = True
+        finally:
+            if not promoted:
+                try:
+                    backend.delete_handle(handle)
+                except Exception:
+                    pass
+            backend.close(handle)
+
+    def _delete_target_windows(self, parent_handle: Any, name: str) -> None:
+        backend = self._windows_backend
+        if backend is None:
+            raise PatchRollbackError("Native Windows handle backend is unavailable.")
+        handle = backend.open_file_optional(parent_handle, name, writable=True)
+        if handle is None:
+            return
+        try:
+            backend.delete_handle(handle)
+        finally:
+            backend.close(handle)
+
     def apply_text(
         self,
         relative_path: str,
