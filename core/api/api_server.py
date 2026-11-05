@@ -27,7 +27,11 @@ from core.api.browser_capture_api import router as browser_capture_router
 from core.api.repository_learning_api import router as repository_learning_router
 from core.api.auto_help_api import router as auto_help_router
 from core.api.conversation_archive_api import router as conversation_archive_router
-from core.api.local_auth_api import router as local_auth_router, session_manager
+from core.api.local_auth_api import (
+    router as local_auth_router,
+    session_manager,
+    extension_session_manager,
+)
 from core.api.auth_middleware import LocalSessionAuthMiddleware
 from core.federation.node_identity import local_node
 from core.federation.rendezvous_client import RendezvousClient
@@ -232,6 +236,7 @@ app.add_middleware(
     LocalSessionAuthMiddleware,
     routes=app.router.routes,
     session_manager=session_manager,
+    additional_session_managers=(extension_session_manager,),
 )
 
 
