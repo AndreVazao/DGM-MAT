@@ -676,6 +676,8 @@ class BackupFirstPatchExecutor:
 
     def rollback(self, backup_id: str) -> dict[str, Any]:
         """Restore original bytes through a pinned no-follow directory handle."""
+        if os.name == "nt":
+            return self._rollback_windows(backup_id)
         if not isinstance(backup_id, str) or not backup_id or "/" in backup_id or "\\" in backup_id:
             raise PatchRejected("Invalid backup ID.")
         backup_dir = (self.backup_root / backup_id).resolve(strict=True)
