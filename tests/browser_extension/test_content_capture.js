@@ -13,18 +13,24 @@ const source = fs.readFileSync(
 function makeMessage(
   index,
   role = index % 2 === 0 ? "user" : "assistant",
-  options = {}
+  options = {},
+  provider = "chatgpt"
 ) {
   const text = options.text || "Fixture turn " + index;
   return {
     id: "",
+    tagName: provider === "gemini"
+      ? (role === "user" ? "USER-QUERY" : "MODEL-RESPONSE")
+      : "DIV",
     className: "",
     parentElement: null,
     isConnected: true,
     innerText: text,
+    contains() { return false; },
     getAttribute(name) {
       if (name === "data-message-id") return options.explicitId === false ? null : "message-" + index;
       if (name === "data-message-author-role") return role;
+      if (name === "data-testid") return "conversation-turn";
       return null;
     },
     getBoundingClientRect() {
@@ -36,16 +42,16 @@ function makeMessage(
   };
 }
 
-function createHarness(mode) {
-  const all = Array.from({ length: 12 }, (_, index) => makeMessage(index));
+function createHarness(mode, provider = "chatgpt") {
+  const all = Array.from({ length: 12 }, (_, index) => makeMessage(index, undefined, {}, provider));
   const ambiguousFirst = makeMessage(50, "user", {
     text: "Repeated identical text-only turn",
     explicitId: false
-  });
+  }, provider);
   const ambiguousSecond = makeMessage(51, "user", {
     text: "Repeated identical text-only turn",
     explicitId: false
-  });
+  }, provider);
   let visible = mode === "ambiguous-duplicate" ? [ambiguousFirst] : all.slice(6, 10);
   let olderLoaded = false;
   let topWaits = 0;
@@ -98,7 +104,13 @@ function createHarness(mode) {
       return null;
     },
     querySelectorAll(selector) {
-      if (selector === "[data-message-author-role]") return visible;
+      if (provider === "chatgpt" && selector === "[data-message-author-role]") return visible;
+      if (provider === "gemini" && selector === "user-query, model-response") return visible;
+      if (provider === "grok" && [
+        '[data-testid="conversation-turn"]',
+        '[data-testid*="message"]',
+        '[data-message-id]'
+      ].includes(selector)) return visible;
       return [];
     }
   };
@@ -119,8 +131,16 @@ function createHarness(mode) {
     JSON,
     document,
     location: {
-      href: "https://chatgpt.com/c/fixture-conversation",
-      pathname: "/c/fixture-conversation",
+      href: {
+        chatgpt: "https://chatgpt.com/c/fixture-conversation",
+        gemini: "https://gemini.google.com/app/fixture-conversation",
+        grok: "https://grok.com/chat/fixture-conversation"
+      }[provider],
+      pathname: {
+        chatgpt: "/c/fixture-conversation",
+        gemini: "/app/fixture-conversation",
+        grok: "/chat/fixture-conversation"
+      }[provider],
       assign() {
         throw new Error("Navigation is not expected during capture tests.");
       }
@@ -209,6 +229,23 @@ async function testVirtualizedHistoryWindowsAndDuplicates() {
   assert.ok(harness.getScrollCalls() > 0);
 }
 
+async function testProviderScopedSelectorsRemainSupported() {
+  for (const provider of ["chatgpt", "gemini", "grok"]) {
+    const harness = createHarness("no-oldest-marker", provider);
+    const response = await harness.capture();
+    assert.equal(response.ok, true, provider + ": " + response.error);
+    assert.equal(response.data.provider, provider);
+    assert.ok(response.data.messages_total > 0);
+    if (provider === "gemini") {
+      assert.ok(response.data.messages.every(message => ["user", "model"].includes(message.role)));
+    } else {
+      assert.ok(response.data.messages.every(message => ["user", "assistant"].includes(message.role)));
+    }
+    assert.equal(response.data.history_start_reached, false);
+    assert.equal(response.data.oldest_boundary, "unknown");
+  }
+}
+
 async function testMissingOldestMarkerRemainsPartialOrUnknown() {
   const harness = createHarness("no-oldest-marker");
   const response = await harness.capture();
@@ -250,11 +287,12 @@ async function testScrollHardLimitIsExplicitlyTruncated() {
 
 async function main() {
   await testVirtualizedHistoryWindowsAndDuplicates();
+  await testProviderScopedSelectorsRemainSupported();
   await testMissingOldestMarkerRemainsPartialOrUnknown();
   await testTopLoadingHardLimitIsExplicitlyTruncated();
   await testIdenticalTextOnlyTurnsAreMarkedAmbiguous();
   await testScrollHardLimitIsExplicitlyTruncated();
-  process.stdout.write("PASS: 5 deterministic virtualized-history capture fixtures\n");
+  process.stdout.write("PASS: 6 deterministic virtualized-history capture fixtures\n");
 }
 
 main().catch(error => {
