@@ -34,18 +34,15 @@ def test_relative_handle_create_write_and_rename(tmp_path):
     source = root / "src"
     source.mkdir(parents=True)
     backend = WindowsDirectoryHandleBackend()
-    staging = root / ".dgm-staging"
-    staging.mkdir()
     root_handle = backend.open_root(root)
     source_handle = backend.open_child_directory(root_handle, "src")
-    staging_handle = backend.open_child_directory(root_handle, ".dgm-staging")
     temporary_handle = None
     try:
-        temporary_handle = backend.create_file(staging_handle, ".dgm-temp-01")
+        temporary_handle = backend.create_file(source_handle, ".dgm-temp-01")
         backend.write_all(temporary_handle, b"native-handle-write\\n")
         backend.rename_relative(
             temporary_handle,
-            source_handle,
+            None,
             "module.py",
             replace_existing=False,
         )
@@ -55,11 +52,8 @@ def test_relative_handle_create_write_and_rename(tmp_path):
     finally:
         if temporary_handle:
             backend.close(temporary_handle)
-        backend.close(staging_handle)
         backend.close(source_handle)
         backend.close(root_handle)
-        staging.rmdir()
-
 
 def test_relative_handle_replace_existing_file(tmp_path):
     root = tmp_path / "repo"
@@ -68,11 +62,8 @@ def test_relative_handle_replace_existing_file(tmp_path):
     target = source / "module.py"
     target.write_bytes(b"old\\n")
     backend = WindowsDirectoryHandleBackend()
-    staging = root / ".dgm-staging"
-    staging.mkdir()
     root_handle = backend.open_root(root)
     source_handle = backend.open_child_directory(root_handle, "src")
-    staging_handle = backend.open_child_directory(root_handle, ".dgm-staging")
     original_handle = None
     temporary_handle = None
     try:
@@ -81,11 +72,11 @@ def test_relative_handle_replace_existing_file(tmp_path):
         backend.close(original_handle)
         original_handle = None
 
-        temporary_handle = backend.create_file(staging_handle, ".dgm-temp-02")
+        temporary_handle = backend.create_file(source_handle, ".dgm-temp-02")
         backend.write_all(temporary_handle, b"new\\n")
         backend.rename_relative(
             temporary_handle,
-            source_handle,
+            None,
             "module.py",
             replace_existing=True,
         )
@@ -97,11 +88,8 @@ def test_relative_handle_replace_existing_file(tmp_path):
             backend.close(original_handle)
         if temporary_handle:
             backend.close(temporary_handle)
-        backend.close(staging_handle)
         backend.close(source_handle)
         backend.close(root_handle)
-        staging.rmdir()
-
 
 def test_reparse_point_directory_is_rejected(tmp_path):
     root = tmp_path / "repo"
