@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import tempfile
 import re
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -52,6 +53,27 @@ def _ledger() -> RecoveryLedger:
     # Reuse the existing recovery API's cached ledger so every importer,
     # inventory endpoint and browser capture shares one source of truth.
     return get_recovery_ledger()
+
+
+def _write_immutable_bytes(destination: Path, data: bytes) -> bool:
+    """Atomically create a private immutable file without overwriting an existing version."""
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=".dgm-capture-", suffix=".tmp", dir=str(destination.parent)
+    )
+    temporary_path = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            # A same-directory hard link is atomic and refuses to replace an existing file.
+            os.link(temporary_path, destination)
+            return True
+        except FileExistsError:
+            return False
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def _archive_root() -> Path:
@@ -331,21 +353,12 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         raise HTTPException(status_code=400, detail="Symlink archive destinations are denied.")
     archive_reused = destination.exists()
     if not archive_reused:
-        descriptor = None
         try:
-            descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            with os.fdopen(descriptor, "wb") as stream:
-                descriptor = None
-                stream.write(encoded)
-                stream.flush()
-                os.fsync(stream.fileno())
-        except FileExistsError:
-            archive_reused = True
+            archive_reused = not _write_immutable_bytes(destination, encoded)
         except OSError as exc:
-            if descriptor is not None:
-                os.close(descriptor)
-            destination.unlink(missing_ok=True)
             raise HTTPException(status_code=500, detail="Local conversation archive write failed.") from exc
+    if destination.is_symlink():
+        raise HTTPException(status_code=400, detail="Symlink archive destinations are denied.")
 
     actual_digest = RecoveryLedger.sha256_file(destination)
     if archive_reused:
@@ -385,16 +398,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         if normalized_destination.is_symlink():
             raise OSError("normalized archive symlink is denied")
         if not normalized_destination.exists():
-            try:
-                descriptor = os.open(
-                    normalized_destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
-                )
-                with os.fdopen(descriptor, "wb") as stream:
-                    stream.write(normalized_bytes)
-                    stream.flush()
-                    os.fsync(stream.fileno())
-            except FileExistsError:
-                pass
+            _write_immutable_bytes(normalized_destination, normalized_bytes)
         normalized_digest = hashlib.sha256(normalized_bytes).hexdigest()
         if RecoveryLedger.sha256_file(normalized_destination) != normalized_digest:
             raise OSError("normalized archive integrity verification failed")
