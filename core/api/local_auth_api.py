@@ -82,7 +82,7 @@ def _is_loopback(request: Request) -> bool:
 
 def _check_origin(request: Request) -> None:
     origin = request.headers.get("origin")
-    if origin is not None and origin not in _ALLOWED_ORIGINS:
+    if origin is not None and origin not in _allowed_origins():
         raise HTTPException(status_code=403, detail="Origin is not allowed for local pairing.")
 
 
