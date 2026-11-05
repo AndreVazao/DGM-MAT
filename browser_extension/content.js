@@ -256,10 +256,34 @@
       }
     }
 
+    let topLoadSteps = 0;
+    let topLoadLimitReached = false;
     try {
+      // Virtualized providers may fetch older turns only after the top boundary
+      // remains active for several render cycles. A single scrollTop=0 is not
+      // sufficient evidence that the oldest messages have loaded.
       scroller.scrollTop = 0;
       await sleep(350);
       collectVisible();
+      let stableTopRounds = 0;
+      let previousTopHeight = scroller.scrollHeight;
+      let previousTopMessageCount = collected.size;
+      while (topLoadSteps < 20 && stableTopRounds < 3) {
+        scroller.scrollTop = 0;
+        await sleep(250);
+        collectVisible();
+        const currentHeight = scroller.scrollHeight;
+        const currentMessageCount = collected.size;
+        if (currentHeight > previousTopHeight || currentMessageCount > previousTopMessageCount) {
+          stableTopRounds = 0;
+        } else {
+          stableTopRounds++;
+        }
+        previousTopHeight = currentHeight;
+        previousTopMessageCount = currentMessageCount;
+        topLoadSteps++;
+      }
+      if (stableTopRounds < 3) topLoadLimitReached = true;
       while (steps < 100) {
         const before = scroller.scrollTop;
         const max = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
@@ -288,13 +312,15 @@
       title: conversationTitle(null, location.href),
       url: location.href,
       messages,
-      truncated: steps >= 100,
-      // The top of the currently rendered DOM is not proof of oldest provider history.
+      truncated: steps >= 100 || topLoadLimitReached,
+      // Reaching the current DOM top is not proof of oldest provider history.
       history_start_reached: false,
       oldest_boundary: "unknown",
       messages_total: messages.length,
       unknown_role_count: unknownRoleCount,
       scroll_steps: steps,
+      top_load_steps: topLoadSteps,
+      top_load_limit_reached: topLoadLimitReached,
       adapter_version: VERSION,
       captured_at: new Date().toISOString()
     };
