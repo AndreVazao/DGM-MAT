@@ -378,7 +378,7 @@ class WindowsDirectoryHandleBackend:
     def rename_relative(
         self,
         source_handle: Any,
-        parent_handle: Any,
+        parent_handle: Any | None,
         target_name: str,
         *,
         replace_existing: bool,
@@ -392,7 +392,7 @@ class WindowsDirectoryHandleBackend:
             buffer, self.ctypes.POINTER(self.FILE_RENAME_INFO)
         ).contents
         info.ReplaceIfExists = 1 if replace_existing else 0
-        info.RootDirectory = parent_handle.value
+        info.RootDirectory = parent_handle.value if parent_handle else None
         info.FileNameLength = len(encoded)
         self.ctypes.memmove(
             self.ctypes.addressof(buffer) + header_size, encoded, len(encoded)
