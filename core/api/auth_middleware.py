@@ -156,7 +156,11 @@ class LocalSessionAuthMiddleware:
             return
 
         required = _required_scope(classification.scope)
-        if required and required not in principal.scopes:
+        if required == "browser-capture":
+            sufficient = bool({"browser-capture", "operator"} & set(principal.scopes))
+        else:
+            sufficient = not required or required in principal.scopes
+        if not sufficient:
             if route_type == "websocket":
                 await self._websocket_denied(send, code=1008)
             else:
