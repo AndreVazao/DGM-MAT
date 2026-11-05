@@ -18,6 +18,9 @@ from core.api.local_sessions import LocalSessionManager
 
 router = APIRouter(prefix="/auth", tags=["local-auth"])
 session_manager = LocalSessionManager(ttl_seconds=1800)
+# The Chrome extension receives only the browser-capture route scope and an 8-hour
+# local session so an explicitly enabled recovery run can finish unattended.
+extension_session_manager = LocalSessionManager(ttl_seconds=8 * 60 * 60)
 _lock = threading.Lock()
 _attempts: dict[str, list[float]] = {}
 _RATE_WINDOW_SECONDS = 60.0
@@ -119,10 +122,16 @@ def create_local_session(
         raise HTTPException(status_code=401, detail="Invalid bootstrap credential.")
 
     # Scope is chosen by server policy, never supplied by the caller.
-    token, principal = session_manager.create_session(
-        subject=payload.client_id,
-        scopes={"local-client", "operator"},
-    )
+    if payload.client_id == "dgm-mat-chrome-extension":
+        token, principal = extension_session_manager.create_session(
+            subject=payload.client_id,
+            scopes={"browser-capture"},
+        )
+    else:
+        token, principal = session_manager.create_session(
+            subject=payload.client_id,
+            scopes={"local-client", "operator"},
+        )
     return {
         "access_token": token,
         "token_type": "Bearer",
