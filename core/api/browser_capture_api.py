@@ -204,6 +204,36 @@ def claim_next_browser_conversation():
     }
 
 
+class BrowserCaptureBlockRequest(BaseModel):
+    provider: Literal["chatgpt", "gemini", "grok"]
+    source_id: str = Field(min_length=1, max_length=200)
+    status: Literal["blocked", "failed"] = "blocked"
+    reason: str = Field(min_length=1, max_length=300)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.post("/block")
+def mark_browser_conversation_blocked(payload: BrowserCaptureBlockRequest):
+    ledger = _ledger()
+    if ledger.get(payload.provider, payload.source_id) is None:
+        raise HTTPException(status_code=404, detail="Conversation source was not discovered.")
+    ledger.checkpoint(
+        payload.provider,
+        payload.source_id,
+        capture_status=payload.status,
+        completeness="unknown",
+        detail=payload.reason,
+        pipeline="authenticated_browser_capture",
+    )
+    return {
+        "status": payload.status,
+        "provider": payload.provider,
+        "source_id": payload.source_id,
+        "reason": payload.reason,
+    }
+
+
 @router.post("/capture")
 def archive_browser_conversation(payload: BrowserCaptureRequest):
     try:
