@@ -155,6 +155,7 @@ def classify_mission_intent(goal: str) -> IntentDecision:
         has_repository
         and has_repository_state
         and bool(word_set & _LOCAL_RESEARCH_VERBS)
+        and not bool(word_set & _EXTERNAL_RESEARCH_WORDS)
         and not bool(word_set & {"documentation", "documentacao", "docs"})
     ):
         return IntentDecision(
