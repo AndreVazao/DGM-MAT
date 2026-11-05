@@ -251,3 +251,16 @@ def test_rediscovery_does_not_requeue_already_verified_conversation(monkeypatch,
     assert response.json()["registered"] == 1
     assert response.json()["pending"] == 0
     assert response.json()["already_processed"] == 1
+
+
+def test_provider_scoped_next_never_claims_another_ai_queue(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    chat = _discovery("chatgpt", "conversation-1")
+    gemini = _discovery("gemini", "conversation-2")
+    client.post("/recovery/browser-capture/discover", json=chat)
+    client.post("/recovery/browser-capture/discover", json=gemini)
+
+    chat_next = client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"}).json()
+    gemini_next = client.post("/recovery/browser-capture/next", json={"provider": "gemini"}).json()
+    assert chat_next["next"]["provider"] == "chatgpt"
+    assert gemini_next["next"]["provider"] == "gemini"
