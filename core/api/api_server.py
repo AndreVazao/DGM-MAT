@@ -36,9 +36,17 @@ from core.organization.dgm_hub_meeting_observer import get_hub_meeting_observer
 
 app = FastAPI(title="DGM-MAT API")
 
+def _cors_allowed_origins() -> list[str]:
+    origins = ["http://127.0.0.1:8181", "http://localhost:8181", "https://localhost"]
+    extension_id = os.getenv("DGM_CHROME_EXTENSION_ID", "").strip()
+    if len(extension_id) == 32 and all(char in "abcdefghijklmnop" for char in extension_id):
+        origins.append("chrome-extension://" + extension_id)
+    return origins
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:8181", "http://localhost:8181", "https://localhost"],
+    allow_origins=_cors_allowed_origins(),
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-DGM-Governance-Credential"],
