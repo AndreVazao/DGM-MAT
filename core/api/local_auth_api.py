@@ -18,15 +18,23 @@ from core.api.local_sessions import LocalSessionManager
 
 router = APIRouter(prefix="/auth", tags=["local-auth"])
 session_manager = LocalSessionManager(ttl_seconds=1800)
+# The Chrome extension receives only the browser-capture route scope and an 8-hour
+# local session so an explicitly enabled recovery run can finish unattended.
+extension_session_manager = LocalSessionManager(ttl_seconds=8 * 60 * 60)
 _lock = threading.Lock()
 _attempts: dict[str, list[float]] = {}
 _RATE_WINDOW_SECONDS = 60.0
 _MAX_ATTEMPTS_PER_WINDOW = 8
-_ALLOWED_ORIGINS = {
-    "http://127.0.0.1:8181",
-    "http://localhost:8181",
-    "https://localhost",
-}
+def _allowed_origins() -> set[str]:
+    origins = {
+        "http://127.0.0.1:8181",
+        "http://localhost:8181",
+        "https://localhost",
+    }
+    extension_id = os.getenv("DGM_CHROME_EXTENSION_ID", "").strip()
+    if len(extension_id) == 32 and all(char in "abcdefghijklmnop" for char in extension_id):
+        origins.add("chrome-extension://" + extension_id)
+    return origins
 
 
 class SessionRequest(BaseModel):
@@ -77,7 +85,7 @@ def _is_loopback(request: Request) -> bool:
 
 def _check_origin(request: Request) -> None:
     origin = request.headers.get("origin")
-    if origin is not None and origin not in _ALLOWED_ORIGINS:
+    if origin is not None and origin not in _allowed_origins():
         raise HTTPException(status_code=403, detail="Origin is not allowed for local pairing.")
 
 
@@ -114,10 +122,16 @@ def create_local_session(
         raise HTTPException(status_code=401, detail="Invalid bootstrap credential.")
 
     # Scope is chosen by server policy, never supplied by the caller.
-    token, principal = session_manager.create_session(
-        subject=payload.client_id,
-        scopes={"local-client", "operator"},
-    )
+    if payload.client_id == "dgm-mat-chrome-extension":
+        token, principal = extension_session_manager.create_session(
+            subject=payload.client_id,
+            scopes={"browser-capture"},
+        )
+    else:
+        token, principal = session_manager.create_session(
+            subject=payload.client_id,
+            scopes={"local-client", "operator"},
+        )
     return {
         "access_token": token,
         "token_type": "Bearer",
@@ -155,6 +169,9 @@ def create_pairing_code(request: Request, response: Response):
 def pair_mobile_client(payload: PairingRequest, request: Request):
     """Exchange a short-lived PC-local pairing code for a short-lived operator session."""
     global _pairing_digest, _pairing_expires_at
+    # Pairing-code issuance is loopback-only; redemption may come from the
+    # already paired mobile client over its trusted local/Tailscale path.
+    _check_origin(request)
     client_key = "pair:" + (request.client.host if request.client else "unknown")
     _rate_limit(client_key)
     supplied_digest = hashlib.sha256(payload.code.encode("utf-8")).digest()
@@ -170,10 +187,16 @@ def pair_mobile_client(payload: PairingRequest, request: Request):
     if not valid:
         raise HTTPException(status_code=401, detail="Código de emparelhamento inválido, expirado ou já utilizado.")
 
-    token, principal = session_manager.create_session(
-        subject=payload.client_id,
-        scopes={"local-client", "operator"},
-    )
+    if payload.client_id == "dgm-mat-chrome-extension":
+        token, principal = extension_session_manager.create_session(
+            subject=payload.client_id,
+            scopes={"browser-capture"},
+        )
+    else:
+        token, principal = session_manager.create_session(
+            subject=payload.client_id,
+            scopes={"local-client", "operator"},
+        )
     return {
         "access_token": token,
         "token_type": "Bearer",

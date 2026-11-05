@@ -23,10 +23,15 @@ from core.api.governance_api import router as governance_router
 from core.api.dgm_hub_agents_api import router as dgm_hub_agents_router
 from core.api.provider_execution_api import router as provider_execution_router
 from core.api.recovery_api import router as recovery_router
+from core.api.browser_capture_api import router as browser_capture_router
 from core.api.repository_learning_api import router as repository_learning_router
 from core.api.auto_help_api import router as auto_help_router
 from core.api.conversation_archive_api import router as conversation_archive_router
-from core.api.local_auth_api import router as local_auth_router, session_manager
+from core.api.local_auth_api import (
+    router as local_auth_router,
+    session_manager,
+    extension_session_manager,
+)
 from core.api.auth_middleware import LocalSessionAuthMiddleware
 from core.federation.node_identity import local_node
 from core.federation.rendezvous_client import RendezvousClient
@@ -35,9 +40,17 @@ from core.organization.dgm_hub_meeting_observer import get_hub_meeting_observer
 
 app = FastAPI(title="DGM-MAT API")
 
+def _cors_allowed_origins() -> list[str]:
+    origins = ["http://127.0.0.1:8181", "http://localhost:8181", "https://localhost"]
+    extension_id = os.getenv("DGM_CHROME_EXTENSION_ID", "").strip()
+    if len(extension_id) == 32 and all(char in "abcdefghijklmnop" for char in extension_id):
+        origins.append("chrome-extension://" + extension_id)
+    return origins
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:8181", "http://localhost:8181", "https://localhost"],
+    allow_origins=_cors_allowed_origins(),
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-DGM-Governance-Credential"],
@@ -50,6 +63,7 @@ app.include_router(governance_router)
 app.include_router(dgm_hub_agents_router)
 app.include_router(provider_execution_router)
 app.include_router(recovery_router)
+app.include_router(browser_capture_router)
 app.include_router(repository_learning_router)
 app.include_router(auto_help_router)
 app.include_router(conversation_archive_router)
@@ -222,6 +236,7 @@ app.add_middleware(
     LocalSessionAuthMiddleware,
     routes=app.router.routes,
     session_manager=session_manager,
+    additional_session_managers=(extension_session_manager,),
 )
 
 

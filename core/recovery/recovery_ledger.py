@@ -146,15 +146,25 @@ class RecoveryLedger:
                 source.attempts, now, now,
             ))
 
-    def next_source(self, pipeline: str = "conversation_recovery") -> RecoverySource | None:
-        """Claim one source in deterministic order, or an explicitly requested retry."""
+    def next_source(
+        self, pipeline: str = "conversation_recovery", provider: str | None = None
+    ) -> RecoverySource | None:
+        """Claim one source in deterministic order, optionally scoped to one provider."""
         with self._connection() as db:
             db.execute("BEGIN IMMEDIATE")
-            retry = db.execute("""
-                SELECT s.* FROM recovery_retry_queue q
-                JOIN recovery_sources s USING (provider, source_id)
-                ORDER BY q.requested_at, q.provider, q.source_id LIMIT 1
-            """).fetchone()
+            if provider:
+                retry = db.execute("""
+                    SELECT s.* FROM recovery_retry_queue q
+                    JOIN recovery_sources s USING (provider, source_id)
+                    WHERE q.provider=?
+                    ORDER BY q.requested_at, q.provider, q.source_id LIMIT 1
+                """, (provider,)).fetchone()
+            else:
+                retry = db.execute("""
+                    SELECT s.* FROM recovery_retry_queue q
+                    JOIN recovery_sources s USING (provider, source_id)
+                    ORDER BY q.requested_at, q.provider, q.source_id LIMIT 1
+                """).fetchone()
             if retry is not None:
                 row = retry
                 db.execute(
@@ -162,17 +172,15 @@ class RecoveryLedger:
                     (row["provider"], row["source_id"]),
                 )
             else:
-                cursor = db.execute(
-                    "SELECT * FROM recovery_cursor WHERE pipeline=?", (pipeline,)
-                ).fetchone()
-                if cursor:
+                # The cursor is an audit/progress marker, not an eligibility filter.
+                # New discoveries can belong to older dates or sort before the last
+                # checkpoint; selecting all pending rows prevents silently skipping them.
+                if provider:
                     row = db.execute("""
                         SELECT * FROM recovery_sources
-                        WHERE (provider, source_date, source_id) > (?, ?, ?)
-                          AND capture_status='discovered'
-                        ORDER BY provider, source_date, source_id LIMIT 1
-                    """, (cursor["last_provider"], cursor["last_source_date"],
-                          cursor["last_source_id"])).fetchone()
+                        WHERE capture_status='discovered' AND provider=?
+                        ORDER BY source_date, source_id LIMIT 1
+                    """, (provider,)).fetchone()
                 else:
                     row = db.execute("""
                         SELECT * FROM recovery_sources
@@ -219,7 +227,7 @@ class RecoveryLedger:
         These sources are retried only through request_retry(), avoiding an endless loop.
         No deletion is performed.
         """
-        allowed = {"discovered", "in_progress", "partial", "captured", "verified", "blocked", "failed"}
+        allowed = {"discovered", "in_progress", "partial", "captured", "verified", "blocked", "rate_limited", "failed"}
         if capture_status not in allowed:
             raise ValueError(f"unsupported capture_status: {capture_status}")
         if raw_sha256 and (
@@ -250,7 +258,7 @@ class RecoveryLedger:
             """, (
                 capture_status, completeness, raw_archive_path, raw_sha256,
                 index_status, repo_status, tree_revision,
-                detail if capture_status in {"blocked", "failed", "partial"} else "",
+                detail if capture_status in {"blocked", "rate_limited", "failed", "partial"} else "",
                 now, provider, source_id,
             ))
             db.execute("""
@@ -281,7 +289,7 @@ class RecoveryLedger:
                 """).fetchall()
                 last = None
             for item in completed:
-                if item["capture_status"] not in {"captured", "verified", "partial", "blocked", "failed"}:
+                if item["capture_status"] not in {"captured", "verified", "partial", "blocked", "rate_limited", "failed"}:
                     break
                 last = (item["provider"], item["source_date"], item["source_id"])
             if last is not None and (cursor is None or last != (

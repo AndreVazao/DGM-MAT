@@ -169,5 +169,40 @@ class RecoveryLedgerTests(unittest.TestCase):
             self.ledger.checkpoint("chatgpt", "missing", capture_status="captured")
 
 
+    def test_late_discovery_before_cursor_is_still_claimed(self) -> None:
+        self.add("z", "2026-01-10")
+        first = self.ledger.next_source()
+        self.assertEqual(first.source_id, "z")
+        self.ledger.checkpoint("chatgpt", "z", capture_status="captured")
+        # A later UI scan can discover an older conversation after the cursor moved.
+        self.add("a", "2025-01-01")
+        next_item = self.ledger.next_source()
+        self.assertIsNotNone(next_item)
+        self.assertEqual(next_item.source_id, "a")
+
+    def test_rate_limited_source_is_checkpointed_and_requires_explicit_retry(self) -> None:
+        self.add("a", "2026-01-01")
+        self.ledger.next_source()
+        self.ledger.checkpoint(
+            "chatgpt", "a", capture_status="rate_limited",
+            detail="provider requested a cooldown",
+        )
+        saved = self.ledger.get("chatgpt", "a")
+        self.assertEqual(saved.capture_status, "rate_limited")
+        self.assertEqual(saved.last_error, "provider requested a cooldown")
+        self.assertIsNone(self.ledger.next_source())
+        self.ledger.request_retry("chatgpt", "a", "cooldown elapsed")
+        self.assertEqual(self.ledger.next_source().source_id, "a")
+
+
+    def test_provider_scoped_claim_does_not_consume_another_provider_queue(self) -> None:
+        self.add("chat-1", "2026-01-01", provider="chatgpt")
+        self.add("gemini-1", "2026-01-01", provider="gemini")
+        gemini = self.ledger.next_source(provider="gemini")
+        self.assertEqual(gemini.provider, "gemini")
+        chatgpt = self.ledger.next_source(provider="chatgpt")
+        self.assertEqual(chatgpt.provider, "chatgpt")
+
+
 if __name__ == "__main__":
     unittest.main()

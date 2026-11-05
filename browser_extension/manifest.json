@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "DGM-MAT Conversation Recovery",
+  "version": "0.1.0",
+  "description": "Captures visible ChatGPT, Gemini and Grok conversations into the local DGM-MAT archive.",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:8181/*",
+    "http://localhost:8181/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://gemini.google.com/*",
+    "https://bard.google.com/*",
+    "https://grok.com/*",
+    "https://x.com/i/grok*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "DGM-MAT Recovery"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://gemini.google.com/*",
+        "https://bard.google.com/*",
+        "https://grok.com/*",
+        "https://x.com/i/grok*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

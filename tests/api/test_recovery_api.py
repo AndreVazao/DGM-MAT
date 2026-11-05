@@ -15,7 +15,7 @@ def test_recovery_routes_are_operator_only():
     assert classify_request_path("/recovery/sources", "POST") is None
 
 
-def test_status_reports_ledger_only_without_provider_or_deletion(monkeypatch, tmp_path):
+def test_status_reports_shared_browser_capture_api_without_provider_or_deletion(monkeypatch, tmp_path):
     ledger = RecoveryLedger(tmp_path / "ledger.sqlite3")
     ledger.register(RecoverySource(
         provider="chatgpt",
@@ -24,6 +24,7 @@ def test_status_reports_ledger_only_without_provider_or_deletion(monkeypatch, tm
         source_date="2026-10-01",
     ))
     monkeypatch.setattr(recovery_api, "get_recovery_ledger", lambda: ledger)
+    monkeypatch.delenv("DGM_CHROME_EXTENSION_ID", raising=False)
 
     result = recovery_api.recovery_status()
 
@@ -31,7 +32,10 @@ def test_status_reports_ledger_only_without_provider_or_deletion(monkeypatch, tm
     assert result["capture_status_counts"] == {"discovered": 1}
     assert result["provider_connectors_enabled"] is False
     assert result["provider_deletion_enabled"] is False
-    assert result["integration_status"] == "ledger_only"
+    assert result["browser_ui_capture_api"] is True
+    assert result["browser_extension_origin_configured"] is False
+    assert result["browser_ui_pairing_ready"] is False
+    assert result["integration_status"] == "ledger_and_browser_ui_api"
 
 
 def test_source_inventory_is_paginated_and_excludes_transcript_body(monkeypatch, tmp_path):
