@@ -20,7 +20,6 @@ class WindowsDirectoryHandleBackend:
     """Use NtCreateFile RootDirectory handles and handle-relative rename on Windows."""
 
     OBJ_CASE_INSENSITIVE = 0x00000040
-    OBJ_DONT_REPARSE = 0x00001000
 
     FILE_LIST_DIRECTORY = 0x0001
     FILE_TRAVERSE = 0x0020
@@ -38,6 +37,7 @@ class WindowsDirectoryHandleBackend:
 
     FILE_DIRECTORY_FILE = 0x00000001
     FILE_NON_DIRECTORY_FILE = 0x00000040
+    FILE_OPEN_REPARSE_POINT = 0x00200000
     FILE_SYNCHRONOUS_IO_NONALERT = 0x00000020
 
     FILE_ATTRIBUTE_NORMAL = 0x00000080
@@ -179,7 +179,7 @@ class WindowsDirectoryHandleBackend:
         attributes.Length = ctypes.sizeof(self.OBJECT_ATTRIBUTES)
         attributes.RootDirectory = root_handle if root_handle else None
         attributes.ObjectName = ctypes.pointer(unicode_name)
-        attributes.Attributes = self.OBJ_CASE_INSENSITIVE | self.OBJ_DONT_REPARSE
+        attributes.Attributes = self.OBJ_CASE_INSENSITIVE
         io_status = self.IO_STATUS_BLOCK()
         handle = wintypes.HANDLE()
         status = self.ntdll.NtCreateFile(
@@ -222,23 +222,41 @@ class WindowsDirectoryHandleBackend:
             raise WindowsHandleError("Reparse-point handles are denied.")
 
     def open_root(self, root_path: str | Path) -> Any:
-        path = Path(root_path).expanduser().resolve(strict=True)
+        raw_path = Path(root_path).expanduser()
+        if ".." in raw_path.parts:
+            raise WindowsHandleError("Parent traversal is denied in the repository root path.")
+        path = raw_path.absolute()
         if not path.is_dir() or not path.drive or str(path).startswith("\\\\"):
             raise WindowsHandleError("A local absolute directory path is required.")
-        nt_path = "\\??\\" + str(path)
         access = (
             self.FILE_LIST_DIRECTORY
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
             | self.SYNCHRONIZE
         )
-        return self._nt_open(
+        # Start at the drive root and resolve each component relative to the
+        # previous handle. FILE_OPEN_REPARSE_POINT opens the entry itself;
+        # _assert_not_reparse then rejects it rather than following a junction.
+        current = self._nt_open(
             None,
-            nt_path,
+            "\\??\\" + path.anchor,
             access=access,
             disposition=self.FILE_OPEN,
-            options=self.FILE_DIRECTORY_FILE | self.FILE_SYNCHRONOUS_IO_NONALERT,
+            options=(
+                self.FILE_DIRECTORY_FILE
+                | self.FILE_SYNCHRONOUS_IO_NONALERT
+                | self.FILE_OPEN_REPARSE_POINT
+            ),
         )
+        try:
+            for component in path.parts[1:]:
+                child = self.open_child_directory(current, component)
+                self.close(current)
+                current = child
+            return current
+        except Exception:
+            self.close(current)
+            raise
 
     def open_child_directory(self, parent_handle: Any, name: str) -> Any:
         name = self._validate_basename(name)
@@ -253,7 +271,7 @@ class WindowsDirectoryHandleBackend:
             name,
             access=access,
             disposition=self.FILE_OPEN,
-            options=self.FILE_DIRECTORY_FILE | self.FILE_SYNCHRONOUS_IO_NONALERT,
+            options=self.FILE_DIRECTORY_FILE | self.FILE_SYNCHRONOUS_IO_NONALERT | self.FILE_OPEN_REPARSE_POINT,
         )
 
     def open_file(self, parent_handle: Any, name: str, *, writable: bool = False) -> Any:
@@ -268,7 +286,7 @@ class WindowsDirectoryHandleBackend:
             name,
             access=access,
             disposition=self.FILE_OPEN,
-            options=self.FILE_NON_DIRECTORY_FILE | self.FILE_SYNCHRONOUS_IO_NONALERT,
+            options=self.FILE_NON_DIRECTORY_FILE | self.FILE_SYNCHRONOUS_IO_NONALERT | self.FILE_OPEN_REPARSE_POINT,
         )
 
     def create_file(self, parent_handle: Any, name: str) -> Any:
