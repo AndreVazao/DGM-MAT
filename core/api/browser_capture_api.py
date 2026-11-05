@@ -18,7 +18,7 @@ from urllib.parse import parse_qs, urlparse
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from core.recovery.recovery_ledger import RecoveryLedger, RecoverySource
+from core.recovery.recovery_ledger import RecoveryLedger, RecoveryLedgerError, RecoverySource
 
 router = APIRouter(prefix="/recovery/browser-capture", tags=["browser-conversation-capture"])
 
@@ -512,6 +512,6 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
 def retry_browser_conversation(provider: Literal["chatgpt", "gemini", "grok"], source_id: str):
     try:
         _ledger().request_retry(provider, source_id, "operator_or_extension_retry")
-    except ValueError as exc:
+    except (ValueError, RecoveryLedgerError) as exc:
         raise HTTPException(status_code=404, detail="Conversation source was not found.") from exc
     return {"status": "retry_queued", "provider": provider, "source_id": source_id}
