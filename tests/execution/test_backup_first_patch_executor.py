@@ -297,7 +297,7 @@ def test_windows_prepared_manifest_recovers_partial_in_place_write(tmp_path):
     manifest_path = backup_dir / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["state"] = "prepared"
-    manifest_path.write_text(json.dumps(manifest, indent=2) + "\\n", encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     target.write_bytes(b"partial-write-from-simulated-crash")
 
     rolled_back = executor.rollback(result["backup_id"])
