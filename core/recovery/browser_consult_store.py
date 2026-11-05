@@ -87,7 +87,7 @@ def build_prompt(*, goal: str, context: str = "") -> str:
 class BrowserConsultStore:
     """SQLite-backed one-shot queue. Ambiguous interrupted calls are never replayed."""
 
-    def __init__(self, database_path: str | Path | None = None, cooldown_seconds: int = 1800):
+    def __init__(self, database_path: str | Path | None = None, cooldown_seconds: int = 300):
         self.database_path = Path(database_path) if database_path else (
             storage_manager.get_path("tasks") / "browser_consultations.sqlite3"
         )
@@ -287,6 +287,8 @@ class BrowserConsultStore:
             raise ValueError("response_text is required")
         if len(response_text) > MAX_RESPONSE_CHARS:
             raise ValueError("response exceeds the 16000-character limit")
+        if any(pattern.search(response_text) for pattern in _SECRET_PATTERNS):
+            return self.block(consultation_id, reason="secret_content")
         if provider_status not in {"ok", "rate_limited", "blocked_login", "blocked_challenge", "ui_mismatch", "interrupted"}:
             raise ValueError("unsupported provider status")
         now = datetime.now(timezone.utc)
