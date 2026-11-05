@@ -227,3 +227,12 @@ def test_ai_proposals_are_candidates_and_operator_confirmation_is_not_auto_decis
     assert summary["knowledge"]["decisions"] == 0
     assert summary["knowledge"]["proposals"] == 1
     assert summary["knowledge"]["review_tasks_open"] >= 2
+
+
+def test_discovery_rejects_source_id_that_does_not_match_conversation_url(monkeypatch, tmp_path):
+    client, ledger = _client(monkeypatch, tmp_path)
+    payload = _discovery(source_id="wrong-id", url="https://chatgpt.com/c/real-id")
+    response = client.post("/recovery/browser-capture/discover", json=payload)
+    assert response.status_code == 200
+    assert response.json()["registered"] == 0
+    assert ledger.source_count() == 0
