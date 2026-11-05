@@ -23,7 +23,7 @@
 | feat/external-agent-readiness-probe-2026-11-03 | 17 | 36 | Unique readiness/governance work; inspect/tests |
 | feat/telescope-metadata-only-2026-11-03 | 2 | 33 | Metadata inventory work; compare with current recovery implementation |
 | fix/frozen-external-runtime-dependencies-2026-11-04 | 1 | 11 | PR #203; currently conflicts with recovery base, do not merge yet |
-| fix/backup-first-executor-rebased-2026-11-05 | 4 | 2 | PR #214; backup-first primitive remains blocked on Windows TOCTOU hardening and Snyk integration status |
+| fix/backup-first-executor-rebased-2026-11-05 | 4 | 4 | PR #214; backup-first primitive remains blocked on Windows TOCTOU hardening and Snyk integration status |
 | fix/conversation-completeness-evidence-2026-11-05 | merged | 0 | PR #216 merged as `31608eb`; bounded virtualized top-loading evidence added; live provider acceptance remains open |
 | recovery/dgm-mat-overnight-2026-11-05 | 3 | 1 before this ledger update | Active recovery branch; PR #204 targets main |
 
