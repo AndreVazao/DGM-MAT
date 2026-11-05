@@ -60,6 +60,8 @@ def test_status_exposes_only_allowlisted_providers_and_observer_mode(monkeypatch
     result = bridge.get_status()
 
     assert set(result["providers"]) == {"codex", "claude", "kilo", "llm7"}
+    assert result["providers"]["codex"]["transport_online"] is False
+    assert result["providers"]["codex"]["response_verified"] is False
     assert result["room_mode"] == "operator_led_observer_dgm_mat"
     assert result["dgm_mat_mode"] == "observer"
     assert result["dgm_mat_response_enabled"] is False
@@ -131,6 +133,39 @@ def test_consult_sends_only_selected_external_providers_and_polls_results(monkey
     assert calls[0][1]["payload"]["targets"] == ["codex", "kilo"]
     assert calls[0][1]["payload"]["conversation_id"].startswith("dgm-mat-")
     assert "MODO ESTRITAMENTE CONSULTIVO" in calls[0][1]["payload"]["message"]
+
+
+def test_consult_preserves_grounding_status_and_evidence_references(monkeypatch):
+    bridge = DGMHubMultiChatBridge()
+    monkeypatch.setattr(
+        bridge,
+        "get_status",
+        lambda: {"providers": {"llm7": {"ready": True}}},
+    )
+    responses = iter([
+        {"task_id": "task-grounding", "targets": ["llm7"]},
+        {
+            "task_id": "task-grounding",
+            "done": True,
+            "completed": ["llm7"],
+            "results": {
+                "llm7": {
+                    "provider": "llm7",
+                    "status": "unverified",
+                    "text": "Resposta retida pelo contrato de evidência.",
+                    "grounding_status": "blocked_missing_or_invalid_evidence_citations",
+                    "evidence_refs": [],
+                }
+            },
+        },
+    ])
+    monkeypatch.setattr(bridge, "_request_json", lambda *args, **kwargs: next(responses))
+
+    result = bridge.consult(goal="Audit DGM-MAT", context="Evidence packet", providers=["llm7"])
+
+    assert result.results["llm7"]["status"] == "unverified"
+    assert result.results["llm7"]["grounding_status"] == "blocked_missing_or_invalid_evidence_citations"
+    assert result.results["llm7"]["evidence_refs"] == []
 
 
 def test_consult_rejects_dgm_mat_ollama_duplicates_and_empty_targets():
