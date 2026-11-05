@@ -46,7 +46,7 @@ class _RuntimeRequestWorker(QThread):
         )
 
     def _mission(self, mission_id: str) -> dict[str, Any] | None:
-        return fetch_mission_checkpoint(self.api_url, mission_id, request=self._request)
+        return fetch_mission_checkpoint(mission_id, request=self._request)
 
     def _finish_from_mission(self, mission: dict[str, Any]) -> bool:
         status = str(mission.get("status", "UNKNOWN")).upper()
