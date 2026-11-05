@@ -122,7 +122,7 @@ class BackupFirstPatchExecutor:
         if pure.parts and ":" in pure.parts[0]:
             raise PatchRejected("Drive-qualified paths are denied.")
         if os.name == "nt" and any(
-            re.search(r"~[0-9](?:\\.[A-Z0-9]{0,3})?$", part, re.IGNORECASE)
+            re.search(r"~[0-9](?:\.[A-Z0-9]{0,3})?$", part, re.IGNORECASE)
             for part in pure.parts
         ):
             raise PatchRejected("Windows 8.3 short-name path components are denied.")
