@@ -170,8 +170,13 @@ async function testVirtualizedHistoryWindowsAndDuplicates() {
 
   assert.equal(data.messages_total, 12, "all historical windows must be recovered");
   assert.deepEqual(
-    data.messages.map(message => message.message_id).sort(),
-    Array.from({ length: 12 }, (_, index) => "message-" + index).sort()
+    data.messages.map(message => message.message_id),
+    Array.from({ length: 12 }, (_, index) => "message-" + index),
+    "captured sequence must remain chronological across reversed top-loading windows"
+  );
+  assert.deepEqual(
+    data.messages.map(message => message.sequence),
+    Array.from({ length: 12 }, (_, index) => index)
   );
   assert.equal(new Set(data.messages.map(message => message.message_id)).size, 12,
     "overlapping windows must not duplicate turns");
