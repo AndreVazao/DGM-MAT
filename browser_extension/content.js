@@ -53,35 +53,68 @@
     return true;
   }
 
-  function discoverConversations() {
+  async function discoverConversations() {
     const provider = providerForUrl(location.href);
     if (!provider) throw new Error("This tab is not an allowed AI provider page.");
     const found = new Map();
 
-    if (isConversationUrl(location.href, provider)) {
-      const id = sourceIdForUrl(location.href, provider);
-      found.set(id, {
-        source_id: id,
-        title: conversationTitle(null, location.href),
-        url: location.href,
-        source_date: "unknown-date"
-      });
+    function collectLinks() {
+      if (isConversationUrl(location.href, provider)) {
+        const id = sourceIdForUrl(location.href, provider);
+        if (id && !found.has(id)) {
+          found.set(id, {
+            source_id: id,
+            title: conversationTitle(null, location.href),
+            url: location.href,
+            source_date: "unknown-date"
+          });
+        }
+      }
+      for (const anchor of document.querySelectorAll("a[href]")) {
+        let url;
+        try { url = new URL(anchor.href, location.href); } catch (_) { continue; }
+        if (url.origin !== location.origin || !isConversationUrl(url.href, provider)) continue;
+        const id = sourceIdForUrl(url.href, provider);
+        if (!id || found.has(id)) continue;
+        found.set(id, {
+          source_id: id,
+          title: conversationTitle(anchor, url),
+          url: url.href,
+          source_date: "unknown-date"
+        });
+        if (found.size >= 500) break;
+      }
     }
 
-    for (const anchor of document.querySelectorAll("a[href]")) {
-      let url;
-      try { url = new URL(anchor.href, location.href); } catch (_) { continue; }
-      if (url.origin !== location.origin || !isConversationUrl(url.href, provider)) continue;
-      const id = sourceIdForUrl(url.href, provider);
-      if (!id || found.has(id)) continue;
-      found.set(id, {
-        source_id: id,
-        title: conversationTitle(anchor, url),
-        url: url.href,
-        source_date: "unknown-date"
-      });
-      if (found.size >= 500) break;
+    collectLinks();
+    const navs = [...document.querySelectorAll("nav, [role='navigation']")];
+    for (const nav of navs) {
+      const scrollers = [...nav.querySelectorAll("*")]
+        .filter(element => element.scrollHeight > element.clientHeight + 100)
+        .sort((a, b) => (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight))
+        .slice(0, 2);
+      for (const scroller of scrollers) {
+        const originalTop = scroller.scrollTop;
+        try {
+          scroller.scrollTop = 0;
+          await sleep(120);
+          collectLinks();
+          let steps = 0;
+          while (scroller.scrollTop < scroller.scrollHeight - scroller.clientHeight - 4 && steps < 40 && found.size < 500) {
+            scroller.scrollTop = Math.min(
+              scroller.scrollHeight - scroller.clientHeight,
+              scroller.scrollTop + Math.max(200, scroller.clientHeight * 0.8)
+            );
+            await sleep(160);
+            collectLinks();
+            steps++;
+          }
+        } finally {
+          scroller.scrollTop = originalTop;
+        }
+      }
     }
+    collectLinks();
     return { provider, items: [...found.values()] };
   }
 
@@ -236,9 +269,10 @@
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!message || typeof message.type !== "string") return false;
     if (message.type === "DGM_DISCOVER_VISIBLE") {
-      try { sendResponse({ ok: true, data: discoverConversations() }); }
-      catch (error) { sendResponse({ ok: false, error: String(error.message || error) }); }
-      return false;
+      discoverConversations()
+        .then(data => sendResponse({ ok: true, data }))
+        .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+      return true;
     }
     if (message.type === "DGM_CAPTURE_CURRENT") {
       captureCurrentConversation()
