@@ -183,3 +183,18 @@ if __name__ == "__main__":
         next_item = self.ledger.next_source()
         self.assertIsNotNone(next_item)
         self.assertEqual(next_item.source_id, "a")
+
+
+    def test_rate_limited_source_is_checkpointed_and_requires_explicit_retry(self) -> None:
+        self.add("a", "2026-01-01")
+        self.ledger.next_source()
+        self.ledger.checkpoint(
+            "chatgpt", "a", capture_status="rate_limited",
+            detail="provider requested a cooldown",
+        )
+        saved = self.ledger.get("chatgpt", "a")
+        self.assertEqual(saved.capture_status, "rate_limited")
+        self.assertEqual(saved.last_error, "provider requested a cooldown")
+        self.assertIsNone(self.ledger.next_source())
+        self.ledger.request_retry("chatgpt", "a", "cooldown elapsed")
+        self.assertEqual(self.ledger.next_source().source_id, "a")
