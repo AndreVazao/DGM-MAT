@@ -53,6 +53,10 @@ function createHarness(mode) {
   let scrollCalls = 0;
 
   function updateVisible(top) {
+    if (mode === "ambiguous-duplicate") {
+      visible = topWaits >= 1 ? [ambiguousSecond] : [ambiguousFirst];
+      return;
+    }
     if (mode === "multi-window") {
       if (!olderLoaded) {
         visible = all.slice(6, 10);
