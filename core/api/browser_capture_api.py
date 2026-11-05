@@ -25,7 +25,7 @@ router = APIRouter(prefix="/recovery/browser-capture", tags=["browser-conversati
 
 PROVIDER_HOSTS = {
     "chatgpt": {"chatgpt.com", "chat.openai.com"},
-    "gemini": {"gemini.google.com"},
+    "gemini": {"gemini.google.com", "bard.google.com"},
     "grok": {"grok.com", "x.com"},
 }
 MAX_DISCOVERY_ITEMS = 500
