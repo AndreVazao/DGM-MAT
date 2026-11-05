@@ -128,7 +128,7 @@ class BackupFirstPatchExecutor:
             raise PatchRejected(
                 "Secure directory-handle writes are unavailable on this platform; refusing filesystem mutation."
             )
-        if os.open not in os.supports_dir_fd or os.rename not in os.supports_dir_fd:
+        if any(operation not in os.supports_dir_fd for operation in (os.open, os.rename, os.unlink)):
             raise PatchRejected(
                 "Secure dir_fd filesystem operations are unavailable; refusing filesystem mutation."
             )
