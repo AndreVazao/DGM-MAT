@@ -128,7 +128,7 @@ class BackupFirstPatchExecutor:
             raise PatchRejected(
                 "Secure directory-handle writes are unavailable on this platform; refusing filesystem mutation."
             )
-        if os.open not in os.supports_dir_fd or os.replace not in os.supports_dir_fd:
+        if os.open not in os.supports_dir_fd or os.rename not in os.supports_dir_fd:
             raise PatchRejected(
                 "Secure dir_fd filesystem operations are unavailable; refusing filesystem mutation."
             )
@@ -206,7 +206,7 @@ class BackupFirstPatchExecutor:
         else:
             os.close(fd)
         try:
-            os.replace(
+            os.rename(
                 temporary, name,
                 src_dir_fd=parent_fd,
                 dst_dir_fd=parent_fd,
