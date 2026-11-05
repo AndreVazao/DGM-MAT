@@ -169,6 +169,9 @@ async function startRecovery(tabId, chainOnEmpty = true) {
   try {
   const state = await readState();
   if (!state.token) throw new Error("Pair this extension with DGM-MAT first.");
+  if (state.run?.active) {
+    return { finished: false, already_active: true, next: state.run.current };
+  }
   const reply = await sendToTab(tabId, { type: "DGM_DISCOVER_VISIBLE" });
   if (!reply || !reply.ok) throw new Error(reply?.error || "Could not read the visible conversation list.");
   const { provider, items } = reply.data;
