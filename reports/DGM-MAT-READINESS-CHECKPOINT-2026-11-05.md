@@ -22,16 +22,17 @@ DGM-MAT is **not yet ready for unattended autonomous development**. The current 
 
 ### PR #214 / PR #217 — executor security gate remains open
 
-- PR #214 was closed without merge; its branch was retained.
+- PR #214 was closed without merge; its branch was retained for audit.
 - Clean-base replacement: draft PR #217, branch `fix/backup-first-executor-dirfd-2026-11-05`, based directly on current main.
-- Current PR head: `f25a6878e4abc858e1f524764b527a813aa69672`.
-- Implementation uses POSIX `O_DIRECTORY | O_NOFOLLOW` directory-handle traversal and basename-relative atomic rename; original bytes are read from the pinned directory handle, the external backup is verified from those bytes, and rollback uses the same guarded path.
-- A deterministic regression swaps the visible parent path to an outside symlink after opening the directory handle and asserts that the outside target remains unchanged.
-- Windows mutations explicitly fail closed before creating a backup or mutating a file because a native Windows handle backend is not yet implemented.
-- Focused PR Validation #251 is running; compilation and test selection completed, dependency installation was still in progress at the last check. No current-head test pass is claimed yet.
-- **Residual threat-model limit:** POSIX handle anchoring addresses parent-path symlink substitution, but does not claim containment if a hostile same-user process physically relocates the already-open directory outside the worktree. This needs independent review or a stricter operational boundary.
-- The Snyk status is an external integration error, not a vulnerability result; no clean Snyk result is claimed.
-- Keep PR #217 in draft until current-head tests pass, the residual filesystem threat model is accepted or further hardened, and the supported Windows runtime has an appropriate native backend or remains explicitly unavailable.
+- Latest code head: `b3fb34777b6f3b7e88d49f0a8792e2d7e786b31c`.
+- Implementation uses POSIX `O_DIRECTORY | O_NOFOLLOW` directory-handle traversal, verifies the opened repository-root identity, and uses basename-relative atomic rename. Original bytes are read from the pinned directory handle; the external backup is verified from those bytes; rollback uses the same guarded path.
+- Regressions cover parent-path symlink replacement after opening the directory handle and repository-root path replacement after executor initialization.
+- Windows mutation fails closed before creating a backup or writing. Windows Guard run #2 passed on the previous head (Windows Python 3.12); the Windows-specific fail-closed assertion passed while POSIX mutation tests were skipped by design.
+- Focused PR Validation #251 passed on the initial clean-base head (14 passed, 1 skipped). The new current-head run #256 is in progress; its compile/test jobs are not yet complete.
+- Windows Guard run #4 is also pending for the latest head. No current-head pass is claimed yet.
+- **Residual threat-model limit:** POSIX handle anchoring addresses parent-path symlink substitution and root-path replacement, but does not claim containment if a hostile same-user process physically relocates an already-open directory outside the worktree. This needs independent review or a stricter operational boundary.
+- Snyk continues to report an external integration error, not a vulnerability finding; no clean Snyk result is claimed.
+- Keep PR #217 in draft until current-head Linux and Windows validations pass, the residual filesystem threat model is accepted or further hardened, and the supported Windows runtime has an appropriate native backend or remains explicitly unavailable.
 ### PR #207 — closed as superseded
 
 - Closed without merge; its branch was not deleted.
