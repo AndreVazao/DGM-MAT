@@ -13,7 +13,7 @@ It does not call provider APIs, inspect browser authentication stores, or send p
 The manifest requests only:
 - `activeTab`: use the tab when the operator opens the extension popup;
 - `storage`: persist the DGM-MAT local session token and recovery checkpoint in extension-owned storage;
-- host access to the three provider sites and `http://127.0.0.1:8181` / `http://localhost:8181`.
+- host access to ChatGPT, Gemini (including legacy `bard.google.com`), Grok and `http://127.0.0.1:8181` / `http://localhost:8181`.
 
 It does not request `cookies`, `history`, `webRequest`, `debugger`, `downloads`, `scripting`, or broad all-sites access. The extension does not read `document.cookie`, localStorage, sessionStorage, IndexedDB or browser profile files.
 
