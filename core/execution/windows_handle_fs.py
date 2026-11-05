@@ -367,7 +367,7 @@ class WindowsDirectoryHandleBackend:
                 return None
             raise
 
-    def create_file(self, parent_handle: Any, name: str) -> Any:
+    def create_file(self, parent_handle: Any, name: str, *, exclusive: bool = False) -> Any:
         name = self._validate_basename(name)
         access = self.FILE_READ_DATA | self.FILE_WRITE_DATA | self.FILE_READ_ATTRIBUTES | self.DELETE | self.SYNCHRONIZE
         return self._nt_open(
@@ -376,6 +376,7 @@ class WindowsDirectoryHandleBackend:
             access=access,
             disposition=self.FILE_CREATE,
             options=self.FILE_NON_DIRECTORY_FILE | self.FILE_SYNCHRONOUS_IO_NONALERT,
+            share_mode=self.FILE_SHARE_READ if exclusive else None,
         )
 
     def create_directory(self, parent_handle: Any, name: str) -> Any:
