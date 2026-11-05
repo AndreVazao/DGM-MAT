@@ -175,8 +175,8 @@
   function messageIdentity(node, role, content, index) {
     const explicit = node.getAttribute("data-message-id") || node.id;
     if (explicit) return explicit.slice(0, 180);
-    // Text-derived IDs are stable across scroll windows; duplicate identical turns
-    // remain a documented selector limitation until provider DOM IDs are available.
+    // Text-derived IDs are only a fallback. collectVisible() detects a second
+    // distinct DOM node with the same fallback ID and marks the capture ambiguous.
     let hash = 2166136261;
     const value = role + "\u0000" + content;
     for (let i = 0; i < value.length; i++) {
