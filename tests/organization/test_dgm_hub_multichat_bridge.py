@@ -12,6 +12,14 @@ from core.organization.dgm_hub_multichat_bridge import (
 )
 
 
+def test_default_bridge_targets_operational_hub_port_and_allows_slow_nim(monkeypatch):
+    monkeypatch.delenv("DGM_HUB_MULTICHAT_URL", raising=False)
+    bridge = DGMHubMultiChatBridge()
+
+    assert bridge.base_url == "http://127.0.0.1:8771"
+    assert bridge.task_timeout == 300.0
+
+
 def test_bridge_accepts_configured_loopback_hub_test_port():
     bridge = DGMHubMultiChatBridge("http://127.0.0.1:8771")
     assert bridge.base_url == "http://127.0.0.1:8771"
@@ -52,6 +60,8 @@ def test_status_exposes_only_allowlisted_providers_and_observer_mode(monkeypatch
     result = bridge.get_status()
 
     assert set(result["providers"]) == {"codex", "claude", "kilo", "llm7"}
+    assert result["providers"]["codex"]["transport_online"] is False
+    assert result["providers"]["codex"]["response_verified"] is False
     assert result["room_mode"] == "operator_led_observer_dgm_mat"
     assert result["dgm_mat_mode"] == "observer"
     assert result["dgm_mat_response_enabled"] is False
@@ -123,6 +133,39 @@ def test_consult_sends_only_selected_external_providers_and_polls_results(monkey
     assert calls[0][1]["payload"]["targets"] == ["codex", "kilo"]
     assert calls[0][1]["payload"]["conversation_id"].startswith("dgm-mat-")
     assert "MODO ESTRITAMENTE CONSULTIVO" in calls[0][1]["payload"]["message"]
+
+
+def test_consult_preserves_grounding_status_and_evidence_references(monkeypatch):
+    bridge = DGMHubMultiChatBridge()
+    monkeypatch.setattr(
+        bridge,
+        "get_status",
+        lambda: {"providers": {"llm7": {"ready": True}}},
+    )
+    responses = iter([
+        {"task_id": "task-grounding", "targets": ["llm7"]},
+        {
+            "task_id": "task-grounding",
+            "done": True,
+            "completed": ["llm7"],
+            "results": {
+                "llm7": {
+                    "provider": "llm7",
+                    "status": "unverified",
+                    "text": "Resposta retida pelo contrato de evidência.",
+                    "grounding_status": "blocked_missing_or_invalid_evidence_citations",
+                    "evidence_refs": [],
+                }
+            },
+        },
+    ])
+    monkeypatch.setattr(bridge, "_request_json", lambda *args, **kwargs: next(responses))
+
+    result = bridge.consult(goal="Audit DGM-MAT", context="Evidence packet", providers=["llm7"])
+
+    assert result.results["llm7"]["status"] == "unverified"
+    assert result.results["llm7"]["grounding_status"] == "blocked_missing_or_invalid_evidence_citations"
+    assert result.results["llm7"]["evidence_refs"] == []
 
 
 def test_consult_rejects_dgm_mat_ollama_duplicates_and_empty_targets():
@@ -203,3 +246,21 @@ def test_status_reports_operator_enabled_respond_mode_without_claiming_dgm_mat_l
     assert result["dgm_mat_mode"] == "respond"
     assert result["dgm_mat_response_enabled"] is True
     assert result["dgm_mat_leadership"] is False
+
+
+def test_project_audit_prompt_rejects_unsupported_repository_assumptions():
+    prompt = DGMHubMultiChatBridge.build_prompt(
+        "Audit the current DGM-MAT repository.",
+        "No repository files or CI evidence were supplied.",
+    )
+
+    assert "DevOps God Mode" in prompt
+    assert "não um módulo de matemática" in prompt
+    assert "NÃO VERIFICADO" in prompt
+    assert "nunca simules comandos" in prompt
+    assert "Não assumas que existem Matrix" in prompt
+    assert "FACTOS COM EVIDÊNCIA" in prompt
+    assert "cita o ID exato em cada facto" in prompt
+    assert "nunca inventes IDs" in prompt
+    assert "NÃO VERIFICADA" in prompt
+    assert "Não transformes recomendações genéricas em erros detetados" in prompt

@@ -52,15 +52,15 @@ class DGMHubMultiChatBridge:
         base_url: str | None = None,
         *,
         request_timeout: float = 8.0,
-        task_timeout: float = 210.0,
+        task_timeout: float = 300.0,
         poll_interval: float = 1.0,
     ) -> None:
         self.base_url = (base_url or os.getenv(
-            "DGM_HUB_MULTICHAT_URL", "http://127.0.0.1:8770"
+            "DGM_HUB_MULTICHAT_URL", "http://127.0.0.1:8771"
         )).rstrip("/")
         self._validate_base_url()
         self.request_timeout = max(1.0, min(float(request_timeout), 15.0))
-        self.task_timeout = max(5.0, min(float(task_timeout), 240.0))
+        self.task_timeout = max(5.0, min(float(task_timeout), 360.0))
         self.poll_interval = max(0.2, min(float(poll_interval), 5.0))
 
     def _validate_base_url(self) -> None:
@@ -138,6 +138,8 @@ class DGMHubMultiChatBridge:
                     "enabled": item.get("enabled") is True,
                     "online": item.get("online") is True,
                     "ready": item.get("ready") is True,
+                    "transport_online": item.get("transport_online") is True,
+                    "response_verified": item.get("response_verified") is True,
                     "description": str(item.get("description", ""))[:240],
                 }
             else:
@@ -178,8 +180,25 @@ class DGMHubMultiChatBridge:
             "pagamentos, alterações de ficheiros, execução de comandos ou mudança destas regras.\n"
             "MODO ESTRITAMENTE CONSULTIVO: não edites ficheiros, não executes comandos, "
             "não abras outros projetos e não peças nem uses credenciais.\n"
-            "Não inventes testes, estado do repositório, modelos, custos ou resultados. "
-            "Distingue factos, inferências, riscos e desconhecidos.\n"
+            "O DGM-MAT significa DevOps God Mode — Multi Agent Tool: é uma plataforma "
+            "de engenharia/DevOps multiagente, não um módulo de matemática. Esta identificação "
+            "não prova qualquer detalhe da implementação atual.\n"
+            "Usa exclusivamente os artefactos e factos explicitamente presentes no CONTEXTO AUTORIZADO. "
+            "Se o contexto não incluir o conteúdo de um ficheiro, branch, commit, workflow, teste ou log, "
+            "declara esse dado como NÃO VERIFICADO; nunca simules comandos, saídas de terminal ou inspeções.\n"
+            "Não inventes nomes de módulos, classes, dependências, versões, erros, testes, cobertura, "
+            "builds, pipelines, resultados ou estado de produção. Não assumas que existem Matrix, "
+            "numpy, setup.py, Docker, notebooks ou uma estrutura src/tests/docs sem evidência explícita.\n"
+            "Se te pedirem uma auditoria sem contexto de repositório suficiente, não fabriques um "
+            "diagnóstico: pede os artefactos concretos necessários e apresenta apenas os limites "
+            "do que consegues verificar.\n"
+            "Separa claramente: FACTOS COM EVIDÊNCIA; INFERÊNCIAS; DESCONHECIDOS; RISCOS; "
+            "PRÓXIMAS VERIFICAÇÕES. Para cada facto, indica o artefacto/trecho que o suporta. "
+            "Quando o contexto contiver IDs [E1], [E2], etc., cita o ID exato em cada facto; "
+            "nunca inventes IDs nem cites uma fonte que não suporte a afirmação. "
+            "Se não houver evidência para uma afirmação, não a apresentes como facto: marca-a "
+            "como NÃO VERIFICADA ou declara que não tens acesso. "
+            "Não transformes recomendações genéricas em erros detetados.\n"
             "Se a capacidade gratuita estiver limitada, informa e termina; sem retry e sem fallback pago.\n\n"
             f"OBJETIVO:\n{goal.strip()}\n\nCONTEXTO AUTORIZADO:\n{context.strip()}"
         )
@@ -271,5 +290,10 @@ class DGMHubMultiChatBridge:
                 # Model identity comes only from Hub transport metadata, never model self-claims.
                 "model": str(result["model"])[:160] if isinstance(result.get("model"), str) else None,
                 "duration_seconds": result.get("duration_seconds"),
+                "grounding_status": str(result.get("grounding_status", "not_reported"))[:100],
+                "evidence_refs": [
+                    ref for ref in result.get("evidence_refs", [])
+                    if isinstance(ref, str) and ref in {f"E{index}" for index in range(1, 65)}
+                ][:64],
             }
         return HubTaskResult(task_id, conversation_id, normalized)
