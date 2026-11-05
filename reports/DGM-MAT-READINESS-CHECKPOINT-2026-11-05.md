@@ -2,7 +2,7 @@
 
 ## Executive status
 
-DGM-MAT is **not yet ready for unattended autonomous development**. The current main branch has a validated improvement to browser conversation recovery, but mission execution still lacks a connected, race-resistant patch path. The runtime must remain SAFE until that gap is closed.
+DGM-MAT is **not yet ready for unattended autonomous development**. Browser conversation recovery has a merged evidence-based improvement. A native Windows backup-first executor now exists in draft PR #220 and passes hosted Windows and focused CI, but it is not merged, not locally accepted on the operator's Windows 10 PC, and not integrated into MissionEngine. Runtime must remain SAFE.
 
 ## Verified GitHub changes
 
@@ -20,34 +20,32 @@ DGM-MAT is **not yet ready for unattended autonomous development**. The current 
 - Artifact expiry: 2026-11-19.
 - Live acceptance against authenticated ChatGPT, Gemini and Grok sessions remains outstanding (#208); provider-confirmed oldest-history and deterministic multi-window fixtures remain outstanding (#215).
 
-### PR #214 / PR #217 — executor security gate remains open
+### Backup-first executor — draft PR #220
 
-- PR #214 was closed without merge; its branch was retained for audit.
-- Clean-base replacement: draft PR #217, branch `fix/backup-first-executor-dirfd-2026-11-05`, based directly on current main.
-- Latest code head: `b3fb34777b6f3b7e88d49f0a8792e2d7e786b31c`.
-- Implementation uses POSIX `O_DIRECTORY | O_NOFOLLOW` directory-handle traversal, verifies the opened repository-root identity, and uses basename-relative atomic rename. Original bytes are read from the pinned directory handle; the external backup is verified from those bytes; rollback uses the same guarded path.
-- Regressions cover parent-path symlink replacement after opening the directory handle and repository-root path replacement after executor initialization.
-- Windows mutation fails closed before creating a backup or writing. Windows Guard run #2 passed on the previous head (Windows Python 3.12); the Windows-specific fail-closed assertion passed while POSIX mutation tests were skipped by design.
-- Focused PR Validation #256 passed on the current head: 15 passed, 1 skipped (the Windows-only fail-closed assertion is skipped on Linux). Compilation, test selection, dependency installation and the affected regression suite all completed successfully.
-- Windows Guard run #2 passed on the previous head; run #4 is in progress for the current head. No current-head Windows pass is claimed until #4 completes.
-- **Residual threat-model limit:** POSIX handle anchoring addresses parent-path symlink substitution and root-path replacement, but does not claim containment if a hostile same-user process physically relocates an already-open directory outside the worktree. This needs independent review or a stricter operational boundary.
-- Snyk continues to report an external integration error, not a vulnerability finding; no clean Snyk result is claimed.
-- Native Windows handle backend is tracked in issue [#218](https://github.com/AndreVazao/DGM-MAT/issues/218); Windows currently fails closed by design.
-- Keep PR #217 in draft until current-head Linux and Windows validations pass, the residual filesystem threat model is accepted or further hardened, and issue #218 provides a reviewed native Windows backend (or the Windows limitation is explicitly accepted for a non-Windows-only deployment).
-### PR #207 — closed as superseded
-
-- Closed without merge; its branch was not deleted.
-- PR #217 is the clean-base replacement and remains in draft behind the security gate above.
+- PR #214 was closed without merge; its original path-based executor remains retained for audit.
+- PR #217 remains a separate draft containing the POSIX dirfd prototype; Windows mutation in that branch fails closed.
+- PR #219 was closed without merge because its 78-commit history was unnecessarily large. Its source branch remains retained for audit.
+- Clean replacement: [PR #220](https://github.com/AndreVazao/DGM-MAT/pull/220), branch `fix/backup-first-executor-win32-clean-2026-11-05`. The PR contains six files and two commits (one implementation commit plus one merge-base synchronization commit).
+- Implementation commit: `aa51f100c5145f83e7ea651076c44abeac068a7f`; synchronization commit: `6bd69227baafacaa37255c0654c0cd9a91e9ca41`.
+- Fresh CI on the implementation commit: Windows Guard #71 passed (38 passed, 8 POSIX-only tests skipped by policy); Focused PR Validation #328 passed.
+- After synchronization with current main, fresh Windows Guard #72 and Focused PR Validation #329 are running; do not claim those results until completed.
+- Windows is the only active mutation backend. Existing targets are opened with exclusive share semantics and write-through; new targets use atomic `FILE_CREATE`. Handles remain pinned during backup, write and verification. Hard-linked targets, reparse points and 8.3 aliases are rejected.
+- Backup-root directories are created relative to pinned no-follow handles. Backup and manifest files use exclusive handles. The manifest records `prepared` before mutation and `applied` after byte verification. Rollback checks repository identity, target identity, hard-link count, operation/backup consistency, current hash and rollback availability.
+- POSIX apply and rollback explicitly fail closed. The unsafe POSIX mutation implementation has been removed because portable POSIX replace/delete cannot exclude uncoordinated writers.
+- Snyk reports exactly `You have used your limit of private tests`. The scan did not run; this is neither a vulnerability report nor a clean scan. No paid quota was purchased and the scanner was not disabled.
+- CodeRabbit's free OSS review limit has been reached. No fresh independent review of #220 has completed.
+- Remaining executor gates: fresh CI on #220's synchronized head; independent review when available; review inherited backup-root ACL and Windows namespace durability limits; local Windows 10 acceptance. Keep #220 draft and do not merge yet.
 
 ## Verified remaining implementation gaps
 
 ### Mission execution (#212)
 
-- `core/development/implementation_engine.py` is still a placeholder: it backs up `.env` and returns `IN_PROGRESS`.
+- `core/development/implementation_engine.py` remains a placeholder: it backs up `.env` and returns `IN_PROGRESS`.
 - `DevelopmentEngine.process_request` dispatches an implementation event but does not apply a patch or validate the result.
 - The backup-first executor is not integrated into mission execution.
 - No end-to-end temporary Git repository test yet proves patch, registered tests, checkpoint/resume, rollback and PR-ready output.
 - No arbitrary shell, OS elevation, writes outside a validated worktree or automatic merge may be introduced.
+- Integration remains blocked until PR #220 is reviewed, merged after all gates, and accepted on the local Windows 10 PC.
 
 ### Free-tier AI consultation (#211)
 
@@ -74,14 +72,16 @@ Do not promote the runtime mode merely by changing configuration. Real write cap
 
 ## Next gates, in order
 
-1. Resolve the Windows TOCTOU defect in PR #214; prove the fix with concurrent-swap tests.
-2. Re-run focused validation and independent security checks; do not suppress or misreport the Snyk integration error.
-3. Integrate the verified executor into the mission engine under issue #212: structured plans, allowlisted paths, isolated worktrees, fixed validator registry, checkpoints, guarded rollback and reviewable PR output.
-4. Add a temporary-Git-repository E2E test, including negative tests for traversal, symlinks, secrets, arbitrary shell and rollback conflicts.
-5. Finish provider-specific virtualized-history fixtures and live local acceptance for ChatGPT, Gemini and Grok.
-6. Implement separate free-tier AI consultation (#211), with explicit opt-in and no paid API use.
-7. Build the Windows executable from validated main, preserve the local dirty checkout, then perform one controlled installation/health/worker/persistence smoke test.
-8. Only after the local runtime passes, enable bounded autonomous work in isolated worktrees. Keep approval for irreversible or high-impact actions and keep auto-merge disabled.
+1. Complete Windows Guard #72 and Focused PR Validation #329 on the synchronized PR #220 head.
+2. Obtain an independent security review when CodeRabbit's review quota resets; separately resolve the Snyk private-test quota or obtain equivalent coverage without hiding the check.
+3. Review backup-root ACL inheritance and document the limits of write-through/file flushes for sudden power loss; do not claim unverified namespace durability.
+4. Perform local Windows 10 acceptance: create/replace, backup, rollback, prepared-state recovery and concurrent-writer rejection.
+5. Only after those gates, integrate the executor into MissionEngine under issue #212: structured plans, allowlisted paths, isolated worktrees, fixed validator registry, checkpoints, guarded rollback and reviewable PR output.
+6. Add a temporary-Git-repository E2E test, including negative tests for traversal, symlinks, secrets, arbitrary shell and rollback conflicts.
+7. Finish provider-specific virtualized-history fixtures and live local acceptance for ChatGPT, Gemini and Grok.
+8. Implement separate free-tier AI consultation (#211), with explicit opt-in and no paid API use.
+9. Build the Windows executable from validated main, preserve the local dirty checkout, then perform one controlled installation/health/worker/persistence smoke test.
+10. Only after the local runtime passes, enable bounded autonomous work in isolated worktrees. Keep approval for irreversible or high-impact actions and keep auto-merge disabled.
 
 ## Local-PC and quota boundary
 
