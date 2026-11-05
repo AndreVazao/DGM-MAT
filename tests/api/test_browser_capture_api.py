@@ -101,7 +101,7 @@ def test_discover_claim_archive_and_verify_local_capture(monkeypatch, tmp_path):
     assert discovered.json()["registered"] == 1
     assert discovered.json()["pending"] == 1
 
-    claimed = client.post("/recovery/browser-capture/next", json={})
+    claimed = client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
     assert claimed.status_code == 200
     assert claimed.json()["next"]["source_id"] == "conversation-1"
 
@@ -128,7 +128,7 @@ def test_discover_claim_archive_and_verify_local_capture(monkeypatch, tmp_path):
 def test_capture_is_idempotent_and_preserves_immutable_versions(monkeypatch, tmp_path):
     client, ledger = _client(monkeypatch, tmp_path)
     client.post("/recovery/browser-capture/discover", json=_discovery())
-    client.post("/recovery/browser-capture/next", json={})
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
 
     first = client.post("/recovery/browser-capture/capture", json=_capture())
     second = client.post("/recovery/browser-capture/capture", json=_capture())
@@ -152,7 +152,7 @@ def test_rejects_unknown_provider_hosts_and_duplicate_message_sequences(monkeypa
     assert client.post("/recovery/browser-capture/discover", json=bad).json()["registered"] == 0
 
     client.post("/recovery/browser-capture/discover", json=_discovery())
-    client.post("/recovery/browser-capture/next", json={})
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
     payload = _capture()
     payload["messages"][1]["sequence"] = 0
     response = client.post("/recovery/browser-capture/capture", json=payload)
@@ -176,7 +176,7 @@ def test_capture_requires_discovery_and_does_not_claim_full_history(monkeypatch,
 def test_provider_block_is_checkpointed_without_retry_or_bypass(monkeypatch, tmp_path):
     client, ledger = _client(monkeypatch, tmp_path)
     client.post("/recovery/browser-capture/discover", json=_discovery())
-    client.post("/recovery/browser-capture/next", json={})
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
     response = client.post("/recovery/browser-capture/block", json={
         "provider": "chatgpt",
         "source_id": "conversation-1",
@@ -185,13 +185,13 @@ def test_provider_block_is_checkpointed_without_retry_or_bypass(monkeypatch, tmp
     })
     assert response.status_code == 200
     assert ledger.get("chatgpt", "conversation-1").capture_status == "blocked"
-    assert client.post("/recovery/browser-capture/next", json={}).json()["status"] == "queue_empty"
+    assert client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"}).json()["status"] == "queue_empty"
 
 
 def test_raw_capture_is_preserved_and_redacted_copy_is_indexed(monkeypatch, tmp_path):
     client, _ = _client(monkeypatch, tmp_path)
     client.post("/recovery/browser-capture/discover", json=_discovery())
-    client.post("/recovery/browser-capture/next", json={})
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
     payload = _capture(content="Example configuration: api_key=sk-abcdefghijklmnopqrstuvwxyz123456")
     response = client.post("/recovery/browser-capture/capture", json=payload)
     assert response.status_code == 200
@@ -215,7 +215,7 @@ def test_raw_capture_is_preserved_and_redacted_copy_is_indexed(monkeypatch, tmp_
 def test_ai_proposals_are_candidates_and_operator_confirmation_is_not_auto_decision(monkeypatch, tmp_path):
     client, _ = _client(monkeypatch, tmp_path)
     client.post("/recovery/browser-capture/discover", json=_discovery())
-    client.post("/recovery/browser-capture/next", json={})
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
     payload = _capture()
     payload["messages"] = [
         {"message_id": "u1", "role": "user", "content": "Aprovo esta proposta, mas confirma primeiro o projeto.", "sequence": 0},
@@ -244,7 +244,7 @@ def test_discovery_rejects_source_id_that_does_not_match_conversation_url(monkey
 def test_rediscovery_does_not_requeue_already_verified_conversation(monkeypatch, tmp_path):
     client, _ = _client(monkeypatch, tmp_path)
     client.post("/recovery/browser-capture/discover", json=_discovery())
-    client.post("/recovery/browser-capture/next", json={})
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
     client.post("/recovery/browser-capture/capture", json=_capture())
     response = client.post("/recovery/browser-capture/discover", json=_discovery())
     assert response.status_code == 200
