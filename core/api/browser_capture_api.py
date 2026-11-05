@@ -9,7 +9,6 @@ import hashlib
 import json
 import os
 import re
-import time
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -350,18 +349,24 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
             for message in record["messages"]
         ]
         normalized_bytes = (
-            json.dumps(normalized_record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\\n"
+            json.dumps(normalized_record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
         ).encode("utf-8")
         if normalized_destination.is_symlink():
             raise OSError("normalized archive symlink is denied")
         if not normalized_destination.exists():
-            descriptor = os.open(
-                normalized_destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
-            )
-            with os.fdopen(descriptor, "wb") as stream:
-                stream.write(normalized_bytes)
-                stream.flush()
-                os.fsync(stream.fileno())
+            try:
+                descriptor = os.open(
+                    normalized_destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+                )
+                with os.fdopen(descriptor, "wb") as stream:
+                    stream.write(normalized_bytes)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+            except FileExistsError:
+                pass
+        normalized_digest = hashlib.sha256(normalized_bytes).hexdigest()
+        if RecoveryLedger.sha256_file(normalized_destination) != normalized_digest:
+            raise OSError("normalized archive integrity verification failed")
         cognition = storage_manager.get_path("cognition") / "conversation_intelligence"
         pipeline = ConversationIntelligencePipeline(
             progress_store_path=cognition / "progress.sqlite3",
