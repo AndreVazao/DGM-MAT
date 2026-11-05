@@ -141,9 +141,9 @@ def test_parent_directory_symlink_swap_after_open_cannot_redirect_patch(tmp_path
     source_dir = root / "src"
     outside = tmp_path / "outside"
     outside.mkdir()
-    (source_dir / "module.py").write_text("inside-old\\n", encoding="utf-8")
+    (source_dir / "module.py").write_text("inside-old\n", encoding="utf-8")
     outside_target = outside / "module.py"
-    outside_target.write_text("outside-original\\n", encoding="utf-8")
+    outside_target.write_text("outside-original\n", encoding="utf-8")
     executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
     original_open_parent = executor._open_parent_fd
     swapped = False
@@ -158,16 +158,16 @@ def test_parent_directory_symlink_swap_after_open_cannot_redirect_patch(tmp_path
         return parent_fd, name
 
     monkeypatch.setattr(executor, "_open_parent_fd", open_then_swap)
-    old = b"inside-old\\n"
+    old = b"inside-old\n"
     result = executor.apply_text(
         "src/module.py",
-        "inside-new\\n",
+        "inside-new\n",
         expected_sha256=digest(old),
     )
 
     assert swapped is True
-    assert outside_target.read_text(encoding="utf-8") == "outside-original\\n"
-    assert (root / "src-pinned" / "module.py").read_text(encoding="utf-8") == "inside-new\\n"
+    assert outside_target.read_text(encoding="utf-8") == "outside-original\n"
+    assert (root / "src-pinned" / "module.py").read_text(encoding="utf-8") == "inside-new\n"
     assert result["relative_path"] == "src/module.py"
 
 
@@ -176,15 +176,15 @@ def test_windows_filesystem_mutations_fail_closed(tmp_path):
         pytest.skip("Windows-specific fail-closed assertion.")
     root = repository(tmp_path)
     target = root / "src" / "module.py"
-    target.write_text("unchanged\\n", encoding="utf-8")
+    target.write_text("unchanged\n", encoding="utf-8")
     executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
 
     with pytest.raises(PatchRejected, match="Secure directory-handle writes are unavailable"):
         executor.apply_text(
             "src/module.py",
-            "must-not-write\\n",
+            "must-not-write\n",
             expected_sha256=digest(target.read_bytes()),
         )
 
-    assert target.read_text(encoding="utf-8") == "unchanged\\n"
+    assert target.read_text(encoding="utf-8") == "unchanged\n"
     assert not (tmp_path / "backups").exists()
