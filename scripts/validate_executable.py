@@ -1,79 +1,176 @@
-import subprocess
-import time
-import sys
+"""Deep startup validation for the frozen Windows executable.
+
+The child process output is captured to a temporary file to avoid pipe-buffer
+deadlocks. On failure, only a short redacted tail is emitted to CI logs.
+"""
+from __future__ import annotations
+
 import os
+import re
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
 import requests
+
 from core.observability.logger import dgm_logger
 
-def validate_executable(exe_path):
-    dgm_logger.info(f"Validating executable at {exe_path}...")
 
-    if not os.path.exists(exe_path):
-        dgm_logger.error(f"Executable not found at {exe_path}")
-        return False
+_SECRET_PATTERNS = (
+    re.compile(r"(?i)(authorization\s*[:=]\s*bearer\s+)\S+"),
+    re.compile(r"(?i)((?:token|secret|password|api[_-]?key)\s*[:=]\s*)\S+"),
+)
 
-    # Start the executable in headless mode
-    # Use DEVNULL to prevent pipe buffer blocking, especially on Windows
+
+def _redacted_tail(path: Path, *, max_lines: int = 80) -> str:
     try:
-        process = subprocess.Popen(
-            [exe_path, "--headless"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            text=True
-        )
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-max_lines:]
+    except OSError as exc:
+        return f"<unable to read child output: {type(exc).__name__}>"
+    redacted = []
+    for line in lines:
+        for pattern in _SECRET_PATTERNS:
+            line = pattern.sub(r"\1[REDACTED]", line)
+        redacted.append(line[:2000])
+    return "\n".join(redacted)
 
-        # Give it some time to boot with retries
-        max_retries = 30 # Increased retries for slow CI
-        retry_interval = 5
-        dgm_logger.info(f"Waiting for executable to initialize (max {max_retries * retry_interval}s)...")
 
-        for i in range(max_retries):
-            time.sleep(retry_interval)
+def _api_start_failure_detected(path: Path) -> bool:
+    """Detect a fatal API import/startup error without waiting for all health retries."""
+    try:
+        tail = path.read_text(encoding="utf-8", errors="replace")[-50_000:]
+    except OSError:
+        return False
+    return "Runtime: Failed to start API Server:" in tail
 
-            # Check if process is still running
-            if process.poll() is not None:
-                dgm_logger.error(f"Executable exited prematurely with code {process.poll()}")
-                return False
 
-            # Try to hit the health endpoint
-            try:
-                # Increased timeout for slow response
-                response = requests.get("http://127.0.0.1:8181/health", timeout=15)
-                if response.status_code == 200:
+def _stop_process(process: subprocess.Popen) -> None:
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=5)
+
+
+def validate_executable(exe_path: str | os.PathLike[str]) -> bool:
+    executable = Path(exe_path).expanduser().resolve()
+    dgm_logger.info(f"Validating executable at {executable}...")
+
+    if not executable.is_file():
+        dgm_logger.error(f"Executable not found at {executable}")
+        return False
+
+    log_path = Path(tempfile.gettempdir()) / f"dgm-mat-exe-validation-{os.getpid()}.log"
+    process = None
+    succeeded = False
+
+    try:
+        with log_path.open("w", encoding="utf-8", errors="replace") as child_output:
+            child_env = os.environ.copy()
+            child_env["DGM_HEADLESS"] = "1"
+            child_env["DGM_REPOSITORY_ROOT"] = str(Path.cwd().resolve())
+            child_env["DGM_PYTHON_EXECUTABLE"] = sys.executable
+            process = subprocess.Popen(
+                [str(executable), "--headless"],
+                cwd=str(Path.cwd()),
+                env=child_env,
+                stdout=child_output,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+
+            max_retries = 30
+            retry_interval = 5
+            health_url = os.getenv(
+                "DGM_VALIDATION_HEALTH_URL",
+                "http://127.0.0.1:8181/health",
+            )
+            dgm_logger.info(
+                f"Waiting for executable to initialize (max {max_retries * retry_interval}s)..."
+            )
+
+            for attempt in range(1, max_retries + 1):
+                time.sleep(retry_interval)
+                child_output.flush()
+
+                if _api_start_failure_detected(log_path):
+                    dgm_logger.error(
+                        "Executable API startup failed. Redacted child output follows:\\n"
+                        f"{_redacted_tail(log_path)}"
+                    )
+                    return False
+
+                return_code = process.poll()
+                if return_code is not None:
+                    dgm_logger.error(
+                        f"Executable exited prematurely with code {return_code}. "
+                        f"Redacted child output follows:\n{_redacted_tail(log_path)}"
+                    )
+                    return False
+
+                try:
+                    response = requests.get(health_url, timeout=15)
+                    if response.status_code != 200:
+                        dgm_logger.warning(
+                            f"Attempt {attempt}: Health check returned {response.status_code}"
+                        )
+                        continue
+
                     health_data = response.json()
-                    if health_data.get("status") == "healthy":
-                        dgm_logger.info(f"Executable health check PASSED on attempt {i+1}")
+                    if health_data.get("status") != "healthy":
+                        dgm_logger.warning(
+                            f"Attempt {attempt}: Health status: {health_data.get('status')!r}"
+                        )
+                        continue
 
-                        # Verify runtime directories were created
-                        if os.path.exists(".runtime") or os.path.exists("storage/runtime"):
-                            dgm_logger.info("Runtime directory initialization verified.")
-                        else:
-                            dgm_logger.warning("Could not verify .runtime directory, but health is OK.")
-
-                        dgm_logger.info("Executable validation successful. Terminating...")
-                        process.terminate()
-                        return True
+                    dgm_logger.info(
+                        f"Executable health check PASSED on attempt {attempt}"
+                    )
+                    runtime_dir = Path.cwd() / ".runtime"
+                    storage_dir = Path.cwd() / "storage" / "runtime"
+                    if runtime_dir.exists() or storage_dir.exists():
+                        dgm_logger.info("Runtime directory initialization verified.")
                     else:
-                        dgm_logger.warning(f"Attempt {i+1}: Health status: {health_data.get('status')}")
-                else:
-                    dgm_logger.warning(f"Attempt {i+1}: Health check returned {response.status_code}")
-            except requests.exceptions.RequestException as e:
-                dgm_logger.warning(f"Attempt {i+1}: Failed to connect to executable API: {e}")
+                        dgm_logger.warning(
+                            "Could not verify runtime directory, but health is OK."
+                        )
+                    succeeded = True
+                    return True
+                except (requests.RequestException, ValueError) as exc:
+                    dgm_logger.warning(
+                        f"Attempt {attempt}: Executable health probe failed: "
+                        f"{type(exc).__name__}: {exc}"
+                    )
 
-        dgm_logger.error("Max retries reached. Executable failed to become healthy.")
-        process.terminate()
+            dgm_logger.error(
+                "Max retries reached. Executable failed to become healthy. "
+                f"Redacted child output follows:\n{_redacted_tail(log_path)}"
+            )
+            return False
+    except Exception as exc:
+        dgm_logger.error(
+            f"Executable validation failed: {type(exc).__name__}: {exc}. "
+            f"Redacted child output follows:\n{_redacted_tail(log_path)}"
+        )
         return False
+    finally:
+        if process is not None:
+            _stop_process(process)
+        if succeeded:
+            try:
+                log_path.unlink(missing_ok=True)
+            except OSError:
+                pass
 
-    except Exception as e:
-        dgm_logger.error(f"Validation failed with error: {e}")
-        if 'process' in locals() and process.poll() is None:
-            process.terminate()
-        return False
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python scripts/validate_executable.py <path_to_executable>")
-        sys.exit(1)
+        raise SystemExit(1)
 
-    success = validate_executable(sys.argv[1])
-    sys.exit(0 if success else 1)
+    raise SystemExit(0 if validate_executable(sys.argv[1]) else 1)

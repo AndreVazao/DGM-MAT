@@ -1,9 +1,11 @@
 import os
 import shutil
 import tempfile
+import sys
 from pathlib import Path
 from typing import Optional
 from core.observability.logger import dgm_logger
+from core.runtime.repository_root import resolve_repository_root
 
 class RuntimeStorageManager:
     def __init__(self, base_path: Optional[str] = None):
@@ -22,11 +24,8 @@ class RuntimeStorageManager:
                     # Fix for CI expectations in test_storage_architecture.py
                     base_path = str(Path(dgm_base) / "data")
                 else:
-                    # 3. Default to a persistent local runtime directory
-                    # Never hardcode a machine-specific Windows path.
-                    # The repository-local default is deterministic and can be overridden
-                    # by DGM_STORAGE_PATH or DGM_BASE_PATH when an installation needs it.
-                    project_root = Path(__file__).parent.parent.parent
+                    # 3. Resolve the real checkout, never PyInstaller's temporary _MEIPASS.
+                    project_root = resolve_repository_root(__file__)
                     base_path = str(project_root / "storage" / "runtime")
 
         self.base_path = Path(base_path).resolve()

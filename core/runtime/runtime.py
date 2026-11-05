@@ -216,6 +216,7 @@ class Runtime:
             thread.start()
             dgm_logger.info("Runtime: API Server thread started.")
         except Exception as exc:
+            self.is_degraded = True
             dgm_logger.error(f"Runtime: Failed to start API Server: {exc}")
 
     def bootstrap(self):

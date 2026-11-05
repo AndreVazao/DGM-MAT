@@ -13,6 +13,7 @@ from core.runtime.safe_action_queue import SafeActionQueue
 from core.provider_sync.provider_registry import provider_registry
 from core.runtime.runtime_profile import detect_runtime_profile, RuntimeProfile
 from core.runtime.runtime_path_validator import RuntimePathValidator
+from core.runtime.repository_root import resolve_repository_root
 
 class RealitySnapshotService:
     def __init__(self, workspace_root: str = "C:/ProgramasGodMode", profile: Optional[RuntimeProfile] = None):
@@ -20,7 +21,7 @@ class RealitySnapshotService:
         self.registry = EcosystemRegistry()
         self.runtime_root = Path("C:/DevopGodMode")
         # Base dir for provider discovery
-        self.base_dir = Path(__file__).parent.parent.parent
+        self.base_dir = resolve_repository_root(__file__)
         self.profile = profile or detect_runtime_profile()
         self.path_validator = RuntimePathValidator()
         self._last_snapshot_at = 0.0

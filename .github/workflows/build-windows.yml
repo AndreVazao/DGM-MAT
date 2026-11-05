@@ -25,9 +25,36 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
 
+      - name: Checkout DGM-Contracts
+        uses: actions/checkout@v6
+        with:
+          repository: AndreVazao/DGM-Contracts
+          ref: 4d65419e17195d046607cbf68539e7cd556e1da2
+          path: DGM-Contracts
+          persist-credentials: false
+
+      - name: Checkout DGM-MAT-Agents
+        uses: actions/checkout@v6
+        with:
+          repository: AndreVazao/DGM-MAT-Agents
+          ref: 50f98db5cf845b03280df7d978ae1129abe14419
+          path: DGM-MAT-Agents
+          persist-credentials: false
+
+      - name: Checkout DGM-MAT-Connectors
+        uses: actions/checkout@v6
+        with:
+          repository: AndreVazao/DGM-MAT-Connectors
+          ref: d339de22258e16d808b97360b47339c9b208f457
+          path: DGM-MAT-Connectors
+          persist-credentials: false
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          python -m pip install -e DGM-Contracts
+          python -m pip install -e DGM-MAT-Agents
+          python -m pip install -e DGM-MAT-Connectors
           pip install -r requirements.txt
           pip install pyinstaller
 
@@ -81,6 +108,8 @@ jobs:
           copy config\*.json publish\config\
           copy scripts\autostart\*.py publish\scripts\autostart\
           copy scripts\runtime_smoke_test.py publish\scripts\
+          copy scripts\install_windows_update.ps1 publish\scripts\
+          copy scripts\rollback_windows_update.ps1 publish\scripts\
           $zip = "DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION.zip"
           Compress-Archive -Path publish\* -DestinationPath $zip
           certutil -hashfile $zip SHA256 | Select-Object -Skip 1 | ForEach-Object { $_.Trim() } | Out-File "$zip.sha256" -Encoding utf8
@@ -88,17 +117,31 @@ jobs:
       - name: Final Build Assertions
         shell: pwsh
         run: |
-          if (Test-Path "dist\DGM-MAT.exe") {
-            Write-Host "Executable verified."
-          } else {
-            Write-Error "Executable missing"
+          if (-not (Test-Path "dist\DGM-MAT.exe")) {
             throw "Executable missing"
           }
+
+          $zip = "DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION.zip"
+          $checksum = "$zip.sha256"
+          if (-not (Test-Path $zip)) {
+            throw "Distribution ZIP missing: $zip"
+          }
+          if (-not (Test-Path $checksum)) {
+            throw "SHA-256 file missing: $checksum"
+          }
+          if ((Get-Item $zip).Length -le 0) {
+            throw "Distribution ZIP is empty"
+          }
+          if (-not (Select-String -Path $checksum -Pattern '^[0-9A-Fa-f]{64}$' -Quiet)) {
+            throw "SHA-256 file does not contain a valid digest"
+          }
+          Write-Host "Executable, ZIP and SHA-256 verified."
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: "DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION"
+          name: "DGM-MAT-Windows-${{ matrix.python-version }}-${{ env.VERSION }}"
           path: |
-            DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION.zip
-            DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION.zip.sha256
+            DGM-MAT-Windows-${{ matrix.python-version }}-${{ env.VERSION }}.zip
+            DGM-MAT-Windows-${{ matrix.python-version }}-${{ env.VERSION }}.zip.sha256
+          if-no-files-found: error

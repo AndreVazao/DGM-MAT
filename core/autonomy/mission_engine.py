@@ -30,6 +30,7 @@ from core.organization.validated_learning import ValidatedLessonStore
 from core.providers.browser.governed_browser_session import GovernedBrowserSession
 from core.learning.learning_engine import LearningEngine
 from core.operations.command_executor import CommandExecutor
+from core.runtime.repository_root import resolve_repository_root
 
 class MissionEngine:
     REPO_SCAN_ROOTS = [
@@ -82,7 +83,7 @@ class MissionEngine:
         self.command_executor = CommandExecutor()
         self.qa_review_coordinator = QAReviewCoordinator(
             self.qa_review_queue, self.collaboration_store, self.validated_lesson_store,
-            Path(__file__).resolve().parents[2],
+            resolve_repository_root(__file__),
         )
         # Browser sessions are ephemeral, in-memory only, and never exported to disk.
         self.browser_sessions: Dict[str, GovernedBrowserSession] = {}
@@ -1058,7 +1059,7 @@ class MissionEngine:
         from core.autonomy.mission_capabilities import build_architecture_summary
 
         started = time.monotonic()
-        repo_root = Path(__file__).resolve().parents[2]
+        repo_root = resolve_repository_root(__file__)
         result = build_architecture_summary(repo_root)
         result.update({
             "mission_id": mission.mission_id,
@@ -1185,7 +1186,7 @@ class MissionEngine:
     def _execute_github_sync_worktree_mission(self, mission: Mission) -> Dict[str, Any]:
         """Fetch fixed origin/main into a dedicated worktree after operator approval."""
         started = time.monotonic()
-        repo_root = Path(__file__).resolve().parents[2]
+        repo_root = resolve_repository_root(__file__)
         result = GitHubWorktreeSync(repo_root).sync()
         if result.get("worktree_advanced"):
             summary = "Advanced the dedicated DGM-MAT worktree to the latest GitHub main."
@@ -1226,7 +1227,7 @@ class MissionEngine:
     def _execute_repository_status_mission(self, mission: Mission) -> Dict[str, Any]:
         """Run one fixed read-only Git status command against the DGM-MAT root."""
         started = time.monotonic()
-        repo_root = Path(__file__).resolve().parents[2]
+        repo_root = resolve_repository_root(__file__)
         completed = subprocess.run(
             ["git", "-C", str(repo_root), "status", "--short", "--branch"],
             capture_output=True,

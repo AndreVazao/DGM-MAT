@@ -47,6 +47,13 @@ jobs:
           ref: main
           path: DGM-Contracts
           persist-credentials: false
+      - name: Checkout DGM-MAT Agents
+        uses: actions/checkout@v6
+        with:
+          repository: AndreVazao/DGM-MAT-Agents
+          ref: 50f98db5cf845b03280df7d978ae1129abe14419
+          path: DGM-MAT-Agents
+          persist-credentials: false
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -108,12 +115,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e DGM-Contracts
+          python -m pip install -e DGM-MAT-Agents
           python -m pip install -r requirements.txt pytest
       - name: Run selected regressions only
         if: steps.select.outputs.has_tests == 'true'
         env:
           PYTHONPATH: .
           DGM_CONNECTORS_PATH: ${{ github.workspace }}/DGM-MAT-Connectors/src
+          DGM_AGENTS_PATH: ${{ github.workspace }}/DGM-MAT-Agents/src
           DGM_COMMAND_AUDIT_PATH: ${{ runner.temp }}/dgm-command-audit.jsonl
         run: |
           python - <<'PY'
