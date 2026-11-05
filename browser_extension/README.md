@@ -17,7 +17,7 @@ The manifest requests only:
 
 It does not request `cookies`, `history`, `webRequest`, `debugger`, `downloads`, `scripting`, or broad all-sites access. The extension does not read `document.cookie`, localStorage, sessionStorage, IndexedDB or browser profile files.
 
-The bearer token stored by the extension is a short-lived DGM-MAT local operator session, not a provider login token. It is obtained by exchanging a one-time pairing code that expires after five minutes. The local session expires after 30 minutes.
+The bearer token stored by the extension is a dedicated DGM-MAT `browser-capture` session, not a provider login token and not a general operator token. It can call only the browser-capture API routes. It is obtained by exchanging a one-time pairing code that expires after five minutes. The extension session expires after eight hours; ordinary mobile/local sessions retain their existing 30-minute lifetime.
 
 ## One-time installation and pairing
 
@@ -27,7 +27,7 @@ The bearer token stored by the extension is a short-lived DGM-MAT local operator
 4. Configure the Windows environment variable `DGM_CHROME_EXTENSION_ID` to that exact ID for the DGM-MAT API process. Do not use a wildcard. Restart the DGM-MAT API after changing it.
 5. On the same PC, open `http://127.0.0.1:8181/auth/pairing-code`. The page issues a one-use code with a five-minute expiry.
 6. Open the DGM-MAT extension popup, enter that code and choose **Pair with DGM-MAT**. The code is consumed once; it is not saved.
-7. Open the ChatGPT, Gemini or Grok conversation list while signed in normally. Open the extension popup and choose **Scan and recover this provider**.
+7. Open the ChatGPT, Gemini or Grok conversation list while signed in normally. Open the extension popup and choose **Scan and recover this provider**. To let DGM-MAT continue unattended across already-open provider tabs, enable **Enable unattended recovery across open provider tabs** once. The extension remembers the provider tabs as their pages load and rotates through them sequentially; no per-conversation approval is required. The setting is off by default and can be disabled at any time.
 
 Pairing must happen from the local PC. The API accepts only the exact configured extension origin and loopback network requests. Never expose port 8181 or the Chrome debugging port to the LAN or internet.
 
@@ -38,7 +38,7 @@ Pairing must happen from the local PC. The API accepts only the exact configured
 - The API claims one pending conversation. The extension navigates the same tab to that conversation.
 - After the provider page renders, the extension reads provider-specific visible message containers. It scrolls the conversation container in bounded steps to collect content exposed by the rendered UI.
 - The local API writes an immutable raw JSON capture, computes SHA-256 and verifies the archive, then creates a second redacted normalized copy and feeds that copy to the existing ConversationIntelligencePipeline.
-- The extension requests the next source and repeats until the queue is empty.
+- The extension requests the next source and repeats until the queue is empty. When unattended mode is enabled, it then continues to another already-open provider tab; blocked conversations remain queued for deliberate retry.
 - Login, challenge, rate-limit, selector failure, unexpected navigation or archive failure stops the run and checkpoints the blocker. The operator can explicitly retry the blocked conversation from the popup after resolving the cause.
 
 ## Archive and truth labels
@@ -58,7 +58,8 @@ Provider UIs change. Unknown layouts are reported as failures rather than silent
 ## Local acceptance checklist
 
 - [ ] Install unpacked extension and configure its exact ID in the DGM-MAT API environment.
-- [ ] Pair with a one-time code and confirm the local session expires.
+- [ ] Pair with a one-time code and confirm the extension receives only the browser-capture scope and expires after eight hours.
+- [ ] Enable unattended recovery and verify the extension rotates across already-open provider tabs without per-conversation prompts.
 - [ ] Capture one conversation from ChatGPT, Gemini and Grok where accessible.
 - [ ] Compare visible UI message order/count against the raw local archive.
 - [ ] Verify SHA-256 and that the normalized archive redacts test secrets.
