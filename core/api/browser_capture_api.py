@@ -168,6 +168,7 @@ class BrowserCaptureRequest(BaseModel):
     scroll_steps: int = Field(default=0, ge=0, le=1000)
     top_load_steps: int = Field(default=0, ge=0, le=20)
     top_load_limit_reached: bool = False
+    sequence_order_conflict: bool = False
     adapter_version: str = Field(default="0.1.0", max_length=40)
     captured_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -338,12 +339,14 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "scroll_steps": payload.scroll_steps,
         "top_load_steps": payload.top_load_steps,
         "top_load_limit_reached": payload.top_load_limit_reached,
+        "sequence_order_conflict": payload.sequence_order_conflict,
         "history_completeness": (
             "oldest_boundary_confirmed"
             if payload.oldest_boundary == "confirmed"
             and payload.history_start_reached
             and not payload.truncated
             and payload.unknown_role_count == 0
+            and not payload.sequence_order_conflict
             else "partial_or_unknown"
         ),
         # Hash integrity is distinct from proof that every historical message was rendered.
@@ -549,6 +552,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "scroll_steps": payload.scroll_steps,
         "top_load_steps": payload.top_load_steps,
         "top_load_limit_reached": payload.top_load_limit_reached,
+        "sequence_order_conflict": payload.sequence_order_conflict,
         "history_start_reached": payload.history_start_reached,
         "oldest_boundary": payload.oldest_boundary,
         "history_completeness": record["history_completeness"],
