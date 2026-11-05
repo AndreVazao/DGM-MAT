@@ -377,8 +377,10 @@ class WindowsDirectoryHandleBackend:
     ) -> None:
         target_name = self._validate_basename(target_name)
         encoded = target_name.encode("utf-16-le")
-        header_size = 20 if self.ctypes.sizeof(self.wintypes.HANDLE) == 8 else 12
-        buffer_size = header_size + len(encoded)
+        header_size = self.FILE_RENAME_INFO_EX.FileName.offset
+        # Allocate sizeof(struct) + payload as required by the native structure
+        # contract; the filename itself begins at offsetof(FileName).
+        buffer_size = self.ctypes.sizeof(self.FILE_RENAME_INFO_EX) + len(encoded)
         buffer = self.ctypes.create_string_buffer(buffer_size)
         info = self.ctypes.cast(
             buffer, self.ctypes.POINTER(self.FILE_RENAME_INFO_EX)
