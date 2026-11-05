@@ -291,7 +291,7 @@ class BackupFirstPatchExecutor:
                         "rollback_available": True,
                     }
                     (backup_dir / "manifest.json").write_text(
-                        json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n",
+                        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
                         encoding="utf-8",
                     )
                 except Exception:
@@ -366,7 +366,7 @@ class BackupFirstPatchExecutor:
         manifest["rollback_result_sha256"] = restored_sha
         manifest["rollback_available"] = False
         manifest_path.write_text(
-            json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n",
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
         return manifest
