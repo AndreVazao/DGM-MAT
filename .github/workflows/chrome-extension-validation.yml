@@ -1,0 +1,67 @@
+name: DGM-MAT Chrome Extension Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "browser_extension/**"
+      - "core/api/browser_capture_api.py"
+      - "core/api/local_auth_api.py"
+      - "core/api/auth_middleware.py"
+      - "core/api/security_policy.py"
+      - "tests/test_browser_extension_manifest.py"
+      - "tests/api/test_browser_capture_api.py"
+      - "tests/api/test_extension_pairing_origin.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chrome-extension-\${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout reviewed revision
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Validate extension JavaScript syntax
+        run: |
+          node --check browser_extension/background.js
+          node --check browser_extension/content.js
+          node --check browser_extension/popup.js
+      - name: Validate extension manifest JSON
+        run: python -m json.tool browser_extension/manifest.json > /dev/null
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install focused test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install fastapi httpx pydantic pytest
+      - name: Run browser recovery security and API regressions
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m pytest -q \
+            tests/test_browser_extension_manifest.py \
+            tests/api/test_browser_capture_api.py \
+            tests/api/test_extension_pairing_origin.py \
+            tests/test_recovery_ledger.py
+      - name: Package unpacked Chrome extension
+        run: |
+          cd browser_extension
+          zip -r ../DGM-MAT-Chrome-Conversation-Recovery.zip .
+      - name: Upload installable extension package
+        uses: actions/upload-artifact@v4
+        with:
+          name: DGM-MAT-Chrome-Conversation-Recovery
+          path: DGM-MAT-Chrome-Conversation-Recovery.zip
+          if-no-files-found: error
+          retention-days: 14
