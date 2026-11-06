@@ -300,6 +300,7 @@ def enqueue_mission_browser_task(mission_id: str, payload: MissionBrowserTaskCre
             conversation_url=payload.conversation_url,
             message=payload.message,
             approval_required=payload.approval_required,
+            created_by="mission-engine",
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
