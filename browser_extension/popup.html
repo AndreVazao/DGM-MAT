@@ -10,11 +10,11 @@
   <main>
     <header>
       <strong>DGM-MAT</strong>
-      <span>Browser session operator</span>
+      <span>Operador de sessões do navegador</span>
     </header>
     <section id="pair-section">
       <label for="pair-code">Código de ligação de utilização única</label>
-      <input id="pair-code" type="password" autocomplete="off" spellcheck="false" placeholder="Code from the local DGM-MAT PC">
+      <input id="pair-code" type="password" autocomplete="off" spellcheck="false" placeholder="Código gerado no PC DGM-MAT">
       <button id="pair-button" type="button">Ligar ao DGM-MAT</button>
     </section>
     <section>
@@ -22,10 +22,10 @@
       <small>Usa apenas separadores autenticados já abertos. As tarefas exigem aprovação no DGM-MAT e nunca são repetidas automaticamente após uma falha.</small>
     </section>
     <section id="operator-section">
-      <label for="message-input">Send a message to the active AI conversation</label>
-      <textarea id="message-input" rows="5" maxlength="30000" placeholder="Write the instruction for ChatGPT, Gemini or Grok…"></textarea>
-      <button id="send-message-button" type="button">Send to active conversation</button>
-      <small>Sending requires a confirmation. Automatic retries are disabled to prevent duplicate messages.</small>
+      <label for="message-input">Enviar uma mensagem para a conversa de IA ativa</label>
+      <textarea id="message-input" rows="5" maxlength="30000" placeholder="Escreve a instrução para ChatGPT, Grok, Gemini, DeepSeek ou Qwen…"></textarea>
+      <button id="send-message-button" type="button">Enviar para a conversa ativa</button>
+      <small>O envio exige confirmação. Não há repetição automática para evitar mensagens duplicadas.</small>
     </section>
     <section>
       <label class="toggle"><input id="auto-checkbox" type="checkbox"> Ativar recuperação automática nos separadores abertos</label>
