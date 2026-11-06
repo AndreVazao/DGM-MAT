@@ -252,6 +252,27 @@ class VaultCatalog:
             return {"project_id": None, "status": "ambiguous", "candidates": candidates}
         return {"project_id": candidates[0]["project_id"], "status": "suggested", "candidates": candidates}
 
+    def archive_raw_capture(self, *, provider: str, source_id: str, raw_bytes: bytes) -> dict[str, Any]:
+        """Keep the exact browser/API capture bytes in the portable Vault."""
+        if not isinstance(raw_bytes, bytes) or not raw_bytes:
+            raise ValueError("raw_bytes must be non-empty bytes")
+        provider_key = _segment(provider, "unknown").lower()
+        source_key = _segment(source_id, "source")
+        fingerprint = _digest(raw_bytes)
+        folder = self.root / "providers" / "browser-captures" / provider_key
+        folder.mkdir(parents=True, exist_ok=True)
+        destination = folder / f"{source_key}--{fingerprint[:16]}.json"
+        if destination.exists():
+            if _digest(destination.read_bytes()) != fingerprint:
+                raise OSError("Vault raw capture collision; refusing to overwrite")
+            return {"status": "duplicate", "sha256": fingerprint, "archive_path": str(destination)}
+        with destination.open("xb") as stream:
+            stream.write(raw_bytes)
+        if _digest(destination.read_bytes()) != fingerprint:
+            destination.unlink(missing_ok=True)
+            raise OSError("Vault raw capture verification failed")
+        return {"status": "archived", "sha256": fingerprint, "archive_path": str(destination)}
+
     def archive_conversation(
         self, *, provider: str, conversation_id: str, title: str,
         messages: list[dict[str, Any]], content: str = "", url: str | None = None,
