@@ -54,6 +54,14 @@ def test_browser_operator_routes_have_narrow_extension_scope():
         assert route.scope is expected
 
 
+def test_mission_browser_task_route_requires_operator_scope():
+    route = classify_request_path(
+        "/runtime/missions/mission_1234abcd/browser-task", "POST"
+    )
+    assert route is not None
+    assert route.scope is SecurityScope.OPERATOR
+
+
 def test_operator_approval_then_extension_claim_and_result(monkeypatch, tmp_path):
     client, queue = make_client(monkeypatch, tmp_path)
     created = client.post("/browser-operator/tasks", json=payload())
