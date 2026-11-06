@@ -32,6 +32,7 @@ from .models import (
 )
 from .recruitment import RecruitmentDecision, RecruitmentEngine
 from .repository_cartographer_worker import RepositoryCartographerWorker
+from .python_test_inventory_worker import PythonTestInventoryWorker
 from .registry import AgentRegistry
 from .skill_forge import ForgeResult, SkillForge
 from .source_discovery import LocalSourceDiscovery
@@ -48,6 +49,6 @@ __all__ = [
     "LocalSourceDiscovery", "Message", "MessagePriority",
     "OrganizationTaskManager", "OrganizationWorkspace", "OverlapCluster",
     "RecruitmentDecision", "RecruitmentEngine", "RecruitmentOrder",
-    "RecruitmentStatus", "RepositoryCartographerWorker", "SkillForge",
+    "RecruitmentStatus", "RepositoryCartographerWorker", "PythonTestInventoryWorker", "SkillForge",
     "Task", "TaskStatus",
 ]

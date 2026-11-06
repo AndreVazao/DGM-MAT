@@ -36,7 +36,7 @@ def test_registration_is_disabled_without_explicit_operator_configuration(tmp_pa
     assert runtime.handlers == {}
 
 
-def test_registers_only_two_readonly_workers_from_host_allowlist(tmp_path):
+def test_registers_three_readonly_workers_from_host_allowlist(tmp_path):
     root = tmp_path / "workspace"
     repo = root / "DGM-MAT"
     repo.mkdir(parents=True)
@@ -44,7 +44,8 @@ def test_registers_only_two_readonly_workers_from_host_allowlist(tmp_path):
     result = register_configured_readonly_workers(runtime, environ=configured(root))
     assert result["status"] == "REGISTERED"
     assert set(result["registered_agents"]) == {
-        "agent:repository-cartographer", "agent:python-source-analyst"
+        "agent:repository-cartographer", "agent:python-source-analyst",
+        "agent:python-test-inventory"
     }
     assert result["repository_count"] == 1
     assert result["code_execution_enabled"] is False
@@ -84,7 +85,7 @@ def test_registration_is_idempotent_for_existing_handlers(tmp_path):
     second = register_configured_readonly_workers(runtime, environ=configured(root))
     assert first["status"] == "REGISTERED"
     assert second["status"] == "ALREADY_REGISTERED"
-    assert len(runtime.handlers) == 2
+    assert len(runtime.handlers) == 3
 
 
 def test_invalid_repository_identifiers_fail_closed(tmp_path):

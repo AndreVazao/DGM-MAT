@@ -1,6 +1,6 @@
 # Explicit read-only worker registration v1
 
-The Repository Cartographer and Python Source Analyst can be registered by the host
+The Repository Cartographer, Python Source Analyst and Python Test Inventory Worker can be registered by the host
 application only when both environment variables are deliberately configured:
 
 - `DGM_READ_ONLY_WORKSPACE_ROOT`: existing workspace directory.
