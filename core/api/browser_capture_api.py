@@ -10,7 +10,7 @@ import json
 import os
 import tempfile
 import re
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -33,6 +33,7 @@ MAX_DISCOVERY_ITEMS = 500
 MAX_MESSAGES = 3000
 MAX_MESSAGE_CHARS = 100_000
 MAX_CAPTURE_BYTES = 20 * 1024 * 1024
+PROVIDER_OLDEST_BOUNDARY_EVIDENCE: dict[str, set[str]] = {}
 SAFE_ID = re.compile(r"^[A-Za-z0-9._:-]{1,200}$")
 PROPOSAL_MARKERS = re.compile(
     r"\b(i recommend|i suggest|i propose|we should|you should|recommendation|suggested approach|recomendo|sugiro|proponho|devemos|a minha recomendação|a solução proposta)\b",
@@ -163,6 +164,8 @@ class BrowserCaptureRequest(BaseModel):
     truncated: bool = False
     history_start_reached: bool = False
     oldest_boundary: Literal["confirmed", "unknown", "limit"] = "unknown"
+    oldest_boundary_evidence: str = Field(default="", max_length=120)
+    sequence_order_conflict: bool = False
     messages_total: int = Field(default=0, ge=0, le=MAX_MESSAGES)
     unknown_role_count: int = Field(default=0, ge=0, le=MAX_MESSAGES)
     scroll_steps: int = Field(default=0, ge=0, le=1000)
@@ -307,6 +310,8 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
     if source is None:
         raise HTTPException(status_code=404, detail="Conversation was not discovered before capture.")
     ordered = sorted(payload.messages, key=lambda item: (item.sequence, item.message_id))
+    actual_unknown_role_count = sum(1 for item in ordered if item.role == "unknown")
+    reported_messages_total = payload.messages_total or len(ordered)
     if len({item.message_id for item in ordered}) != len(ordered):
         raise HTTPException(status_code=422, detail="Duplicate message IDs in capture.")
     if len({item.sequence for item in ordered}) != len(ordered):
@@ -333,17 +338,22 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "truncated": payload.truncated,
         "history_start_reached": payload.history_start_reached,
         "oldest_boundary": payload.oldest_boundary,
-        "messages_total": payload.messages_total or len(ordered),
-        "unknown_role_count": payload.unknown_role_count,
+        "oldest_boundary_evidence": payload.oldest_boundary_evidence,
+        "messages_total": reported_messages_total,
+        "unknown_role_count": actual_unknown_role_count,
         "scroll_steps": payload.scroll_steps,
         "top_load_steps": payload.top_load_steps,
         "top_load_limit_reached": payload.top_load_limit_reached,
+        "sequence_order_conflict": payload.sequence_order_conflict,
         "history_completeness": (
             "oldest_boundary_confirmed"
             if payload.oldest_boundary == "confirmed"
+            and payload.oldest_boundary_evidence in PROVIDER_OLDEST_BOUNDARY_EVIDENCE.get(payload.provider, set())
             and payload.history_start_reached
             and not payload.truncated
-            and payload.unknown_role_count == 0
+            and not payload.sequence_order_conflict
+            and reported_messages_total == len(ordered)
+            and actual_unknown_role_count == 0
             else "partial_or_unknown"
         ),
         # Hash integrity is distinct from proof that every historical message was rendered.
@@ -400,6 +410,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
 
     index_status = "pending"
     index_summary: dict = {}
+    audits = []
     normalized_destination = folder / (digest + ".normalized.json")
     try:
         from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
@@ -528,6 +539,58 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         index_status = "failed"
         index_summary = {"error_type": type(exc).__name__}
 
+
+    vault_status = "not_configured"
+    vault_raw_archive_path = None
+    vault_conversation_path = None
+    vault_error = None
+    configured_vault = os.environ.get("DGM_VAULT_PATH")
+    if configured_vault:
+        try:
+            from core.vault import VaultCatalog
+
+            vault = VaultCatalog(configured_vault)
+            raw_result = vault.archive_raw_capture(
+                provider=payload.provider,
+                source_id=payload.source_id,
+                raw_bytes=destination.read_bytes(),
+            )
+            vault_result = vault.archive_conversation(
+                provider=payload.provider,
+                conversation_id=payload.source_id,
+                title=normalized_record.get("title", record["title"]),
+                url=source_url,
+                content="\n\n".join(
+                    f"{message.get('role', 'unknown')}: {message.get('content', '')}"
+                    for message in normalized_record.get("messages", [])
+                ),
+                messages=normalized_record.get("messages", []),
+                completeness=record["history_completeness"],
+                metadata={
+                    "captured_at": payload.captured_at,
+                    "source_sha256": digest,
+                    "capture_method": "authenticated_visible_ui",
+                    "adapter_version": payload.adapter_version,
+                    "history_completeness": record["history_completeness"],
+                    "full_history_verified": False,
+                    "sequence_order_conflict": payload.sequence_order_conflict,
+                    "oldest_boundary_evidence": payload.oldest_boundary_evidence,
+                },
+                artifacts=[
+                    asdict(artifact)
+                    for audit in audits
+                    for artifact in getattr(audit, "artifacts", [])
+                ],
+            )
+            vault_status = vault_result["status"]
+            vault_raw_archive_path = raw_result["archive_path"]
+            vault_conversation_path = vault_result["archive_path"]
+        except Exception as exc:
+            # The normal recovery archive remains intact; report Vault failure so
+            # the operator can retry the durable copy without losing the capture.
+            vault_status = "failed"
+            vault_error = type(exc).__name__
+
     ledger.checkpoint(
         payload.provider,
         payload.source_id,
@@ -544,19 +607,25 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "provider": payload.provider,
         "source_id": payload.source_id,
         "message_count": len(ordered),
-        "messages_total": len(ordered),
-        "unknown_role_count": sum(1 for item in ordered if item.role == "unknown"),
+        "messages_total": record["messages_total"],
+        "unknown_role_count": actual_unknown_role_count,
         "scroll_steps": payload.scroll_steps,
         "top_load_steps": payload.top_load_steps,
         "top_load_limit_reached": payload.top_load_limit_reached,
         "history_start_reached": payload.history_start_reached,
         "oldest_boundary": payload.oldest_boundary,
+        "oldest_boundary_evidence": payload.oldest_boundary_evidence,
+        "sequence_order_conflict": payload.sequence_order_conflict,
         "history_completeness": record["history_completeness"],
         "sha256": digest,
         "archive_path": str(destination),
         "normalized_archive_path": str(normalized_destination) if normalized_destination.is_file() else None,
         "index_status": index_status,
         "index_summary": index_summary,
+        "vault_status": vault_status,
+        "vault_raw_archive_path": vault_raw_archive_path,
+        "vault_conversation_path": vault_conversation_path,
+        "vault_error": vault_error,
         "completeness": "visible_snapshot",
         "full_history_verified": False,
         "truncated": payload.truncated,
