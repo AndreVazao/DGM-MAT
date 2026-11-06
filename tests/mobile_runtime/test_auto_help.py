@@ -215,6 +215,128 @@ def test_auto_help_never_replays_a_request_left_running_after_restart(tmp_path):
     assert second.claim_next() is None
 
 
+def test_auto_help_codex_claude_require_explicit_opt_in_and_free_capacity(tmp_path, monkeypatch):
+    conversations = ConversationStore(tmp_path / "conversations.json")
+    thread = conversations.create_thread("External agents opt-in")
+    monkeypatch.setenv("DGM_AUTONOMY_HELP_EXTERNAL_AGENTS_ENABLED", "0")
+    monkeypatch.setenv("DGM_AUTONOMY_HELP_FREE_CAPACITY_CONFIRMED", "0")
+
+    blocked = AutoHelpWorker(
+        conversation_store=conversations,
+        store=AutoHelpStore(tmp_path / "blocked.sqlite3"),
+        enabled=True,
+        providers=["codex", "claude"],
+    )
+    assert blocked.providers == ()
+    assert blocked.enqueue(
+        thread_id=thread.id,
+        goal="Analisa o bloqueio",
+        reason="No local executor",
+    )["status"] == "BLOCKED_NO_FREE_PROVIDER"
+
+    monkeypatch.setenv("DGM_AUTONOMY_HELP_EXTERNAL_AGENTS_ENABLED", "1")
+    still_blocked = AutoHelpWorker(
+        conversation_store=conversations,
+        store=AutoHelpStore(tmp_path / "capacity.sqlite3"),
+        enabled=True,
+        providers=["codex", "claude"],
+    )
+    assert still_blocked.providers == ()
+
+    monkeypatch.setenv("DGM_AUTONOMY_HELP_FREE_CAPACITY_CONFIRMED", "1")
+    enabled = AutoHelpWorker(
+        conversation_store=conversations,
+        store=AutoHelpStore(tmp_path / "enabled.sqlite3"),
+        enabled=True,
+        providers=["codex", "claude"],
+    )
+    assert enabled.providers == ("codex", "claude")
+    status = enabled.status()
+    assert status["external_agents_enabled"] is True
+    assert status["free_capacity_confirmed"] is True
+    assert status["external_agents_require_verified_response"] is True
+
+
+def test_auto_help_external_agents_require_verified_hub_response(tmp_path, monkeypatch):
+    import core.mobile_runtime.auto_help as module
+
+    monkeypatch.setattr(module, "append_command_audit", lambda **_kwargs: None)
+    monkeypatch.setenv("DGM_AUTONOMY_HELP_EXTERNAL_AGENTS_ENABLED", "1")
+    monkeypatch.setenv("DGM_AUTONOMY_HELP_FREE_CAPACITY_CONFIRMED", "1")
+
+    class ExternalBridge:
+        def __init__(self):
+            self.calls = []
+
+        def get_status(self):
+            return {
+                "providers": {
+                    "codex": {"enabled": True, "ready": True, "response_verified": False},
+                    "claude": {"enabled": True, "ready": True, "response_verified": True},
+                }
+            }
+
+        def consult(self, *, goal, context, providers):
+            self.calls.append({"goal": goal, "context": context, "providers": providers})
+            return HubTaskResult(
+                task_id="hub-external-task",
+                conversation_id="dgm-mat-external-help",
+                results={
+                    "claude": {
+                        "status": "ok",
+                        "text": "Claude: validar primeiro o contrato de evidência.",
+                        "model": "free-fcc-route",
+                    }
+                },
+            )
+
+    conversations = ConversationStore(tmp_path / "conversations.json")
+    thread = conversations.create_thread("Verified external agent")
+    bridge = ExternalBridge()
+    engine = FakeEngine()
+    worker = AutoHelpWorker(
+        conversation_store=conversations,
+        store=AutoHelpStore(tmp_path / "help.sqlite3"),
+        bridge_factory=lambda: bridge,
+        engine_factory=lambda: engine,
+        enabled=True,
+        providers=["codex", "claude"],
+    )
+    queued = worker.enqueue(
+        thread_id=thread.id,
+        goal="Analisa o bloqueio de evidência",
+        reason="No local executor",
+    )
+
+    assert queued["status"] == "PENDING"
+    assert worker.run_once() is True
+    assert bridge.calls[0]["providers"] == ["claude"]
+    assert len(engine.collaboration_store.results) == 1
+    assert engine.collaboration_store.results[0][2].find("provider_id=claude") >= 0
+    assert worker.store.status()["counts"] == {"COMPLETED": 1}
+
+
+def test_auto_help_default_hub_timeout_covers_codex_and_claude(tmp_path, monkeypatch):
+    import core.mobile_runtime.auto_help as module
+
+    captured = {}
+
+    class CapturingBridge:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr(module, "DGMHubMultiChatBridge", CapturingBridge)
+    conversations = ConversationStore(tmp_path / "conversations.json")
+    worker = AutoHelpWorker(
+        conversation_store=conversations,
+        store=AutoHelpStore(tmp_path / "help.sqlite3"),
+        enabled=False,
+    )
+
+    worker.bridge_factory()
+    assert captured == {"request_timeout": 8, "task_timeout": 180, "poll_interval": 1}
+
+
 def test_auto_help_is_disabled_by_default_and_does_not_enqueue(tmp_path):
     conversations = ConversationStore(tmp_path / "conversations.json")
     thread = conversations.create_thread("Disabled")

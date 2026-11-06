@@ -27,7 +27,8 @@ from core.operations.operation_audit import append_command_audit
 from core.storage.storage_manager import storage_manager
 
 
-FREE_PROVIDER_ALLOWLIST = ("kilo", "llm7")
+FREE_PROVIDER_ALLOWLIST = ("kilo", "llm7", "codex", "claude")
+EXTERNAL_AGENT_PROVIDERS = frozenset({"codex", "claude"})
 NOT_CONFIGURED_PROVIDERS = ("chatgpt", "grok", "gemini")
 _SECRET_PATTERNS = (
     re.compile(r"(?i)\b(api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|password|passwd|cookie|session[_-]?id)\s*[:=]\s*[^\s,;]{6,}"),
@@ -50,6 +51,10 @@ def _goal_hash(goal: str) -> str:
 
 def _contains_secret(value: str) -> bool:
     return any(pattern.search(value) for pattern in _SECRET_PATTERNS)
+
+
+def _env_enabled(name: str) -> bool:
+    return os.getenv(name, "0").strip().casefold() in {"1", "true", "yes", "on"}
 
 
 class AutoHelpStore:
@@ -244,18 +249,29 @@ class AutoHelpWorker:
     ) -> None:
         self.conversation_store = conversation_store
         self.store = store or AutoHelpStore()
+        # Codex can take over a minute and Claude is bounded to 150s in DGM-HUB.
+        # Keep one bounded wait for both; never retry an ambiguous provider request.
         self.bridge_factory = bridge_factory or (
-            lambda: DGMHubMultiChatBridge(request_timeout=5, task_timeout=30, poll_interval=1)
+            lambda: DGMHubMultiChatBridge(request_timeout=8, task_timeout=180, poll_interval=1)
         )
         self.engine_factory = engine_factory or self._mission_engine
         if enabled is None:
-            enabled = os.getenv("DGM_AUTONOMY_HELP_ENABLED", "0").strip().casefold() in {"1", "true", "yes", "on"}
+            enabled = _env_enabled("DGM_AUTONOMY_HELP_ENABLED")
         self.enabled = bool(enabled)
+        self.external_agents_enabled = _env_enabled("DGM_AUTONOMY_HELP_EXTERNAL_AGENTS_ENABLED")
+        self.free_capacity_confirmed = _env_enabled("DGM_AUTONOMY_HELP_FREE_CAPACITY_CONFIRMED")
         configured = providers
         if configured is None:
             raw = os.getenv("DGM_AUTONOMY_HELP_PROVIDERS", "kilo,llm7")
             configured = tuple(item.strip() for item in raw.split(",") if item.strip())
-        self.providers = tuple(item for item in configured if item in FREE_PROVIDER_ALLOWLIST)
+        self.providers = tuple(
+            item for item in configured
+            if item in FREE_PROVIDER_ALLOWLIST
+            and (
+                item not in EXTERNAL_AGENT_PROVIDERS
+                or (self.external_agents_enabled and self.free_capacity_confirmed)
+            )
+        )
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._lock = threading.RLock()
@@ -280,6 +296,9 @@ class AutoHelpWorker:
         result["enabled"] = self.enabled
         result["worker_running"] = bool(self._thread and self._thread.is_alive())
         result["configured_free_providers"] = list(self.providers)
+        result["external_agents_enabled"] = self.external_agents_enabled
+        result["free_capacity_confirmed"] = self.free_capacity_confirmed
+        result["external_agents_require_verified_response"] = True
         return result
 
     def start(self) -> bool:
@@ -332,7 +351,7 @@ class AutoHelpWorker:
     def _audit(event: str, status: str) -> None:
         append_command_audit(
             event=event,
-            command_id="dgm_hub.auto_help.free_only:kilo,llm7",
+            command_id="dgm_hub.auto_help.free_only",
             status=status,
             session_id=None,
         )
@@ -366,21 +385,35 @@ class AutoHelpWorker:
             bridge = self.bridge_factory()
             hub_status = bridge.get_status()
             available = hub_status.get("providers", {})
-            selected = [
-                provider for provider in request["providers"]
-                if isinstance(available.get(provider), dict)
-                and available[provider].get("enabled") is True
-                and available[provider].get("ready") is True
-            ]
+            selected: list[str] = []
+            unverified: list[str] = []
+            for provider in request["providers"]:
+                provider_status = available.get(provider)
+                if (
+                    not isinstance(provider_status, dict)
+                    or provider_status.get("enabled") is not True
+                    or provider_status.get("ready") is not True
+                ):
+                    continue
+                if provider in EXTERNAL_AGENT_PROVIDERS and (
+                    not self.external_agents_enabled
+                    or not self.free_capacity_confirmed
+                    or provider_status.get("response_verified") is not True
+                ):
+                    unverified.append(provider)
+                    continue
+                selected.append(provider)
             if not selected:
                 response = (
-                    "Fiquei bloqueado: o Hub não tem neste momento nenhum dos fornecedores "
-                    "gratuitos autorizados (Kilo/LLM7) pronto. Não tentei outro fornecedor "
-                    "e não recorri a qualquer serviço pago."
+                    "Fiquei bloqueado: nenhum fornecedor gratuito autorizado está pronto e verificado. "
+                    "Codex/Claude só podem ser chamados após opt-in explícito, confirmação de capacidade "
+                    "gratuita e response_verified=true no Hub. Não tentei outro fornecedor, não repeti "
+                    "a chamada e não recorri a qualquer serviço pago."
                 )
                 self.store.finish(
                     request_id, status="BLOCKED_PROVIDER_UNAVAILABLE",
-                    response_text=response, result={"selected_providers": []},
+                    response_text=response,
+                    result={"selected_providers": [], "unverified_providers": unverified},
                 )
                 self._append_result_message(request, response, {
                     "auto_help_request_id": request_id,
@@ -396,6 +429,8 @@ class AutoHelpWorker:
                 collaborator, role = {
                     "kilo": ("Kilo Gateway (free route)", "independent reasoning and design critic"),
                     "llm7": ("LLM7 anonymous free route", "architecture and test-strategy analyst"),
+                    "codex": ("Codex CLI (free-only route)", "independent implementation and test reviewer"),
+                    "claude": ("Claude Code (free-only route)", "independent architecture and code-quality reviewer"),
                 }[provider]
                 packet = engine.collaboration_store.create_packet(
                     goal=request["goal"],
@@ -435,6 +470,8 @@ class AutoHelpWorker:
                 goal=request["goal"],
                 context=(
                     "Local classification reason: " + request["reason"][:1500] +
+                    "\nThe operator explicitly attested free-only capacity for this session; the Hub does not "
+                    "expose a numeric remaining quota. Stop on any rate/quota/capacity error. No retry or paid fallback."
                     "\nNo source code, file contents, conversation history, credentials, or tokens are included."
                 ),
                 providers=selected,
