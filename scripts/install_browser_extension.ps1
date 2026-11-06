@@ -4,7 +4,6 @@ $source = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\browser_ext
 if (-not (Test-Path -LiteralPath (Join-Path $source "manifest.json") -PathType Leaf)) {
     throw "The browser_extension\manifest.json source was not found next to the scripts folder."
 }
-
 if ([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
     throw "LOCALAPPDATA is unavailable; refusing to guess a persistent extension location."
 }
@@ -13,10 +12,10 @@ $destination = [System.IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA "DGM-M
 if ($destination -eq [System.IO.Path]::GetPathRoot($destination)) {
     throw "Refusing an unsafe extension destination."
 }
-
 $parent = Split-Path -Parent $destination
 New-Item -ItemType Directory -Path $parent -Force | Out-Null
 
+$backup = $null
 if (Test-Path -LiteralPath $destination) {
     $stamp = [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss")
     $backupRoot = Join-Path $parent "BrowserExtension.backups"
@@ -30,22 +29,40 @@ if (Test-Path -LiteralPath $destination) {
     Write-Host "Previous extension preserved at: $backup"
 }
 
-New-Item -ItemType Directory -Path $destination -Force | Out-Null
-Get-ChildItem -LiteralPath $source -Force | Copy-Item -Destination $destination -Recurse -Force
-if (-not (Test-Path -LiteralPath (Join-Path $destination "manifest.json") -PathType Leaf)) {
-    throw "New extension copy failed validation."
+try {
+    New-Item -ItemType Directory -Path $destination -Force | Out-Null
+    Get-ChildItem -LiteralPath $source -Force | Copy-Item -Destination $destination -Recurse -Force
+    if (-not (Test-Path -LiteralPath (Join-Path $destination "manifest.json") -PathType Leaf)) {
+        throw "New extension copy failed validation."
+    }
+} catch {
+    if ($backup -and (Test-Path -LiteralPath (Join-Path $backup "manifest.json") -PathType Leaf)) {
+        if (Test-Path -LiteralPath $destination) {
+            Remove-Item -LiteralPath $destination -Recurse -Force
+        }
+        Copy-Item -LiteralPath $backup -Destination $destination -Recurse -Force
+        Write-Warning "New extension copy failed; the previous extension was restored from $backup"
+    }
+    throw
 }
 
-$chromeCandidates = @(
-    (Join-Path $env:ProgramFiles "Google\Chrome\Application\chrome.exe"),
-    (Join-Path ${env:ProgramFiles(x86)} "Google\Chrome\Application\chrome.exe"),
-    (Join-Path $env:LOCALAPPDATA "Google\Chrome\Application\chrome.exe")
-) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) }
+$chromeCandidates = @()
+if ($env:ProgramFiles) {
+    $chromeCandidates += Join-Path $env:ProgramFiles "Google\Chrome\Application\chrome.exe"
+}
+$programFilesX86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+if ($programFilesX86) {
+    $chromeCandidates += Join-Path $programFilesX86 "Google\Chrome\Application\chrome.exe"
+}
+$chromeCandidates += Join-Path $env:LOCALAPPDATA "Google\Chrome\Application\chrome.exe"
+$chrome = $chromeCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
 
-if ($chromeCandidates.Count -gt 0) {
-    Start-Process -FilePath $chromeCandidates[0] -ArgumentList "chrome://extensions"
+if ($chrome) {
+    Start-Process -FilePath $chrome -ArgumentList "chrome://extensions"
 } else {
-    Start-Process "chrome://extensions"
+    try { Start-Process "chrome://extensions" } catch {
+        Write-Warning "Chrome could not be opened automatically. Navigate to chrome://extensions manually."
+    }
 }
 
 Write-Host ""
