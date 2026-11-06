@@ -32,6 +32,7 @@ def main() -> int:
         parser.error("A persistent Vault root could not be resolved")
 
     vault = VaultCatalog(args.vault)
+    vault.register_known_projects()
     project = vault.register_project(args.project_id, args.project_name, args.repository,
                                      [value.strip() for value in args.aliases.split(",") if value.strip()])
     if args.progress_db:
