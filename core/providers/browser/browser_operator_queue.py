@@ -55,6 +55,9 @@ class BrowserOperatorQueue:
                     error TEXT
                 )
             """)
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(browser_operator_tasks)").fetchall()}
+            if "approved_by" not in columns:
+                db.execute("ALTER TABLE browser_operator_tasks ADD COLUMN approved_by TEXT")
             db.execute("""
                 CREATE INDEX IF NOT EXISTS idx_browser_operator_pending
                 ON browser_operator_tasks(status, provider, created_at)
