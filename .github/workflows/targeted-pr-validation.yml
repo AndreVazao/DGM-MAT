@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "core/**"
+      - "scripts/sync_dgm_vault.py"
       - "shared/**"
       - "cockpit/**"
       - "tests/**"
@@ -78,7 +79,9 @@ jobs:
           tests = set()
           def any_changed(*paths):
               return any(path in changed for path in paths)
-          if any_changed("core/vault/catalog.py", "core/vault/__init__.py", "scripts/sync_dgm_vault.py", "tests/vault/test_catalog.py"):\n              tests.add("tests/vault/test_catalog.py")\n          if any_changed("core/runtime/safe_action_queue.py", "tests/runtime/test_safe_action_queue.py"):
+          if any_changed("core/vault/catalog.py", "core/vault/__init__.py", "scripts/sync_dgm_vault.py", "tests/vault/test_catalog.py"):
+              tests.add("tests/vault/test_catalog.py")
+          if any_changed("core/runtime/safe_action_queue.py", "tests/runtime/test_safe_action_queue.py"):
               tests.add("tests/runtime/test_safe_action_queue.py")
           if any_changed("core/autonomy/mission_engine.py", "core/execution/approval_manager.py",
                          "tests/autonomy/test_mission_approval_checkpoint_guard.py"):
@@ -104,9 +107,12 @@ jobs:
           tests.update(path for path in changed if path.startswith("tests/") and path.endswith(".py"))
           existing = sorted(path for path in tests if pathlib.Path(path).is_file())
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write("has_tests=" + ("true" if existing else "false") + "\n")
+              output.write("has_tests=" + ("true" if existing else "false") + "
+")
           (pathlib.Path(os.environ["RUNNER_TEMP"]) / "selected-tests.txt").write_text(
-              "\n".join(existing) + ("\n" if existing else ""), encoding="utf-8"
+              "
+".join(existing) + ("
+" if existing else ""), encoding="utf-8"
           )
           print("Selected regressions: " + (", ".join(existing) if existing else "none; no historical suites will be rerun"))
           PY

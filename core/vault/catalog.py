@@ -84,8 +84,8 @@ class VaultCatalog:
                 );
                 CREATE TABLE IF NOT EXISTS conversations (
                     provider TEXT NOT NULL, conversation_id TEXT NOT NULL,
-                    source_fingerprint TEXT NOT NULL, title TEXT NOT NULL,
-                    url TEXT, archive_path TEXT NOT NULL, completeness TEXT NOT NULL,
+                    source_fingerprint TEXT NOT NULL, content_fingerprint TEXT NOT NULL,
+                    title TEXT NOT NULL, url TEXT, archive_path TEXT NOT NULL, completeness TEXT NOT NULL,
                     message_count INTEGER NOT NULL, project_id TEXT,
                     assignment_status TEXT NOT NULL,
                     assignment_evidence_json TEXT NOT NULL,
@@ -114,6 +114,9 @@ class VaultCatalog:
                     FOREIGN KEY(project_id) REFERENCES projects(project_id)
                 );
             """)
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(conversations)")}
+            if "content_fingerprint" not in columns:
+                db.execute("ALTER TABLE conversations ADD COLUMN content_fingerprint TEXT NOT NULL DEFAULT ''")
             db.execute(
                 "INSERT INTO schema_meta(key,value) VALUES('schema_version',?) "
                 "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -215,10 +218,19 @@ class VaultCatalog:
         }
         raw = (_json(payload) + "\n").encode("utf-8")
         fingerprint = _digest(raw)
+        transcript_identity = {
+            "messages": [
+                {"role": str(message.get("role") or "unknown").casefold(),
+                 "content": re.sub(r"\\s+", " ", str(message.get("content") or "")).strip().casefold()}
+                for message in messages
+            ],
+            "content": re.sub(r"\\s+", " ", content).strip().casefold() if not messages else "",
+        }
+        content_fingerprint = _digest(_json(transcript_identity).encode("utf-8"))
         with self._connect() as db:
             existing = db.execute(
-                "SELECT * FROM conversations WHERE source_fingerprint=? ORDER BY created_at LIMIT 1",
-                (fingerprint,),
+                "SELECT * FROM conversations WHERE content_fingerprint=? ORDER BY created_at LIMIT 1",
+                (content_fingerprint,),
             ).fetchone()
         if existing:
             with self._connect() as db:
@@ -228,7 +240,8 @@ class VaultCatalog:
                         canonical_provider,canonical_conversation_id,canonical_path,match_type,created_at
                     ) VALUES(?,?,?,?,?,?,?,?)
                 """, (provider_key, conversation_key, fingerprint, existing["provider"],
-                      existing["conversation_id"], existing["archive_path"], "byte_identical", _now()))
+                      existing["conversation_id"], existing["archive_path"],
+                      "byte_identical" if existing["source_fingerprint"] == fingerprint else "same_transcript_content", _now()))
             return {"status": "duplicate", "duplicate": True, "fingerprint": fingerprint,
                     "archive_path": existing["archive_path"], "canonical_provider": existing["provider"],
                     "canonical_conversation_id": existing["conversation_id"],
@@ -250,11 +263,11 @@ class VaultCatalog:
         now = _now()
         with self._connect() as db:
             db.execute("""
-                INSERT INTO conversations(provider,conversation_id,source_fingerprint,title,url,
+                INSERT INTO conversations(provider,conversation_id,source_fingerprint,content_fingerprint,title,url,
                     archive_path,completeness,message_count,project_id,assignment_status,
                     assignment_evidence_json,captured_at,created_at)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
-            """, (provider_key, conversation_key, fingerprint, payload["title"], url,
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (provider_key, conversation_key, fingerprint, content_fingerprint, payload["title"], url,
                   str(destination), completeness, len(messages), project_id, assignment_status,
                   _json(evidence), (metadata or {}).get("captured_at") or now, now))
         return {"status": "archived", "duplicate": False, "fingerprint": fingerprint,
