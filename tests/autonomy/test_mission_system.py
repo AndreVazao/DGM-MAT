@@ -324,3 +324,9 @@ def test_repository_name_filter_supports_multiple_names():
     assert engine._repository_name_filters(
         "lista as repos DGM-MAT e VazaoSovereignTrader e reporta o status"
     ) == ["dgmmat", "vazaosovereigntrader"]
+
+
+def test_repository_name_filter_ignores_generic_local_scope():
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    assert engine._repository_name_filters("Lista os repositórios locais") == []
+    assert engine._repository_name_filters("Lista todos os repositórios locais") == []
