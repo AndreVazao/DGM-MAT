@@ -188,3 +188,36 @@ def test_constructor_rejects_boolean_resource_limits(tmp_path):
             repositories={"repo": repo},
             max_entries=True,
         )
+
+def test_recipient_must_match_worker_identity(tmp_path):
+    worker, _ = make_worker(tmp_path)
+    message = Message(
+        sender_id="agent:hq-orchestrator",
+        recipient_id="agent:someone-else",
+        subject="Wrong recipient",
+        body=request(),
+        mission_id="mission:wrong-recipient",
+        correlation_id="corr:wrong-recipient",
+    )
+    result = worker(message)
+    assert result["status"] == "BLOCKED"
+    assert result["reason"] == "recipient_mismatch"
+
+
+def test_repository_root_replaced_by_external_symlink_is_blocked(tmp_path):
+    worker, repo = make_worker(tmp_path)
+    allowed = tmp_path / "workspace"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "external-secret.txt").write_text("OUTSIDE_CONTENT", encoding="utf-8")
+    original = allowed / "demo-original"
+    repo.rename(original)
+    try:
+        (allowed / "demo").symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("Directory symlinks are unavailable in this test environment")
+
+    result = worker(make_message(request()))
+    assert result["status"] == "BLOCKED"
+    assert result["reason"] == "repository_root_changed_or_outside_allowlist"
+    assert "OUTSIDE_CONTENT" not in json.dumps(result)
