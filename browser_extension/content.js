@@ -436,7 +436,11 @@
       ? ["#prompt-textarea", '[data-testid="prompt-textarea"]', 'textarea[placeholder]', '[contenteditable="true"].ProseMirror']
       : provider === "gemini"
         ? ["rich-textarea [contenteditable='true']", ".ql-editor[contenteditable='true']", "textarea"]
-        : ["textarea[placeholder]", 'textarea', '[contenteditable="true"][data-placeholder]', '[contenteditable="true"].ProseMirror'];
+        : provider === "deepseek"
+          ? ["textarea[placeholder]", "textarea", '[contenteditable="true"]', '[contenteditable="true"].ProseMirror']
+          : provider === "qwen"
+            ? ["textarea[placeholder]", "textarea", '[contenteditable="true"]', '[contenteditable="true"].ProseMirror']
+            : ["textarea[placeholder]", 'textarea', '[contenteditable="true"][data-placeholder]', '[contenteditable="true"].ProseMirror'];
     for (const selector of selectors) {
       for (const node of document.querySelectorAll(selector)) {
         const rect = node.getBoundingClientRect();
@@ -470,7 +474,11 @@
       'button[aria-label*="Send" i]',
       'button[aria-label*="Enviar" i]',
       'button[title*="Send" i]',
-      'button[title*="Enviar" i]'
+      'button[title*="Enviar" i]',
+      'button[aria-label*="发送" i]',
+      'button[title*="发送" i]',
+      'button[aria-label*="提交" i]',
+      'button[title*="提交" i]'
     ];
     for (const selector of selectors) {
       for (const button of document.querySelectorAll(selector)) {
