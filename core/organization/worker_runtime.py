@@ -40,6 +40,14 @@ class WorkerRuntime:
             raise ValueError(f"Handler already registered for {agent_id}")
         self._handlers[agent_id] = handler
 
+    def has_handler(self, agent_id: str) -> bool:
+        """Return whether this runtime has an explicit handler for the agent."""
+        return agent_id in self._handlers
+
+    def registered_agents(self) -> tuple[str, ...]:
+        """Return stable IDs of explicitly registered handlers."""
+        return tuple(sorted(self._handlers))
+
     def dispatch_one(self, agent_id: str) -> DispatchResult | None:
         handler = self._handlers.get(agent_id)
         if handler is None:
