@@ -32,6 +32,7 @@ def test_implementation_tasks_are_not_execution_authority():
     implementations = [t for t in plan.tasks if t.metadata["team_stage"] == "implementation"]
     assert implementations
     for task in implementations:
+        assert task.owner_department is None
         assert task.metadata["planning_only"] is True
         assert task.metadata["execution_authorized"] is False
         assert task.metadata["toolchain_status"] == "not_probed"
@@ -44,6 +45,7 @@ def test_integration_and_quality_tasks_depend_on_all_implementations():
     implementations = {t.task_id for t in plan.tasks if t.metadata["team_stage"] == "implementation"}
     integration = next(t for t in plan.tasks if t.metadata["team_stage"] == "integration-review")
     assert set(integration.dependencies) == implementations
+    assert integration.owner_department is None
     for stage in ("bug-hunt", "qa"):
         review = next(t for t in plan.tasks if t.metadata["team_stage"] == stage)
         assert review.dependencies == [integration.task_id]
