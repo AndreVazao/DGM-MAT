@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Mapping
 
@@ -13,6 +14,7 @@ from .worker_runtime import WorkerRuntime
 
 WORKSPACE_ROOT_ENV = "DGM_READ_ONLY_WORKSPACE_ROOT"
 REPOSITORIES_ENV = "DGM_READ_ONLY_REPOSITORIES"
+_REPOSITORY_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
 
 def _load_repository_allowlist(environ: Mapping[str, str]) -> tuple[Path, dict[str, Path]]:
@@ -34,7 +36,7 @@ def _load_repository_allowlist(environ: Mapping[str, str]) -> tuple[Path, dict[s
 
     repositories: dict[str, Path] = {}
     for repository_id, relative_path in config.items():
-        if not isinstance(repository_id, str) or not repository_id.strip():
+        if not isinstance(repository_id, str) or not _REPOSITORY_ID.fullmatch(repository_id):
             raise ValueError("repository_id_invalid")
         if not isinstance(relative_path, str) or not relative_path.strip():
             raise ValueError("repository_path_must_be_relative_string")
