@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DGM-MAT Conversation Recovery",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Captures visible ChatGPT, Grok, Gemini, DeepSeek and Qwen conversations into the local DGM-MAT archive; never claims full history without evidence.",
   "minimum_chrome_version": "116",
   "permissions": [
