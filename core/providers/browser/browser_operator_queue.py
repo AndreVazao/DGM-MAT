@@ -92,7 +92,7 @@ class BrowserOperatorQueue:
             raise BrowserOperatorQueueError("All task identity and content fields must be non-empty strings")
         if len(idempotency_key) > 200 or len(mission_id) > 80 or len(source_id) > 200 or len(created_by) > 200:
             raise BrowserOperatorQueueError("Task identity field exceeds its limit")
-        if provider not in {"chatgpt", "gemini", "grok"}:
+        if provider not in {"chatgpt", "gemini", "grok", "deepseek", "qwen"}:
             raise BrowserOperatorQueueError("Unsupported browser provider")
         if len(conversation_url) > 2048 or len(message) > 30000:
             raise BrowserOperatorQueueError("Conversation URL or message exceeds its limit")
@@ -142,7 +142,7 @@ class BrowserOperatorQueue:
             return changed == 1
 
     def claim_next(self, *, provider: str, worker_id: str) -> dict[str, Any] | None:
-        if provider not in {"chatgpt", "gemini", "grok"} or not worker_id or len(worker_id) > 200:
+        if provider not in {"chatgpt", "gemini", "grok", "deepseek", "qwen"} or not worker_id or len(worker_id) > 200:
             raise BrowserOperatorQueueError("Provider and worker identity are required")
         now = self._now()
         token = uuid.uuid4().hex
