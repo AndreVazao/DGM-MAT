@@ -37,13 +37,18 @@ class RuntimeStorageManager:
     @staticmethod
     def default_persistent_path() -> Path:
         """Stable per-user runtime path; never place mutable state beside the executable."""
-        local_app_data = os.environ.get("LOCALAPPDATA")
-        if local_app_data:
-            base = Path(local_app_data)
+        configured_vault = os.environ.get("DGM_VAULT_PATH")
+        if configured_vault:
+            vault_root = Path(configured_vault).expanduser()
         else:
-            data_home = os.environ.get("XDG_DATA_HOME")
-            base = Path(data_home) if data_home else Path.home() / ".local" / "share"
-        return (base / "DGM-MAT" / "runtime").expanduser().resolve()
+            local_app_data = os.environ.get("LOCALAPPDATA")
+            if local_app_data:
+                base = Path(local_app_data)
+            else:
+                data_home = os.environ.get("XDG_DATA_HOME")
+                base = Path(data_home) if data_home else Path.home() / ".local" / "share"
+            vault_root = base / "DGM-MAT" / "Vault"
+        return (vault_root / "runtime").expanduser().resolve()
 
     def _migrate_legacy_runtime(self, legacy_root: Path) -> None:
         """Copy old install-local runtime state without deleting or overwriting either side."""
