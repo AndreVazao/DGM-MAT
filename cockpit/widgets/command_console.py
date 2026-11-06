@@ -10,6 +10,11 @@ from datetime import datetime
 from typing import Any
 
 from cockpit.api_client import authenticated_request, LocalApiAuthenticationError
+from cockpit.mission_status_client import (
+    fetch_mission_checkpoint,
+    submit_mission_once,
+    wait_for_mission_checkpoint,
+)
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QFont, QTextCursor
 from PySide6.QtWidgets import (
@@ -34,6 +39,7 @@ class _RuntimeRequestWorker(QThread):
         self.api_url = api_url.rstrip("/")
         self.directive = directive
         self.status_only = status_only
+        self._sleep = time.sleep
 
     def _request(self, method: str, suffix: str, **kwargs):
         return authenticated_request(
@@ -41,16 +47,7 @@ class _RuntimeRequestWorker(QThread):
         )
 
     def _mission(self, mission_id: str) -> dict[str, Any] | None:
-        response = self._request("GET", "/missions", timeout=(2, 5))
-        if response.status_code != 200:
-            raise RuntimeError(f"Não foi possível consultar as missões (HTTP {response.status_code}).")
-        data = response.json()
-        if not isinstance(data, list):
-            raise ValueError("O runtime devolveu uma lista de missões inválida.")
-        return next(
-            (item for item in data if isinstance(item, dict) and item.get("mission_id") == mission_id),
-            None,
-        )
+        return fetch_mission_checkpoint(mission_id, request=self._request)
 
     def _finish_from_mission(self, mission: dict[str, Any]) -> bool:
         status = str(mission.get("status", "UNKNOWN")).upper()
@@ -97,33 +94,35 @@ class _RuntimeRequestWorker(QThread):
         return False
 
     def _poll_mission(self, mission_id: str, *, timeout_seconds: int = 65) -> None:
-        deadline = time.monotonic() + timeout_seconds
-        while time.monotonic() < deadline:
-            mission = self._mission(mission_id)
-            if mission is None:
-                raise RuntimeError(f"A missão {mission_id} ainda não aparece na consulta do runtime.")
-            if self._finish_from_mission(mission):
-                return
-
-            status = str(mission.get("status", "UNKNOWN")).upper()
-            action_status = str(mission.get("action_status") or "").upper()
-            action_id = mission.get("action_id")
-            if status == "QUEUED" and action_status == "QUEUED":
-                self.completed.emit(
-                    "DGM-MAT",
-                    f"Missão registada ({mission_id}), mas aguarda aprovação explícita da ação {action_id}. "
-                    f"Se confirmares, escreve: aprovar ação {action_id}. Para recusar: rejeitar ação {action_id} motivo.",
-                    "system",
-                )
-                return
-            time.sleep(2)
-
-        self.completed.emit(
-            "Sistema",
-            f"A missão {mission_id} continua sem estado final após {timeout_seconds}s. "
-            "Não voltei a submetê-la para evitar duplicar trabalho. Verifica o runtime e consulta a missão antes de repetir.",
-            "error",
+        mission = wait_for_mission_checkpoint(
+            mission_id,
+            self._mission,
+            timeout_seconds=timeout_seconds,
+            sleep=self._sleep,
         )
+        if mission is None:
+            self.completed.emit(
+                "Sistema",
+                f"A missão {mission_id} continua sem estado final após {timeout_seconds}s. "
+                "A consulta de estado não confirmou conclusão. Não voltei a submetê-la para evitar duplicar trabalho. "
+                "Consulta esta missão antes de repetir.",
+                "error",
+            )
+            return
+
+        if self._finish_from_mission(mission):
+            return
+
+        status = str(mission.get("status", "UNKNOWN")).upper()
+        action_status = str(mission.get("action_status") or "").upper()
+        action_id = mission.get("action_id")
+        if status == "QUEUED" and action_status == "QUEUED":
+            self.completed.emit(
+                "DGM-MAT",
+                f"Missão registada ({mission_id}), mas aguarda aprovação explícita da ação {action_id}. "
+                f"Se confirmares, escreve: aprovar ação {action_id}. Para recusar: rejeitar ação {action_id} motivo.",
+                "system",
+            )
 
     def _handle_queue_decision(self, directive: str) -> bool:
         approve = re.fullmatch(r"\s*(?:aprovar|approve)\s+(?:a\s+)?(?:ação|action)\s+(\d+)\s*", directive, re.IGNORECASE)
@@ -191,19 +190,8 @@ class _RuntimeRequestWorker(QThread):
             if self._handle_queue_decision(self.directive):
                 return
 
-            response = self._request(
-                "POST", "/missions",
-                json={"goal": self.directive, "description": "Pedido enviado pelo cockpit de chat"},
-                timeout=(2, 10),
-            )
-            if response.status_code not in (200, 201):
-                self.completed.emit("Erro", f"O runtime recusou o pedido (HTTP {response.status_code}). Não foi assumido sucesso.", "error")
-                return
-            data: dict[str, Any] = response.json()
-            mission_id = data.get("mission_id")
-            if data.get("status") != "success" or not mission_id:
-                self.completed.emit("DGM-MAT", f"O pedido não foi aceite. {data.get('error') or 'Resposta sem confirmação de criação.'}", "error")
-                return
+            data = submit_mission_once(self._request, self.directive)
+            mission_id = data["mission_id"]
 
             self.completed.emit(
                 "Sistema",

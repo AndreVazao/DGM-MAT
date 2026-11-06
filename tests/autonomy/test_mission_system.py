@@ -263,3 +263,64 @@ def test_github_worktree_sync_mission_waits_for_operator_approval(tmp_path, monk
     assert result["handler"] == "repository_sync_worktree"
     assert result["operator_approved"] is True
     assert result["authoritative_worktree_unchanged"] is True
+
+
+def test_repository_state_research_auto_approves_only_read_only_inventory():
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    mission = engine.create_mission(
+        "faz uma pesquisa nas repos Barbuidos e reporta os seus estados",
+        "Observed real cockpit request; bounded workspace inventory is read-only",
+    )
+
+    action = engine.action_queue.get_action(mission.metadata["action_id"])
+    assert mission.status == MissionStatus.QUEUED
+    assert action["status"] == "APPROVED"
+    assert action["approved_by"] == "system_auto"
+    assert action["is_approved"] is True
+
+
+def test_named_repository_inventory_filters_before_pagination(tmp_path, monkeypatch):
+    import time
+
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    root = tmp_path / "workspace"
+    root.mkdir()
+    for name in ("A-Unrelated", "Barbuidos", "C-Unrelated"):
+        repo = root / name
+        repo.mkdir()
+        (repo / ".git").mkdir()
+
+    monkeypatch.setattr(engine, "_repository_scan_roots", lambda: [root])
+    monkeypatch.setattr(
+        engine,
+        "_inspect_git_repository",
+        lambda path, repo_started, mission_started: {
+            "name": path.name,
+            "path": str(path),
+            "branch": "main",
+            "working_tree": "clean",
+        },
+    )
+
+    filters = engine._repository_name_filters(
+        "faz uma pesquisa nas repos Barbuidos e reporta os seus estados"
+    )
+    repositories, metadata = engine._discover_workspace_repositories(
+        time.monotonic(),
+        offset=0,
+        page_size=1,
+        name_filters=filters,
+    )
+
+    assert filters == ["barbuidos"]
+    assert [item["name"] for item in repositories] == ["Barbuidos"]
+    assert metadata["total_candidates"] == 1
+    assert metadata["has_more"] is False
+    assert metadata["name_filters"] == ["barbuidos"]
+
+
+def test_repository_name_filter_supports_multiple_names():
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    assert engine._repository_name_filters(
+        "lista as repos DGM-MAT e VazaoSovereignTrader e reporta o status"
+    ) == ["dgmmat", "vazaosovereigntrader"]

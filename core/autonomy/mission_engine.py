@@ -1,5 +1,7 @@
 import json
 import os
+import re
+import unicodedata
 import subprocess
 import tempfile
 import time
@@ -1268,8 +1270,12 @@ class MissionEngine:
             page_size = max(1, min(int(page.get("page_size", self.REPO_PAGE_SIZE)), self.REPO_PAGE_SIZE_MAX))
         except (TypeError, ValueError):
             page_offset, page_size = 0, self.REPO_PAGE_SIZE
+        name_filters = self._repository_name_filters(mission.goal)
         repositories, scan_meta = self._discover_workspace_repositories(
-            started, offset=page_offset, page_size=page_size
+            started,
+            offset=page_offset,
+            page_size=page_size,
+            name_filters=name_filters,
         )
         output = self._render_repository_output(repositories)
         execution_duration = round(time.monotonic() - started, 3)
@@ -1278,6 +1284,7 @@ class MissionEngine:
             "current_page": scan_meta["current_page"],
             "page_size": scan_meta["page_size"],
             "page_offset": scan_meta["page_offset"],
+            "repository_name_filter": name_filters,
             "next_cursor": scan_meta["next_cursor"],
             "has_more": scan_meta["has_more"],
             "complete": scan_meta["complete"],
@@ -1308,11 +1315,39 @@ class MissionEngine:
         )
         return result
 
+    @staticmethod
+    def _repository_name_filters(goal: str) -> list[str]:
+        """Extract explicit repository names from a bounded natural-language scope."""
+        normalized = unicodedata.normalize("NFKD", str(goal).casefold())
+        normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+        match = re.search(
+            r"\b(?:repos?|repositories|repositorios)\b\s+"
+            r"(?:(?:chamadas?|denominadas?|named|called)\s+)?"
+            r"(.+?)(?=\s+(?:e\s+(?:reporta|mostra|apresenta|lista)|"
+            r"and\s+(?:report|show|list)|com\s+(?:o\s+)?estado|"
+            r"with\s+status)\b|[.;]|$)",
+            normalized,
+        )
+        if not match:
+            return []
+        segment = match.group(1).strip(" \t,;:.")
+        if not segment:
+            return []
+        parts = re.split(r"\s+(?:e|and)\s+|[,;]", segment)
+        ignored = {"as", "os", "a", "o", "the", "my", "meus", "minhas", "todos", "todas", "all"}
+        names = []
+        for part in parts:
+            candidate = re.sub(r"[^a-z0-9]+", "", part.casefold())
+            if candidate and candidate not in ignored and len(candidate) >= 2:
+                names.append(candidate)
+        return list(dict.fromkeys(names))
+
     def _discover_workspace_repositories(
         self,
         mission_started: float,
         offset: int = 0,
         page_size: int | None = None,
+        name_filters: list[str] | None = None,
     ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """Discover sorted repository candidates and inspect only the requested bounded page."""
         page_size = max(1, min(int(page_size or self.REPO_PAGE_SIZE), self.REPO_PAGE_SIZE_MAX))
@@ -1346,6 +1381,20 @@ class MissionEngine:
                 root_warnings.append({"root": str(root), "status": "scan_error:{}".format(type(exc).__name__)})
 
         candidates = sorted(candidates_by_path.values(), key=lambda item: str(item).casefold())
+        normalized_filters = [
+            re.sub(r"[^a-z0-9]+", "", str(item).casefold())
+            for item in (name_filters or [])
+            if isinstance(item, str) and item.strip()
+        ]
+        normalized_filters = [item for item in normalized_filters if item]
+        if normalized_filters:
+            candidates = [
+                path for path in candidates
+                if any(
+                    requested in re.sub(r"[^a-z0-9]+", "", path.name.casefold())
+                    for requested in normalized_filters
+                )
+            ]
         total_candidates = len(candidates)
         page_offset = min(offset, total_candidates)
         page_candidates = candidates[page_offset:page_offset + page_size]
@@ -1369,6 +1418,7 @@ class MissionEngine:
             repositories,
             {
                 "total_candidates": total_candidates,
+                "name_filters": normalized_filters,
                 "current_page": (page_offset // page_size) + 1,
                 "page_size": page_size,
                 "page_offset": page_offset,
