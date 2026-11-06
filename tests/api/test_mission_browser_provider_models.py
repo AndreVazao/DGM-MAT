@@ -58,10 +58,10 @@ def test_browser_task_without_per_task_approval_requires_running_parent_mission(
         "approval_required": False,
     }
 
-    pending = client.post("/missions/mission_1234abcd/browser-task", json=payload)
+    pending = client.post("/runtime/missions/mission_1234abcd/browser-task", json=payload)
     assert pending.status_code == 409
 
     mission.status = MissionStatus.RUNNING
-    approved = client.post("/missions/mission_1234abcd/browser-task", json=payload)
+    approved = client.post("/runtime/missions/mission_1234abcd/browser-task", json=payload)
     assert approved.status_code == 201
     assert approved.json()["status"] == "queued"
