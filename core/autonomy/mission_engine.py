@@ -25,6 +25,7 @@ from core.organization.human_intervention_queue import HumanInterventionQueue
 from core.organization.worker_runtime import WorkerRuntime
 from core.organization.configured_readonly_workers import register_configured_readonly_workers
 from core.organization.read_only_worker_orchestrator import ReadOnlyWorkerOrchestrator
+from core.organization.office import bootstrap_full_office
 from core.organization.qa_intake_worker import QAIntakeWorker
 from core.organization.qa_review_queue import QAReviewQueue
 from core.organization.qa_review_coordinator import QAReviewCoordinator
@@ -68,10 +69,11 @@ class MissionEngine:
             storage_manager.get_path("tasks") / "organization_messages.sqlite3"
         )
         self.worker_runtime = WorkerRuntime(self.organization_bus)
+        self.organization_registry = bootstrap_full_office()
         # Read-only repository specialists remain disabled unless the operator
         # explicitly supplies a host-owned workspace root and repository allowlist.
         self.readonly_worker_registration = register_configured_readonly_workers(
-            self.worker_runtime
+            self.worker_runtime, registry=self.organization_registry
         )
         self.readonly_worker_orchestrator = ReadOnlyWorkerOrchestrator(
             self.organization_bus, self.worker_runtime
@@ -125,6 +127,27 @@ class MissionEngine:
     def register_organization_worker(self, agent_id: str, handler):
         """Register an explicit local handler; no implicit AI/provider is activated."""
         self.worker_runtime.register_handler(agent_id, handler)
+        if self.organization_registry.get_agent(agent_id) is not None:
+            from core.organization.models import AgentStatus
+            self.organization_registry.set_status(agent_id, AgentStatus.AVAILABLE)
+
+    def organization_readiness(self) -> Dict[str, Any]:
+        """Report roster status separately from registered handler capabilities."""
+        report = []
+        for agent in self.organization_registry.list_agents():
+            registered = self.worker_runtime.has_handler(agent.agent_id)
+            report.append({
+                "agent_id": agent.agent_id,
+                "roster_status": agent.status.value,
+                "handler_registered": registered,
+                "declared_capabilities": list(self.worker_runtime.declared_capabilities(agent.agent_id)),
+                "readiness": "HANDLER_REGISTERED" if registered else "ROLE_ONLY_OR_OFFLINE",
+            })
+        return {
+            "registered_handler_count": len(self.worker_runtime.registered_agents()),
+            "agents": sorted(report, key=lambda item: item["agent_id"]),
+            "task_validated": False,
+        }
 
     def run_readonly_repository_worker(
         self, *, agent_id: str, repository_id: str, mission_id: str, correlation_id: str
