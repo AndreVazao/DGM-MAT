@@ -76,13 +76,16 @@ class WorkerRuntime:
 
     def declares_capabilities(self, agent_id: str, required: Iterable[str]) -> bool:
         """Check handler declarations; this is not proof of task-level validation."""
-        if not self.has_handler(agent_id):
+        if (
+            not self.has_handler(agent_id)
+            or isinstance(required, (str, bytes))
+            or not isinstance(required, Iterable)
+        ):
             return False
-        required_set = {
-            item.strip().casefold()
-            for item in required
-            if isinstance(item, str) and item.strip()
-        }
+        required_items = tuple(required)
+        if any(not isinstance(item, str) or not item.strip() for item in required_items):
+            return False
+        required_set = {item.strip().casefold() for item in required_items}
         with self._lock:
             return required_set.issubset(self._handler_capabilities.get(agent_id, frozenset()))
 
