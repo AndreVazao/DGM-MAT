@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "DGM-MAT Conversation Recovery",
-  "version": "0.1.1",
-  "description": "Captures visible ChatGPT, Gemini and Grok conversations into the local DGM-MAT archive; never claims full history without evidence.",
+  "name": "DGM-MAT Browser Operator",
+  "version": "0.2.0",
+  "description": "Operator bridge for visible, authenticated AI sessions and evidence-based conversation recovery.",
   "minimum_chrome_version": "116",
   "permissions": [
     "activeTab",
