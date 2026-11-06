@@ -279,6 +279,14 @@ async function pollBrowserOperatorQueue() {
       let tab;
       try { tab = await chrome.tabs.get(tabId); } catch (_) { continue; }
       if (!tab) continue;
+      let readiness;
+      try {
+        readiness = await sendToTab(tabId, { type: "DGM_PROVIDER_PING" });
+      } catch (_) {
+        // Never claim a durable task until the content script confirms it is ready.
+        continue;
+      }
+      if (!readiness?.ok || readiness.provider !== provider || readiness.blocked) continue;
       const response = await apiGet("/browser-operator/next?provider=" + encodeURIComponent(provider), state.token);
       if (response.status !== "claimed" || !response.task) continue;
       const task = { ...response.task, tab_id: tabId };
