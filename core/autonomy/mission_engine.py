@@ -49,7 +49,7 @@ class MissionEngine:
     REPO_PAGE_SIZE_MAX = 50
     BRANCH_SCAN_LIMIT = 20
     REPO_TIMEOUT_SECONDS = 5.0
-    MISSION_EXECUTION_TIMEOUT_SECONDS = 60.0
+    MISSION_EXECUTION_TIMEOUT_SECONDS = 300.0
     AUTO_RUN_READ_ONLY_INTENTS = frozenset({
         "list_repositories", "architecture_summary", "repository_status", "local_research",
         "system_summary", "engines_inventory", "ollama_status", "claude_status",
