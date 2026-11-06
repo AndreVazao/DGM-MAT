@@ -86,10 +86,16 @@ def test_unsafe_paths_are_blocked():
     assert "C:\\Windows\\system.ps1" in plan.blocked_paths
 
 
-def test_duplicate_paths_are_deduplicated_case_insensitively():
-    plan = build(changed_paths=["src/App.py", "src/app.PY"])
+def test_exact_duplicate_paths_are_deduplicated():
+    plan = build(changed_paths=["src/App.py", "src/App.py"])
     implementation = next(t for t in plan.tasks if t.metadata["team_stage"] == "implementation")
     assert implementation.inputs == ["src/App.py"]
+
+
+def test_case_distinct_paths_are_preserved_for_case_sensitive_repositories():
+    plan = build(changed_paths=["src/App.py", "src/app.PY"])
+    implementation = next(t for t in plan.tasks if t.metadata["team_stage"] == "implementation")
+    assert implementation.inputs == ["src/App.py", "src/app.PY"]
 
 
 def test_task_ids_are_stable_for_identical_input():
@@ -148,3 +154,27 @@ def test_generated_safety_metadata_cannot_be_overridden():
     assert task.metadata["toolchain_status"] == "not_probed"
     assert task.metadata["team_stage"] == "implementation"
     assert task.metadata["required_skills"] == []
+
+def test_task_ids_change_when_plan_paths_change():
+    first = build(changed_paths=["src/first.py"])
+    second = build(changed_paths=["src/second.py"])
+    assert [task.task_id for task in first.tasks] != [task.task_id for task in second.tasks]
+
+
+def test_task_ids_are_independent_of_input_path_order():
+    first = build(changed_paths=["src/alpha.py", "src/beta.py"])
+    second = build(changed_paths=["src/beta.py", "src/alpha.py"])
+    assert [task.task_id for task in first.tasks] == [task.task_id for task in second.tasks]
+
+
+def test_paths_with_surrounding_whitespace_are_blocked_not_rewritten():
+    plan = build(changed_paths=[" src/module.py ", "safe/module.py"])
+    assert plan.status == "PARTIAL"
+    assert " src/module.py " in plan.blocked_paths
+    assert "src/module.py" not in plan.recognized_paths
+    assert "safe/module.py" in plan.recognized_paths
+
+
+def test_include_research_requires_boolean():
+    with pytest.raises(TypeError):
+        build(include_research="yes")
