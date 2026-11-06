@@ -10,7 +10,7 @@ import json
 import os
 import tempfile
 import re
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -77,6 +77,13 @@ def _write_immutable_bytes(destination: Path, data: bytes) -> bool:
 
 
 def _archive_root() -> Path:
+    configured_vault = os.getenv("DGM_VAULT_PATH", "").strip()
+    if configured_vault:
+        from core.vault import VaultCatalog
+        try:
+            return VaultCatalog(configured_vault).root / "providers" / "browser-ui"
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="DGM_VAULT_PATH must be outside application and Git worktrees.") from exc
     configured = os.getenv("DGM_RECOVERY_ARCHIVE_ROOT", "").strip()
     root = Path(configured).expanduser() if configured else Path.home() / ".dgm-mat" / "recovery-archive"
     resolved = root.resolve()
@@ -431,6 +438,42 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         )
         audits = pipeline.ingest_file(normalized_destination, provider=payload.provider)
         index_summary = pipeline.summarize(audits)
+        vault_archive = None
+        configured_vault = os.getenv("DGM_VAULT_PATH", "").strip()
+        if configured_vault:
+            from core.vault import VaultCatalog
+            vault = VaultCatalog(configured_vault)
+            vault.register_project(
+                "dgm-mat", "DGM-MAT", Path(__file__).resolve().parents[2],
+                aliases=["DGM-MAT", "DGM MAT", "AndreOS"],
+            )
+            extracted_artifacts = [
+                asdict(artifact)
+                for audit in audits
+                for artifact in audit.artifacts
+            ]
+            vault_archive = vault.archive_conversation(
+                provider=payload.provider,
+                conversation_id=payload.source_id,
+                title=normalized_record["title"],
+                url=source_url,
+                messages=normalized_record["messages"],
+                content="\\n".join(
+                    f"{message.get('role', 'unknown')}: {message.get('content', '')}"
+                    for message in normalized_record["messages"]
+                ),
+                completeness=record["history_completeness"],
+                metadata={
+                    "captured_at": payload.captured_at,
+                    "adapter_version": payload.adapter_version,
+                    "raw_archive_path": str(destination),
+                    "raw_sha256": digest,
+                    "normalized_archive_path": str(normalized_destination),
+                },
+                artifacts=extracted_artifacts,
+            )
+            index_summary["vault_archive"] = vault_archive
+            index_summary["vault"] = vault.summary()
         knowledge = pipeline.knowledge_store
         intent_ids: list[str] = []
         proposal_ids: list[str] = []

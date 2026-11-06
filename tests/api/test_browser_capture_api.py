@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from core.api import browser_capture_api
 from core.api.security_policy import SecurityScope, classify_request_path
 from core.recovery.recovery_ledger import RecoveryLedger
+from core.vault import VaultCatalog
 
 
 def _client(monkeypatch, tmp_path):
@@ -305,3 +306,26 @@ def test_immutable_archive_writer_is_atomic_and_never_overwrites(tmp_path):
     assert browser_capture_api._write_immutable_bytes(destination, b"second-version") is False
     assert destination.read_bytes() == b"first-version"
     assert list(tmp_path.glob(".dgm-capture-*.tmp")) == []
+
+
+def test_browser_capture_writes_raw_and_normalized_conversation_to_persistent_vault(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    vault_root = tmp_path / "persistent-vault"
+    monkeypatch.setenv("DGM_VAULT_PATH", str(vault_root))
+    client.post("/recovery/browser-capture/discover", json=_discovery())
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
+
+    response = client.post("/recovery/browser-capture/capture", json=_capture(content="DGM-MAT persistent memory"))
+    assert response.status_code == 200
+    result = response.json()
+    raw_path = Path(result["archive_path"])
+    assert raw_path.is_relative_to(vault_root / "providers" / "browser-ui")
+    assert raw_path.is_file()
+    assert Path(result["normalized_archive_path"]).is_file()
+    assert result["index_summary"]["vault_archive"]["status"] == "archived"
+    vault = VaultCatalog(vault_root)
+    records = vault.list_conversations("dgm-mat")
+    assert len(records) == 1
+    assert records[0]["provider"] == "chatgpt"
+    assert records[0]["completeness"] == "partial_or_unknown"
+    assert Path(records[0]["archive_path"]).is_file()
