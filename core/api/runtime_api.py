@@ -289,6 +289,11 @@ def enqueue_mission_browser_task(mission_id: str, payload: MissionBrowserTaskCre
         raise HTTPException(status_code=404, detail="Mission checkpoint not found.")
     if mission.status in {MissionStatus.COMPLETED, MissionStatus.CANCELLED, MissionStatus.FAILED}:
         raise HTTPException(status_code=409, detail="A terminal mission cannot receive a browser task.")
+    if not payload.approval_required and mission.status != MissionStatus.RUNNING:
+        raise HTTPException(
+            status_code=409,
+            detail="A browser task can bypass per-task approval only after its parent mission is approved and running.",
+        )
     try:
         from core.api.browser_capture_api import _validate_provider_url
         _validate_provider_url(payload.provider, payload.conversation_url, payload.source_id)
