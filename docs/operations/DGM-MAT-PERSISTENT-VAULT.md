@@ -49,7 +49,7 @@ From the DGM-MAT repository root:
 python scripts\sync_dgm_vault.py --repository .
 ```
 
-The command requires `DGM_VAULT_PATH`. It registers the DGM-MAT project, copies completed records from the local conversation progress database into the Vault, classifies only when there is evidence, sends uncertain items to quarantine, and creates a repository tree snapshot. It is safe to run again: identical captures are linked as duplicates.
+The command resolves the stable per-user Vault automatically; set `DGM_VAULT_PATH` only to override it. It registers the DGM-MAT project, copies completed records from the local conversation progress database into the Vault, classifies only when there is evidence, sends uncertain items to quarantine, and creates a repository tree snapshot. It is safe to run again: identical captures are linked as duplicates.
 
 To inventory a different repository, pass its path and register its project name/aliases explicitly:
 
@@ -59,7 +59,7 @@ python scripts\sync_dgm_vault.py --repository 'C:\Projects\Example' --project-id
 
 ## Live browser capture and archive import
 
-When `DGM_VAULT_PATH` is configured, every live capture received by `/recovery/browser-capture/capture` writes both the exact raw JSON payload into `providers/browser-captures/<provider>/` and an immutable normalized transcript into the project Vault or quarantine. The API response reports `vault_status` and both Vault paths so a failed Vault copy is visible and can be retried. The Chrome archive importer separately copies downloaded inventory/export JSON into `providers/chrome-imports/` and imports normalized conversations. Without `DGM_VAULT_PATH`, the legacy runtime archive remains available but is not a substitute for the persistent Vault.
+With the default Vault or an explicit `DGM_VAULT_PATH`, every live capture received by `/recovery/browser-capture/capture` writes both the exact raw JSON payload into `providers/browser-captures/<provider>/` and an immutable normalized transcript into the project Vault or quarantine. The API response reports `vault_status` and both Vault paths so a failed Vault copy is visible and can be retried. The Chrome archive importer separately copies downloaded inventory/export JSON into `providers/chrome-imports/` and imports normalized conversations. Without `DGM_VAULT_PATH`, the legacy runtime archive remains available but is not a substitute for the persistent Vault.
 
 ## Integrity and limits
 
