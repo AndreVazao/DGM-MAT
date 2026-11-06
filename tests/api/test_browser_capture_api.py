@@ -46,6 +46,8 @@ def _discovery(provider="chatgpt", source_id="conversation-1", url=None):
             "chatgpt": "https://chatgpt.com/c/conversation-1",
             "gemini": "https://gemini.google.com/app/conversation-1",
             "grok": "https://grok.com/chat/conversation-1",
+            "deepseek": "https://chat.deepseek.com/a/chat/s/conversation-1",
+            "qwen": "https://chat.qwen.ai/chat/conversation-1",
         }[provider]
     return {
         "provider": provider,
@@ -64,6 +66,8 @@ def _capture(provider="chatgpt", source_id="conversation-1", url=None, content="
             "chatgpt": "https://chatgpt.com/c/conversation-1",
             "gemini": "https://gemini.google.com/app/conversation-1",
             "grok": "https://grok.com/chat/conversation-1",
+            "deepseek": "https://chat.deepseek.com/a/chat/s/conversation-1",
+            "qwen": "https://chat.qwen.ai/chat/conversation-1",
         }[provider]
     return {
         "provider": provider,
@@ -389,3 +393,18 @@ def test_allowlisted_provider_boundary_evidence_can_confirm_history(monkeypatch,
     assert response.status_code == 200
     assert response.json()["history_completeness"] == "oldest_boundary_confirmed"
     assert response.json()["full_history_verified"] is False
+
+
+def test_deepseek_and_qwen_conversation_urls_are_provider_scoped(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    for provider in ("deepseek", "qwen"):
+        discovered = client.post(
+            "/recovery/browser-capture/discover",
+            json=_discovery(provider),
+        )
+        assert discovered.status_code == 200, (provider, discovered.text)
+        wrong_id = client.post(
+            "/recovery/browser-capture/discover",
+            json=_discovery(provider, "other-id"),
+        )
+        assert wrong_id.status_code == 422
