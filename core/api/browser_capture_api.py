@@ -28,6 +28,8 @@ PROVIDER_HOSTS = {
     "chatgpt": {"chatgpt.com", "chat.openai.com"},
     "gemini": {"gemini.google.com", "bard.google.com"},
     "grok": {"grok.com", "x.com"},
+    "deepseek": {"chat.deepseek.com"},
+    "qwen": {"chat.qwen.ai"},
 }
 MAX_DISCOVERY_ITEMS = 500
 MAX_MESSAGES = 3000
@@ -103,13 +105,26 @@ def _validate_provider_url(provider: str, value: str, source_id: str | None = No
             match = re.search(r"/c/([A-Za-z0-9_-]+)(?:/|$)", parsed.path)
         elif provider == "gemini":
             match = re.search(r"/app/([A-Za-z0-9_-]+)(?:/|$)", parsed.path)
-        else:
+        elif provider == "grok":
             route_match = re.search(r"/(?:chat|c|i/grok)/([A-Za-z0-9_-]+)(?:/|$)", parsed.path)
             query_values = parse_qs(parsed.query)
             query_id = (query_values.get("conversation") or query_values.get("id") or [None])[0]
             candidate = route_match.group(1) if route_match else query_id
             if candidate != source_id:
                 raise ValueError("source ID does not match the Grok conversation URL")
+            return value
+        else:
+            route_pattern = (r"/(?:a/)?chat/(?:s/)?([A-Za-z0-9_-]+)(?:/|$)"
+                             if provider == "deepseek"
+                             else r"/(?:chat|c|conversation|s)/([A-Za-z0-9_-]+)(?:/|$)")
+            route_match = re.search(route_pattern, parsed.path)
+            query_values = parse_qs(parsed.query)
+            query_id = next((query_values[key][0] for key in
+                             ("conversation", "conversationId", "chatId", "chat_id", "id")
+                             if query_values.get(key)), None)
+            candidate = route_match.group(1) if route_match else query_id
+            if candidate != source_id:
+                raise ValueError(f"source ID does not match the {provider} conversation URL")
             return value
         if not match or match.group(1) != source_id:
             raise ValueError("source ID does not match the provider conversation URL")
@@ -139,7 +154,7 @@ class BrowserConversationItem(BaseModel):
 
 
 class BrowserDiscoveryRequest(BaseModel):
-    provider: Literal["chatgpt", "gemini", "grok"]
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
     items: list[BrowserConversationItem] = Field(min_length=1, max_length=MAX_DISCOVERY_ITEMS)
     truncated: bool = False
 
@@ -157,7 +172,7 @@ class BrowserMessage(BaseModel):
 
 
 class BrowserCaptureRequest(BaseModel):
-    provider: Literal["chatgpt", "gemini", "grok"]
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
     source_id: str = Field(min_length=1, max_length=200)
     title: str = Field(min_length=1, max_length=500)
     url: str = Field(min_length=12, max_length=2048)
@@ -264,13 +279,13 @@ def claim_next_browser_conversation(payload: BrowserNextRequest):
 
 
 class BrowserNextRequest(BaseModel):
-    provider: Literal["chatgpt", "gemini", "grok"]
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
 
     model_config = ConfigDict(extra="forbid")
 
 
 class BrowserCaptureBlockRequest(BaseModel):
-    provider: Literal["chatgpt", "gemini", "grok"]
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
     source_id: str = Field(min_length=1, max_length=200)
     status: Literal["blocked", "rate_limited", "failed"] = "blocked"
     reason: str = Field(min_length=1, max_length=300)
@@ -576,7 +591,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
 
 
 @router.post("/retry")
-def retry_browser_conversation(provider: Literal["chatgpt", "gemini", "grok"], source_id: str):
+def retry_browser_conversation(provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"], source_id: str):
     try:
         _ledger().request_retry(provider, source_id, "operator_or_extension_retry")
     except (ValueError, RecoveryLedgerError) as exc:
