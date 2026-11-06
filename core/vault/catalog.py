@@ -525,6 +525,80 @@ class VaultCatalog:
                 "canonical_conversation_id": canonical_conversation["conversation_id"] if canonical_conversation else None,
                 "canonical_archive_path": canonical_conversation["archive_path"] if canonical_conversation else None}
 
+    def sync_completed_progress(
+        self,
+        progress_paths: list[str | Path],
+        providers: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Copy completed local conversation records into the Vault without moving source DBs."""
+        from core.conversation_intelligence.progress_store import ConversationProgressStore
+
+        unique_paths = list(dict.fromkeys(Path(value).expanduser().resolve() for value in progress_paths))
+        records: list[dict[str, Any]] = []
+        opened: list[str] = []
+        for database_path in unique_paths:
+            if not database_path.is_file():
+                continue
+            records.extend(ConversationProgressStore(database_path).list_conversations())
+            opened.append(str(database_path))
+
+        provider_filter = {item.casefold() for item in (providers or [])}
+        archived = 0
+        duplicates = 0
+        skipped = 0
+        failures: list[dict[str, str]] = []
+        for row in records:
+            if row.get("status") != "complete" or not isinstance(row.get("result"), dict):
+                skipped += 1
+                continue
+            snapshot = row["result"]
+            conversation = snapshot.get("conversation")
+            if not isinstance(conversation, dict):
+                skipped += 1
+                continue
+            provider = str(conversation.get("provider") or row.get("provider") or "unknown")
+            if provider_filter and provider.casefold() not in provider_filter:
+                continue
+            conversation_id = str(conversation.get("conversation_id") or row.get("conversation_id") or "")
+            if not conversation_id:
+                skipped += 1
+                continue
+            metadata = conversation.get("metadata") or {}
+            try:
+                result = self.archive_conversation(
+                    provider=provider,
+                    conversation_id=conversation_id,
+                    title=str(conversation.get("title") or row.get("title") or "Untitled"),
+                    url=conversation.get("url"),
+                    content=str(conversation.get("content") or ""),
+                    messages=conversation.get("messages") or [],
+                    completeness=str(metadata.get("completeness") or metadata.get("capture_status") or "unknown"),
+                    assignment_evidence=[
+                        "local completed progress-store record",
+                        "evidence-based project classifier",
+                    ],
+                    metadata=metadata,
+                    artifacts=snapshot.get("artifacts") or [],
+                )
+                duplicates += int(bool(result.get("duplicate")))
+                archived += int(not bool(result.get("duplicate")))
+            except Exception as exc:
+                failures.append({
+                    "provider": provider,
+                    "conversation_id": conversation_id,
+                    "error": type(exc).__name__,
+                    "detail": str(exc)[:300],
+                })
+
+        return {
+            "progress_databases": opened,
+            "progress_records_seen": len(records),
+            "conversations_archived": archived,
+            "duplicates_detected": duplicates,
+            "records_skipped": skipped,
+            "failures": failures,
+        }
+
     def snapshot_repository(
         self, project_id: str, repository_path: str | Path, *,
         ignore_names: Iterable[str] = (), max_entries: int = 100_000,
