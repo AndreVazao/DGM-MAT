@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from threading import RLock
 
-from .models import AgentProfile, AgentStatus, Department
+from .models import AgentProfile, AgentStatus, Department, utc_now
 
 
 class AgentRegistry:
@@ -35,6 +35,56 @@ class AgentRegistry:
             if agent.agent_id in self._agents:
                 raise ValueError(f"Agent already registered: {agent.agent_id}")
             self._agents[agent.agent_id] = agent
+
+    def reconcile_agent_profile(self, declared: AgentProfile) -> AgentProfile:
+        """Merge non-privileged roster metadata without resetting runtime state.
+
+        Existing permissions, status, performance, lessons, creation time and
+        operator-managed metadata are never overwritten. Declared skills and
+        responsibilities are additive; permissions require a separate policy
+        grant and are deliberately not copied by this method.
+        """
+        with self._lock:
+            existing = self._agents.get(declared.agent_id)
+            if existing is None:
+                self.register_agent(declared)
+                return declared
+            if existing.department_id != declared.department_id:
+                raise ValueError(
+                    f"Conflicting department for agent {declared.agent_id}: "
+                    f"{existing.department_id} != {declared.department_id}"
+                )
+
+            changed = False
+            for field_name in ("skills", "responsibilities"):
+                current = list(getattr(existing, field_name))
+                seen = {item.casefold() for item in current if isinstance(item, str)}
+                for item in getattr(declared, field_name):
+                    if isinstance(item, str) and item and item.casefold() not in seen:
+                        current.append(item)
+                        seen.add(item.casefold())
+                if current != getattr(existing, field_name):
+                    setattr(existing, field_name, current)
+                    changed = True
+
+            if declared.role and existing.role != declared.role:
+                existing.role = declared.role
+                changed = True
+            if existing.supervisor_id is None and declared.supervisor_id is not None:
+                existing.supervisor_id = declared.supervisor_id
+                changed = True
+            if existing.memory_scope == "agent" and declared.memory_scope != "agent":
+                existing.memory_scope = declared.memory_scope
+                changed = True
+
+            for key, value in declared.metadata.items():
+                if key not in existing.metadata:
+                    existing.metadata[key] = value
+                    changed = True
+
+            if changed:
+                existing.updated_at = utc_now()
+            return existing
 
     def get_agent(self, agent_id: str) -> AgentProfile | None:
         with self._lock:
