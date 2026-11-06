@@ -120,3 +120,33 @@ def test_same_transcript_from_different_providers_is_cross_linked(tmp_path):
     assert second["canonical_provider"] == "chatgpt"
     assert vault.summary()["conversations"] == 1
     assert vault.summary()["duplicate_candidates"] == 1
+
+
+def test_message_and_code_duplicates_are_indexed_without_deleting_sources(tmp_path):
+    vault = VaultCatalog(tmp_path / "vault")
+    vault.register_project("dgm-mat", "DGM-MAT")
+    first = vault.archive_conversation(
+        provider="chatgpt", conversation_id="one", title="DGM-MAT first",
+        messages=[
+            {"id": "m1", "role": "user", "content": "Shared requirement"},
+            {"id": "m2", "role": "assistant", "content": "First answer"},
+        ],
+        artifacts=[{"artifact_id": "code-1", "language": "python", "code": "print('same code')"}],
+        project_id="dgm-mat",
+    )
+    second = vault.archive_conversation(
+        provider="gemini", conversation_id="two", title="DGM-MAT second",
+        messages=[
+            {"id": "m9", "role": "user", "content": "Shared requirement"},
+            {"id": "m10", "role": "assistant", "content": "Different answer"},
+        ],
+        artifacts=[{"artifact_id": "code-2", "language": "python", "code": "print('same code')"}],
+        project_id="dgm-mat",
+    )
+    assert first["status"] == "archived"
+    assert second["status"] == "archived"
+    assert len(vault.list_messages()) == 4
+    assert len(vault.list_duplicate_messages()) == 1
+    assert len(vault.list_duplicate_code()) == 1
+    assert Path(first["archive_path"]).is_file()
+    assert Path(second["archive_path"]).is_file()
