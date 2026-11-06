@@ -163,3 +163,34 @@ def test_vault_refuses_to_live_inside_a_git_worktree(tmp_path):
     with pytest.raises(ValueError, match="outside every Git worktree"):
         VaultCatalog(worktree / "private-vault")
     assert not (worktree / "private-vault").exists()
+
+
+def test_empty_captures_are_not_cross_provider_duplicates_and_whitespace_is_normalized(tmp_path):
+    vault = VaultCatalog(tmp_path / "vault")
+    vault.register_project("dgm-mat", "DGM-MAT")
+
+    empty_chatgpt = vault.archive_conversation(
+        provider="chatgpt", conversation_id="empty-1", title="Untitled", messages=[],
+        project_id="dgm-mat",
+    )
+    empty_gemini = vault.archive_conversation(
+        provider="gemini", conversation_id="empty-2", title="Untitled", messages=[],
+        project_id="dgm-mat",
+    )
+    assert empty_chatgpt["status"] == "archived"
+    assert empty_gemini["status"] == "archived"
+    assert len(vault.list_conversations("dgm-mat")) == 2
+
+    first = vault.archive_conversation(
+        provider="chatgpt", conversation_id="text-1", title="Whitespace",
+        messages=[{"id": "1", "role": "user", "content": "Hello   world"}],
+        project_id="dgm-mat",
+    )
+    second = vault.archive_conversation(
+        provider="gemini", conversation_id="text-2", title="Whitespace",
+        messages=[{"id": "2", "role": "user", "content": "Hello world"}],
+        project_id="dgm-mat",
+    )
+    assert first["status"] == "archived"
+    assert second["status"] == "duplicate"
+    assert second["canonical_provider"] == "chatgpt"

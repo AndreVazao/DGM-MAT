@@ -290,7 +290,7 @@ class VaultCatalog:
         fingerprint = _digest(raw)
         normalized_messages = [
             {"role": str(message.get("role") or "unknown").casefold(),
-             "content": re.sub(r"\\s+", " ", str(message.get("content") or "")).strip().casefold()}
+             "content": re.sub(r"\s+", " ", str(message.get("content") or "")).strip().casefold()}
             for message in messages
         ]
         has_transcript = bool(content.strip() or any(item["content"] for item in normalized_messages))
@@ -302,6 +302,11 @@ class VaultCatalog:
             ],
             "content": re.sub(r"\s+", " ", content).strip().casefold() if not messages else "",
         }
+        if not has_transcript:
+            # Empty/metadata-only captures are not evidence of duplicate conversations.
+            # Keep them idempotent for the same provider/source, but never collapse
+            # unrelated empty conversations across providers or projects.
+            transcript_identity["empty_source"] = [provider_key, conversation_key, fingerprint]
         content_fingerprint = _digest(_json(transcript_identity).encode("utf-8"))
         with self._connect() as db:
             existing = db.execute(
@@ -348,10 +353,10 @@ class VaultCatalog:
                   _json(evidence), (metadata or {}).get("captured_at") or now, now))
             for sequence, message in enumerate(messages):
                 role = str(message.get("role") or "unknown").casefold()
-                message_text = re.sub(r"\\s+", " ", str(message.get("content") or "")).strip().casefold()
+                message_text = re.sub(r"\s+", " ", str(message.get("content") or "")).strip().casefold()
                 if not message_text:
                     continue
-                message_fingerprint = _digest((role + "\\0" + message_text).encode("utf-8"))
+                message_fingerprint = _digest((role + "\0" + message_text).encode("utf-8"))
                 message_id = str(message.get("message_id") or message.get("id") or sequence)
                 canonical = db.execute(
                     "SELECT provider,conversation_id,message_id,source_fingerprint FROM messages "
