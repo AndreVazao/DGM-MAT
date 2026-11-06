@@ -6,6 +6,7 @@ It never interprets message bodies as code, shell commands, or tool instructions
 from __future__ import annotations
 
 from dataclasses import dataclass
+from threading import RLock
 from typing import Callable, Any, Iterable
 
 from .message_bus import InternalMessageBus
@@ -31,6 +32,7 @@ class WorkerRuntime:
         self.bus = bus
         self._handlers: dict[str, MessageHandler] = {}
         self._handler_capabilities: dict[str, frozenset[str]] = {}
+        self._lock = RLock()
 
     def register_handler(
         self,
@@ -43,8 +45,6 @@ class WorkerRuntime:
             raise ValueError("agent_id is required")
         if not callable(handler):
             raise TypeError("handler must be callable")
-        if agent_id in self._handlers:
-            raise ValueError(f"Handler already registered for {agent_id}")
         declared = getattr(handler, "capabilities", ()) if capabilities is None else capabilities
         if isinstance(declared, (str, bytes)) or not isinstance(declared, Iterable):
             raise TypeError("handler capabilities must be an iterable of strings")
@@ -53,20 +53,26 @@ class WorkerRuntime:
             if not isinstance(capability, str) or not capability.strip():
                 raise ValueError("handler capabilities must contain non-empty strings")
             normalized.add(capability.strip().casefold())
-        self._handlers[agent_id] = handler
-        self._handler_capabilities[agent_id] = frozenset(normalized)
+        with self._lock:
+            if agent_id in self._handlers:
+                raise ValueError(f"Handler already registered for {agent_id}")
+            self._handlers[agent_id] = handler
+            self._handler_capabilities[agent_id] = frozenset(normalized)
 
     def has_handler(self, agent_id: str) -> bool:
         """Return whether this runtime has an explicit handler for the agent."""
-        return agent_id in self._handlers
+        with self._lock:
+            return agent_id in self._handlers
 
     def registered_agents(self) -> tuple[str, ...]:
         """Return stable IDs of explicitly registered handlers."""
-        return tuple(sorted(self._handlers))
+        with self._lock:
+            return tuple(sorted(self._handlers))
 
     def declared_capabilities(self, agent_id: str) -> tuple[str, ...]:
         """Return capabilities explicitly declared by a registered handler."""
-        return tuple(sorted(self._handler_capabilities.get(agent_id, frozenset())))
+        with self._lock:
+            return tuple(sorted(self._handler_capabilities.get(agent_id, frozenset())))
 
     def declares_capabilities(self, agent_id: str, required: Iterable[str]) -> bool:
         """Check handler declarations; this is not proof of task-level validation."""
@@ -77,10 +83,12 @@ class WorkerRuntime:
             for item in required
             if isinstance(item, str) and item.strip()
         }
-        return required_set.issubset(self._handler_capabilities.get(agent_id, frozenset()))
+        with self._lock:
+            return required_set.issubset(self._handler_capabilities.get(agent_id, frozenset()))
 
     def dispatch_one(self, agent_id: str) -> DispatchResult | None:
-        handler = self._handlers.get(agent_id)
+        with self._lock:
+            handler = self._handlers.get(agent_id)
         if handler is None:
             raise KeyError(f"No explicit worker handler registered for {agent_id}")
         messages = self.bus.receive(agent_id, unread_only=True)
