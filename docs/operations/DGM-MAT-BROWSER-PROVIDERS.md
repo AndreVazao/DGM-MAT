@@ -24,7 +24,7 @@ Other genuinely free web AI services can be optional secondary consultation sour
 - Use the user's existing authenticated browser session and ordinary rendered UI only.
 - Do not read cookies, tokens, browser databases, hidden/private APIs or network internals.
 - Do not bypass login, MFA, CAPTCHA, rate limits or usage limits.
-- Detect provider login/challenge/quota states and pause that provider. Resume only when the user/service permits it.
+- Detect provider login/challenge/quota states and pause that provider. Quota pauses cool down for 60 minutes; login/challenge pauses cool down for 15 minutes, then the rendered page is rechecked before any send. No limit or challenge is bypassed.
 - Provider selectors and URL route shapes are heuristics until validated against the user's current UI. Unknown IDs/roles and DOM mismatches must fail closed or remain partial.
 - A rendered DOM top is not proof of the provider's oldest conversation message. Full-history status requires explicit provider-specific boundary evidence.
 - Keep provider identity, conversation ID, URL, capture time, adapter version, message order, completeness and content fingerprints.
