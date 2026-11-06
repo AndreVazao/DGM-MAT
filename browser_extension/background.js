@@ -308,15 +308,70 @@ async function pollBrowserOperatorQueue() {
   }
 }
 
+function providerForTabUrl(value) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    if (host === "chatgpt.com" || host === "chat.openai.com") return "chatgpt";
+    if (host === "gemini.google.com" || host === "bard.google.com") return "gemini";
+    if (host === "grok.com" || (host === "x.com" && url.pathname.startsWith("/i/grok"))) return "grok";
+    if (host === "chat.deepseek.com") return "deepseek";
+    if (host === "chat.qwen.ai") return "qwen";
+  } catch (_) {}
+  return null;
+}
+
 async function pair(code) {
   const result = await api("/auth/pair", { code, client_id: CLIENT_ID }, "");
   const expiry = Date.now() + Math.max(60, Number(result.expires_in || 1800) - 60) * 1000;
   await chrome.storage.local.set({
     [TOKEN_KEY]: result.access_token,
-    [TOKEN_EXPIRY_KEY]: expiry,
-    dgmRecoveryLastStatus: "Paired to local DGM-MAT."
+    [TOKEN_EXPIRY_KEY]: expiry
   });
-  return { expires_at: expiry, scopes: result.scopes || [] };
+  const current = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY]);
+  const defaults = {};
+  if (typeof current[AUTO_KEY] !== "boolean") defaults[AUTO_KEY] = true;
+  if (typeof current[BROWSER_QUEUE_AUTO_KEY] !== "boolean") defaults[BROWSER_QUEUE_AUTO_KEY] = true;
+  if (Object.keys(defaults).length) await chrome.storage.local.set(defaults);
+  const settings = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY]);
+  const tabs = await chrome.tabs.query({});
+  const providerTabs = {};
+  for (const tab of tabs) {
+    if (!Number.isInteger(tab.id)) continue;
+    const provider = providerForTabUrl(tab.url || "");
+    if (!provider) continue;
+    providerTabs[provider] = tab.id;
+    await rememberProviderTab(provider, tab.id);
+  }
+  await chrome.storage.local.set({
+    dgmRecoveryLastStatus: "Paired to local DGM-MAT; automatic recovery and approved mission queue are enabled by default."
+  });
+  if (settings[BROWSER_QUEUE_AUTO_KEY]) {
+    chrome.alarms.create(BROWSER_ALARM, { periodInMinutes: 0.5 });
+    await pollBrowserOperatorQueue().catch(() => {});
+  }
+  if (settings[AUTO_KEY]) {
+    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
+      const tabId = providerTabs[provider];
+      if (!Number.isInteger(tabId) || await isBrowserProviderPaused(provider)) continue;
+      try {
+        const started = await startRecovery(tabId);
+        if (!started.finished) break;
+      } catch (error) {
+        await chrome.storage.local.set({
+          dgmRecoveryLastStatus: "Paired; automatic recovery will retry when a provider tab is ready: " +
+            String(error.message || error)
+        });
+      }
+    }
+  }
+  return {
+    expires_at: expiry,
+    scopes: result.scopes || [],
+    auto_recovery_enabled: Boolean(settings[AUTO_KEY]),
+    browser_operator_auto_enabled: Boolean(settings[BROWSER_QUEUE_AUTO_KEY]),
+    provider_tabs_found: Object.keys(providerTabs).length
+  };
 }
 
 async function startRecovery(tabId, chainOnEmpty = true) {
