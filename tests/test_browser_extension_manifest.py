@@ -57,6 +57,8 @@ def test_extension_never_reads_auth_stores_or_calls_provider_private_apis():
     assert 'defaults[BROWSER_QUEUE_AUTO_KEY] = true' in background
     assert "providerForTabUrl" in background
     assert "startRecovery(tabId)" in background
+    assert "DGM_PROVIDER_PING" in content
+    assert "DGM_PROVIDER_PING" in background
 
 
 def test_extension_uses_only_the_local_dgm_mat_api_endpoint():
