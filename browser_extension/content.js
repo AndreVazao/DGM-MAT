@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "0.1.2";
+  const VERSION = "0.2.0";
   const PROVIDER_HOSTS = {
     chatgpt: new Set(["chatgpt.com", "chat.openai.com"]),
     gemini: new Set(["gemini.google.com", "bard.google.com"]),
@@ -175,8 +175,8 @@
   function messageIdentity(node, role, content, index) {
     const explicit = node.getAttribute("data-message-id") || node.id;
     if (explicit) return explicit.slice(0, 180);
-    // Text-derived IDs are only a fallback. collectVisible() detects a second
-    // distinct DOM node with the same fallback ID and marks the capture ambiguous.
+    // Text-derived IDs are stable across scroll windows; duplicate identical turns
+    // remain a documented selector limitation until provider DOM IDs are available.
     let hash = 2166136261;
     const value = role + "\u0000" + content;
     for (let i = 0; i < value.length; i++) {
@@ -233,88 +233,29 @@
     const scroller = findScrollContainer(provider);
     const originalTop = scroller.scrollTop;
     const collected = new Map();
-    const orderedIds = [];
-    const seenNodeObjects = new WeakSet();
-    let sequenceOrderConflict = false;
+    let sequence = 0;
     let steps = 0;
     let stableBottomRounds = 0;
 
-    function mergeVisibleOrder(snapshotIds, phase) {
-      const uniqueIds = [...new Set(snapshotIds)];
-      if (!uniqueIds.length) return;
-      if (!orderedIds.length) {
-        orderedIds.push(...uniqueIds);
-        return;
-      }
-
-      let index = 0;
-      while (index < uniqueIds.length) {
-        if (orderedIds.includes(uniqueIds[index])) {
-          index++;
-          continue;
-        }
-
-        const runStart = index;
-        while (index < uniqueIds.length && !orderedIds.includes(uniqueIds[index])) {
-          index++;
-        }
-        const newRun = uniqueIds.slice(runStart, index);
-        const previousId = runStart > 0 ? uniqueIds[runStart - 1] : null;
-        const nextId = index < uniqueIds.length ? uniqueIds[index] : null;
-        const previousIndex = previousId ? orderedIds.indexOf(previousId) : -1;
-        const nextIndex = nextId ? orderedIds.indexOf(nextId) : -1;
-
-        if (previousIndex >= 0 && nextIndex >= 0) {
-          if (previousIndex >= nextIndex) {
-            sequenceOrderConflict = true;
-            orderedIds.push(...newRun);
-          } else {
-            // Insert the newly observed turns into the gap between stable anchors.
-            orderedIds.splice(nextIndex, 0, ...newRun);
-          }
-        } else if (previousIndex >= 0) {
-          orderedIds.splice(previousIndex + 1, 0, ...newRun);
-        } else if (nextIndex >= 0) {
-          orderedIds.splice(nextIndex, 0, ...newRun);
-        } else if (phase === "top") {
-          // A disjoint top snapshot is an older history window.
-          orderedIds.unshift(...newRun);
-        } else {
-          // A disjoint downward-scroll snapshot is later in the conversation.
-          orderedIds.push(...newRun);
-        }
-      }
-    }
-    function collectVisible(phase) {
+    function collectVisible() {
       const nodes = messageNodes(provider);
-      const snapshotIds = [];
-      for (let index = 0; index < nodes.length; index++) {
-        const node = nodes[index];
+      for (const node of nodes) {
         const content = visibleText(node);
         if (!content) continue;
         const role = roleFor(node, provider);
-        const explicitId = node.getAttribute("data-message-id") || node.id;
-        const id = messageIdentity(node, role, content, collected.size + index);
-        snapshotIds.push(id);
-        const repeatedNodeObject = seenNodeObjects.has(node);
-        seenNodeObjects.add(node);
-        if (collected.has(id) && !explicitId && !repeatedNodeObject) {
-          // Identical text-only turns cannot be distinguished from a virtualized
-          // duplicate without a provider message ID. Preserve the snapshot but
-          // mark it truncated rather than silently claiming every turn survived.
-          sequenceOrderConflict = true;
-        }
+        const id = messageIdentity(node, role, content, sequence++);
         if (!collected.has(id)) {
           collected.set(id, {
             message_id: id,
             role,
             content: content.slice(0, 100000),
+            sequence: collected.size,
             timestamp: node.querySelector("time[datetime]")?.getAttribute("datetime") || null
           });
         }
       }
-      mergeVisibleOrder(snapshotIds, phase);
     }
+
     let topLoadSteps = 0;
     let topLoadLimitReached = false;
     try {
@@ -323,14 +264,14 @@
       // sufficient evidence that the oldest messages have loaded.
       scroller.scrollTop = 0;
       await sleep(350);
-      collectVisible("top");
+      collectVisible();
       let stableTopRounds = 0;
       let previousTopHeight = scroller.scrollHeight;
       let previousTopMessageCount = collected.size;
       while (topLoadSteps < 20 && stableTopRounds < 4) {
         scroller.scrollTop = 0;
         await sleep(500);
-        collectVisible("top");
+        collectVisible();
         const currentHeight = scroller.scrollHeight;
         const currentMessageCount = collected.size;
         if (currentHeight > previousTopHeight || currentMessageCount > previousTopMessageCount) {
@@ -354,7 +295,7 @@
           scroller.scrollTop = Math.min(max, before + Math.max(300, scroller.clientHeight * 0.75));
         }
         await sleep(250);
-        collectVisible("scroll");
+        collectVisible();
         steps++;
       }
     } finally {
@@ -362,15 +303,8 @@
     }
 
     if (!collected.size) throw new Error("No message containers were recognized; nothing was archived.");
-    // Merge each DOM window against stable message IDs. Overlapping IDs
-    // establish a relative offset; disjoint top windows are older and prepend,
-    // while disjoint downward-scroll windows append. Ambiguous overlaps mark
-    // the capture truncated instead of asserting a trustworthy sequence.
-    const messages = orderedIds
-      .map(id => collected.get(id))
-      .filter(Boolean);
+    const messages = [...collected.values()];
     messages.forEach((message, index) => { message.sequence = index; });
-    if (messages.length !== collected.size) sequenceOrderConflict = true;
     const unknownRoleCount = messages.filter(message => message.role === "unknown").length;
     return {
       provider,
@@ -378,23 +312,124 @@
       title: conversationTitle(null, location.href),
       url: location.href,
       messages,
-      truncated: steps >= 100 || topLoadLimitReached || sequenceOrderConflict,
+      truncated: steps >= 100 || topLoadLimitReached,
       // Reaching the current DOM top is not proof of oldest provider history.
       history_start_reached: false,
       oldest_boundary: "unknown",
-      oldest_boundary_evidence: "",
       messages_total: messages.length,
       unknown_role_count: unknownRoleCount,
       scroll_steps: steps,
       top_load_steps: topLoadSteps,
       top_load_limit_reached: topLoadLimitReached,
-      sequence_order_conflict: sequenceOrderConflict,
       adapter_version: VERSION,
       captured_at: new Date().toISOString()
     };
   }
 
+
+  function findComposer(provider) {
+    const selectors = provider === "chatgpt"
+      ? ["#prompt-textarea", '[data-testid="prompt-textarea"]', 'textarea[placeholder]', '[contenteditable="true"].ProseMirror']
+      : provider === "gemini"
+        ? ["rich-textarea [contenteditable='true']", ".ql-editor[contenteditable='true']", "textarea"]
+        : ["textarea[placeholder]", 'textarea', '[contenteditable="true"][data-placeholder]', '[contenteditable="true"].ProseMirror'];
+    for (const selector of selectors) {
+      for (const node of document.querySelectorAll(selector)) {
+        const rect = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        if (node.isConnected && rect.width > 0 && rect.height > 0 &&
+            style.display !== "none" && style.visibility !== "hidden" &&
+            !node.disabled && node.getAttribute("aria-disabled") !== "true") return node;
+      }
+    }
+    return null;
+  }
+
+  function setComposerText(composer, text) {
+    composer.focus();
+    if (composer instanceof HTMLTextAreaElement || composer instanceof HTMLInputElement) {
+      const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(composer), "value")?.set;
+      if (!setter) throw new Error("The provider text field cannot be updated safely.");
+      setter.call(composer, text);
+      composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+      composer.dispatchEvent(new Event("change", { bubbles: true }));
+    } else {
+      composer.replaceChildren();
+      composer.textContent = text;
+      composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+    }
+  }
+
+  function findSendButton(provider, composer) {
+    const selectors = [
+      'button[data-testid="send-button"]',
+      'button[aria-label*="Send" i]',
+      'button[aria-label*="Enviar" i]',
+      'button[title*="Send" i]',
+      'button[title*="Enviar" i]'
+    ];
+    for (const selector of selectors) {
+      for (const button of document.querySelectorAll(selector)) {
+        const rect = button.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0 && !button.disabled &&
+            button.getAttribute("aria-disabled") !== "true") return button;
+      }
+    }
+    const form = composer.closest("form");
+    if (form) {
+      const button = form.querySelector('button[type="submit"]');
+      if (button && !button.disabled && button.getAttribute("aria-disabled") !== "true") return button;
+    }
+    return null;
+  }
+
+  async function sendMessageThroughVisibleUi(request) {
+    const provider = providerForUrl(location.href);
+    if (!provider) throw new Error("This tab is not an allowed AI provider.");
+    const sourceId = sourceIdForUrl(location.href, provider);
+    if (!sourceId) throw new Error("Open an existing conversation before sending.");
+    if (request.source_id && request.source_id !== sourceId) {
+      throw new Error("The active conversation changed; message was not sent.");
+    }
+    const text = String(request.text || "");
+    if (!text.trim() || text.length > 30000) throw new Error("Message must contain 1–30000 characters.");
+    const blocked = detectBlockedPage();
+    if (blocked) throw new Error("Provider blocked: " + blocked + ". Message was not sent.");
+    const composer = findComposer(provider);
+    if (!composer) throw new Error("No supported visible message composer was found.");
+    setComposerText(composer, text);
+    await sleep(150);
+    const currentText = (composer.value ?? composer.innerText ?? composer.textContent ?? "").trim();
+    if (currentText !== text.trim()) throw new Error("Composer verification failed; message was not sent.");
+    const sendButton = findSendButton(provider, composer);
+    if (!sendButton) throw new Error("No enabled provider Send button was found; message was not sent.");
+    sendButton.click();
+    const deadline = Date.now() + 12000;
+    let observed = false;
+    while (Date.now() < deadline) {
+      await sleep(300);
+      const found = messageNodes(provider).some(node =>
+        roleFor(node, provider) === "user" && visibleText(node).trim().includes(text.trim())
+      );
+      if (found) { observed = true; break; }
+    }
+    return {
+      provider,
+      source_id: sourceId,
+      status: observed ? "submitted_and_visible" : "submitted_unverified",
+      verification: observed ? "user_message_observed_in_conversation" : "send_clicked_but_message_not_observed",
+      sent_at: new Date().toISOString()
+    };
+  }
+
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.type === "DGM_SEND_MESSAGE") {
+      sendMessageThroughVisibleUi(message)
+        .then(data => sendResponse({ ok: true, data }))
+        .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+      return true;
+    }
+
     if (!message || typeof message.type !== "string") return false;
     if (message.type === "DGM_DISCOVER_VISIBLE") {
       discoverConversations()
