@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from core.api import browser_capture_api
 from core.api.security_policy import SecurityScope, classify_request_path
 from core.recovery.recovery_ledger import RecoveryLedger
+from core.vault import VaultCatalog
 
 
 def _client(monkeypatch, tmp_path):
@@ -305,3 +306,54 @@ def test_immutable_archive_writer_is_atomic_and_never_overwrites(tmp_path):
     assert browser_capture_api._write_immutable_bytes(destination, b"second-version") is False
     assert destination.read_bytes() == b"first-version"
     assert list(tmp_path.glob(".dgm-capture-*.tmp")) == []
+
+
+def test_live_browser_capture_persists_raw_and_normalized_sources_to_vault(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    vault_root = tmp_path / "portable-vault"
+    monkeypatch.setenv("DGM_VAULT_PATH", str(vault_root))
+    response = client.post("/recovery/browser-capture/discover", json=_discovery())
+    assert response.status_code == 200
+    response = client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
+    assert response.status_code == 200
+
+    captured = client.post("/recovery/browser-capture/capture", json=_capture())
+
+    assert captured.status_code == 200, captured.text
+    result = captured.json()
+    assert result["vault_status"] == "archived"
+    assert Path(result["vault_raw_archive_path"]).is_file()
+    assert Path(result["vault_conversation_path"]).is_file()
+    vault = VaultCatalog(vault_root)
+    records = vault.list_conversations()
+    assert len(records) == 1
+    assert records[0]["completeness"] == "partial_or_unknown"
+    raw = json.loads(Path(result["vault_raw_archive_path"]).read_text(encoding="utf-8"))
+    assert raw["capture_method"] == "authenticated_visible_ui"
+
+
+def test_sequence_conflict_and_reported_count_mismatch_never_claim_full_history(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        browser_capture_api,
+        "PROVIDER_OLDEST_BOUNDARY_EVIDENCE",
+        {"chatgpt": {"fixture-oldest-marker"}},
+    )
+    client.post("/recovery/browser-capture/discover", json=_discovery())
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
+    payload = _capture()
+    payload.update({
+        "messages_total": 3,
+        "history_start_reached": True,
+        "oldest_boundary": "confirmed",
+        "oldest_boundary_evidence": "fixture-oldest-marker",
+        "sequence_order_conflict": True,
+    })
+
+    response = client.post("/recovery/browser-capture/capture", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["messages_total"] == 3
+    assert response.json()["sequence_order_conflict"] is True
+    assert response.json()["history_completeness"] == "partial_or_unknown"
+    assert response.json()["full_history_verified"] is False
