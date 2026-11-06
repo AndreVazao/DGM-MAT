@@ -417,7 +417,7 @@ class VaultCatalog:
                 if not code.strip():
                     continue
                 language = str(artifact.get("language") or "unknown").casefold()
-                artifact_fingerprint = str(artifact.get("fingerprint") or _digest((language + "\\0" + code).encode("utf-8")))
+                artifact_fingerprint = str(artifact.get("fingerprint") or _digest((language + "\0" + code).encode("utf-8")))
                 artifact_id = str(artifact.get("artifact_id") or index)
                 canonical_artifact = db.execute(
                     "SELECT provider,conversation_id,artifact_id FROM code_artifacts "
