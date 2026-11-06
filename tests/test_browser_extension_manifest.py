@@ -65,3 +65,16 @@ def test_extension_uses_only_the_local_dgm_mat_api_endpoint():
     background = (EXTENSION / "background.js").read_text(encoding="utf-8")
     assert 'const API = "http://127.0.0.1:8181";' in background
     assert "fetch(API + path" in background
+
+
+def test_windows_distribution_packages_extension_and_one_click_installer():
+    workflow = (ROOT / ".github" / "workflows" / "build-windows.yml").read_text(encoding="utf-8")
+    installer = ROOT / "scripts" / "install_browser_extension.ps1"
+    launcher = ROOT / "scripts" / "install_browser_extension.bat"
+    assert "publish\\browser_extension" in workflow
+    assert "install_browser_extension.ps1" in workflow
+    assert "install_browser_extension.bat" in workflow
+    assert installer.is_file() and launcher.is_file()
+    source = installer.read_text(encoding="utf-8")
+    assert "BrowserExtension.backups" in source
+    assert "chrome://extensions" in source
