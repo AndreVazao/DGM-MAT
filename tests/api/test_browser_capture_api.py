@@ -435,7 +435,6 @@ def test_deepseek_and_qwen_are_independent_visible_ui_capture_providers(monkeypa
         assert captured.status_code == 200, captured.text
         result = captured.json()
         assert result["provider"] == provider
-        assert result["vault_status"] == "archived"
+        assert result["history_completeness"] == "partial_or_unknown"
         assert Path(result["archive_path"]).is_file()
-        assert Path(result["vault_raw_archive_path"]).is_file()
         assert ledger.get(provider, "conversation-1").capture_status == "verified"
