@@ -114,13 +114,14 @@ class BrowserOperatorQueue:
                     raise BrowserOperatorQueueError("Idempotency key is already bound to a different task envelope")
                 db.commit()
                 return existing_item
+            approved_by = created_by if not approval_required else None
             db.execute("""
                 INSERT INTO browser_operator_tasks (
                     task_id,idempotency_key,mission_id,provider,source_id,conversation_url,
-                    message,status,created_at,updated_at,created_by
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                    message,status,created_at,updated_at,created_by,approved_by
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
             """, (task_id, idempotency_key, mission_id, provider, source_id,
-                  conversation_url, message, status, now, now, created_by))
+                  conversation_url, message, status, now, now, created_by, approved_by))
             row = db.execute(
                 "SELECT * FROM browser_operator_tasks WHERE task_id=?", (task_id,)
             ).fetchone()
@@ -227,4 +228,7 @@ class BrowserOperatorQueue:
                 "SELECT * FROM browser_operator_tasks ORDER BY created_at DESC LIMIT ?",
                 (limit,),
             ).fetchall()
-        return [self._decode(row) or {} for row in rows]
+        items = [self._decode(row) or {} for row in rows]
+        for item in items:
+            item.pop("claim_token", None)
+        return items
