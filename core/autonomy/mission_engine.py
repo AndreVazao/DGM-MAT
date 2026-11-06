@@ -23,6 +23,7 @@ from core.realtime.realtime_broadcast import safe_broadcast
 from core.organization import CapabilityScout, InternalMessageBus, Message, MessagePriority
 from core.organization.human_intervention_queue import HumanInterventionQueue
 from core.organization.worker_runtime import WorkerRuntime
+from core.organization.configured_readonly_workers import register_configured_readonly_workers
 from core.organization.qa_intake_worker import QAIntakeWorker
 from core.organization.qa_review_queue import QAReviewQueue
 from core.organization.qa_review_coordinator import QAReviewCoordinator
@@ -66,6 +67,11 @@ class MissionEngine:
             storage_manager.get_path("tasks") / "organization_messages.sqlite3"
         )
         self.worker_runtime = WorkerRuntime(self.organization_bus)
+        # Read-only repository specialists remain disabled unless the operator
+        # explicitly supplies a host-owned workspace root and repository allowlist.
+        self.readonly_worker_registration = register_configured_readonly_workers(
+            self.worker_runtime
+        )
         self.human_intervention_queue = HumanInterventionQueue(
             storage_manager.get_path("tasks") / "human_intervention_queue.sqlite3"
         )
