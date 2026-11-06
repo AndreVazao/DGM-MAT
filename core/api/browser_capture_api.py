@@ -554,6 +554,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
             from core.vault import VaultCatalog
 
             vault = VaultCatalog(configured_vault)
+            vault.register_known_projects()
             raw_result = vault.archive_raw_capture(
                 provider=payload.provider,
                 source_id=payload.source_id,
