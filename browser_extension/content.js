@@ -598,6 +598,16 @@
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type === "DGM_PROVIDER_PING") {
+      const provider = providerForUrl(location.href);
+      sendResponse({
+        ok: Boolean(provider),
+        provider,
+        source_id: provider ? sourceIdForUrl(location.href, provider) : null,
+        blocked: detectBlockedPage()
+      });
+      return false;
+    }
     if (message.type === "DGM_EXECUTE_BROWSER_TASK") {
       executeBrowserOperatorTask(message)
         .then(data => sendResponse({ ok: true, data }))
