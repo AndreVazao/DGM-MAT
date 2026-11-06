@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import json
 
+from core.organization.models import AgentStatus
+from core.organization.office import bootstrap_full_office
+from core.organization.registry import AgentRegistry
+
 from core.organization.configured_readonly_workers import (
     REPOSITORIES_ENV,
     WORKSPACE_ROOT_ENV,
@@ -97,3 +101,37 @@ def test_invalid_repository_identifiers_fail_closed(tmp_path):
     )
     assert result["status"] == "DISABLED"
     assert runtime.handlers == {}
+
+
+
+def test_registry_status_tracks_explicit_handler_registration(tmp_path):
+    root = tmp_path / "workspace"
+    (root / "DGM-MAT").mkdir(parents=True)
+    registry = bootstrap_full_office(AgentRegistry())
+    worker_ids = (
+        "agent:repository-cartographer",
+        "agent:python-source-analyst",
+        "agent:python-test-inventory",
+    )
+    assert all(registry.get_agent(agent_id).status == AgentStatus.OFFLINE for agent_id in worker_ids)
+    runtime = FakeRuntime()
+    result = register_configured_readonly_workers(
+        runtime, environ=configured(root), registry=registry
+    )
+    assert result["status"] == "REGISTERED"
+    assert all(registry.get_agent(agent_id).status == AgentStatus.AVAILABLE for agent_id in worker_ids)
+
+
+def test_missing_configuration_keeps_roster_profiles_offline(tmp_path):
+    registry = bootstrap_full_office(AgentRegistry())
+    runtime = FakeRuntime()
+    result = register_configured_readonly_workers(runtime, environ={}, registry=registry)
+    assert result["status"] == "DISABLED"
+    assert all(
+        registry.get_agent(agent_id).status == AgentStatus.OFFLINE
+        for agent_id in (
+            "agent:repository-cartographer",
+            "agent:python-source-analyst",
+            "agent:python-test-inventory",
+        )
+    )
