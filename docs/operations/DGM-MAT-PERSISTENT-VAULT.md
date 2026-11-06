@@ -4,6 +4,10 @@
 
 The Vault is local, portable data and must survive application upgrades or replacement. It is not the installed application directory and is not a Git repository. Never commit transcripts, message bodies, browser data or Vault databases.
 
+## Automatic first-run/bootstrap work
+
+When the DGM-MAT API starts, a background bootstrap (enabled by default) registers the known projects, imports completed conversation records from the migrated and current progress databases, and snapshots the local DGM-MAT repository. Identical records are indexed as duplicates; identical trees reuse the existing snapshot. This operation is local and read-only against the repository; it does not execute project code or contact external AI services. Set `DGM_VAULT_BOOTSTRAP_ENABLED=0` to disable it.
+
 ## Legacy runtime migration
 
 On the first startup with the new default, DGM-MAT copies the previous install-local `storage/runtime` directory into `Vault/runtime`. It never moves or deletes the old directory. Existing files are not overwritten; conflicting old versions are preserved under `Vault/runtime/legacy-imports/<source-id>/`. A migration marker makes the copy idempotent. The original installation data remains available for rollback.
