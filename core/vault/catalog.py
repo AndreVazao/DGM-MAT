@@ -655,7 +655,7 @@ class VaultCatalog:
                     "extension": suffix,
                     "language": language,
                 }
-                if language or name in MANIFEST_NAMES:
+                if (language or name in MANIFEST_NAMES) and stat.st_size <= 10 * 1024 * 1024:
                     entry["sha256"] = _file_digest(path)
                 entries.append(entry)
                 if len(entries) > max_entries:
