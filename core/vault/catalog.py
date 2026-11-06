@@ -218,6 +218,12 @@ class VaultCatalog:
         }
         raw = (_json(payload) + "\n").encode("utf-8")
         fingerprint = _digest(raw)
+        normalized_messages = [
+            {"role": str(message.get("role") or "unknown").casefold(),
+             "content": re.sub(r"\\s+", " ", str(message.get("content") or "")).strip().casefold()}
+            for message in messages
+        ]
+        has_transcript = bool(content.strip() or any(item["content"] for item in normalized_messages))
         transcript_identity = {
             "messages": [
                 {"role": str(message.get("role") or "unknown").casefold(),
@@ -284,6 +290,8 @@ class VaultCatalog:
         root = Path(repository_path).expanduser().resolve(strict=True)
         if not root.is_dir():
             raise NotADirectoryError(root)
+        if max_entries < 1:
+            raise ValueError("max_entries must be at least 1")
         ignored = DEFAULT_IGNORES | set(ignore_names)
         entries: list[dict[str, Any]] = []
         languages: dict[str, int] = {}
@@ -308,7 +316,7 @@ class VaultCatalog:
                     manifests.append(relative)
                 entries.append({"path": relative, "size": stat.st_size,
                                 "extension": suffix, "language": language})
-                if len(entries) >= max_entries:
+                if len(entries) > max_entries:
                     raise ValueError(f"Repository tree exceeded max_entries={max_entries}; no partial snapshot saved")
         entries.sort(key=lambda item: item["path"].casefold())
         tree = {"schema": "dgm-mat.repository-tree.v1", "project_id": project_id,

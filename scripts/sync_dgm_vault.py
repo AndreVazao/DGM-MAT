@@ -61,8 +61,7 @@ def main() -> int:
                 messages=conversation.get("messages") or [],
                 completeness=str((conversation.get("metadata") or {}).get("completeness")
                                  or (conversation.get("metadata") or {}).get("capture_status") or "unknown"),
-                project_id=project["project_id"],
-                assignment_evidence=["local completed progress-store record", "operator-configured project scope"],
+                assignment_evidence=["local completed progress-store record", "evidence-based project classifier"],
                 metadata=conversation.get("metadata") or {},
                 artifacts=snapshot.get("artifacts") or [],
             )
