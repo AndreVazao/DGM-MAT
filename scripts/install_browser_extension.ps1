@@ -17,7 +17,7 @@ New-Item -ItemType Directory -Path $parent -Force | Out-Null
 
 $backup = $null
 if (Test-Path -LiteralPath $destination) {
-    $stamp = [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss")
+    $stamp = [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss-fff")
     $backupRoot = Join-Path $parent "BrowserExtension.backups"
     New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
     $backup = Join-Path $backupRoot $stamp
