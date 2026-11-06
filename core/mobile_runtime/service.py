@@ -390,11 +390,25 @@ class MobileConversationService:
                             f"com estado {help_status}; n\u00e3o criei outra nem repeti o pedido."
                         )
                 elif help_status == "PENDING":
+                    labels = {
+                        "kilo": "Kilo",
+                        "llm7": "LLM7",
+                        "codex": "Codex",
+                        "claude": "Claude Code",
+                    }
+                    selected = tuple(getattr(self.auto_help_worker, "providers", ()))
+                    provider_names = [labels[item] for item in selected if item in labels]
+                    if len(provider_names) == 2:
+                        provider_label = " e ".join(provider_names)
+                    elif provider_names:
+                        provider_label = ", ".join(provider_names)
+                    else:
+                        provider_label = "os fornecedores gratuitos autorizados"
                     response_text += (
                         f"\n\nRegistei a consulta gratuita {auto_help_request_id}. "
-                        "O DGM-MAT vai pedir uma segunda opini\u00e3o ao Kilo/LLM7 em segundo plano. "
-                        "As respostas ser\u00e3o guardadas nesta thread como sugest\u00f5es n\u00e3o verificadas; "
-                        "n\u00e3o autorizam execu\u00e7\u00e3o nem altera\u00e7\u00f5es."
+                        f"O DGM-MAT vai pedir uma segunda opinião a {provider_label} em segundo plano. "
+                        "As respostas serão guardadas nesta thread como sugestões não verificadas; "
+                        "não autorizam execução nem alterações."
                     )
                 elif help_status == "BLOCKED_SECRET_CONTENT":
                     response_text += (
