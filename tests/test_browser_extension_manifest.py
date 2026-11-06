@@ -11,7 +11,7 @@ EXTENSION = ROOT / "browser_extension"
 def test_extension_uses_manifest_v3_and_minimal_permissions():
     manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["manifest_version"] == 3
-    assert set(manifest["permissions"]) == {"activeTab", "storage"}
+    assert set(manifest["permissions"]) == {"activeTab", "storage", "alarms"}
     denied = {"cookies", "history", "webRequest", "debugger", "downloads", "scripting", "management"}
     assert not denied.intersection(manifest["permissions"])
     assert all("://" in host for host in manifest["host_permissions"])
@@ -42,8 +42,11 @@ def test_extension_never_reads_auth_stores_or_calls_provider_private_apis():
         assert marker not in combined
     assert "DGM_DISCOVER_VISIBLE" in content
     assert "DGM_CAPTURE_CURRENT" in content
+    assert "DGM_EXECUTE_BROWSER_TASK" in content
     assert "/recovery/browser-capture/discover" in background
     assert "/recovery/browser-capture/capture" in background
+    assert "/browser-operator/next" in background
+    assert "/browser-operator/tasks/" in background
 
 
 def test_extension_uses_only_the_local_dgm_mat_api_endpoint():
