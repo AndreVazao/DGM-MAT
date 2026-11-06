@@ -4,9 +4,13 @@
 
 The Vault is local, portable data and must survive application upgrades or replacement. It is not the installed application directory and is not a Git repository. Never commit transcripts, message bodies, browser data or Vault databases.
 
+## Legacy runtime migration
+
+On the first startup with the new default, DGM-MAT copies the previous install-local `storage/runtime` directory into `Vault/runtime`. It never moves or deletes the old directory. Existing files are not overwritten; conflicting old versions are preserved under `Vault/runtime/legacy-imports/<source-id>/`. A migration marker makes the copy idempotent. The original installation data remains available for rollback.
+
 ## Configuration
 
-By default, DGM-MAT uses a stable per-user data directory outside the installation and Git worktrees: `%LOCALAPPDATA%\\DGM-MAT\\Vault` on Windows, or `$XDG_DATA_HOME/DGM-MAT/Vault` (falling back to `~/.local/share/DGM-MAT/Vault`) on Linux/macOS. This means a normal application upgrade does not move or delete the Vault. Set `DGM_VAULT_PATH` only when you want to override that default with another persistent folder:
+By default, DGM-MAT uses a stable per-user Vault outside the installation and Git worktrees: `%LOCALAPPDATA%\\DGM-MAT\\Vault` on Windows, or `$XDG_DATA_HOME/DGM-MAT/Vault` (falling back to `~/.local/share/DGM-MAT/Vault`) on Linux/macOS. The Vault also contains `runtime/`, which stores mission checkpoints, the browser task queue and mobile sessions. This means a normal application upgrade does not move or delete learned conversations or in-flight mission state. Set `DGM_VAULT_PATH` only when you want to override that default with another persistent folder:
 
 PowerShell (current session):
 
@@ -27,7 +31,7 @@ The Vault seeds an explicit project registry for DGM-MAT, DGM-HUB, DGM-MCP, Andr
 - `projects/<project-id>/conversations/` — immutable normalized transcript snapshots
 - `projects/<project-id>/trees/` — timestamped JSON and readable TXT repository trees, plus `CURRENT.json`
 - `quarantine/conversations/` — unclassified/ambiguous source material
-- `missions/` — reserved for durable mission checkpoints
+- `runtime/` — mission checkpoints, browser-operator queue, mobile sessions and other mutable runtime state; it is inside the Vault so upgrades preserve it
 
 Exact duplicates and repeated messages/code are recorded as candidates with canonical provenance. No source material is deleted automatically.
 
