@@ -129,6 +129,8 @@ def test_auto_help_calls_only_free_allowlisted_hub_providers_and_persists_untrus
     assert worker.run_once() is False
     assert bridge.calls[0]["providers"] == ["kilo", "llm7"]
     assert "CONTEXTO DE EVIDÊNCIA" in bridge.calls[0]["goal"]
+    assert "Every non-empty content line" in bridge.calls[0]["goal"]
+    assert "NÃO TENHO EVIDÊNCIA SUFICIENTE" in bridge.calls[0]["goal"]
     assert "[E1]" in bridge.calls[0]["goal"]
     assert "CONTEXTO DE EVIDÊNCIA" in bridge.calls[0]["context"]
     assert len(engine.collaboration_store.results) == 2
@@ -200,6 +202,8 @@ def test_auto_help_marks_hub_withheld_responses_as_blocked_evidence(tmp_path, mo
     assert worker.run_once() is True
     assert bridge.calls[0]["providers"] == ["codex", "claude"]
     assert "CONTEXTO DE EVIDÊNCIA" in bridge.calls[0]["goal"]
+    assert "Every non-empty content line" in bridge.calls[0]["goal"]
+    assert "NÃO TENHO EVIDÊNCIA SUFICIENTE" in bridge.calls[0]["goal"]
     assert "[E1]" in bridge.calls[0]["goal"]
     assert "CONTEXTO DE EVIDÊNCIA" in bridge.calls[0]["context"]
     assert store.status()["counts"] == {"BLOCKED_EVIDENCE": 1}
