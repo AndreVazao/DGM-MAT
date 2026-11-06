@@ -7,6 +7,10 @@ on:
     paths:
       - "browser_extension/**"
       - "core/api/browser_capture_api.py"
+      - "core/api/browser_operator_api.py"
+      - "core/providers/browser/browser_operator_queue.py"
+      - "core/api/runtime_api.py"
+      - "core/api/security_policy.py"
       - "core/api/local_auth_api.py"
       - "core/api/auth_middleware.py"
       - "core/api/security_policy.py"
@@ -18,6 +22,8 @@ on:
       - "tests/browser_extension/**"
       - "tests/test_browser_extension_manifest.py"
       - "tests/api/test_browser_capture_api.py"
+      - "tests/api/test_browser_operator_api.py"
+      - "tests/providers/test_browser_operator_queue.py"
       - "tests/api/test_extension_pairing_origin.py"
       - "tests/api/test_extension_session_scope.py"
       - "tests/api/test_recovery_api.py"
@@ -63,7 +69,9 @@ jobs:
       - name: Run Bandit on changed security-sensitive Python modules
         run: |
           bandit -q -lll \
-            core/api/browser_capture_api.py \
+            core/api/browser_capture_api.py \\
+            core/api/browser_operator_api.py \\
+            core/providers/browser/browser_operator_queue.py \
             core/api/local_auth_api.py \
             core/api/auth_middleware.py \
             core/api/security_policy.py
@@ -73,7 +81,9 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_browser_extension_manifest.py \
-            tests/api/test_browser_capture_api.py \
+            tests/api/test_browser_capture_api.py \\
+            tests/api/test_browser_operator_api.py \\
+            tests/providers/test_browser_operator_queue.py \
             tests/api/test_extension_pairing_origin.py \
             tests/api/test_extension_session_scope.py \
             tests/api/test_recovery_api.py \
