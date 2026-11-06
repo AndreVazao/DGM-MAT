@@ -29,6 +29,30 @@ def _principal(request: Request) -> dict[str, Any]:
     return principal
 
 
+def _sync_mission_task(task_id: str, status: str, *, result: dict[str, Any] | None = None, error: str = "") -> None:
+    task = _queue().get(task_id)
+    if not task:
+        return
+    try:
+        from core.autonomy.mission_engine import mission_engine
+        mission = mission_engine._reload_mission_checkpoint(str(task.get("mission_id") or ""))
+        if mission is None:
+            return
+        mission.metadata["browser_operator_task_id"] = task_id
+        mission.metadata["browser_operator_task_status"] = status
+        if result is not None:
+            assistant_text = result.get("assistant_text")
+            if isinstance(assistant_text, str):
+                mission.metadata["browser_operator_last_response"] = assistant_text[:1200]
+            mission.metadata["browser_operator_last_result_status"] = str(result.get("status") or status)
+        if error:
+            mission.metadata["browser_operator_last_error"] = error[:500]
+        mission_engine.save_mission(mission)
+    except Exception:
+        # The durable browser queue remains authoritative if mission checkpoint sync fails.
+        return
+
+
 class BrowserOperatorTaskCreate(BaseModel):
     idempotency_key: str = Field(min_length=8, max_length=200)
     mission_id: str = Field(min_length=1, max_length=80)
@@ -89,6 +113,7 @@ def approve_browser_operator_task(task_id: str, request: Request):
     principal = _principal(request)
     if not _queue().approve(task_id, operator=str(principal.get("subject") or "local-operator")):
         raise HTTPException(status_code=409, detail="Task is missing or no longer awaiting approval.")
+    _sync_mission_task(task_id, "queued")
     return {"status": "queued", "task_id": task_id}
 
 
@@ -123,6 +148,7 @@ def complete_browser_operator_task(
         status=payload.status,
     ):
         raise HTTPException(status_code=409, detail="Task claim is stale, expired or owned by another session.")
+    _sync_mission_task(task_id, payload.status, result=payload.result)
     return {"status": payload.status, "task_id": task_id}
 
 
@@ -139,7 +165,9 @@ def fail_browser_operator_task(
         blocked=payload.blocked,
     ):
         raise HTTPException(status_code=409, detail="Task claim is stale, expired or owned by another session.")
-    return {"status": "blocked" if payload.blocked else "failed", "task_id": task_id}
+    final_status = "blocked" if payload.blocked else "failed"
+    _sync_mission_task(task_id, final_status, error=payload.reason)
+    return {"status": final_status, "task_id": task_id}
 
 
 @router.get("/tasks")
