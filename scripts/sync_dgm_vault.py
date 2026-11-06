@@ -10,7 +10,6 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from core.conversation_intelligence.progress_store import ConversationProgressStore
 from core.vault import VaultCatalog
 
 
@@ -46,58 +45,18 @@ def main() -> int:
     else:
         from core.storage.storage_manager import storage_manager
         progress_paths = [
-            ROOT / "storage" / "runtime" / "conversation_intelligence" / "progress.sqlite3",
+            vault.root / "runtime" / "conversation_intelligence" / "progress.sqlite3",
             storage_manager.get_path("cognition") / "conversation_intelligence" / "progress.sqlite3",
+            ROOT / "storage" / "runtime" / "conversation_intelligence" / "progress.sqlite3",
         ]
-    unique_paths = list(dict.fromkeys(path.resolve() for path in progress_paths))
-    records = []
-    opened_databases = []
-    for database_path in unique_paths:
-        if not database_path.is_file():
-            continue
-        records.extend(ConversationProgressStore(database_path).list_conversations())
-        opened_databases.append(str(database_path))
-    synced = 0
-    duplicates = 0
-    skipped = 0
-    failures: list[dict[str, str]] = []
-    for row in records:
-        if row.get("status") != "complete" or not isinstance(row.get("result"), dict):
-            skipped += 1
-            continue
-        snapshot = row["result"]
-        conversation = snapshot.get("conversation")
-        if not isinstance(conversation, dict):
-            skipped += 1
-            continue
-        provider = str(conversation.get("provider") or row.get("provider") or "unknown")
-        if args.provider and provider.casefold() not in {item.casefold() for item in args.provider}:
-            continue
-        try:
-            result = vault.archive_conversation(
-                provider=provider,
-                conversation_id=str(conversation.get("conversation_id") or row.get("conversation_id")),
-                title=str(conversation.get("title") or row.get("title") or "Untitled"),
-                url=conversation.get("url"),
-                content=str(conversation.get("content") or ""),
-                messages=conversation.get("messages") or [],
-                completeness=str((conversation.get("metadata") or {}).get("completeness")
-                                 or (conversation.get("metadata") or {}).get("capture_status") or "unknown"),
-                assignment_evidence=["local completed progress-store record", "evidence-based project classifier"],
-                metadata=conversation.get("metadata") or {},
-                artifacts=snapshot.get("artifacts") or [],
-            )
-            duplicates += int(result["duplicate"])
-            synced += int(not result["duplicate"])
-        except Exception as exc:
-            failures.append({"provider": provider, "conversation_id": str(row.get("conversation_id")),
-                             "error": type(exc).__name__, "detail": str(exc)[:300]})
-
+    sync_report = vault.sync_completed_progress(progress_paths, providers=args.provider)
     tree = vault.snapshot_repository(project["project_id"], args.repository)
-    report = {"status": "partial" if failures else "completed", "vault": vault.summary(),
-              "progress_databases": opened_databases, "progress_records_seen": len(records), "conversations_archived": synced,
-              "duplicates_detected": duplicates, "records_skipped": skipped,
-              "failures": failures, "repository_tree": tree}
+    report = {
+        "status": "partial" if sync_report["failures"] else "completed",
+        "vault": vault.summary(),
+        **sync_report,
+        "repository_tree": tree,
+    }
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 1 if failures else 0
 
