@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sqlite3
 
 from .message_bus import InternalMessageBus
 from .models import Message, MessagePriority
@@ -85,7 +86,7 @@ class ReadOnlyWorkerOrchestrator:
         )
         try:
             self.bus.send(message)
-        except (OSError, ValueError, TypeError):
+        except (sqlite3.Error, OSError, ValueError, TypeError):
             return self._invalid("message_enqueue_failed")
 
         receipt = self.bus.get_dispatch_result(message_id)
