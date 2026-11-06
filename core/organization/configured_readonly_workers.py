@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .python_source_analyst_worker import PythonSourceAnalystWorker
+from .python_test_inventory_worker import PythonTestInventoryWorker
 from .repository_cartographer_worker import RepositoryCartographerWorker
 from .worker_runtime import WorkerRuntime
 
@@ -76,6 +77,7 @@ def register_configured_readonly_workers(
     workers = (
         RepositoryCartographerWorker(allowed_root=root, repositories=repositories),
         PythonSourceAnalystWorker(allowed_root=root, repositories=repositories),
+        PythonTestInventoryWorker(allowed_root=root, repositories=repositories),
     )
     registered: list[str] = []
     already_registered: list[str] = []
