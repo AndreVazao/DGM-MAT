@@ -1,11 +1,13 @@
 (() => {
   "use strict";
 
-  const VERSION = "0.2.0";
+  const VERSION = "0.1.3";
   const PROVIDER_HOSTS = {
     chatgpt: new Set(["chatgpt.com", "chat.openai.com"]),
     gemini: new Set(["gemini.google.com", "bard.google.com"]),
-    grok: new Set(["grok.com", "x.com"])
+    grok: new Set(["grok.com", "x.com"]),
+    deepseek: new Set(["chat.deepseek.com"]),
+    qwen: new Set(["chat.qwen.ai"])
   };
 
   function providerForUrl(value) {
@@ -18,30 +20,61 @@
         if (host === "x.com" && !url.pathname.startsWith("/i/grok")) return null;
         return "grok";
       }
+      if (PROVIDER_HOSTS.deepseek.has(host)) return "deepseek";
+      if (PROVIDER_HOSTS.qwen.has(host)) return "qwen";
     } catch (_) {}
     return null;
   }
 
   function sourceIdForUrl(value, provider) {
     const url = new URL(value);
+    const segments = url.pathname.split("/").filter(Boolean);
     if (provider === "chatgpt") {
-      const match = url.pathname.match(/\/c\/([A-Za-z0-9_-]+)/);
-      return match ? match[1] : null;
+      const index = segments.indexOf("c");
+      return index >= 0 ? segments[index + 1] || null : null;
     }
     if (provider === "gemini") {
-      const match = url.pathname.match(/\/app\/([A-Za-z0-9_-]+)/);
-      return match ? match[1] : null;
+      const index = segments.indexOf("app");
+      return index >= 0 ? segments[index + 1] || null : null;
     }
-    const queryId = url.searchParams.get("conversation") || url.searchParams.get("id");
-    if (queryId && /^[A-Za-z0-9._:-]{1,200}$/.test(queryId)) return queryId;
-    const match = url.pathname.match(/\/(?:chat|c|i\/grok)\/([A-Za-z0-9_-]+)/);
-    return match ? match[1] : null;
+    const queryKeys = provider === "deepseek" || provider === "qwen"
+      ? ["conversation", "conversationId", "chatId", "chat_id", "id"]
+      : ["conversation", "id"];
+    for (const key of queryKeys) {
+      const queryId = url.searchParams.get(key);
+      if (queryId && /^[A-Za-z0-9._:-]{1,200}$/.test(queryId)) return queryId;
+    }
+    if (provider === "deepseek") {
+      const index = segments.indexOf("chat");
+      if (index >= 0) {
+        const candidate = segments[index + 1] === "s" ? segments[index + 2] : segments[index + 1];
+        return candidate && /^[A-Za-z0-9_-]+$/.test(candidate) ? candidate : null;
+      }
+      return null;
+    }
+    if (provider === "qwen") {
+      for (const marker of ["chat", "c", "conversation", "s"]) {
+        const index = segments.indexOf(marker);
+        if (index >= 0 && segments[index + 1] && /^[A-Za-z0-9_-]+$/.test(segments[index + 1])) {
+          return segments[index + 1];
+        }
+      }
+      return null;
+    }
+    for (const marker of ["chat", "c"]) {
+      const index = segments.indexOf(marker);
+      if (index >= 0 && segments[index + 1] && /^[A-Za-z0-9_-]+$/.test(segments[index + 1])) {
+        return segments[index + 1];
+      }
+    }
+    const grokIndex = segments.indexOf("i");
+    return grokIndex >= 0 && segments[grokIndex + 1] === "grok" ? segments[grokIndex + 2] || null : null;
   }
 
   function conversationTitle(anchor, url) {
     const text = (anchor?.innerText || anchor?.getAttribute("aria-label") || "").trim();
     if (text) return text.slice(0, 500);
-    const title = (document.title || "").replace(/\s*[|—-]\s*(ChatGPT|Gemini|Grok).*$/i, "").trim();
+    const title = (document.title || "").replace(/\s*[|—-]\s*(ChatGPT|Gemini|Grok|DeepSeek|Qwen).*$/i, "").trim();
     return title.slice(0, 500) || "Conversation " + url.pathname.split("/").filter(Boolean).pop();
   }
 
@@ -139,11 +172,15 @@
     if (provider === "gemini") {
       return [...document.querySelectorAll("user-query, model-response")];
     }
-    const selectors = [
-      '[data-testid="conversation-turn"]',
-      '[data-testid*="message"]',
-      '[data-message-id]'
-    ];
+    const selectors = provider === "deepseek"
+      ? ['[data-message-id]', '[data-testid*="message"]', 'div[class*="ds-message"]', 'div[class*="message"]']
+      : provider === "qwen"
+        ? ['[data-message-id]', '[data-testid*="message"]', 'div[class*="chat-message"]', 'div[class*="message-item"]', 'div[class*="message"]']
+        : [
+            '[data-testid="conversation-turn"]',
+            '[data-testid*="message"]',
+            '[data-message-id]'
+          ];
     const nodes = selectors.flatMap(selector => [...document.querySelectorAll(selector)]);
     return [...new Set(nodes)].filter(node => !nodes.some(other => other !== node && node.contains(other)));
   }
