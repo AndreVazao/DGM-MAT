@@ -11,6 +11,27 @@ from typing import Any, Iterable
 
 
 SAFE_SEGMENT = re.compile(r"[^a-zA-Z0-9._-]+")
+KNOWN_PROJECTS: tuple[dict[str, Any], ...] = (
+    {"project_id": "dgm-mat", "name": "DGM-MAT",
+     "aliases": ("DGM-MAT", "DevOps God Mode", "Multi Agent Tool")},
+    {"project_id": "dgm-hub", "name": "DGM-HUB",
+     "aliases": ("DGM-HUB", "DGM Hub", "Hub Meeting Room")},
+    {"project_id": "dgm-mcp", "name": "DGM-MCP",
+     "aliases": ("DGM-MCP", "DGM MCP")},
+    {"project_id": "andreos-memory", "name": "AndreOS Memory",
+     "aliases": ("AndreOS Memory", "AndreOS-Memory", "MEME")},
+    {"project_id": "dgm-mat-mobile", "name": "DGM-MAT-Mobile",
+     "aliases": ("DGM-MAT-Mobile", "DGM-MAT Mobile", "DGM MAT Mobile", "Mobile Backoffice")},
+    {"project_id": "vazao-evse", "name": "VAZAO EVSE Platform",
+     "aliases": ("VAZAO-EVSE-Platform", "VAZAO EVSE", "TestStation V1")},
+    {"project_id": "vazao-sovereign-trader", "name": "VazaoSovereignTrader",
+     "aliases": ("VazaoSovereignTrader", "Vazão Sovereign Trader", "Sovereign Trader")},
+    {"project_id": "office-kit", "name": "Office Kit",
+     "aliases": ("Office Kit", "Digital Office General")},
+    {"project_id": "family-dgm", "name": "Family DGM",
+     "aliases": ("Family DGM",)},
+)
+
 DEFAULT_IGNORES = {
     ".git", ".hg", ".svn", "node_modules", "__pycache__", ".venv",
     "venv", "env", "dist", "build", "coverage", ".pytest_cache",
@@ -245,6 +266,15 @@ class VaultCatalog:
         (self.root / "projects" / project_id).mkdir(parents=True, exist_ok=True)
         return self.get_project(project_id) or {}
 
+    def register_known_projects(self) -> list[dict[str, Any]]:
+        """Idempotently seed the small, explicit project registry used for grouping."""
+        return [
+            self.register_project(
+                item["project_id"], item["name"], aliases=item["aliases"]
+            )
+            for item in KNOWN_PROJECTS
+        ]
+
     def get_project(self, project_id: str) -> dict[str, Any] | None:
         with self._connect() as db:
             row = db.execute("SELECT * FROM projects WHERE project_id=?", (project_id,)).fetchone()
@@ -265,9 +295,12 @@ class VaultCatalog:
         for project in self.list_projects():
             hits = [alias for alias in project["aliases"] if alias and alias.casefold() in haystack]
             if hits:
-                score = min(0.99, 0.78 + 0.07 * len(set(h.casefold() for h in hits)))
+                longest = max(len(alias) for alias in hits)
+                strongest = [alias for alias in hits if len(alias) == longest]
+                score = min(0.99, 0.78 + 0.004 * min(longest, 40) + 0.02 * (len(strongest) - 1))
                 candidates.append({"project_id": project["project_id"], "name": project["name"],
-                                   "confidence": round(score, 2), "matched_aliases": hits})
+                                   "confidence": round(score, 3), "matched_aliases": hits,
+                                   "strongest_aliases": strongest})
         candidates.sort(key=lambda item: (-item["confidence"], item["project_id"]))
         if not candidates:
             return {"project_id": None, "status": "unclassified", "candidates": []}
