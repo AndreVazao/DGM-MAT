@@ -15,4 +15,6 @@ _TEST_STORAGE = _TEST_ROOT / "runtime"
 _TEST_STORAGE.mkdir(parents=True, exist_ok=True)
 os.environ["DGM_BASE_PATH"] = str(_TEST_ROOT)
 os.environ["DGM_STORAGE_PATH"] = str(_TEST_STORAGE)
+os.environ["DGM_VAULT_PATH"] = str(_TEST_ROOT / "vault")
+os.environ["DGM_VAULT_BOOTSTRAP_ENABLED"] = "0"
 os.environ["DGM_TEST_MODE"] = "1"
