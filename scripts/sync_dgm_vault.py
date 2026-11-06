@@ -33,8 +33,14 @@ def main() -> int:
 
     vault = VaultCatalog(args.vault)
     vault.register_known_projects()
-    project = vault.register_project(args.project_id, args.project_name, args.repository,
-                                     [value.strip() for value in args.aliases.split(",") if value.strip()])
+    existing_project = vault.get_project(args.project_id)
+    aliases = list(dict.fromkeys([
+        *(existing_project["aliases"] if existing_project else []),
+        *[value.strip() for value in args.aliases.split(",") if value.strip()],
+    ]))
+    project = vault.register_project(
+        args.project_id, args.project_name, args.repository, aliases
+    )
     if args.progress_db:
         progress_paths = [Path(value).expanduser() for value in args.progress_db]
     else:
