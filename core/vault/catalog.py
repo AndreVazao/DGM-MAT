@@ -87,6 +87,17 @@ class VaultCatalog:
 
     SCHEMA_VERSION = 2
 
+    @staticmethod
+    def default_root() -> Path:
+        """Stable per-user data location, independent of the executable and Git checkout."""
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data:
+            base = Path(local_app_data)
+        else:
+            data_home = os.environ.get("XDG_DATA_HOME")
+            base = Path(data_home) if data_home else Path.home() / ".local" / "share"
+        return (base / "DGM-MAT" / "Vault").expanduser().resolve()
+
     def __init__(self, vault_root: str | Path | None = None) -> None:
         configured = vault_root or os.environ.get("DGM_VAULT_PATH")
         if not configured:
