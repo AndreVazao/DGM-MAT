@@ -98,6 +98,8 @@ def create_browser_operator_task(payload: BrowserOperatorTaskCreate, request: Re
         )
     except (ValueError, BrowserOperatorQueueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if task.get("task_id"):
+        _sync_mission_task(str(task["task_id"]), str(task.get("status") or "pending_approval"))
     return {
         "status": task.get("status"),
         "task_id": task.get("task_id"),
@@ -132,6 +134,7 @@ def claim_next_browser_operator_task(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if task is None:
         return {"status": "queue_empty", "task": None}
+    _sync_mission_task(str(task.get("task_id")), "claimed")
     return {"status": "claimed", "task": task}
 
 
