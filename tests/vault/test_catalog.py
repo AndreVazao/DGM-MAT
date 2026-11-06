@@ -221,7 +221,14 @@ def test_raw_browser_capture_is_immutable_and_idempotent(tmp_path):
 def test_default_vault_root_is_per_user_and_outside_the_repository(tmp_path, monkeypatch):
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "AppData" / "Local"))
     monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+    monkeypatch.delenv("DGM_VAULT_PATH", raising=False)
     assert VaultCatalog.default_root() == (tmp_path / "AppData" / "Local" / "DGM-MAT" / "Vault").resolve()
+
+
+def test_vault_root_override_is_shared_with_runtime_storage(tmp_path, monkeypatch):
+    override = tmp_path / "external-vault"
+    monkeypatch.setenv("DGM_VAULT_PATH", str(override))
+    assert VaultCatalog.default_root() == override.resolve()
 
 
 def test_older_build_refuses_to_downgrade_a_newer_vault_schema(tmp_path):
