@@ -46,6 +46,8 @@ def _discovery(provider="chatgpt", source_id="conversation-1", url=None):
             "chatgpt": "https://chatgpt.com/c/conversation-1",
             "gemini": "https://gemini.google.com/app/conversation-1",
             "grok": "https://grok.com/chat/conversation-1",
+            "deepseek": "https://chat.deepseek.com/a/chat/s/conversation-1",
+            "qwen": "https://chat.qwen.ai/chat/conversation-1",
         }[provider]
     return {
         "provider": provider,
@@ -64,6 +66,8 @@ def _capture(provider="chatgpt", source_id="conversation-1", url=None, content="
             "chatgpt": "https://chatgpt.com/c/conversation-1",
             "gemini": "https://gemini.google.com/app/conversation-1",
             "grok": "https://grok.com/chat/conversation-1",
+            "deepseek": "https://chat.deepseek.com/a/chat/s/conversation-1",
+            "qwen": "https://chat.qwen.ai/chat/conversation-1",
         }[provider]
     return {
         "provider": provider,
@@ -389,3 +393,19 @@ def test_allowlisted_provider_boundary_evidence_can_confirm_history(monkeypatch,
     assert response.status_code == 200
     assert response.json()["history_completeness"] == "oldest_boundary_confirmed"
     assert response.json()["full_history_verified"] is False
+
+
+def test_deepseek_and_qwen_are_allowed_as_separate_visible_ui_providers(monkeypatch, tmp_path):
+    client, ledger = _client(monkeypatch, tmp_path)
+    for provider in ("deepseek", "qwen"):
+        discovered = client.post("/recovery/browser-capture/discover", json=_discovery(provider))
+        assert discovered.status_code == 200, discovered.text
+        assert discovered.json()["registered"] == 1
+        claimed = client.post("/recovery/browser-capture/next", json={"provider": provider})
+        assert claimed.status_code == 200
+        assert claimed.json()["next"]["provider"] == provider
+        captured = client.post("/recovery/browser-capture/capture", json=_capture(provider))
+        assert captured.status_code == 200, captured.text
+        assert captured.json()["provider"] == provider
+        assert Path(captured.json()["archive_path"]).is_file()
+        assert ledger.get(provider, "conversation-1").capture_status == "verified"

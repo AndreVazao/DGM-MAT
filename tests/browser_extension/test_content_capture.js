@@ -115,6 +115,10 @@ function createHarness(mode, provider = "chatgpt") {
         '[data-testid*="message"]',
         '[data-message-id]'
       ].includes(selector)) return visible;
+      if (["deepseek", "qwen"].includes(provider) && (
+        ['[data-message-id]', '[data-testid*="message"]', 'div[class*="ds-message"]',
+         'div[class*="chat-message"]', 'div[class*="message-item"]', 'div[class*="message"]'].includes(selector)
+      )) return visible;
       return [];
     }
   };
@@ -138,12 +142,16 @@ function createHarness(mode, provider = "chatgpt") {
       href: {
         chatgpt: "https://chatgpt.com/c/fixture-conversation",
         gemini: "https://gemini.google.com/app/fixture-conversation",
-        grok: "https://grok.com/chat/fixture-conversation"
+        grok: "https://grok.com/chat/fixture-conversation",
+        deepseek: "https://chat.deepseek.com/a/chat/s/fixture-conversation",
+        qwen: "https://chat.qwen.ai/chat/fixture-conversation"
       }[provider],
       pathname: {
         chatgpt: "/c/fixture-conversation",
         gemini: "/app/fixture-conversation",
-        grok: "/chat/fixture-conversation"
+        grok: "/chat/fixture-conversation",
+        deepseek: "/a/chat/s/fixture-conversation",
+        qwen: "/chat/fixture-conversation"
       }[provider],
       assign() {
         throw new Error("Navigation is not expected during capture tests.");
@@ -235,7 +243,7 @@ async function testVirtualizedHistoryWindowsAndDuplicates() {
 }
 
 async function testProviderScopedSelectorsRemainSupported() {
-  for (const provider of ["chatgpt", "gemini", "grok"]) {
+  for (const provider of ["chatgpt", "gemini", "grok", "deepseek", "qwen"]) {
     const harness = createHarness("no-oldest-marker", provider);
     const response = await harness.capture();
     assert.equal(response.ok, true, provider + ": " + response.error);

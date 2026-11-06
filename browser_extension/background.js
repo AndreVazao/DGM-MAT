@@ -83,7 +83,7 @@ async function startNextAutoProvider(excludeProvider) {
   const stored = await chrome.storage.local.get([AUTO_KEY, PROVIDER_TABS_KEY]);
   if (!stored[AUTO_KEY]) return { started: false };
   const tabs = stored[PROVIDER_TABS_KEY] || {};
-  for (const provider of ["chatgpt", "gemini", "grok"]) {
+  for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
     if (provider === excludeProvider || !Number.isInteger(tabs[provider])) continue;
     try {
       const result = await startRecovery(tabs[provider], false);

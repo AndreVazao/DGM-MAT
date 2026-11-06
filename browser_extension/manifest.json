@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "DGM-MAT Conversation Recovery",
-  "version": "0.1.1",
-  "description": "Captures visible ChatGPT, Gemini and Grok conversations into the local DGM-MAT archive; never claims full history without evidence.",
+  "version": "0.1.2",
+  "description": "Captures visible ChatGPT, Grok, Gemini, DeepSeek and Qwen conversations into the local DGM-MAT archive; never claims full history without evidence.",
   "minimum_chrome_version": "116",
   "permissions": [
     "activeTab",
@@ -16,7 +16,9 @@
     "https://gemini.google.com/*",
     "https://bard.google.com/*",
     "https://grok.com/*",
-    "https://x.com/i/grok*"
+    "https://x.com/i/grok*",
+    "https://chat.deepseek.com/*",
+    "https://chat.qwen.ai/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -33,7 +35,9 @@
         "https://gemini.google.com/*",
         "https://bard.google.com/*",
         "https://grok.com/*",
-        "https://x.com/i/grok*"
+        "https://x.com/i/grok*",
+        "https://chat.deepseek.com/*",
+        "https://chat.qwen.ai/*"
       ],
       "js": [
         "content.js"

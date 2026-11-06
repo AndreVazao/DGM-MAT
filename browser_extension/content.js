@@ -1,11 +1,13 @@
 (() => {
   "use strict";
 
-  const VERSION = "0.1.2";
+  const VERSION = "0.1.3";
   const PROVIDER_HOSTS = {
     chatgpt: new Set(["chatgpt.com", "chat.openai.com"]),
     gemini: new Set(["gemini.google.com", "bard.google.com"]),
-    grok: new Set(["grok.com", "x.com"])
+    grok: new Set(["grok.com", "x.com"]),
+    deepseek: new Set(["chat.deepseek.com"]),
+    qwen: new Set(["chat.qwen.ai"])
   };
 
   function providerForUrl(value) {
@@ -18,6 +20,8 @@
         if (host === "x.com" && !url.pathname.startsWith("/i/grok")) return null;
         return "grok";
       }
+      if (PROVIDER_HOSTS.deepseek.has(host)) return "deepseek";
+      if (PROVIDER_HOSTS.qwen.has(host)) return "qwen";
     } catch (_) {}
     return null;
   }
@@ -139,11 +143,15 @@
     if (provider === "gemini") {
       return [...document.querySelectorAll("user-query, model-response")];
     }
-    const selectors = [
-      '[data-testid="conversation-turn"]',
-      '[data-testid*="message"]',
-      '[data-message-id]'
-    ];
+    const selectors = provider === "deepseek"
+      ? ['[data-message-id]', '[data-testid*="message"]', 'div[class*="ds-message"]', 'div[class*="message"]']
+      : provider === "qwen"
+        ? ['[data-message-id]', '[data-testid*="message"]', 'div[class*="chat-message"]', 'div[class*="message-item"]', 'div[class*="message"]']
+        : [
+            '[data-testid="conversation-turn"]',
+            '[data-testid*="message"]',
+            '[data-message-id]'
+          ];
     const nodes = selectors.flatMap(selector => [...document.querySelectorAll(selector)]);
     return [...new Set(nodes)].filter(node => !nodes.some(other => other !== node && node.contains(other)));
   }
