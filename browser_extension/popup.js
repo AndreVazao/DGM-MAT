@@ -7,6 +7,7 @@ const autoCheckbox = document.getElementById("auto-checkbox");
 const statusNode = document.getElementById("status");
 const messageInput = document.getElementById("message-input");
 const sendMessageButton = document.getElementById("send-message-button");
+const browserOperatorCheckbox = document.getElementById("browser-operator-checkbox");
 
 function showStatus(value, error = false) {
   statusNode.textContent = value;
@@ -30,12 +31,28 @@ async function refresh() {
     startButton.disabled = !data.paired || Boolean(data.run?.active);
     retryButton.disabled = !data.can_retry;
     autoCheckbox.checked = Boolean(data.auto_enabled);
-    showStatus(data.last_status || (data.paired ? "Paired and ready." : "Pair with the local DGM-MAT PC."));
+    browserOperatorCheckbox.checked = Boolean(data.browser_operator_auto_enabled);
+    showStatus((data.last_status || (data.paired ? "Paired and ready." : "Pair with the local DGM-MAT PC.")) + "\n" + (data.browser_operator_status || "Browser mission operator idle."));
   } catch (error) {
     startButton.disabled = true;
     showStatus(error.message, true);
   }
 }
+
+browserOperatorCheckbox.addEventListener("change", async () => {
+  browserOperatorCheckbox.disabled = true;
+  try {
+    const result = await send({ type: "DGM_SET_AUTO_BROWSER_OPERATOR", enabled: browserOperatorCheckbox.checked });
+    showStatus(result.enabled
+      ? "Execução automática de tarefas aprovadas ativada."
+      : "Execução automática de tarefas aprovadas desativada.");
+  } catch (error) {
+    showStatus(error.message, true);
+    await refresh();
+  } finally {
+    browserOperatorCheckbox.disabled = false;
+  }
+});
 
 autoCheckbox.addEventListener("change", async () => {
   autoCheckbox.disabled = true;
