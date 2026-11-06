@@ -476,7 +476,7 @@ class AutoHelpWorker:
 
             # The Hub evidence gate validates factual lines individually. Put its exact
             # citation contract in the goal, not only in local collaboration metadata.
-            goal_suffix = "\\n\\n" + _EVIDENCE_CONTRACT
+            goal_suffix = "\n\n" + _EVIDENCE_CONTRACT
             goal_budget = max(1, 4000 - len(goal_suffix))
             hub_goal = request["goal"][:goal_budget].rstrip() + goal_suffix
             hub_context = (
@@ -486,7 +486,7 @@ class AutoHelpWorker:
                 "The operator explicitly attested free-only capacity for this session; "
                 "the Hub does not expose a numeric remaining quota. Stop on any "
                 "rate/quota/capacity error. No retry or paid fallback. "
-                "No source code, file contents, conversation history, credentials, or tokens are included.\\n"
+                "No source code, file contents, conversation history, credentials, or tokens are included.\n"
                 + "Local classification reason: " + request["reason"][:1500]
             )
             task = bridge.consult(
@@ -578,7 +578,7 @@ class AutoHelpWorker:
                 else "PARTIAL"
             )
             if rendered:
-                outcome_text = "\\n\\n".join(rendered)
+                outcome_text = "\n\n".join(rendered)
             elif evidence_rejected:
                 outcome_text = (
                     "Codex/Claude responderam, mas o DGM-HUB reteve as respostas porque "
@@ -592,9 +592,9 @@ class AutoHelpWorker:
                 "Pedi uma segunda opinião aos fornecedores gratuitos disponíveis no DGM-HUB. "
                 "As respostas são sugestões externas não verificadas; não alterei ficheiros, "
                 "não executei comandos e não autorizei qualquer fornecedor a agir. "
-                "Vou cruzar propostas válidas com o código e os testes locais.\\n\\n"
+                "Vou cruzar propostas válidas com o código e os testes locais.\n\n"
                 + outcome_text
-                + "\\n\\n**Estado:** resultado consultivo guardado; revisão independente necessária. "
+                + "\n\n**Estado:** resultado consultivo guardado; revisão independente necessária. "
                 "Sem repetição automática e sem fallback pago."
             )
             result_payload = {
