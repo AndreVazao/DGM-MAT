@@ -267,13 +267,21 @@ class VaultCatalog:
         return self.get_project(project_id) or {}
 
     def register_known_projects(self) -> list[dict[str, Any]]:
-        """Idempotently seed the small, explicit project registry used for grouping."""
-        return [
-            self.register_project(
-                item["project_id"], item["name"], aliases=item["aliases"]
-            )
-            for item in KNOWN_PROJECTS
-        ]
+        """Seed known projects without overwriting user-added aliases or repo paths."""
+        registered = []
+        for item in KNOWN_PROJECTS:
+            existing = self.get_project(item["project_id"])
+            aliases = list(dict.fromkeys([
+                *(existing["aliases"] if existing else []),
+                item["name"], item["project_id"], *item["aliases"],
+            ]))
+            registered.append(self.register_project(
+                item["project_id"],
+                existing["name"] if existing else item["name"],
+                repository_path=existing.get("repository_path") if existing else None,
+                aliases=aliases,
+            ))
+        return registered
 
     def get_project(self, project_id: str) -> dict[str, Any] | None:
         with self._connect() as db:
