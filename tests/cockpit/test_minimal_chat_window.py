@@ -82,10 +82,7 @@ def test_runtime_worker_retries_status_timeouts_without_duplicate_submission(
         "faz uma pesquisa nas repos Barbuidos e reporta os seus estados",
     )
     monkeypatch.setattr(worker, "_request", fake_request)
-    monkeypatch.setattr(
-        "cockpit.mission_status_client.time.sleep",
-        lambda seconds: sleeps.append(seconds),
-    )
+    worker._sleep = lambda seconds: sleeps.append(seconds)
     emitted = []
     worker.completed.connect(lambda *args: emitted.append(args))
 
