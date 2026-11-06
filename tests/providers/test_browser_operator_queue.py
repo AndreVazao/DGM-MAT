@@ -43,6 +43,7 @@ def test_tasks_require_approval_and_idempotency_prevents_duplicates(tmp_path):
 def test_claim_is_single_use_and_result_requires_owner_token(tmp_path):
     queue = make_queue(tmp_path)
     task = enqueue(queue, approval_required=False)
+    assert queue.get(task["task_id"])["approved_by"] == "mission-engine"
     claimed = queue.claim_next(provider="chatgpt", worker_id="extension-session")
     assert claimed is not None
 
