@@ -142,6 +142,6 @@ def fail_browser_operator_task(
 
 
 @router.get("/tasks")
-def list_browser_operator_tasks(limit: int = Query(default=50, ge=1, le=200), request: Request = None):
+def list_browser_operator_tasks(request: Request, limit: int = Query(default=50, ge=1, le=200)):
     _principal(request)
     return {"tasks": _queue().list_tasks(limit=limit)}
