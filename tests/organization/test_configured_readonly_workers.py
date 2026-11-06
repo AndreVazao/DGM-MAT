@@ -85,3 +85,14 @@ def test_registration_is_idempotent_for_existing_handlers(tmp_path):
     assert first["status"] == "REGISTERED"
     assert second["status"] == "ALREADY_REGISTERED"
     assert len(runtime.handlers) == 2
+
+
+def test_invalid_repository_identifiers_fail_closed(tmp_path):
+    root = tmp_path / "workspace"
+    (root / "repo").mkdir(parents=True)
+    runtime = FakeRuntime()
+    result = register_configured_readonly_workers(
+        runtime, environ=configured(root, {"../escape": "repo"})
+    )
+    assert result["status"] == "DISABLED"
+    assert runtime.handlers == {}
