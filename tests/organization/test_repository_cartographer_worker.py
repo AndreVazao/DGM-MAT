@@ -5,8 +5,9 @@ import re
 
 import pytest
 
-from core.organization import InternalMessageBus, WorkerRuntime
+from core.organization import InternalMessageBus
 from core.organization.models import Message
+from core.organization.worker_runtime import WorkerRuntime
 from core.organization.repository_cartographer_worker import RepositoryCartographerWorker
 
 
