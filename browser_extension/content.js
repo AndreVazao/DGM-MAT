@@ -532,6 +532,11 @@
     if (!provider || provider !== request.provider) throw new Error("Active provider does not match the queued task.");
     const sourceId = sourceIdForUrl(location.href, provider);
     if (!sourceId || sourceId !== request.source_id) throw new Error("Active conversation does not match the queued task.");
+    const initialBlock = detectBlockedPage();
+    if (initialBlock) {
+      return { provider, source_id: sourceId, status: "blocked",
+        reason: initialBlock, assistant_text: "", sent_status: "not_sent" };
+    }
     const sent = await sendMessageThroughVisibleUi({
       text: request.message,
       source_id: request.source_id
@@ -640,7 +645,7 @@
     if (/captcha|verify you are human|unusual traffic|security challenge/.test(text)) {
       return "blocked_challenge";
     }
-    if (/too many requests|rate limit|try again later/.test(text)) {
+    if (/too many requests|rate limit|try again later|quota exceeded|daily quota|usage limit|message limit|you(?:'ve| have) reached (?:your )?(?:daily )?(?:message|usage|model|request)? ?limit|limit reached|limite de mensagens|limite diário|atingiste o limite|atingiu o limite|cota excedida/.test(text)) {
       return "rate_limited";
     }
     return "";
