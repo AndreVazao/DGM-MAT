@@ -1,4 +1,5 @@
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -221,3 +222,16 @@ def test_default_vault_root_is_per_user_and_outside_the_repository(tmp_path, mon
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "AppData" / "Local"))
     monkeypatch.delenv("XDG_DATA_HOME", raising=False)
     assert VaultCatalog.default_root() == (tmp_path / "AppData" / "Local" / "DGM-MAT" / "Vault").resolve()
+
+
+def test_older_build_refuses_to_downgrade_a_newer_vault_schema(tmp_path):
+    vault = VaultCatalog(tmp_path / "vault")
+    with sqlite3.connect(vault.database_path) as db:
+        db.execute("UPDATE schema_meta SET value='999' WHERE key='schema_version'")
+    with pytest.raises(RuntimeError, match="refusing to downgrade"):
+        VaultCatalog(tmp_path / "vault")
+    with sqlite3.connect(vault.database_path) as db:
+        version = db.execute(
+            "SELECT value FROM schema_meta WHERE key='schema_version'"
+        ).fetchone()[0]
+    assert version == "999"
