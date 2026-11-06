@@ -28,24 +28,47 @@
 
   function sourceIdForUrl(value, provider) {
     const url = new URL(value);
+    const segments = url.pathname.split("/").filter(Boolean);
     if (provider === "chatgpt") {
-      const match = url.pathname.match(/\/c\/([A-Za-z0-9_-]+)/);
-      return match ? match[1] : null;
+      const index = segments.indexOf("c");
+      return index >= 0 ? segments[index + 1] || null : null;
     }
     if (provider === "gemini") {
-      const match = url.pathname.match(/\/app\/([A-Za-z0-9_-]+)/);
-      return match ? match[1] : null;
+      const index = segments.indexOf("app");
+      return index >= 0 ? segments[index + 1] || null : null;
     }
-    const queryId = url.searchParams.get("conversation") || url.searchParams.get("id");
-    if (queryId && /^[A-Za-z0-9._:-]{1,200}$/.test(queryId)) return queryId;
-    const match = url.pathname.match(/\/(?:chat|c|i\/grok)\/([A-Za-z0-9_-]+)/);
+    const queryKeys = provider === "deepseek" || provider === "qwen"
+      ? ["conversation", "conversationId", "chatId", "chat_id", "id"]
+      : ["conversation", "id"];
+    for (const key of queryKeys) {
+      const queryId = url.searchParams.get(key);
+      if (queryId && /^[A-Za-z0-9._:-]{1,200}$/.test(queryId)) return queryId;
+    }
+    if (provider === "deepseek") {
+      const index = segments.indexOf("chat");
+      if (index >= 0) {
+        const candidate = segments[index + 1] === "s" ? segments[index + 2] : segments[index + 1];
+        return candidate && /^[A-Za-z0-9_-]+$/.test(candidate) ? candidate : null;
+      }
+      return null;
+    }
+    if (provider === "qwen") {
+      for (const marker of ["chat", "c", "conversation", "s"]) {
+        const index = segments.indexOf(marker);
+        if (index >= 0 && segments[index + 1] && /^[A-Za-z0-9_-]+$/.test(segments[index + 1])) {
+          return segments[index + 1];
+        }
+      }
+      return null;
+    }
+    const match = url.pathname.match(/\\/(?:chat|c|i\\/grok)\\/([A-Za-z0-9_-]+)/);
     return match ? match[1] : null;
   }
 
   function conversationTitle(anchor, url) {
     const text = (anchor?.innerText || anchor?.getAttribute("aria-label") || "").trim();
     if (text) return text.slice(0, 500);
-    const title = (document.title || "").replace(/\s*[|—-]\s*(ChatGPT|Gemini|Grok).*$/i, "").trim();
+    const title = (document.title || "").replace(/\s*[|—-]\s*(ChatGPT|Gemini|Grok|DeepSeek|Qwen).*$/i, "").trim();
     return title.slice(0, 500) || "Conversation " + url.pathname.split("/").filter(Boolean).pop();
   }
 
