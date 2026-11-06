@@ -9,8 +9,8 @@ The browser recovery and consultation architecture uses the following primary we
 | ChatGPT | `chatgpt.com` | Existing |
 | Grok | `grok.com` and the Grok route on `x.com` | Existing |
 | Gemini | `gemini.google.com` | Existing |
-| DeepSeek | `chat.deepseek.com` | Added in PR #239 |
-| Qwen | `chat.qwen.ai` | Added in PR #239 |
+| DeepSeek | `chat.deepseek.com` | Integrated in the browser mission operator |
+| Qwen | `chat.qwen.ai` | Integrated in the browser mission operator |
 
 Other genuinely free web AI services can be optional secondary consultation sources. They do not replace these five primary providers or introduce paid API dependencies.
 
