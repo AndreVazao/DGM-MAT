@@ -663,7 +663,7 @@
     if (/captcha|verify you are human|unusual traffic|security challenge/.test(text)) {
       return "blocked_challenge";
     }
-    if (/too many requests|rate limit|try again later|quota exceeded|daily quota|usage limit|message limit|you(?:'ve| have) reached (?:your )?(?:daily )?(?:message|usage|model|request)? ?limit|limit reached|limite de mensagens|limite diário|atingiste o limite|atingiu o limite|cota excedida/.test(text)) {
+    if (/too many requests|rate limit|try again later|quota exceeded|daily quota|usage limit|message limit|you(?:'ve| have) reached (?:your )?.{0,50}limit|limit reached|limite de mensagens|limite diário|atingiste o limite|atingiu o limite|cota excedida/.test(text)) {
       return "rate_limited";
     }
     return "";
