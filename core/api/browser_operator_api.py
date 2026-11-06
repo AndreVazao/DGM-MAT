@@ -34,8 +34,13 @@ def _sync_mission_task(task_id: str, status: str, *, result: dict[str, Any] | No
     if not task:
         return
     try:
+        mission_id = str(task.get("mission_id") or "")
+        from core.storage.storage_manager import storage_manager
+        checkpoint = storage_manager.get_path("missions") / (mission_id + ".json")
+        if not checkpoint.is_file():
+            return
         from core.autonomy.mission_engine import mission_engine
-        mission = mission_engine._reload_mission_checkpoint(str(task.get("mission_id") or ""))
+        mission = mission_engine._reload_mission_checkpoint(mission_id)
         if mission is None:
             return
         mission.metadata["browser_operator_task_id"] = task_id
