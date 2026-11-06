@@ -49,6 +49,10 @@ def test_extension_never_reads_auth_stores_or_calls_provider_private_apis():
     assert "/recovery/browser-capture/capture" in background
     assert "/browser-operator/next" in background
     assert "/browser-operator/tasks/" in background
+    assert "dgmBrowserProviderPauses" in background
+    assert "pauseBrowserProvider" in background
+    assert 'for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"])' in background
+    assert "quota exceeded" in content or "usage limit" in content
 
 
 def test_extension_uses_only_the_local_dgm_mat_api_endpoint():
