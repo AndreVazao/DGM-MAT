@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "DGM-MAT Browser Mission Operator",
-  "version": "0.3.0",
-  "description": "Visible authenticated AI session recovery and approved mission execution.",
+  "version": "0.3.1",
+  "description": "Visible authenticated AI session recovery and approved mission execution across ChatGPT, Grok, Gemini, DeepSeek and Qwen.",
   "minimum_chrome_version": "116",
   "permissions": [
     "activeTab",
@@ -17,7 +17,9 @@
     "https://gemini.google.com/*",
     "https://bard.google.com/*",
     "https://grok.com/*",
-    "https://x.com/i/grok*"
+    "https://x.com/i/grok*",
+    "https://chat.deepseek.com/*",
+    "https://chat.qwen.ai/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -34,7 +36,9 @@
         "https://gemini.google.com/*",
         "https://bard.google.com/*",
         "https://grok.com/*",
-        "https://x.com/i/grok*"
+        "https://x.com/i/grok*",
+        "https://chat.deepseek.com/*",
+        "https://chat.qwen.ai/*"
       ],
       "js": [
         "content.js"
