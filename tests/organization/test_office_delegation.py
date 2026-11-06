@@ -7,6 +7,8 @@ from core.organization.message_bus import InternalMessageBus
 from core.organization.task_manager import OrganizationTaskManager
 from core.organization.worker_runtime import WorkerRuntime
 
+import pytest
+
 
 def test_full_office_bootstrap_is_idempotent_and_includes_specialists():
     registry = bootstrap_full_office(AgentRegistry())
@@ -179,3 +181,23 @@ def test_qa_intake_handler_is_not_misrepresented_as_bug_hunter():
     assert runtime.declares_capabilities(
         "agent:bug-hunter", ("reproduction", "fault-isolation")
     ) is False
+
+
+def test_worker_runtime_rejects_string_capability_declarations():
+    runtime = WorkerRuntime(InternalMessageBus())
+    with pytest.raises(TypeError, match="iterable of strings"):
+        runtime.register_handler(
+            "agent:bad-capability",
+            lambda message: {"status": "handled"},
+            capabilities="python",
+        )
+
+
+def test_worker_runtime_rejects_string_required_capability_query():
+    runtime = WorkerRuntime(InternalMessageBus())
+    runtime.register_handler(
+        "agent:worker",
+        lambda message: {"status": "handled"},
+        capabilities=("python",),
+    )
+    assert runtime.declares_capabilities("agent:worker", "python") is False
