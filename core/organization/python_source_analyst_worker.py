@@ -36,6 +36,8 @@ class PythonSourceAnalystWorker:
         max_files: int = 250,
         max_file_bytes: int = 512_000,
         max_total_bytes: int = 4_000_000,
+        max_depth: int = 12,
+        max_entries: int = 5000,
     ) -> None:
         self.allowed_root = Path(allowed_root).expanduser().resolve(strict=True)
         if not self.allowed_root.is_dir():
@@ -48,6 +50,10 @@ class PythonSourceAnalystWorker:
             raise ValueError("max_file_bytes must be between 1024 and 2000000")
         if type(max_total_bytes) is not int or not max_file_bytes <= max_total_bytes <= 20_000_000:
             raise ValueError("max_total_bytes must be bounded and at least max_file_bytes")
+        if type(max_depth) is not int or not 0 <= max_depth <= 20:
+            raise ValueError("max_depth must be between 0 and 20")
+        if type(max_entries) is not int or not 1 <= max_entries <= 20_000:
+            raise ValueError("max_entries must be between 1 and 20000")
         if not isinstance(allowed_senders, (tuple, list, set, frozenset)) or not allowed_senders:
             raise ValueError("allowed_senders must be a non-empty collection")
         if any(not isinstance(item, str) or not item.strip() for item in allowed_senders):
@@ -66,6 +72,8 @@ class PythonSourceAnalystWorker:
         self.max_files = max_files
         self.max_file_bytes = max_file_bytes
         self.max_total_bytes = max_total_bytes
+        self.max_depth = max_depth
+        self.max_entries = max_entries
 
     @staticmethod
     def _blocked(reason: str, message: Message) -> dict:
@@ -113,11 +121,17 @@ class PythonSourceAnalystWorker:
 
     def _analyze(self, repository_id: str, root: Path, message: Message) -> dict:
         candidates: list[Path] = []
+        visited_entries = 0
         for current, dirs, files in os.walk(root, topdown=True, followlinks=False):
             current_path = Path(current)
+            relative_depth = len(current_path.relative_to(root).parts)
+            visited_entries += len(dirs) + len(files)
+            if visited_entries > self.max_entries:
+                return self._blocked("entry_limit_exceeded", message)
             dirs[:] = sorted(
                 name for name in dirs
-                if name.casefold() not in self._SENSITIVE_PARTS
+                if relative_depth < self.max_depth
+                and name.casefold() not in self._SENSITIVE_PARTS
                 and not (current_path / name).is_symlink()
             )
             for name in sorted(files):
@@ -140,17 +154,20 @@ class PythonSourceAnalystWorker:
 
         for path in candidates:
             try:
-                if not path.resolve(strict=True).is_relative_to(root):
+                if path.is_symlink() or not path.resolve(strict=True).is_relative_to(root):
                     continue
-                raw = path.read_bytes()
+                remaining_budget = self.max_total_bytes - total_bytes
+                read_limit = min(self.max_file_bytes, remaining_budget) + 1
+                with path.open("rb") as source_file:
+                    raw = source_file.read(read_limit)
             except OSError:
                 continue
             if len(raw) > self.max_file_bytes:
                 skipped_oversize += 1
                 continue
-            total_bytes += len(raw)
-            if total_bytes > self.max_total_bytes:
+            if len(raw) > remaining_budget:
                 return self._blocked("total_source_budget_exceeded", message)
+            total_bytes += len(raw)
             relative = path.relative_to(root).as_posix()
             digest.update(relative.encode("utf-8"))
             digest.update(b"\0")
