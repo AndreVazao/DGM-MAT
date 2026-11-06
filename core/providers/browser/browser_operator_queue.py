@@ -47,6 +47,7 @@ class BrowserOperatorQueue:
                     status TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
+                    approved_by TEXT,
                     claimed_by TEXT,
                     claim_token TEXT,
                     lease_until TEXT,
@@ -121,9 +122,9 @@ class BrowserOperatorQueue:
             db.execute("BEGIN IMMEDIATE")
             changed = db.execute("""
                 UPDATE browser_operator_tasks
-                SET status='queued', updated_at=?
+                SET status='queued', approved_by=?, updated_at=?
                 WHERE task_id=? AND status='pending_approval'
-            """, (self._now().isoformat(), task_id)).rowcount
+            """, (operator, self._now().isoformat(), task_id)).rowcount
             db.commit()
             return changed == 1
 
