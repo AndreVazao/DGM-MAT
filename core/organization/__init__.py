@@ -17,6 +17,7 @@ from .ecosystem_discovery import (
     EcosystemDiscovery,
     OverlapCluster,
 )
+from .engineering_team_planner import EngineeringPlan, EngineeringTeamPlanner
 from .message_bus import InternalMessageBus
 from .models import (
     AgentProfile,
@@ -40,7 +41,8 @@ __all__ = [
     "AgentProfile", "AgentRegistry", "AgentStatus", "bootstrap_registry",
     "CapabilityCandidate", "CapabilityRegistry", "CapabilityRequest",
     "CapabilityScout", "CapabilitySource", "CapabilityStatus", "Department",
-    "DiscoveryMatch", "DiscoveryReport", "EcosystemDiscovery", "Evidence",
+    "DiscoveryMatch", "DiscoveryReport", "EcosystemDiscovery", "EngineeringPlan",
+    "EngineeringTeamPlanner", "Evidence",
     "EvolutionProposal", "ForgeResult", "InternalMessageBus",
     "LocalSourceDiscovery", "Message", "MessagePriority",
     "OrganizationTaskManager", "OrganizationWorkspace", "OverlapCluster",
