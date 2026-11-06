@@ -20,7 +20,8 @@ def main() -> int:
     )
     parser.add_argument("--vault", default=os.environ.get("DGM_VAULT_PATH"),
                         help="Persistent Vault root; defaults to DGM_VAULT_PATH")
-    parser.add_argument("--progress-db", default=str(ROOT / "storage/runtime/conversation_intelligence/progress.sqlite3"))
+    parser.add_argument("--progress-db", action="append", default=[],
+                        help="Progress SQLite database; repeat for multiple stores. If omitted, known runtime stores are discovered.")
     parser.add_argument("--repository", default=str(ROOT), help="Repository root to inventory")
     parser.add_argument("--project-id", default="dgm-mat")
     parser.add_argument("--project-name", default="DGM-MAT")
@@ -33,8 +34,22 @@ def main() -> int:
     vault = VaultCatalog(args.vault)
     project = vault.register_project(args.project_id, args.project_name, args.repository,
                                      [value.strip() for value in args.aliases.split(",") if value.strip()])
-    progress = ConversationProgressStore(args.progress_db)
-    records = progress.list_conversations()
+    if args.progress_db:
+        progress_paths = [Path(value).expanduser() for value in args.progress_db]
+    else:
+        from core.storage.storage_manager import storage_manager
+        progress_paths = [
+            ROOT / "storage" / "runtime" / "conversation_intelligence" / "progress.sqlite3",
+            storage_manager.get_path("cognition") / "conversation_intelligence" / "progress.sqlite3",
+        ]
+    unique_paths = list(dict.fromkeys(path.resolve() for path in progress_paths))
+    records = []
+    opened_databases = []
+    for database_path in unique_paths:
+        if not database_path.is_file():
+            continue
+        records.extend(ConversationProgressStore(database_path).list_conversations())
+        opened_databases.append(str(database_path))
     synced = 0
     duplicates = 0
     skipped = 0
@@ -73,7 +88,7 @@ def main() -> int:
 
     tree = vault.snapshot_repository(project["project_id"], args.repository)
     report = {"status": "partial" if failures else "completed", "vault": vault.summary(),
-              "progress_records_seen": len(records), "conversations_archived": synced,
+              "progress_databases": opened_databases, "progress_records_seen": len(records), "conversations_archived": synced,
               "duplicates_detected": duplicates, "records_skipped": skipped,
               "failures": failures, "repository_tree": tree}
     print(json.dumps(report, ensure_ascii=False, indent=2))
