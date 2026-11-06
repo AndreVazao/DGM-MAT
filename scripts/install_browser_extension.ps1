@@ -42,6 +42,8 @@ try {
         }
         Copy-Item -LiteralPath $backup -Destination $destination -Recurse -Force
         Write-Warning "New extension copy failed; the previous extension was restored from $backup"
+    } elseif (Test-Path -LiteralPath $destination) {
+        Remove-Item -LiteralPath $destination -Recurse -Force
     }
     throw
 }
