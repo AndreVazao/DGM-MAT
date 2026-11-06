@@ -216,3 +216,9 @@ def test_raw_browser_capture_is_immutable_and_idempotent(tmp_path):
     assert second["status"] == "duplicate"
     assert first["sha256"] == second["sha256"]
     assert Path(first["archive_path"]).read_bytes() == b'{"messages":[1]}'
+
+
+def test_default_vault_root_is_per_user_and_outside_the_repository(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "AppData" / "Local"))
+    monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+    assert VaultCatalog.default_root() == (tmp_path / "AppData" / "Local" / "DGM-MAT" / "Vault").resolve()
