@@ -61,7 +61,7 @@ def _sync_mission_task(task_id: str, status: str, *, result: dict[str, Any] | No
 class BrowserOperatorTaskCreate(BaseModel):
     idempotency_key: str = Field(min_length=8, max_length=200)
     mission_id: str = Field(min_length=1, max_length=80)
-    provider: Literal["chatgpt", "gemini", "grok"]
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
     source_id: str = Field(min_length=1, max_length=200)
     conversation_url: str = Field(min_length=12, max_length=2048)
     message: str = Field(min_length=1, max_length=30000)
@@ -127,7 +127,7 @@ def approve_browser_operator_task(task_id: str, request: Request):
 @router.get("/next")
 def claim_next_browser_operator_task(
     request: Request,
-    provider: Literal["chatgpt", "gemini", "grok"] = Query(...),
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"] = Query(...),
 ):
     principal = _principal(request)
     try:
