@@ -283,3 +283,24 @@ def test_project_title_evidence_outweighs_incidental_mentions_and_ties_quarantin
     )
     assert ambiguous["project_id"] is None
     assert ambiguous["status"] == "ambiguous"
+
+
+def test_repository_tree_snapshot_is_reused_until_source_changes(tmp_path):
+    vault = VaultCatalog(tmp_path / "vault")
+    repository = tmp_path / "project"
+    (repository / "src").mkdir(parents=True)
+    (repository / "src" / "main.py").write_text("print('one')\n", encoding="utf-8")
+    vault.register_project("dgm-mat", "DGM-MAT", repository_path=repository)
+
+    first = vault.snapshot_repository("dgm-mat", repository)
+    second = vault.snapshot_repository("dgm-mat", repository)
+    assert first["snapshot_id"] == second["snapshot_id"]
+    assert first["reused"] is False
+    assert second["reused"] is True
+    assert vault.summary()["tree_snapshots"] == 1
+
+    (repository / "src" / "main.py").write_text("print('two')\n", encoding="utf-8")
+    third = vault.snapshot_repository("dgm-mat", repository)
+    assert third["snapshot_id"] != first["snapshot_id"]
+    assert third["reused"] is False
+    assert vault.summary()["tree_snapshots"] == 2
