@@ -407,4 +407,6 @@ def test_deepseek_and_qwen_conversation_urls_are_provider_scoped(monkeypatch, tm
             "/recovery/browser-capture/discover",
             json=_discovery(provider, "other-id"),
         )
-        assert wrong_id.status_code == 422
+        assert wrong_id.status_code == 200
+        assert wrong_id.json()["registered"] == 0
+        assert wrong_id.json()["rejected"] == 1
