@@ -53,6 +53,10 @@ def test_extension_never_reads_auth_stores_or_calls_provider_private_apis():
     assert "pauseBrowserProvider" in background
     assert 'for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"])' in background
     assert "quota exceeded" in content or "usage limit" in content
+    assert 'defaults[AUTO_KEY] = true' in background
+    assert 'defaults[BROWSER_QUEUE_AUTO_KEY] = true' in background
+    assert "providerForTabUrl" in background
+    assert "startRecovery(tabId)" in background
 
 
 def test_extension_uses_only_the_local_dgm_mat_api_endpoint():
