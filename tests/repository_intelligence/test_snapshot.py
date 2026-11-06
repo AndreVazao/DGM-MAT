@@ -1,7 +1,12 @@
 # Path: C:\ProgramasGodMode\DGM-MAT\tests\repository_intelligence\test_snapshot.py
 from pathlib import Path
 
-from core.repository_intelligence.snapshot import build_inventory, render_tree, write_inventory
+from core.repository_intelligence.snapshot import (
+    RepositorySnapshotError,
+    build_inventory,
+    render_tree,
+    write_inventory,
+)
 
 
 def test_inventory_skips_dependency_folders_and_marks_sensitive_names(tmp_path: Path):
@@ -57,3 +62,30 @@ def test_inventory_caps_entries_and_refuses_overwrite(tmp_path: Path):
         pass
     else:
         raise AssertionError("Existing inventory reports must never be overwritten silently.")
+
+
+def test_inventory_enforces_resolved_allowed_root(tmp_path: Path):
+    allowed = tmp_path / "allowed"
+    outside = tmp_path / "outside"
+    allowed.mkdir()
+    outside.mkdir()
+    (outside / "external.txt").write_text("external", encoding="utf-8")
+
+    try:
+        (allowed / "external-link").symlink_to(outside, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pass
+    else:
+        try:
+            build_inventory(allowed / "external-link", allowed_root=allowed)
+        except RepositorySnapshotError:
+            pass
+        else:
+            raise AssertionError("Resolved symlink targets outside allowed_root must be rejected.")
+
+    try:
+        build_inventory(outside, allowed_root=allowed)
+    except RepositorySnapshotError:
+        pass
+    else:
+        raise AssertionError("A repository outside allowed_root must be rejected.")

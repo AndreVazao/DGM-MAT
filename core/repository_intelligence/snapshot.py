@@ -55,11 +55,20 @@ def build_inventory(
     max_depth: int = 12,
     max_entries: int = 50_000,
     ignore_names: Iterable[str] = (),
+    allowed_root: str | Path | None = None,
 ) -> InventoryReport:
-    """Inventory one explicit root without reading contents or following links."""
+    """Inventory one explicit root without reading contents or following links.
+
+    When allowed_root is supplied, containment is checked against the resolved
+    root inside this function, not only by the caller.
+    """
     root_path = Path(root).expanduser().resolve(strict=True)
     if not root_path.is_dir():
         raise RepositorySnapshotError("Repository root must be a directory.")
+    if allowed_root is not None:
+        allowed_path = Path(allowed_root).expanduser().resolve(strict=True)
+        if not allowed_path.is_dir() or not root_path.is_relative_to(allowed_path):
+            raise RepositorySnapshotError("Repository root must remain inside the allowed root.")
     if max_depth < 0 or max_entries < 1:
         raise RepositorySnapshotError("max_depth must be >= 0 and max_entries >= 1.")
 
