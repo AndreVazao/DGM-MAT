@@ -38,7 +38,8 @@ class ChromeConversationArchiveImporter:
             if vault_root else project_root / "storage" / "runtime" / "conversation_archive" / "chrome-imports"
         )
         self.archive_dir = Path(archive_dir) if archive_dir else default_archive
-        runtime = project_root / "storage" / "runtime" / "conversation_intelligence"
+        runtime = self.vault.root / "runtime" / "cognition" / "conversation_intelligence"
+        runtime.mkdir(parents=True, exist_ok=True)
         self.pipeline = pipeline or ConversationIntelligencePipeline(
             progress_store_path=runtime / "progress.sqlite3",
             knowledge_store_path=runtime / "knowledge.sqlite3",
