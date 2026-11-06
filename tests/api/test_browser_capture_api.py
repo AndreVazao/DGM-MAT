@@ -409,3 +409,17 @@ def test_deepseek_and_qwen_are_allowed_as_separate_visible_ui_providers(monkeypa
         assert captured.json()["provider"] == provider
         assert Path(captured.json()["archive_path"]).is_file()
         assert ledger.get(provider, "conversation-1").capture_status == "verified"
+
+
+def test_deepseek_and_qwen_discovery_reject_mismatched_conversation_ids(monkeypatch, tmp_path):
+    client, ledger = _client(monkeypatch, tmp_path)
+    cases = (
+        ("deepseek", "https://chat.deepseek.com/a/chat/s/real-id"),
+        ("qwen", "https://chat.qwen.ai/chat/real-id"),
+    )
+    for provider, url in cases:
+        payload = _discovery(provider, source_id="wrong-id", url=url)
+        response = client.post("/recovery/browser-capture/discover", json=payload)
+        assert response.status_code == 200
+        assert response.json()["registered"] == 0
+    assert ledger.source_count() == 0
