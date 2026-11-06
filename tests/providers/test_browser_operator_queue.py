@@ -30,6 +30,7 @@ def test_tasks_require_approval_and_idempotency_prevents_duplicates(tmp_path):
     assert first["status"] == "pending_approval"
     assert queue.claim_next(provider="chatgpt", worker_id="extension-session") is None
     assert queue.approve(first["task_id"], operator="local-operator") is True
+    assert queue.get(first["task_id"])["approved_by"] == "local-operator"
     assert queue.approve(first["task_id"], operator="local-operator") is False
 
     claimed = queue.claim_next(provider="chatgpt", worker_id="extension-session")
