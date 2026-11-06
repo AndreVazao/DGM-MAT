@@ -53,6 +53,31 @@ def _segment(value: str, fallback: str = "item") -> str:
     return normalized or fallback
 
 
+def _format_tree(root_name: str, entries: list[dict[str, Any]]) -> str:
+    tree: dict[str, Any] = {}
+    for entry in entries:
+        parts = str(entry["path"]).split("/")
+        node = tree
+        for part in parts[:-1]:
+            node = node.setdefault(part, {})
+        node[parts[-1]] = None
+
+    lines = [f"{root_name}/"]
+
+    def render(node: dict[str, Any], prefix: str) -> None:
+        items = sorted(node.items(), key=lambda item: (item[1] is None, item[0].casefold()))
+        for index, (name, child) in enumerate(items):
+            last = index == len(items) - 1
+            connector = "└── " if last else "├── "
+            is_directory = isinstance(child, dict)
+            lines.append(prefix + connector + name + ("/" if is_directory else ""))
+            if is_directory:
+                render(child, prefix + ("    " if last else "│   "))
+
+    render(tree, "")
+    return "\n".join(lines) + "\n"
+
+
 class VaultCatalog:
     """Indexes immutable local conversation captures and repository snapshots.
 
