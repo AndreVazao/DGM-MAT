@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "0.1.1";
+  const VERSION = "0.2.0";
   const PROVIDER_HOSTS = {
     chatgpt: new Set(["chatgpt.com", "chat.openai.com"]),
     gemini: new Set(["gemini.google.com", "bard.google.com"]),
@@ -326,7 +326,110 @@
     };
   }
 
+
+  function findComposer(provider) {
+    const selectors = provider === "chatgpt"
+      ? ["#prompt-textarea", '[data-testid="prompt-textarea"]', 'textarea[placeholder]', '[contenteditable="true"].ProseMirror']
+      : provider === "gemini"
+        ? ["rich-textarea [contenteditable='true']", ".ql-editor[contenteditable='true']", "textarea"]
+        : ["textarea[placeholder]", 'textarea', '[contenteditable="true"][data-placeholder]', '[contenteditable="true"].ProseMirror'];
+    for (const selector of selectors) {
+      for (const node of document.querySelectorAll(selector)) {
+        const rect = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        if (node.isConnected && rect.width > 0 && rect.height > 0 &&
+            style.display !== "none" && style.visibility !== "hidden" &&
+            !node.disabled && node.getAttribute("aria-disabled") !== "true") return node;
+      }
+    }
+    return null;
+  }
+
+  function setComposerText(composer, text) {
+    composer.focus();
+    if (composer instanceof HTMLTextAreaElement || composer instanceof HTMLInputElement) {
+      const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(composer), "value")?.set;
+      if (!setter) throw new Error("The provider text field cannot be updated safely.");
+      setter.call(composer, text);
+      composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+      composer.dispatchEvent(new Event("change", { bubbles: true }));
+    } else {
+      composer.replaceChildren();
+      composer.textContent = text;
+      composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+    }
+  }
+
+  function findSendButton(provider, composer) {
+    const selectors = [
+      'button[data-testid="send-button"]',
+      'button[aria-label*="Send" i]',
+      'button[aria-label*="Enviar" i]',
+      'button[title*="Send" i]',
+      'button[title*="Enviar" i]'
+    ];
+    for (const selector of selectors) {
+      for (const button of document.querySelectorAll(selector)) {
+        const rect = button.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0 && !button.disabled &&
+            button.getAttribute("aria-disabled") !== "true") return button;
+      }
+    }
+    const form = composer.closest("form");
+    if (form) {
+      const button = form.querySelector('button[type="submit"]');
+      if (button && !button.disabled && button.getAttribute("aria-disabled") !== "true") return button;
+    }
+    return null;
+  }
+
+  async function sendMessageThroughVisibleUi(request) {
+    const provider = providerForUrl(location.href);
+    if (!provider) throw new Error("This tab is not an allowed AI provider.");
+    const sourceId = sourceIdForUrl(location.href, provider);
+    if (!sourceId) throw new Error("Open an existing conversation before sending.");
+    if (request.source_id && request.source_id !== sourceId) {
+      throw new Error("The active conversation changed; message was not sent.");
+    }
+    const text = String(request.text || "");
+    if (!text.trim() || text.length > 30000) throw new Error("Message must contain 1–30000 characters.");
+    const blocked = detectBlockedPage();
+    if (blocked) throw new Error("Provider blocked: " + blocked + ". Message was not sent.");
+    const composer = findComposer(provider);
+    if (!composer) throw new Error("No supported visible message composer was found.");
+    setComposerText(composer, text);
+    await sleep(150);
+    const currentText = (composer.value ?? composer.innerText ?? composer.textContent ?? "").trim();
+    if (currentText !== text.trim()) throw new Error("Composer verification failed; message was not sent.");
+    const sendButton = findSendButton(provider, composer);
+    if (!sendButton) throw new Error("No enabled provider Send button was found; message was not sent.");
+    sendButton.click();
+    const deadline = Date.now() + 12000;
+    let observed = false;
+    while (Date.now() < deadline) {
+      await sleep(300);
+      const found = messageNodes(provider).some(node =>
+        roleFor(node, provider) === "user" && visibleText(node).trim().includes(text.trim())
+      );
+      if (found) { observed = true; break; }
+    }
+    return {
+      provider,
+      source_id: sourceId,
+      status: observed ? "submitted_and_visible" : "submitted_unverified",
+      verification: observed ? "user_message_observed_in_conversation" : "send_clicked_but_message_not_observed",
+      sent_at: new Date().toISOString()
+    };
+  }
+
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.type === "DGM_SEND_MESSAGE") {
+      sendMessageThroughVisibleUi(message)
+        .then(data => sendResponse({ ok: true, data }))
+        .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+      return true;
+    }
+
     if (!message || typeof message.type !== "string") return false;
     if (message.type === "DGM_DISCOVER_VISIBLE") {
       discoverConversations()
