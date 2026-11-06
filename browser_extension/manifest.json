@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "DGM-MAT Browser Operator",
-  "version": "0.2.0",
-  "description": "Operator bridge for visible, authenticated AI sessions and evidence-based conversation recovery.",
+  "name": "DGM-MAT Browser Mission Operator",
+  "version": "0.3.0",
+  "description": "Visible authenticated AI session recovery and approved mission execution.",
   "minimum_chrome_version": "116",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "alarms"
   ],
   "host_permissions": [
     "http://127.0.0.1:8181/*",
