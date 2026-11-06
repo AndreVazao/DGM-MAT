@@ -489,7 +489,72 @@
     };
   }
 
+
+  async function executeBrowserOperatorTask(request) {
+    const provider = providerForUrl(location.href);
+    if (!provider || provider !== request.provider) throw new Error("Active provider does not match the queued task.");
+    const sourceId = sourceIdForUrl(location.href, provider);
+    if (!sourceId || sourceId !== request.source_id) throw new Error("Active conversation does not match the queued task.");
+    const sent = await sendMessageThroughVisibleUi({
+      text: request.message,
+      source_id: request.source_id
+    });
+    if (sent.status !== "submitted_and_visible") {
+      return { ...sent, status: "unverified", assistant_text: "", reason: "user_message_not_verified" };
+    }
+
+    const timeoutMs = Math.max(1000, Math.min(Number(request.response_timeout_ms) || 120000, 180000));
+    const deadline = Date.now() + timeoutMs;
+    let previousText = "";
+    let stableRounds = 0;
+    while (Date.now() < deadline) {
+      const blocked = detectBlockedPage();
+      if (blocked) {
+        return {
+          provider, source_id: sourceId, status: "blocked",
+          reason: blocked, assistant_text: "", sent_status: sent.status
+        };
+      }
+      const nodes = messageNodes(provider);
+      const userIndex = nodes.findIndex(node =>
+        roleFor(node, provider) === "user" &&
+        visibleText(node).trim().includes(String(request.message).trim())
+      );
+      if (userIndex >= 0) {
+        const assistant = nodes.slice(userIndex + 1).filter(node =>
+          ["assistant", "model"].includes(roleFor(node, provider))
+        );
+        const candidate = assistant.length ? visibleText(assistant[assistant.length - 1]) : "";
+        if (candidate && candidate === previousText) stableRounds++;
+        else stableRounds = candidate ? 1 : 0;
+        previousText = candidate;
+        if (candidate && stableRounds >= 5) {
+          return {
+            provider, source_id: sourceId, status: "completed",
+            assistant_text: candidate.slice(0, 100000),
+            sent_status: sent.status,
+            verification: "assistant_response_observed_stable"
+          };
+        }
+      }
+      await sleep(1000);
+    }
+    return {
+      provider, source_id: sourceId, status: "unverified",
+      assistant_text: previousText.slice(0, 100000),
+      sent_status: sent.status,
+      reason: "assistant_response_timeout"
+    };
+  }
+
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.type === "DGM_EXECUTE_BROWSER_TASK") {
+      executeBrowserOperatorTask(message)
+        .then(data => sendResponse({ ok: true, data }))
+        .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+      return true;
+    }
+
     if (message.type === "DGM_SEND_MESSAGE") {
       sendMessageThroughVisibleUi(message)
         .then(data => sendResponse({ ok: true, data }))
