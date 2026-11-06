@@ -46,7 +46,9 @@ class EngineeringTeamPlanner:
     def _safe_relative_path(raw_path: object) -> str | None:
         if not isinstance(raw_path, str):
             return None
-        value = raw_path.strip().replace("\\", "/")
+        if not raw_path or raw_path != raw_path.strip():
+            return None
+        value = raw_path.replace("\\", "/")
         if not value or "\0" in value:
             return None
         drive, _ = ntpath.splitdrive(value)
@@ -138,11 +140,11 @@ class EngineeringTeamPlanner:
             if safe_path is None:
                 blocked.append(str(raw))
                 continue
-            normalized.setdefault(safe_path.casefold(), safe_path)
+            normalized.setdefault(safe_path, safe_path)
 
         groups: dict[str, list[str]] = {}
         unresolved: list[str] = []
-        for path in sorted(normalized.values(), key=str.casefold):
+        for path in sorted(normalized.values(), key=lambda item: (item.casefold(), item)):
             profile = language_for_path(path)
             if profile is None or profile.category == "ambiguous":
                 unresolved.append(path)
@@ -153,8 +155,8 @@ class EngineeringTeamPlanner:
             "mission_id": mission_id,
             "title": title,
             "description": description,
-            "paths": sorted(normalized.values(), key=str.casefold),
-            "blocked_paths": sorted(blocked, key=str.casefold),
+            "paths": sorted(normalized.values(), key=lambda item: (item.casefold(), item)),
+            "blocked_paths": sorted(blocked, key=lambda item: (item.casefold(), item)),
             "risk_level": risk_level,
             "include_research": include_research,
         }
@@ -176,7 +178,7 @@ class EngineeringTeamPlanner:
                 status="BLOCKED",
                 tasks=(),
                 recognized_paths=(),
-                blocked_paths=tuple(sorted(set(blocked + unresolved), key=str.casefold)),
+                blocked_paths=tuple(sorted(set(blocked + unresolved), key=lambda item: (item.casefold(), item))),
                 language_ids=(),
                 notes=tuple(notes),
             )
@@ -282,7 +284,7 @@ class EngineeringTeamPlanner:
             )
             tasks.append(security)
 
-        blocked_paths = sorted(set(blocked + unresolved), key=str.casefold)
+        blocked_paths = sorted(set(blocked + unresolved), key=lambda item: (item.casefold(), item))
         if blocked_paths:
             notes.append("Some paths were excluded because they are unsafe, unknown, or ambiguous.")
         notes.append("All generated tasks are proposals; no worker was assigned and no code was executed.")
@@ -293,7 +295,7 @@ class EngineeringTeamPlanner:
             recognized_paths=tuple(
                 sorted(
                     (path for paths in groups.values() for path in paths),
-                    key=str.casefold,
+                    key=lambda item: (item.casefold(), item),
                 )
             ),
             blocked_paths=tuple(blocked_paths),
