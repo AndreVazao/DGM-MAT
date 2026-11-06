@@ -71,6 +71,7 @@ def test_valid_request_returns_bounded_inventory_without_source_contents(tmp_pat
         ("not-json", "request_json_invalid"),
         ("{}", "request_schema_invalid"),
         (json.dumps({"schema_version": 2, "operation": "inventory_repository", "repository_id": "demo"}), "request_schema_version_unsupported"),
+        (json.dumps({"schema_version": True, "operation": "inventory_repository", "repository_id": "demo"}), "request_schema_version_unsupported"),
         (json.dumps({"schema_version": 1, "operation": "shell", "repository_id": "demo"}), "operation_not_allowed"),
         (json.dumps({"schema_version": 1, "operation": "inventory_repository", "repository_id": "../outside"}), "repository_id_invalid"),
         (request("not-allowlisted"), "repository_not_allowlisted"),
@@ -158,3 +159,9 @@ def test_worker_runs_through_explicit_durable_message_dispatch(tmp_path):
     assert receipt["result"]["repository_id"] == "demo"
     assert bus.receive(worker.agent_id, unread_only=True) == []
     bus.close()
+
+def test_invalid_unicode_request_is_blocked(tmp_path):
+    worker, _ = make_worker(tmp_path)
+    result = worker(make_message("\ud800"))
+    assert result["status"] == "BLOCKED"
+    assert result["reason"] == "request_encoding_invalid"
