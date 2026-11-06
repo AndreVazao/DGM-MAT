@@ -154,3 +154,12 @@ def test_message_and_code_duplicates_are_indexed_without_deleting_sources(tmp_pa
     assert len(vault.list_duplicate_code()) == 1
     assert Path(first["archive_path"]).is_file()
     assert Path(second["archive_path"]).is_file()
+
+
+def test_vault_refuses_to_live_inside_a_git_worktree(tmp_path):
+    worktree = tmp_path / "repo"
+    worktree.mkdir()
+    (worktree / ".git").write_text("gitdir: ../git-metadata", encoding="utf-8")
+    with pytest.raises(ValueError, match="outside every Git worktree"):
+        VaultCatalog(worktree / "private-vault")
+    assert not (worktree / "private-vault").exists()
