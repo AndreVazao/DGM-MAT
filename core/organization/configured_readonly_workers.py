@@ -57,7 +57,7 @@ def register_configured_readonly_workers(
     *,
     environ: Mapping[str, str] | None = None,
 ) -> dict:
-    """Register the two read-only workers only when an operator supplies an allowlist.
+    """Register read-only repository specialists only when an operator supplies an allowlist.
 
     Configuration is host-owned environment state. Message payloads cannot add
     repositories, paths, permissions, or worker registrations.
