@@ -41,9 +41,10 @@ _SECRET_PATTERNS = (
 _ACTIONABLE_INTENTS = frozenset({"repair", "implement", "deploy", "sync", "audit", "research"})
 _EVIDENCE_CONTRACT = (
     "Evidence contract: use exclusively the Hub section named CONTEXTO DE EVIDÊNCIA. "
-    "Every factual sentence must end with an exact reference ID copied from that section, "
-    "in the form [E1], [E2], etc. Never invent IDs and never cite CONTEXTO AUTORIZADO. "
-    "If no usable evidence references are supplied, answer exactly: "
+    "Every non-empty content line (facts, inferences, risks, recommendations, and conclusions) "
+    "must end with an exact reference ID copied from that section, in the form [E1], [E2], etc. "
+    "Markdown headings may omit citations. Never invent IDs and never cite CONTEXTO AUTORIZADO. "
+    "If no content line can be supported by the supplied evidence, answer exactly: "
     "NÃO TENHO EVIDÊNCIA SUFICIENTE."
 )
 
@@ -502,7 +503,12 @@ class AutoHelpWorker:
                 answer = result.get("text") if isinstance(result.get("text"), str) else ""
                 provider_status = str(result.get("status", "unknown"))[:40]
                 grounding_status = str(result.get("grounding_status", "not_reported"))[:100].casefold()
-                if provider_status == "unverified" or grounding_status in {"unverified", "rejected", "blocked"}:
+                if provider_status == "abstained" or grounding_status == "abstained_insufficient_evidence":
+                    rejected_status = "ABSTAINED_INSUFFICIENT_EVIDENCE"
+                    rejection_reason = (
+                        "DGM-HUB recorded an explicit provider abstention because the supplied evidence was insufficient."
+                    )
+                elif provider_status == "unverified" or grounding_status in {"unverified", "rejected", "blocked"}:
                     rejected_status = "UNVERIFIED_EVIDENCE"
                     rejection_reason = (
                         "DGM-HUB withheld the provider response because factual claims lacked valid evidence citations."
@@ -570,7 +576,12 @@ class AutoHelpWorker:
                 rendered.append(f"### {provider.upper()} (não verificado)\n{answer[:3200]}")
 
             successful = sum(item["status"] == "RESULT_RECEIVED" for item in responses)
-            evidence_rejected = any(item["status"] == "UNVERIFIED_EVIDENCE" for item in responses)
+            evidence_rejected = any(
+                item["status"] in {"UNVERIFIED_EVIDENCE", "ABSTAINED_INSUFFICIENT_EVIDENCE"}
+                for item in responses
+            )
+            abstained = any(item["status"] == "ABSTAINED_INSUFFICIENT_EVIDENCE" for item in responses)
+            unverified = any(item["status"] == "UNVERIFIED_EVIDENCE" for item in responses)
             overall = (
                 "COMPLETED" if successful == len(selected) and successful
                 else "PARTIAL" if successful
@@ -580,12 +591,25 @@ class AutoHelpWorker:
             if rendered:
                 outcome_text = "\n\n".join(rendered)
             elif evidence_rejected:
-                outcome_text = (
-                    "Codex/Claude responderam, mas o DGM-HUB reteve as respostas porque "
-                    "não cumpriram o contrato de citações [E#]. As respostas originais "
-                    "permanecem no histórico do Hub para revisão; não foram promovidas "
-                    "nem usadas como conhecimento factual."
-                )
+                if abstained and unverified:
+                    outcome_text = (
+                        "Pelo menos um agente absteve-se por falta de evidência e outro apresentou "
+                        "afirmações que o DGM-HUB reteve por falta de citações [E#]. Nenhum resultado "
+                        "foi promovido a conhecimento factual."
+                    )
+                elif abstained:
+                    outcome_text = (
+                        "Os agentes responderam com uma abstenção explícita: a evidência fornecida "
+                        "não era suficiente para sustentar um diagnóstico. Esta resposta foi "
+                        "preservada como abstenção, não como falha do fornecedor nem como facto."
+                    )
+                else:
+                    outcome_text = (
+                        "Codex/Claude responderam, mas o DGM-HUB reteve as respostas porque "
+                        "não cumpriram o contrato de citações [E#]. As respostas originais "
+                        "permanecem no histórico do Hub para revisão; não foram promovidas "
+                        "nem usadas como conhecimento factual."
+                    )
             else:
                 outcome_text = "Nenhum fornecedor devolveu uma resposta utilizável."
             response_text = (
