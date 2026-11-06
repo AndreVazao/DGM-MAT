@@ -546,6 +546,9 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
     vault_conversation_path = None
     vault_error = None
     configured_vault = os.environ.get("DGM_VAULT_PATH")
+    if not configured_vault:
+        from core.vault import VaultCatalog
+        configured_vault = str(VaultCatalog.default_root())
     if configured_vault:
         try:
             from core.vault import VaultCatalog
