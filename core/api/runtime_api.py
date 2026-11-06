@@ -48,7 +48,7 @@ class MissionCreate(BaseModel):
 
 class MissionBrowserTaskCreate(BaseModel):
     idempotency_key: str = Field(min_length=8, max_length=200)
-    provider: Literal["chatgpt", "gemini", "grok"]
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
     source_id: str = Field(min_length=1, max_length=200)
     conversation_url: str = Field(min_length=12, max_length=2048)
     message: str = Field(min_length=1, max_length=30000)
