@@ -3,6 +3,7 @@ from pathlib import Path
 
 from core.conversation_intelligence.chrome_archive_importer import ChromeConversationArchiveImporter
 from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
+from core.vault import VaultCatalog
 
 
 def test_importer_preserves_source_and_archives_full_messages(tmp_path: Path):
