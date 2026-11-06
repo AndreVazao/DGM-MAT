@@ -411,6 +411,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
     index_status = "pending"
     index_summary: dict = {}
     audits = []
+    normalized_record = dict(record)
     normalized_destination = folder / (digest + ".normalized.json")
     try:
         from core.conversation_intelligence.pipeline import ConversationIntelligencePipeline
@@ -577,7 +578,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
                     "oldest_boundary_evidence": payload.oldest_boundary_evidence,
                 },
                 artifacts=[
-                    asdict(artifact)
+                    artifact if isinstance(artifact, dict) else asdict(artifact)
                     for audit in audits
                     for artifact in getattr(audit, "artifacts", [])
                 ],
