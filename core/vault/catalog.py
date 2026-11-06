@@ -334,13 +334,21 @@ class VaultCatalog:
                 "SELECT * FROM conversations WHERE provider=? AND conversation_id=? AND source_fingerprint=?",
                 (provider_key, conversation_key, fingerprint),
             ).fetchone()
-            canonical = db.execute(
+            canonical_conversation = db.execute(
                 "SELECT * FROM conversations WHERE content_fingerprint=? ORDER BY created_at LIMIT 1",
                 (content_fingerprint,),
             ).fetchone() if has_transcript else None
         if source_existing:
-            # Re-importing the exact same source is idempotent. A different provider
-            # or conversation ID with the same transcript is still archived below.
+            # Re-importing the exact same source is idempotent. Record the replay
+            # while keeping the original immutable transcript as the canonical item.
+            with self._connect() as db:
+                db.execute("""
+                    INSERT OR IGNORE INTO duplicate_candidates(
+                        source_provider,source_conversation_id,source_fingerprint,
+                        canonical_provider,canonical_conversation_id,canonical_path,match_type,created_at
+                    ) VALUES(?,?,?,?,?,?,?,?)
+                """, (provider_key, conversation_key, fingerprint, provider_key,
+                      conversation_key, source_existing["archive_path"], "byte_identical", _now()))
             return {"status": "duplicate", "duplicate": True, "source_reused": True,
                     "fingerprint": fingerprint, "archive_path": source_existing["archive_path"],
                     "project_id": source_existing["project_id"]}
@@ -368,15 +376,15 @@ class VaultCatalog:
             """, (provider_key, conversation_key, fingerprint, content_fingerprint, payload["title"], url,
                   str(destination), completeness, len(messages), project_id, assignment_status,
                   _json(evidence), (metadata or {}).get("captured_at") or now, now))
-            if canonical:
+            if canonical_conversation:
                 db.execute("""
                     INSERT OR IGNORE INTO duplicate_candidates(
                         source_provider,source_conversation_id,source_fingerprint,
                         canonical_provider,canonical_conversation_id,canonical_path,match_type,created_at
                     ) VALUES(?,?,?,?,?,?,?,?)
-                """, (provider_key, conversation_key, fingerprint, canonical["provider"],
-                      canonical["conversation_id"], canonical["archive_path"],
-                      "byte_identical" if canonical["source_fingerprint"] == fingerprint else "same_transcript_content", now))
+                """, (provider_key, conversation_key, fingerprint, canonical_conversation["provider"],
+                      canonical_conversation["conversation_id"], canonical_conversation["archive_path"],
+                      "byte_identical" if canonical_conversation["source_fingerprint"] == fingerprint else "same_transcript_content", now))
             for sequence, message in enumerate(messages):
                 role = str(message.get("role") or "unknown").casefold()
                 message_text = re.sub(r"\s+", " ", str(message.get("content") or "")).strip().casefold()
@@ -384,7 +392,7 @@ class VaultCatalog:
                     continue
                 message_fingerprint = _digest((role + "\0" + message_text).encode("utf-8"))
                 message_id = str(message.get("message_id") or message.get("id") or sequence)
-                canonical = db.execute(
+                canonical_message = db.execute(
                     "SELECT provider,conversation_id,message_id,source_fingerprint FROM messages "
                     "WHERE content_fingerprint=? LIMIT 1", (message_fingerprint,)
                 ).fetchone()
@@ -393,14 +401,14 @@ class VaultCatalog:
                         role,content_fingerprint,archive_path) VALUES(?,?,?,?,?,?,?,?)
                 """, (provider_key, conversation_key, fingerprint, sequence, message_id,
                       role, message_fingerprint, str(destination)))
-                if canonical:
+                if canonical_message:
                     db.execute("""
                         INSERT OR IGNORE INTO message_duplicate_candidates(
                             source_provider,source_conversation_id,source_message_id,source_fingerprint,
                             canonical_provider,canonical_conversation_id,canonical_message_id,
                             content_fingerprint,created_at) VALUES(?,?,?,?,?,?,?,?,?)
                     """, (provider_key, conversation_key, message_id, fingerprint,
-                          canonical["provider"], canonical["conversation_id"], canonical["message_id"],
+                          canonical_message["provider"], canonical_message["conversation_id"], canonical_message["message_id"],
                           message_fingerprint, now))
             for index, artifact in enumerate(artifacts or []):
                 if not isinstance(artifact, dict):
@@ -411,7 +419,7 @@ class VaultCatalog:
                 language = str(artifact.get("language") or "unknown").casefold()
                 artifact_fingerprint = str(artifact.get("fingerprint") or _digest((language + "\\0" + code).encode("utf-8")))
                 artifact_id = str(artifact.get("artifact_id") or index)
-                canonical = db.execute(
+                canonical_artifact = db.execute(
                     "SELECT provider,conversation_id,artifact_id FROM code_artifacts "
                     "WHERE content_fingerprint=? LIMIT 1", (artifact_fingerprint,)
                 ).fetchone()
@@ -420,22 +428,22 @@ class VaultCatalog:
                         language,content_fingerprint,archive_path) VALUES(?,?,?,?,?,?,?)
                 """, (provider_key, conversation_key, fingerprint, artifact_id,
                       language, artifact_fingerprint, str(destination)))
-                if canonical:
+                if canonical_artifact:
                     db.execute("""
                         INSERT OR IGNORE INTO code_duplicate_candidates(
                             source_provider,source_conversation_id,source_artifact_id,source_fingerprint,
                             canonical_provider,canonical_conversation_id,canonical_artifact_id,
                             content_fingerprint,created_at) VALUES(?,?,?,?,?,?,?,?,?)
                     """, (provider_key, conversation_key, artifact_id, fingerprint,
-                          canonical["provider"], canonical["conversation_id"], canonical["artifact_id"],
+                          canonical_artifact["provider"], canonical_artifact["conversation_id"], canonical_artifact["artifact_id"],
                           artifact_fingerprint, now))
-        return {"status": "archived_duplicate" if canonical else "archived",
-                "duplicate": bool(canonical), "source_reused": False, "fingerprint": fingerprint,
+        return {"status": "archived_duplicate" if canonical_conversation else "archived",
+                "duplicate": bool(canonical_conversation), "source_reused": False, "fingerprint": fingerprint,
                 "archive_path": str(destination), "project_id": project_id,
                 "assignment_status": assignment_status, "message_count": len(messages),
-                "canonical_provider": canonical["provider"] if canonical else None,
-                "canonical_conversation_id": canonical["conversation_id"] if canonical else None,
-                "canonical_archive_path": canonical["archive_path"] if canonical else None}
+                "canonical_provider": canonical_conversation["provider"] if canonical_conversation else None,
+                "canonical_conversation_id": canonical_conversation["conversation_id"] if canonical_conversation else None,
+                "canonical_archive_path": canonical_conversation["archive_path"] if canonical_conversation else None}
 
     def snapshot_repository(
         self, project_id: str, repository_path: str | Path, *,
