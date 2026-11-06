@@ -111,6 +111,9 @@ class VaultCatalog:
     @staticmethod
     def default_root() -> Path:
         """Stable per-user data location, independent of the executable and Git checkout."""
+        configured = os.environ.get("DGM_VAULT_PATH")
+        if configured:
+            return Path(configured).expanduser().resolve()
         local_app_data = os.environ.get("LOCALAPPDATA")
         if local_app_data:
             base = Path(local_app_data)
