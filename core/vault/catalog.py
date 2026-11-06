@@ -85,7 +85,7 @@ class VaultCatalog:
     Set DGM_VAULT_PATH or pass an explicit path; never place private transcripts in Git.
     """
 
-    SCHEMA_VERSION = 1
+    SCHEMA_VERSION = 2
 
     def __init__(self, vault_root: str | Path | None = None) -> None:
         configured = vault_root or os.environ.get("DGM_VAULT_PATH")
