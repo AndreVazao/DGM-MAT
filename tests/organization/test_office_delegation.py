@@ -45,7 +45,11 @@ def test_delegation_selects_exact_skill_match_and_assigns_task():
     registry = bootstrap_full_office(AgentRegistry())
     tasks = OrganizationTaskManager()
     runtime = WorkerRuntime(InternalMessageBus())
-    runtime.register_handler("agent:repository-cartographer", lambda message: {"status": "handled"})
+    runtime.register_handler(
+        "agent:repository-cartographer",
+        lambda message: {"status": "handled"},
+        capabilities=("file-inventory", "project-tree"),
+    )
     task = Task(
         "task:inventory", "Inventory repository", "mission:test", "Create tree",
         metadata={"required_skills": ["file-inventory", "project-tree"], "required_permissions": ["reports:write"]},
@@ -62,7 +66,11 @@ def test_delegation_refuses_unavailable_or_unauthorized_agent():
     registry.set_status("agent:repository-cartographer", AgentStatus.OFFLINE)
     tasks = OrganizationTaskManager()
     runtime = WorkerRuntime(InternalMessageBus())
-    runtime.register_handler("agent:repository-cartographer", lambda message: {"status": "handled"})
+    runtime.register_handler(
+        "agent:repository-cartographer",
+        lambda message: {"status": "handled"},
+        capabilities=("file-inventory",),
+    )
     task = Task(
         "task:restricted", "Restricted inventory", "mission:test", "No write",
         metadata={"required_skills": ["file-inventory"], "required_permissions": ["repo:write:production"]},
@@ -80,7 +88,11 @@ def test_delegation_refuses_unsatisfied_dependencies():
     registry = bootstrap_full_office(AgentRegistry())
     tasks = OrganizationTaskManager()
     runtime = WorkerRuntime(InternalMessageBus())
-    runtime.register_handler("agent:repository-cartographer", lambda message: {"status": "handled"})
+    runtime.register_handler(
+        "agent:repository-cartographer",
+        lambda message: {"status": "handled"},
+        capabilities=("file-inventory", "project-tree"),
+    )
     tasks.create(Task("task:dependency", "Dependency", "mission:test", "Pending"))
     tasks.create(Task("task:blocked", "Blocked", "mission:test", "Wait", dependencies=["task:dependency"]))
     try:
@@ -115,6 +127,55 @@ def test_available_role_without_registered_handler_is_not_delegable():
 def test_worker_runtime_exposes_registered_handler_inventory():
     runtime = WorkerRuntime(InternalMessageBus())
     assert runtime.has_handler("agent:repository-cartographer") is False
-    runtime.register_handler("agent:repository-cartographer", lambda message: {"status": "handled"})
+    runtime.register_handler(
+        "agent:repository-cartographer",
+        lambda message: {"status": "handled"},
+        capabilities=("file-inventory", "project-tree"),
+    )
     assert runtime.has_handler("agent:repository-cartographer") is True
     assert runtime.registered_agents() == ("agent:repository-cartographer",)
+    assert runtime.declared_capabilities("agent:repository-cartographer") == ("file-inventory", "project-tree")
+    assert runtime.declares_capabilities(
+        "agent:repository-cartographer", ("file-inventory", "project-tree")
+    ) is True
+    assert runtime.declares_capabilities(
+        "agent:repository-cartographer", ("python",)
+    ) is False
+
+
+def test_registered_handler_without_required_capability_cannot_receive_task():
+    registry = bootstrap_full_office(AgentRegistry())
+    tasks = OrganizationTaskManager()
+    runtime = WorkerRuntime(InternalMessageBus())
+    runtime.register_handler(
+        "agent:repository-cartographer",
+        lambda message: {"status": "handled"},
+        capabilities=("qa-intake",),
+    )
+    task = Task(
+        "task:wrong-handler-capability",
+        "Inventory repository",
+        "mission:test",
+        "Create tree",
+        metadata={"required_skills": ["file-inventory"], "required_permissions": ["reports:write"]},
+    )
+    tasks.create(task)
+
+    try:
+        DelegationEngine(registry, tasks, runtime).delegate(task.task_id)
+    except DelegationError as exc:
+        assert "required capabilities" in str(exc)
+    else:
+        raise AssertionError("A registered handler without the required capability must not receive work.")
+
+
+def test_qa_intake_handler_is_not_misrepresented_as_bug_hunter():
+    from core.organization.qa_intake_worker import QAIntakeWorker
+
+    runtime = WorkerRuntime(InternalMessageBus())
+    runtime.register_handler("agent:bug-hunter", QAIntakeWorker())
+    assert runtime.has_handler("agent:bug-hunter") is True
+    assert runtime.declared_capabilities("agent:bug-hunter") == ("qa-intake",)
+    assert runtime.declares_capabilities(
+        "agent:bug-hunter", ("reproduction", "fault-isolation")
+    ) is False
