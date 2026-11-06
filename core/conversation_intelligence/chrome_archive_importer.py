@@ -30,6 +30,7 @@ class ChromeConversationArchiveImporter:
         project_root = Path(__file__).resolve().parents[2]
         configured_vault = os.environ.get("DGM_VAULT_PATH") or VaultCatalog.default_root()
         self.vault = vault_catalog or VaultCatalog(configured_vault)
+        self.vault.register_known_projects()
         self.inbox_dir = Path(inbox_dir) if inbox_dir else Path.home() / "Downloads" / "DGM-MAT-Conversation-Archive"
         vault_root = self.vault.root if self.vault else None
         default_archive = (
