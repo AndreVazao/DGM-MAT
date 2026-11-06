@@ -286,7 +286,11 @@ async function pollBrowserOperatorQueue() {
         // Never claim a durable task until the content script confirms it is ready.
         continue;
       }
-      if (!readiness?.ok || readiness.provider !== provider || readiness.blocked) continue;
+      if (!readiness?.ok || readiness.provider !== provider) continue;
+      if (readiness.blocked) {
+        await pauseBrowserProvider(provider, readiness.blocked);
+        continue;
+      }
       const response = await apiGet("/browser-operator/next?provider=" + encodeURIComponent(provider), state.token);
       if (response.status !== "claimed" || !response.task) continue;
       const task = { ...response.task, tab_id: tabId };
