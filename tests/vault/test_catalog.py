@@ -304,3 +304,45 @@ def test_repository_tree_snapshot_is_reused_until_source_changes(tmp_path):
     assert third["snapshot_id"] != first["snapshot_id"]
     assert third["reused"] is False
     assert vault.summary()["tree_snapshots"] == 2
+
+
+def test_bootstrap_imports_old_completed_conversations_and_snapshots_project_idempotently(tmp_path):
+    from core.conversation_intelligence.progress_store import ConversationProgressStore
+    from core.vault.bootstrap import bootstrap_vault
+
+    vault_root = tmp_path / "vault"
+    repository = tmp_path / "DGM-MAT"
+    repository.mkdir()
+    (repository / "main.py").write_text("print('DGM-MAT')\n", encoding="utf-8")
+    progress_db = vault_root / "runtime" / "conversation_intelligence" / "progress.sqlite3"
+    progress = ConversationProgressStore(progress_db)
+    progress.record_conversation(
+        provider="chatgpt",
+        conversation_id="bootstrap-conversation-1",
+        source_fingerprint="source-fingerprint-1",
+        title="DGM-MAT Fixing — Vault bootstrap",
+        status="complete",
+        result={
+            "conversation": {
+                "provider": "chatgpt",
+                "conversation_id": "bootstrap-conversation-1",
+                "title": "DGM-MAT Fixing — Vault bootstrap",
+                "url": "https://chatgpt.com/c/bootstrap-conversation-1",
+                "content": "DGM-MAT persistent Vault and repository recovery.",
+                "messages": [{"role": "user", "content": "Preserve this completed conversation."}],
+                "metadata": {"completeness": "partial_or_unknown"},
+            },
+            "artifacts": [],
+        },
+    )
+
+    first = bootstrap_vault(repository_path=repository, vault_root=vault_root)
+    second = bootstrap_vault(repository_path=repository, vault_root=vault_root)
+
+    assert first["status"] == "completed"
+    assert first["progress_sync"]["conversations_archived"] == 1
+    assert first["repository_tree"]["reused"] is False
+    assert second["progress_sync"]["duplicates_detected"] == 1
+    assert second["repository_tree"]["reused"] is True
+    assert second["summary"]["conversations"] == 1
+    assert second["summary"]["tree_snapshots"] == 1
