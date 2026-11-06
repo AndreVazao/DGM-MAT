@@ -84,6 +84,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("GET",), "/runtime/workspace/scan", SecurityScope.OPERATOR, "Workspace scan."),
     RouteClassification(("GET",), "/runtime/obsidian/index", SecurityScope.OPERATOR, "Indexes local vault."),
     RouteClassification(("POST",), "/runtime/missions", SecurityScope.OPERATOR, "Creates a mission."),
+    RouteClassification(("POST",), "/runtime/missions/{mission_id}/browser-task", SecurityScope.OPERATOR, "Queues one visible-UI task for an existing mission; approval is required by default."),
     RouteClassification(("GET",), "/runtime/missions", SecurityScope.LOCAL_CLIENT, "Mission details/logs."),
     RouteClassification(("GET",), "/runtime/missions/page", SecurityScope.LOCAL_CLIENT, "Bounded, paginated durable mission summaries."),
     RouteClassification(("GET",), "/runtime/missions/{mission_id}", SecurityScope.LOCAL_CLIENT, "One durable mission checkpoint and result; read-only."),
