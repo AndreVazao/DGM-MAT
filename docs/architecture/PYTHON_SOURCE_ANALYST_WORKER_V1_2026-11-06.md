@@ -29,7 +29,7 @@ resolved and checked against a host-owned allowed root at construction and dispa
 - Parses with ast.parse; it never calls exec, eval, compile, importlib, subprocess or a shell.
 - Reports syntax diagnostics, import names, function/class counts and a deterministic
   source digest; it never returns source text.
-- Enforces file count, per-file byte and total-byte budgets.
+- Enforces file count, per-file byte, aggregate byte, directory-entry and traversal-depth budgets. Reads at most the remaining per-file/aggregate allowance plus one byte, so oversized files are not loaded wholesale.
 
 ## Maturity boundary
 
