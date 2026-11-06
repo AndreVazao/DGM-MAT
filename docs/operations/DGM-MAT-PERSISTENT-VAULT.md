@@ -18,7 +18,7 @@ For a permanent user-level setting, use the Windows Environment Variables interf
 
 ## Project grouping
 
-The Vault seeds an explicit project registry for DGM-MAT, DGM-HUB, DGM-MCP, AndreOS Memory, DGM-MAT-Mobile, VAZAO EVSE Platform, VazaoSovereignTrader, Office Kit and Family DGM. Classification uses the strongest/longest matching project alias, so a specific name such as `DGM-MAT Mobile` wins over the broader `DGM-MAT` alias. User-added aliases and repository paths are preserved. No match or a tied match remains in quarantine for later review.
+The Vault seeds an explicit project registry for DGM-MAT, DGM-HUB, DGM-MCP, AndreOS Memory, DGM-MAT-Mobile, VAZAO EVSE Platform, VazaoSovereignTrader, Office Kit and Family DGM. Classification prioritizes a project name in the conversation title over incidental mentions in the transcript, then uses the strongest/longest matching alias. A specific name such as `DGM-MAT Mobile` wins over the broader `DGM-MAT` alias. User-added aliases and repository paths are preserved. No match or a tied match remains in quarantine for later review.
 
 ## Layout
 
