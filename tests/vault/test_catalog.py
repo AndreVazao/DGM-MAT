@@ -257,3 +257,22 @@ def test_known_project_catalog_prefers_specific_alias_and_preserves_custom_metad
     assert "Custom DGM-MAT Alias" in dgm["aliases"]
     assert dgm["repository_path"] == str(repository.resolve())
     assert len(vault.list_projects()) == 9
+
+
+def test_project_title_evidence_outweighs_incidental_mentions_and_ties_quarantine(tmp_path):
+    vault = VaultCatalog(tmp_path / "vault")
+    vault.register_known_projects()
+
+    title_match = vault.suggest_project(
+        "DGM-MAT Fixing — browser recovery",
+        "The discussion also compares a DGM-HUB meeting flow.",
+    )
+    assert title_match["project_id"] == "dgm-mat"
+    assert title_match["candidates"][0]["evidence_source"] == "title"
+
+    ambiguous = vault.suggest_project(
+        "General architecture review",
+        "Compare DGM-MAT and DGM-HUB; both projects are equally central.",
+    )
+    assert ambiguous["project_id"] is None
+    assert ambiguous["status"] == "ambiguous"
