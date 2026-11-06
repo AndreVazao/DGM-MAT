@@ -7,6 +7,7 @@ repositories, invoke providers, or authorize execution.
 from __future__ import annotations
 
 import hashlib
+import json
 import ntpath
 from dataclasses import dataclass
 from pathlib import PurePosixPath
@@ -125,6 +126,8 @@ class EngineeringTeamPlanner:
             raise ValueError("description is required")
         if risk_level not in {"low", "normal", "high", "critical"}:
             raise ValueError("risk_level must be low, normal, high, or critical")
+        if not isinstance(include_research, bool):
+            raise TypeError("include_research must be a boolean")
         if isinstance(changed_paths, (str, bytes)):
             raise TypeError("changed_paths must be an iterable of path strings")
 
@@ -145,6 +148,24 @@ class EngineeringTeamPlanner:
                 unresolved.append(path)
                 continue
             groups.setdefault(profile.language_id, []).append(path)
+
+        plan_material = {
+            "mission_id": mission_id,
+            "title": title,
+            "description": description,
+            "paths": sorted(normalized.values(), key=str.casefold),
+            "blocked_paths": sorted(blocked, key=str.casefold),
+            "risk_level": risk_level,
+            "include_research": include_research,
+        }
+        plan_key = hashlib.sha256(
+            json.dumps(
+                plan_material,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()[:16]
 
         tasks: list[Task] = []
         notes: list[str] = []
@@ -168,6 +189,7 @@ class EngineeringTeamPlanner:
                 f"Research: {title}",
                 "Collect relevant official documentation and repository evidence. "
                 "Separate verified facts, proposals and unknowns.",
+                key=plan_key,
                 owner_department="research",
                 required_skills=("technical-research", "source-provenance"),
                 metadata={"external_calls_authorized": False},
@@ -184,7 +206,7 @@ class EngineeringTeamPlanner:
                 f"{language_id} implementation",
                 f"Prepare a bounded {language_id} change for: {', '.join(paths)}. "
                 "Inspect callers and existing architecture before proposing a patch.",
-                key=language_id,
+                key=f"{plan_key}:{language_id}",
                 owner_department=None,
                 dependencies=dependencies,
                 inputs=paths,
@@ -207,6 +229,7 @@ class EngineeringTeamPlanner:
             "Cross-language integration review",
             "Check contracts, schemas, imports, callers and compatibility across "
             "all implementation subtasks. Do not certify unexecuted checks.",
+            key=plan_key,
             owner_department=None,
             dependencies=implementation_ids,
             required_skills=("integration", "contracts"),
@@ -221,6 +244,7 @@ class EngineeringTeamPlanner:
             "Independent bug investigation",
             "Inspect the proposed changes and acceptance criteria independently; "
             "reproduce suspected defects and report evidence.",
+            key=plan_key,
             owner_department="bug-hunters",
             dependencies=(integration.task_id,),
             required_skills=("reproduction", "fault-isolation"),
@@ -233,6 +257,7 @@ class EngineeringTeamPlanner:
             "Independent testing and validation",
             "Run only configured, allowlisted checks in the exact isolated workspace; "
             "record commands, exit codes, revisions and evidence. Missing tools mean not_run.",
+            key=plan_key,
             owner_department="qa",
             dependencies=(integration.task_id,),
             required_skills=("testing", "independent-validation"),
@@ -248,6 +273,7 @@ class EngineeringTeamPlanner:
                 "Independent security review",
                 "Review trust boundaries, permissions, secrets, dependency risk and "
                 "negative tests before any promotion.",
+                key=plan_key,
                 owner_department="security",
                 dependencies=(integration.task_id,),
                 required_skills=("security", "threat-model"),
