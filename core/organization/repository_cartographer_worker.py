@@ -90,7 +90,13 @@ class RepositoryCartographerWorker:
             return self._blocked("sender_not_allowlisted", message)
         if not message.mission_id or not message.correlation_id:
             return self._blocked("mission_or_correlation_id_missing", message)
-        if not isinstance(message.body, str) or len(message.body.encode("utf-8")) > 4096:
+        if not isinstance(message.body, str):
+            return self._blocked("request_size_invalid", message)
+        try:
+            encoded_body = message.body.encode("utf-8")
+        except UnicodeEncodeError:
+            return self._blocked("request_encoding_invalid", message)
+        if len(encoded_body) > 4096:
             return self._blocked("request_size_invalid", message)
 
         try:
@@ -99,7 +105,7 @@ class RepositoryCartographerWorker:
             return self._blocked("request_json_invalid", message)
         if not isinstance(request, dict) or set(request) != self._REQUEST_KEYS:
             return self._blocked("request_schema_invalid", message)
-        if request.get("schema_version") != 1:
+        if type(request.get("schema_version")) is not int or request["schema_version"] != 1:
             return self._blocked("request_schema_version_unsupported", message)
         if request.get("operation") != "inventory_repository":
             return self._blocked("operation_not_allowed", message)
