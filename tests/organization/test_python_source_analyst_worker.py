@@ -89,3 +89,46 @@ def test_constructor_rejects_repository_outside_allowed_root(tmp_path):
     outside.mkdir()
     with pytest.raises(ValueError):
         PythonSourceAnalystWorker(allowed_root=allowed, repositories={"escape": outside})
+
+
+def test_total_source_budget_is_enforced_during_bounded_reads(tmp_path):
+    worker, repo = make_worker(tmp_path, max_file_bytes=1024, max_total_bytes=1024)
+    (repo / "a.py").write_text("x" * 700, encoding="utf-8")
+    (repo / "b.py").write_text("y" * 700, encoding="utf-8")
+    result = worker(make_message(request()))
+    assert result["status"] == "BLOCKED"
+    assert result["reason"] == "total_source_budget_exceeded"
+
+
+def test_oversized_python_file_is_skipped(tmp_path):
+    worker, repo = make_worker(tmp_path, max_file_bytes=1024, max_total_bytes=4096)
+    (repo / "large.py").write_bytes(b"x" * 4096)
+    result = worker(make_message(request()))
+    assert result["status"] == "COMPLETED_READ_ONLY"
+    assert result["files_skipped_oversize"] == 1
+
+
+def test_entry_limit_bounds_non_python_tree_walk(tmp_path):
+    worker, repo = make_worker(tmp_path, max_entries=2)
+    for index in range(5):
+        (repo / f"data-{index}.txt").write_text("x", encoding="utf-8")
+    result = worker(make_message(request()))
+    assert result["status"] == "BLOCKED"
+    assert result["reason"] == "entry_limit_exceeded"
+
+
+def test_depth_limit_stops_deep_tree_traversal(tmp_path):
+    worker, repo = make_worker(tmp_path, max_depth=1)
+    nested = repo / "one" / "two"
+    nested.mkdir(parents=True)
+    (nested / "deep.py").write_text("def hidden(): pass", encoding="utf-8")
+    result = worker(make_message(request()))
+    assert result["status"] == "COMPLETED_READ_ONLY"
+    assert result["files_discovered"] == 2
+
+
+def test_boolean_traversal_limits_are_rejected(tmp_path):
+    with pytest.raises(ValueError):
+        make_worker(tmp_path, max_depth=True)
+    with pytest.raises(ValueError):
+        make_worker(tmp_path, max_entries=True)
