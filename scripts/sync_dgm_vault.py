@@ -58,7 +58,7 @@ def main() -> int:
         "repository_tree": tree,
     }
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    return 1 if failures else 0
+    return 1 if sync_report["failures"] else 0
 
 
 if __name__ == "__main__":
