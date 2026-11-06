@@ -118,6 +118,18 @@ class VaultCatalog:
         for folder in ("projects", "providers", "missions", "quarantine"):
             (self.root / folder).mkdir(parents=True, exist_ok=True)
         with self._connect() as db:
+            has_schema_meta = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_meta'"
+            ).fetchone()
+            if has_schema_meta:
+                existing_version = db.execute(
+                    "SELECT value FROM schema_meta WHERE key='schema_version'"
+                ).fetchone()
+                if existing_version and int(existing_version["value"]) > self.SCHEMA_VERSION:
+                    raise RuntimeError(
+                        f"Vault schema {existing_version['value']} is newer than this DGM-MAT build "
+                        f"(supported: {self.SCHEMA_VERSION}); refusing to downgrade or modify it"
+                    )
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS schema_meta (
                     key TEXT PRIMARY KEY, value TEXT NOT NULL
