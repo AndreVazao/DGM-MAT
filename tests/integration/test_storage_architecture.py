@@ -122,3 +122,12 @@ def test_legacy_runtime_conflicts_are_preserved_separately(monkeypatch, tmp_path
     assert len(preserved) == 1
     assert preserved[0].read_text(encoding="utf-8") == "legacy checkpoint"
     assert legacy_file.read_text(encoding="utf-8") == "legacy checkpoint"
+
+
+def test_runtime_storage_is_nested_under_the_same_vault_override(tmp_path, monkeypatch):
+    monkeypatch.delenv("DGM_STORAGE_PATH", raising=False)
+    monkeypatch.delenv("DGM_BASE_PATH", raising=False)
+    vault_root = tmp_path / "chosen-vault"
+    monkeypatch.setenv("DGM_VAULT_PATH", str(vault_root))
+    manager = RuntimeStorageManager()
+    assert manager.base_path == (vault_root / "runtime").resolve()
