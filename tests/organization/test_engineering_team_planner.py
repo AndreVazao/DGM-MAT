@@ -71,6 +71,7 @@ def test_unknown_and_ambiguous_paths_are_reported_not_assigned():
     assert plan.language_ids == ("python",)
     assert "include/shared.h" in plan.blocked_paths
     assert "unknown.file" in plan.blocked_paths
+    assert plan.recognized_paths == ("src/app.py",)
     assert all("shared.h" not in path for task in plan.tasks for path in task.inputs)
 
 
@@ -125,3 +126,23 @@ def test_required_fields_are_validated():
 def test_changed_paths_must_be_an_iterable_not_a_single_string():
     with pytest.raises(TypeError):
         build(changed_paths="src/main.py")
+
+def test_generated_safety_metadata_cannot_be_overridden():
+    task = EngineeringTeamPlanner._task(
+        "mission:locked",
+        "implementation",
+        "Unsafe override attempt",
+        "Test invariant protection.",
+        metadata={
+            "planning_only": False,
+            "execution_authorized": True,
+            "toolchain_status": "available",
+            "team_stage": "execution",
+            "required_skills": ["arbitrary"],
+        },
+    )
+    assert task.metadata["planning_only"] is True
+    assert task.metadata["execution_authorized"] is False
+    assert task.metadata["toolchain_status"] == "not_probed"
+    assert task.metadata["team_stage"] == "implementation"
+    assert task.metadata["required_skills"] == []
