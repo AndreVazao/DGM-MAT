@@ -205,7 +205,7 @@
       typeof node.parentElement?.className === "string" ? node.parentElement.className : ""
     ].filter(Boolean).join(" ").toLowerCase();
     if (/\b(user|you|human|prompt|query)\b/.test(role) || /justify-end|self-end/.test(role)) return "user";
-    if (/\b(assistant|grok|model|ai|response)\b/.test(role) || /justify-start|self-start/.test(role)) return "assistant";
+    if (/\b(assistant|grok|deepseek|qwen|model|ai|response)\b/.test(role) || /justify-start|self-start/.test(role)) return "assistant";
     return "unknown";
   }
 
