@@ -42,7 +42,7 @@ function makeMessage(
   };
 }
 
-function createHarness(mode, provider = "chatgpt") {
+function createHarness(mode, provider = "chatgpt", bodyText = "") {
   const all = Array.from({ length: 12 }, (_, index) => makeMessage(index, undefined, {}, provider));
   const ambiguousFirst = makeMessage(50, "user", {
     text: "Repeated identical text-only turn",
@@ -56,6 +56,7 @@ function createHarness(mode, provider = "chatgpt") {
   let olderLoaded = false;
   let topWaits = 0;
   let listener = null;
+  let pageReadyMessage = null;
   let scrollCalls = 0;
 
   function updateVisible(top) {
@@ -102,7 +103,7 @@ function createHarness(mode, provider = "chatgpt") {
 
   const document = {
     title: "Virtualized history fixture | ChatGPT",
-    body: { innerText: "" },
+    body: { innerText: bodyText },
     scrollingElement: scroller,
     querySelector() {
       return null;
@@ -167,7 +168,8 @@ function createHarness(mode, provider = "chatgpt") {
             listener = callback;
           }
         },
-        sendMessage() {
+        sendMessage(message) {
+          pageReadyMessage = message;
           return Promise.resolve({ ok: true });
         }
       }
@@ -210,7 +212,7 @@ function createHarness(mode, provider = "chatgpt") {
     });
   }
 
-  return { capture, getScrollCalls: () => scrollCalls };
+  return { capture, getScrollCalls: () => scrollCalls, getPageReadyMessage: () => pageReadyMessage };
 }
 
 async function testVirtualizedHistoryWindowsAndDuplicates() {
@@ -295,6 +297,20 @@ async function testIdenticalTextOnlyTurnsAreMarkedAmbiguous() {
     "identical text-only turns without stable provider IDs must not be silently deduplicated");
 }
 
+async function testProviderUsageLimitsTriggerSafeProviderRotationSignal() {
+  const messages = [
+    "You've reached your GPT-5 limit",
+    "You have reached your daily limit",
+    "Quota exceeded",
+    "Limite de mensagens atingido",
+    "Atingiste o limite diário"
+  ];
+  for (const message of messages) {
+    const harness = createHarness("no-oldest-marker", "chatgpt", message);
+    assert.equal(harness.getPageReadyMessage().blocked, "rate_limited", message);
+  }
+}
+
 async function testScrollHardLimitIsExplicitlyTruncated() {
   const harness = createHarness("scroll-limit");
   const response = await harness.capture();
@@ -313,7 +329,8 @@ async function main() {
   await testProviderDomMismatchFailsClosed();
   await testIdenticalTextOnlyTurnsAreMarkedAmbiguous();
   await testScrollHardLimitIsExplicitlyTruncated();
-  process.stdout.write("PASS: 7 deterministic virtualized-history capture fixtures\n");
+  await testProviderUsageLimitsTriggerSafeProviderRotationSignal();
+  process.stdout.write("PASS: 8 deterministic browser capture and provider-limit fixtures\n");
 }
 
 main().catch(error => {

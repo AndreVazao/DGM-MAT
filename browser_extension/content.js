@@ -473,7 +473,7 @@
     if (/captcha|verify you are human|unusual traffic|security challenge/.test(text)) {
       return "blocked_challenge";
     }
-    if (/too many requests|rate limit|try again later/.test(text)) {
+    if (/too many requests|rate limit|try again later|you(?:'ve| have) reached (?:your )?(?:free )?[\\s\\S]{0,50}limit|daily limit|usage limit|message limit|quota exceeded|daily quota|limite de mensagens|limite diário|atingiste o limite|atingiu o limite|cota excedida/.test(text)) {
       return "rate_limited";
     }
     return "";
