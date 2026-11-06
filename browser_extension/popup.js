@@ -5,6 +5,8 @@ const stopButton = document.getElementById("stop-button");
 const retryButton = document.getElementById("retry-button");
 const autoCheckbox = document.getElementById("auto-checkbox");
 const statusNode = document.getElementById("status");
+const messageInput = document.getElementById("message-input");
+const sendMessageButton = document.getElementById("send-message-button");
 
 function showStatus(value, error = false) {
   statusNode.textContent = value;
@@ -52,6 +54,31 @@ autoCheckbox.addEventListener("change", async () => {
     await refresh();
   } finally {
     autoCheckbox.disabled = false;
+  }
+});
+
+
+sendMessageButton.addEventListener("click", async () => {
+  const text = messageInput.value;
+  if (!text.trim()) return showStatus("Write a message first.", true);
+  if (!window.confirm("Send this message to the AI in the active authenticated conversation?")) return;
+  sendMessageButton.disabled = true;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !Number.isInteger(tab.id)) throw new Error("No active provider tab.");
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      type: "DGM_SEND_MESSAGE",
+      text
+    });
+    if (!response?.ok) throw new Error(response?.error || "Provider did not accept the message.");
+    messageInput.value = "";
+    showStatus(response.data.status === "submitted_and_visible"
+      ? "Message sent and observed in the conversation."
+      : "Send action executed, but message visibility could not be verified. Do not resend automatically.", response.data.status !== "submitted_and_visible");
+  } catch (error) {
+    showStatus(error.message, true);
+  } finally {
+    sendMessageButton.disabled = false;
   }
 });
 
