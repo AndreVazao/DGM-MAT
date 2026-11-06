@@ -36,6 +36,7 @@ class FakeEvent {
 }
 
 function createHarness(options = {}) {
+  const provider = options.provider || "chatgpt";
   const messages = [];
   const composer = options.noComposer ? null : new FakeTextArea();
   let clicked = false;
@@ -82,10 +83,12 @@ function createHarness(options = {}) {
     }
   };
   const document = {
-    title: "Existing conversation | ChatGPT",
+    title: "Existing conversation | " + provider,
     body: { innerText: options.bodyText || "" },
     querySelectorAll(selector) {
-      if (selector === "[data-message-author-role]") return messages;
+      if (selector === "[data-message-author-role]" || selector === "[data-message-id]" ||
+          selector === '[data-testid="conversation-turn"]' || selector === '[data-testid*="message"]' ||
+          selector.includes('div[class*=')) return messages;
       if (selector === "#prompt-textarea" || selector === '[data-testid="prompt-textarea"]' ||
           selector === "textarea[placeholder]" || selector === "textarea") {
         return composer ? [composer] : [];
@@ -99,8 +102,16 @@ function createHarness(options = {}) {
     URL, Map, Set, Promise, Math, Date, Error, String, Array, Object, RegExp, Number, JSON,
     document,
     location: {
-      href: "https://chatgpt.com/c/fixture-conversation",
-      pathname: "/c/fixture-conversation",
+      href: {
+        chatgpt: "https://chatgpt.com/c/fixture-conversation",
+        deepseek: "https://chat.deepseek.com/a/chat/s/fixture-conversation",
+        qwen: "https://chat.qwen.ai/chat/fixture-conversation"
+      }[provider],
+      pathname: {
+        chatgpt: "/c/fixture-conversation",
+        deepseek: "/a/chat/s/fixture-conversation",
+        qwen: "/chat/fixture-conversation"
+      }[provider],
       assign() { throw new Error("Unexpected navigation."); }
     },
     HTMLTextAreaElement: FakeTextArea,
@@ -175,6 +186,22 @@ async function main() {
   assert.equal(limitedResponse.data.reason, "rate_limited");
   assert.equal(limited.clicked(), false, "a provider quota page must be detected before sending");
 
+  for (const provider of ["deepseek", "qwen"]) {
+    const providerHarness = createHarness({
+      provider,
+      assistantResponse: "The provider adapter returned a verified fixture response."
+    });
+    const providerResult = await providerHarness.execute({
+      provider,
+      source_id: "fixture-conversation",
+      message: "Check this provider's visible composer and response.",
+      response_timeout_ms: 1000
+    });
+    assert.equal(providerResult.ok, true, provider + ": " + providerResult.error);
+    assert.equal(providerResult.data.status, "completed", provider);
+    assert.match(providerResult.data.assistant_text, /verified fixture response/);
+  }
+
   const mission = createHarness({ assistantResponse: "The repository is clean and the CI is green." });
   const missionResponse = await mission.execute({
     provider: "chatgpt",
@@ -186,7 +213,7 @@ async function main() {
   assert.equal(missionResponse.data.status, "completed");
   assert.match(missionResponse.data.assistant_text, /repository is clean/);
 
-  process.stdout.write("PASS: 6 visible-UI message, quota and mission-response fixtures\\n");
+  process.stdout.write("PASS: 8 visible-UI message, quota, five-provider and mission-response fixtures\\n");
 }
 
 main().catch(error => {
