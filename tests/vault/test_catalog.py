@@ -202,3 +202,17 @@ def test_empty_captures_are_not_cross_provider_duplicates_and_whitespace_is_norm
     assert Path(second["archive_path"]).is_file()
     assert len(vault.list_conversations("dgm-mat")) == 4
     assert vault.summary()["duplicate_candidates"] == 1
+
+
+def test_raw_browser_capture_is_immutable_and_idempotent(tmp_path):
+    vault = VaultCatalog(tmp_path / "vault")
+    first = vault.archive_raw_capture(
+        provider="chatgpt", source_id="conversation-1", raw_bytes=b'{"messages":[1]}'
+    )
+    second = vault.archive_raw_capture(
+        provider="chatgpt", source_id="conversation-1", raw_bytes=b'{"messages":[1]}'
+    )
+    assert first["status"] == "archived"
+    assert second["status"] == "duplicate"
+    assert first["sha256"] == second["sha256"]
+    assert Path(first["archive_path"]).read_bytes() == b'{"messages":[1]}'
