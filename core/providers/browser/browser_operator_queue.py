@@ -47,6 +47,7 @@ class BrowserOperatorQueue:
                     status TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
+                    created_by TEXT NOT NULL DEFAULT 'mission-engine',
                     approved_by TEXT,
                     claimed_by TEXT,
                     claim_token TEXT,
@@ -56,6 +57,8 @@ class BrowserOperatorQueue:
                 )
             """)
             columns = {row["name"] for row in db.execute("PRAGMA table_info(browser_operator_tasks)").fetchall()}
+            if "created_by" not in columns:
+                db.execute("ALTER TABLE browser_operator_tasks ADD COLUMN created_by TEXT NOT NULL DEFAULT 'mission-engine'")
             if "approved_by" not in columns:
                 db.execute("ALTER TABLE browser_operator_tasks ADD COLUMN approved_by TEXT")
             db.execute("""
@@ -82,12 +85,12 @@ class BrowserOperatorQueue:
     def enqueue(
         self, *, idempotency_key: str, mission_id: str, provider: str,
         source_id: str, conversation_url: str, message: str,
-        approval_required: bool = True,
+        approval_required: bool = True, created_by: str = "mission-engine",
     ) -> dict[str, Any]:
-        values = (idempotency_key, mission_id, provider, source_id, conversation_url, message)
+        values = (idempotency_key, mission_id, provider, source_id, conversation_url, message, created_by)
         if any(not isinstance(value, str) or not value.strip() for value in values):
             raise BrowserOperatorQueueError("All task identity and content fields must be non-empty strings")
-        if len(idempotency_key) > 200 or len(mission_id) > 80 or len(source_id) > 200:
+        if len(idempotency_key) > 200 or len(mission_id) > 80 or len(source_id) > 200 or len(created_by) > 200:
             raise BrowserOperatorQueueError("Task identity field exceeds its limit")
         if provider not in {"chatgpt", "gemini", "grok"}:
             raise BrowserOperatorQueueError("Unsupported browser provider")
@@ -103,15 +106,21 @@ class BrowserOperatorQueue:
                 (idempotency_key,),
             ).fetchone()
             if existing:
+                existing_item = self._decode(existing) or {}
+                expected = (mission_id, provider, source_id, conversation_url, message)
+                actual = tuple(existing_item.get(key) for key in ("mission_id", "provider", "source_id", "conversation_url", "message"))
+                if actual != expected:
+                    db.rollback()
+                    raise BrowserOperatorQueueError("Idempotency key is already bound to a different task envelope")
                 db.commit()
-                return self._decode(existing) or {}
+                return existing_item
             db.execute("""
                 INSERT INTO browser_operator_tasks (
                     task_id,idempotency_key,mission_id,provider,source_id,conversation_url,
-                    message,status,created_at,updated_at
-                ) VALUES (?,?,?,?,?,?,?,?,?,?)
+                    message,status,created_at,updated_at,created_by
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
             """, (task_id, idempotency_key, mission_id, provider, source_id,
-                  conversation_url, message, status, now, now))
+                  conversation_url, message, status, now, now, created_by))
             row = db.execute(
                 "SELECT * FROM browser_operator_tasks WHERE task_id=?", (task_id,)
             ).fetchone()
