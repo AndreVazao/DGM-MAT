@@ -458,7 +458,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
                 title=normalized_record["title"],
                 url=source_url,
                 messages=normalized_record["messages"],
-                content="\\n".join(
+                content="\n".join(
                     f"{message.get('role', 'unknown')}: {message.get('content', '')}"
                     for message in normalized_record["messages"]
                 ),
