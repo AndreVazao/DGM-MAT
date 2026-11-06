@@ -165,3 +165,26 @@ def test_invalid_unicode_request_is_blocked(tmp_path):
     result = worker(make_message("\ud800"))
     assert result["status"] == "BLOCKED"
     assert result["reason"] == "request_encoding_invalid"
+
+def test_constructor_rejects_non_collection_sender_allowlist(tmp_path):
+    allowed = tmp_path / "allowed"
+    repo = allowed / "repo"
+    repo.mkdir(parents=True)
+    with pytest.raises(ValueError, match="allowed_senders"):
+        RepositoryCartographerWorker(
+            allowed_root=allowed,
+            repositories={"repo": repo},
+            allowed_senders="agent:hq-orchestrator",
+        )
+
+
+def test_constructor_rejects_boolean_resource_limits(tmp_path):
+    allowed = tmp_path / "allowed"
+    repo = allowed / "repo"
+    repo.mkdir(parents=True)
+    with pytest.raises(ValueError, match="max_entries"):
+        RepositoryCartographerWorker(
+            allowed_root=allowed,
+            repositories={"repo": repo},
+            max_entries=True,
+        )
