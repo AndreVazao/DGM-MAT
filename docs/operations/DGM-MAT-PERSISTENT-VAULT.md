@@ -6,7 +6,7 @@ The Vault is local, portable data and must survive application upgrades or repla
 
 ## Configuration
 
-Choose a persistent folder on a data drive, outside the DGM-MAT installation and all Git worktrees. Configure it explicitly:
+By default, DGM-MAT uses a stable per-user data directory outside the installation and Git worktrees: `%LOCALAPPDATA%\\DGM-MAT\\Vault` on Windows, or `$XDG_DATA_HOME/DGM-MAT/Vault` (falling back to `~/.local/share/DGM-MAT/Vault`) on Linux/macOS. This means a normal application upgrade does not move or delete the Vault. Set `DGM_VAULT_PATH` only when you want to override that default with another persistent folder:
 
 PowerShell (current session):
 
