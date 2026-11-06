@@ -185,7 +185,7 @@ class EngineeringTeamPlanner:
                 f"Prepare a bounded {language_id} change for: {', '.join(paths)}. "
                 "Inspect callers and existing architecture before proposing a patch.",
                 key=language_id,
-                owner_department="engineering",
+                owner_department=None,
                 dependencies=dependencies,
                 inputs=paths,
                 required_skills=(language_id,),
@@ -207,7 +207,7 @@ class EngineeringTeamPlanner:
             "Cross-language integration review",
             "Check contracts, schemas, imports, callers and compatibility across "
             "all implementation subtasks. Do not certify unexecuted checks.",
-            owner_department="engineering",
+            owner_department=None,
             dependencies=implementation_ids,
             required_skills=("integration", "contracts"),
             required_permissions=("repo:read",),
