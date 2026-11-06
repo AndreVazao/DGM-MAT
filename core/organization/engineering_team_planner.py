@@ -83,6 +83,13 @@ class EngineeringTeamPlanner:
         }
         if metadata:
             task_metadata.update(metadata)
+        # Callers may add descriptive metadata, but cannot override safety invariants.
+        task_metadata["planning_only"] = True
+        task_metadata["execution_authorized"] = False
+        task_metadata["toolchain_status"] = "not_probed"
+        task_metadata["team_stage"] = stage
+        task_metadata["required_skills"] = sorted(set(required_skills))
+        task_metadata["required_permissions"] = sorted(set(required_permissions))
         return Task(
             task_id=EngineeringTeamPlanner._task_id(mission_id, stage, key),
             title=title,
@@ -257,7 +264,12 @@ class EngineeringTeamPlanner:
             mission_id=mission_id,
             status="PARTIAL" if blocked_paths else "PLAN_ONLY",
             tasks=tuple(tasks),
-            recognized_paths=tuple(sorted(normalized.values(), key=str.casefold)),
+            recognized_paths=tuple(
+                sorted(
+                    (path for paths in groups.values() for path in paths),
+                    key=str.casefold,
+                )
+            ),
             blocked_paths=tuple(blocked_paths),
             language_ids=tuple(sorted(groups)),
             notes=tuple(notes),
