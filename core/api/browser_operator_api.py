@@ -70,6 +70,7 @@ def create_browser_operator_task(payload: BrowserOperatorTaskCreate, request: Re
             conversation_url=payload.conversation_url,
             message=payload.message,
             approval_required=payload.approval_required,
+            created_by=str(principal.get("subject") or "local-operator"),
         )
     except (ValueError, BrowserOperatorQueueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
