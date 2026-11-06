@@ -16,6 +16,7 @@ class QAIntakeWorker:
     """Safely triage a specialist-review request into a durable receipt."""
 
     agent_id = "agent:qa-intake"
+    capabilities = ("qa-intake",)
 
     def __init__(self, review_queue: QAReviewQueue | None = None) -> None:
         self.review_queue = review_queue
