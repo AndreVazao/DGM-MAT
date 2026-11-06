@@ -536,17 +536,24 @@ class VaultCatalog:
         unique_paths = list(dict.fromkeys(Path(value).expanduser().resolve() for value in progress_paths))
         records: list[dict[str, Any]] = []
         opened: list[str] = []
+        failures: list[dict[str, str]] = []
         for database_path in unique_paths:
             if not database_path.is_file():
                 continue
-            records.extend(ConversationProgressStore(database_path).list_conversations())
-            opened.append(str(database_path))
+            try:
+                records.extend(ConversationProgressStore(database_path).list_conversations())
+                opened.append(str(database_path))
+            except Exception as exc:
+                failures.append({
+                    "database": str(database_path),
+                    "error": type(exc).__name__,
+                    "detail": str(exc)[:300],
+                })
 
         provider_filter = {item.casefold() for item in (providers or [])}
         archived = 0
         duplicates = 0
         skipped = 0
-        failures: list[dict[str, str]] = []
         for row in records:
             if row.get("status") != "complete" or not isinstance(row.get("result"), dict):
                 skipped += 1
