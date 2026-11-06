@@ -105,6 +105,22 @@ def _pid_is_dgm_process(pid: int) -> bool:
     return _pid_is_dgm_api(pid) or _pid_is_full_runtime(pid)
 
 
+def _find_existing_dgm_process() -> int | None:
+    """Return a verified DGM-MAT process PID, even when its HTTP health is not ready."""
+    try:
+        import psutil
+        for process in psutil.process_iter(["pid"]):
+            try:
+                pid = int(process.info["pid"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if _pid_is_dgm_process(pid):
+                return pid
+    except Exception:
+        return None
+    return None
+
+
 def _runtime_readiness(host: str, port: int) -> tuple[bool, str]:
     """Verify the full runtime and its queue worker through a protected loopback session."""
     if not _is_loopback_host(host):
@@ -192,6 +208,15 @@ def start(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, mode: str = "api")
             print(f"ALREADY_RUNNING: {readiness_message} at {host}:{port}")
             return 0
         print(f"START_REFUSED: API already answers but full runtime is not ready: {readiness_message}. No second process was started.")
+        return 2
+
+    existing_pid = _find_existing_dgm_process()
+    if existing_pid is not None:
+        print(
+            f"START_REFUSED: DGM-MAT process PID {existing_pid} already exists "
+            "but its API is not healthy. Inspect the existing process/log; "
+            "no second instance was started."
+        )
         return 2
 
     old_state = _read_state()

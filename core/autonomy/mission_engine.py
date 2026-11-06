@@ -33,12 +33,15 @@ from core.providers.browser.governed_browser_session import GovernedBrowserSessi
 from core.learning.learning_engine import LearningEngine
 from core.operations.command_executor import CommandExecutor
 from core.runtime.repository_root import resolve_repository_root
+from core.repository_intelligence.github_portfolio_inventory import GitHubRepositoryPortfolio
 
 class MissionEngine:
     REPO_SCAN_ROOTS = [
         Path("C:/ProgramasGodMode"),
         Path("C:/DevopGodMode"),
         Path("C:/AI"),
+        Path("C:/DevopsGodMode"),
+        Path("C:/AndreOS-Memory"),
     ]
     REPO_SCAN_ROOTS_ENV = "DGM_REPO_SCAN_ROOTS"
     REPO_SCAN_LIMIT = 20
@@ -1277,7 +1280,21 @@ class MissionEngine:
             page_size=page_size,
             name_filters=name_filters,
         )
+        portfolio_inventory = GitHubRepositoryPortfolio(
+            roots=tuple(self.REPO_SCAN_ROOTS), timeout=20
+        ).build_inventory()
+        portfolio_summary = portfolio_inventory.get("summary", {})
         output = self._render_repository_output(repositories)
+        output += (
+            "\n\nGitHub portfolio comparison: "
+            f"available={portfolio_inventory.get('github_api_available', False)} "
+            f"local={portfolio_summary.get('local_repositories', 'unknown')} "
+            f"github={portfolio_summary.get('github_repositories', 'unknown')} "
+            f"matched={portfolio_summary.get('matched_repositories', 'unknown')} "
+            f"local_only={portfolio_summary.get('local_only', 'unknown')} "
+            f"github_only={portfolio_summary.get('github_only', 'unknown')} "
+            f"credential_warnings={portfolio_summary.get('origin_credentials_present', 0)}"
+        )
         execution_duration = round(time.monotonic() - started, 3)
         pagination = {
             "total_candidates": scan_meta["total_candidates"],
@@ -1293,6 +1310,9 @@ class MissionEngine:
             "mission_id": mission.mission_id,
             "handler": "list_repositories",
             "repositories": repositories,
+            "portfolio_inventory": portfolio_inventory,
+            "github_count": portfolio_summary.get("github_repositories"),
+            "comparison": portfolio_summary,
             "count": len(repositories),
             "repos_scanned": scan_meta["repos_scanned"],
             "repos_skipped": scan_meta["repos_skipped"],

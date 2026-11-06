@@ -77,3 +77,22 @@ def test_inventory_exposes_hash_metadata_not_archive_contents(monkeypatch, tmp_p
 
     assert result["items"][0]["raw_sha256"] == digest
     assert "private transcript" not in str(result)
+
+
+
+def test_chrome_import_route_is_operator_only_and_preserves_source_contract(monkeypatch):
+    class FakeImporter:
+        def import_inbox(self):
+            return {
+                "status": "completed",
+                "files_imported": 1,
+                "source_files_modified": 0,
+            }
+
+    monkeypatch.setattr(recovery_api, "ChromeConversationArchiveImporter", FakeImporter)
+    route = classify_request_path("/recovery/chrome/import", "POST")
+    result = recovery_api.import_chrome_conversation_archive()
+
+    assert route is not None and route.scope is SecurityScope.OPERATOR
+    assert result["status"] == "completed"
+    assert result["source_files_modified"] == 0

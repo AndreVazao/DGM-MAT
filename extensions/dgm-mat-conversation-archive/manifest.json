@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "DGM-MAT Conversation Archive",
+  "version": "0.1.0",
+  "description": "Inventaria o histórico de conversas das IAs e captura a conversa atualmente aberta, sem ler cookies ou credenciais.",
+  "permissions": ["history", "downloads", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://grok.com/*",
+    "https://gemini.google.com/*",
+    "https://claude.ai/*"
+  ],
+  "action": {
+    "default_title": "DGM-MAT Conversation Archive",
+    "default_popup": "popup.html"
+  }
+}

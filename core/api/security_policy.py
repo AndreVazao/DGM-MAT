@@ -38,6 +38,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("WS",), "/runtime/ws", SecurityScope.LOCAL_CLIENT, "Compatibility realtime stream; currently unauthenticated."),
     RouteClassification(("GET",), "/health", SecurityScope.PUBLIC_HEALTH, "Minimal process health check."),
     RouteClassification(("GET",), "/recovery/status", SecurityScope.OPERATOR, "Read-only recovery ledger progress; no provider access or deletion."),
+    RouteClassification(("POST",), "/recovery/chrome/import", SecurityScope.OPERATOR, "Archives local Chrome extension exports; source downloads remain untouched."),
     RouteClassification(("GET",), "/recovery/browser-capture/status", SecurityScope.BROWSER_CAPTURE, "Aggregate visible-UI browser capture progress; no transcript bodies."),
     RouteClassification(("POST",), "/recovery/browser-capture/discover", SecurityScope.BROWSER_CAPTURE, "Registers provider conversation links discovered in visible authenticated UI."),
     RouteClassification(("POST",), "/recovery/browser-capture/next", SecurityScope.BROWSER_CAPTURE, "Claims the next discovered conversation for sequential local UI capture."),
