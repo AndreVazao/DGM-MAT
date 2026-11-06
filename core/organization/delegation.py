@@ -58,7 +58,7 @@ class DelegationEngine:
 
         result = []
         for agent in self.registry.list_agents(status=AgentStatus.AVAILABLE):
-            if not self.worker_runtime.has_handler(agent.agent_id):
+            if not self.worker_runtime.declares_capabilities(agent.agent_id, required_skills):
                 continue
             department = self.registry.get_department(agent.department_id)
             if department is None or not department.active:
@@ -91,7 +91,7 @@ class DelegationEngine:
         candidates = self.candidates(task)
         if not candidates:
             raise DelegationError(
-                f"No available agent with a registered handler satisfies task {task_id} constraints."
+                f"No available agent with a registered handler declaring the required capabilities satisfies task {task_id} constraints."
             )
         agent, score, matched = candidates[0]
         self.tasks.assign(task_id, agent.agent_id)
