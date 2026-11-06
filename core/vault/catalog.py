@@ -570,14 +570,44 @@ class VaultCatalog:
                 "manifests": sorted(manifests), "entries": entries,
                 "ignored_directories": sorted(ignored)}
         raw = (_json(tree) + "\n").encode("utf-8")
-        fingerprint = _digest(raw)
-        snapshot_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + fingerprint[:12]
+        raw_sha256 = _digest(raw)
+        fingerprint_payload = {key: value for key, value in tree.items() if key != "generated_at"}
+        fingerprint = _digest((_json(fingerprint_payload) + "\n").encode("utf-8"))
         folder = self.root / "projects" / project_id / "trees"
         folder.mkdir(parents=True, exist_ok=True)
+
+        with self._connect() as db:
+            existing = db.execute("""
+                SELECT snapshot_id,snapshot_path FROM tree_snapshots
+                WHERE project_id=? AND repository_path=? AND tree_fingerprint=?
+                ORDER BY created_at DESC LIMIT 1
+            """, (project_id, str(root), fingerprint)).fetchone()
+        if existing:
+            existing_json = Path(existing["snapshot_path"])
+            existing_text = existing_json.with_suffix(".txt")
+            if existing_json.is_file() and existing_text.is_file():
+                snapshot_id = existing["snapshot_id"]
+                current_pointer = folder / "CURRENT.json"
+                temporary_pointer = folder / ".CURRENT.json.tmp"
+                temporary_pointer.write_text(_json({
+                    "snapshot_id": snapshot_id, "json": existing_json.name,
+                    "text": existing_text.name, "fingerprint": fingerprint,
+                }) + "\n", encoding="utf-8")
+                temporary_pointer.replace(current_pointer)
+                self.register_project(project_id, project["name"], root, project["aliases"])
+                return {
+                    "snapshot_id": snapshot_id, "snapshot_path": str(existing_json),
+                    "tree_text_path": str(existing_text), "current_pointer": str(current_pointer),
+                    "fingerprint": fingerprint, "file_count": len(entries),
+                    "languages": tree["languages"], "manifests": tree["manifests"],
+                    "reused": True,
+                }
+
+        snapshot_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + "-" + fingerprint[:12]
         destination = folder / f"{snapshot_id}.json"
         with destination.open("xb") as stream:
             stream.write(raw)
-        if _digest(destination.read_bytes()) != fingerprint:
+        if _digest(destination.read_bytes()) != raw_sha256:
             destination.unlink(missing_ok=True)
             raise OSError("Repository tree snapshot verification failed")
         text_destination = folder / f"{snapshot_id}.txt"
@@ -602,7 +632,7 @@ class VaultCatalog:
         return {"snapshot_id": snapshot_id, "snapshot_path": str(destination),
                 "tree_text_path": str(text_destination), "current_pointer": str(current_pointer),
                 "fingerprint": fingerprint, "file_count": len(entries),
-                "languages": tree["languages"], "manifests": tree["manifests"]}
+                "languages": tree["languages"], "manifests": tree["manifests"], "reused": False}
 
     def list_conversations(self, project_id: str | None = None) -> list[dict[str, Any]]:
         query = "SELECT * FROM conversations"
