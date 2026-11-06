@@ -297,6 +297,8 @@ def test_repository_tree_snapshot_is_reused_until_source_changes(tmp_path):
     assert first["snapshot_id"] == second["snapshot_id"]
     assert first["reused"] is False
     assert second["reused"] is True
+    first_tree = json.loads(Path(first["snapshot_path"]).read_text(encoding="utf-8"))
+    assert first_tree["entries"][0]["sha256"]
     assert vault.summary()["tree_snapshots"] == 1
 
     (repository / "src" / "main.py").write_text("print('two')\n", encoding="utf-8")
