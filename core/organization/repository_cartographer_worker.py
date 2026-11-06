@@ -40,14 +40,14 @@ class RepositoryCartographerWorker:
         self.allowed_root = Path(allowed_root).expanduser().resolve(strict=True)
         if not self.allowed_root.is_dir():
             raise ValueError("allowed_root must be an existing directory")
-        if not 0 <= max_depth <= 20:
-            raise ValueError("max_depth must be between 0 and 20")
-        if not 1 <= max_entries <= 5000:
-            raise ValueError("max_entries must be between 1 and 5000")
-        if not 0 <= sample_limit <= 100:
-            raise ValueError("sample_limit must be between 0 and 100")
-        if not repositories:
-            raise ValueError("at least one repository must be allowlisted")
+        if type(max_depth) is not int or not 0 <= max_depth <= 20:
+            raise ValueError("max_depth must be an integer between 0 and 20")
+        if type(max_entries) is not int or not 1 <= max_entries <= 5000:
+            raise ValueError("max_entries must be an integer between 1 and 5000")
+        if type(sample_limit) is not int or not 0 <= sample_limit <= 100:
+            raise ValueError("sample_limit must be an integer between 0 and 100")
+        if not isinstance(repositories, Mapping) or not repositories:
+            raise ValueError("repositories must be a non-empty mapping")
 
         resolved: dict[str, Path] = {}
         for repository_id, raw_path in repositories.items():
@@ -62,8 +62,12 @@ class RepositoryCartographerWorker:
                 raise ValueError(f"duplicate repository ID: {repository_id}")
             resolved[repository_id] = repository_root
 
-        if not allowed_senders or any(not isinstance(item, str) or not item.strip() for item in allowed_senders):
-            raise ValueError("allowed_senders must contain non-empty sender IDs")
+        if (
+            not isinstance(allowed_senders, (tuple, list, set, frozenset))
+            or not allowed_senders
+            or any(not isinstance(item, str) or not item.strip() for item in allowed_senders)
+        ):
+            raise ValueError("allowed_senders must be a non-empty collection of sender IDs")
 
         self.repositories = resolved
         self.allowed_senders = frozenset(allowed_senders)
