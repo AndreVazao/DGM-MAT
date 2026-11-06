@@ -329,7 +329,8 @@ async function main() {
   await testProviderDomMismatchFailsClosed();
   await testIdenticalTextOnlyTurnsAreMarkedAmbiguous();
   await testScrollHardLimitIsExplicitlyTruncated();
-  process.stdout.write("PASS: 7 deterministic virtualized-history capture fixtures\n");
+  await testProviderUsageLimitsTriggerSafeProviderRotationSignal();
+  process.stdout.write("PASS: 8 deterministic virtualized-history and provider-limit fixtures\n");
 }
 
 main().catch(error => {
