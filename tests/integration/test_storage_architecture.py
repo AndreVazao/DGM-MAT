@@ -17,7 +17,7 @@ def test_storage_manager_default_path(monkeypatch, tmp_path):
     monkeypatch.delenv("DGM_BASE_PATH", raising=False)
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "AppData" / "Local"))
     manager = RuntimeStorageManager()
-    expected = tmp_path / "AppData" / "Local" / "DGM-MAT" / "runtime"
+    expected = tmp_path / "AppData" / "Local" / "DGM-MAT" / "Vault" / "runtime"
     assert manager.base_path == expected.resolve()
     assert (expected / "missions").is_dir()
 
@@ -89,7 +89,7 @@ def test_storage_manager_frozen_install_migrates_to_per_user_runtime(monkeypatch
 
     manager = RuntimeStorageManager()
 
-    expected = tmp_path / "AppData" / "Local" / "DGM-MAT" / "runtime"
+    expected = tmp_path / "AppData" / "Local" / "DGM-MAT" / "Vault" / "runtime"
     migrated_mission = expected / "missions" / legacy_mission.name
     assert manager.base_path == expected.resolve()
     assert migrated_mission.read_text(encoding="utf-8") == legacy_mission.read_text(encoding="utf-8")
@@ -108,7 +108,7 @@ def test_legacy_runtime_conflicts_are_preserved_separately(monkeypatch, tmp_path
     legacy_file = project_root / "storage" / "runtime" / "missions" / "mission_conflict.json"
     legacy_file.parent.mkdir(parents=True)
     legacy_file.write_text("legacy checkpoint", encoding="utf-8")
-    current_file = local_data / "DGM-MAT" / "runtime" / "missions" / legacy_file.name
+    current_file = local_data / "DGM-MAT" / "Vault" / "runtime" / "missions" / legacy_file.name
     current_file.parent.mkdir(parents=True)
     current_file.write_text("newer checkpoint", encoding="utf-8")
     monkeypatch.setattr(sys, "frozen", True, raising=False)
@@ -116,7 +116,7 @@ def test_legacy_runtime_conflicts_are_preserved_separately(monkeypatch, tmp_path
 
     manager = RuntimeStorageManager()
 
-    assert manager.base_path == (local_data / "DGM-MAT" / "runtime").resolve()
+    assert manager.base_path == (local_data / "DGM-MAT" / "Vault" / "runtime").resolve()
     assert current_file.read_text(encoding="utf-8") == "newer checkpoint"
     preserved = list((manager.base_path / "legacy-imports").rglob(legacy_file.name))
     assert len(preserved) == 1
