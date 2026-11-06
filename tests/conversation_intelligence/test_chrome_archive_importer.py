@@ -6,7 +6,8 @@ from core.conversation_intelligence.pipeline import ConversationIntelligencePipe
 from core.vault import VaultCatalog
 
 
-def test_importer_preserves_source_and_archives_full_messages(tmp_path: Path):
+def test_importer_preserves_source_and_archives_full_messages(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("DGM_VAULT_PATH", str(tmp_path / "vault"))
     inbox = tmp_path / "Downloads" / "DGM-MAT-Conversation-Archive"
     archive = tmp_path / "archive"
     inbox.mkdir(parents=True)
@@ -46,7 +47,8 @@ def test_importer_preserves_source_and_archives_full_messages(tmp_path: Path):
     assert restored[0].conversation.messages[0].metadata["selector"] == "[data-message-author-role]"
 
 
-def test_importer_is_idempotent_for_identical_downloads(tmp_path: Path):
+def test_importer_is_idempotent_for_identical_downloads(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("DGM_VAULT_PATH", str(tmp_path / "vault"))
     inbox = tmp_path / "inbox"
     archive = tmp_path / "archive"
     inbox.mkdir()
