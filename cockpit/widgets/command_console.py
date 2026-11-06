@@ -39,6 +39,7 @@ class _RuntimeRequestWorker(QThread):
         self.api_url = api_url.rstrip("/")
         self.directive = directive
         self.status_only = status_only
+        self._sleep = time.sleep
 
     def _request(self, method: str, suffix: str, **kwargs):
         return authenticated_request(
@@ -97,6 +98,7 @@ class _RuntimeRequestWorker(QThread):
             mission_id,
             self._mission,
             timeout_seconds=timeout_seconds,
+            sleep=self._sleep,
         )
         if mission is None:
             self.completed.emit(
