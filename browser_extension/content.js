@@ -61,8 +61,14 @@
       }
       return null;
     }
-    const match = url.pathname.match(/\\/(?:chat|c|i\\/grok)\\/([A-Za-z0-9_-]+)/);
-    return match ? match[1] : null;
+    for (const marker of ["chat", "c"]) {
+      const index = segments.indexOf(marker);
+      if (index >= 0 && segments[index + 1] && /^[A-Za-z0-9_-]+$/.test(segments[index + 1])) {
+        return segments[index + 1];
+      }
+    }
+    const grokIndex = segments.indexOf("i");
+    return grokIndex >= 0 && segments[grokIndex + 1] === "grok" ? segments[grokIndex + 2] || null : null;
   }
 
   function conversationTitle(anchor, url) {
