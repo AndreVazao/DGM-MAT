@@ -97,6 +97,42 @@ class VaultCatalog:
                     ON conversations(project_id, provider, captured_at);
                 CREATE INDEX IF NOT EXISTS ix_vault_conversation_fingerprint
                     ON conversations(source_fingerprint);
+                CREATE TABLE IF NOT EXISTS messages (
+                    provider TEXT NOT NULL, conversation_id TEXT NOT NULL,
+                    source_fingerprint TEXT NOT NULL, sequence INTEGER NOT NULL,
+                    message_id TEXT NOT NULL, role TEXT NOT NULL,
+                    content_fingerprint TEXT NOT NULL, archive_path TEXT NOT NULL,
+                    PRIMARY KEY(provider,conversation_id,source_fingerprint,sequence)
+                );
+                CREATE INDEX IF NOT EXISTS ix_vault_message_fingerprint ON messages(content_fingerprint);
+                CREATE TABLE IF NOT EXISTS message_duplicate_candidates (
+                    duplicate_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_provider TEXT NOT NULL, source_conversation_id TEXT NOT NULL,
+                    source_message_id TEXT NOT NULL, source_fingerprint TEXT NOT NULL,
+                    canonical_provider TEXT NOT NULL, canonical_conversation_id TEXT NOT NULL,
+                    canonical_message_id TEXT NOT NULL, content_fingerprint TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    UNIQUE(source_provider,source_conversation_id,source_message_id,source_fingerprint,
+                           canonical_provider,canonical_conversation_id,canonical_message_id)
+                );
+                CREATE TABLE IF NOT EXISTS code_artifacts (
+                    provider TEXT NOT NULL, conversation_id TEXT NOT NULL,
+                    source_fingerprint TEXT NOT NULL, artifact_id TEXT NOT NULL,
+                    language TEXT NOT NULL, content_fingerprint TEXT NOT NULL,
+                    archive_path TEXT NOT NULL,
+                    PRIMARY KEY(provider,conversation_id,source_fingerprint,artifact_id)
+                );
+                CREATE INDEX IF NOT EXISTS ix_vault_code_fingerprint ON code_artifacts(content_fingerprint);
+                CREATE TABLE IF NOT EXISTS code_duplicate_candidates (
+                    duplicate_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_provider TEXT NOT NULL, source_conversation_id TEXT NOT NULL,
+                    source_artifact_id TEXT NOT NULL, source_fingerprint TEXT NOT NULL,
+                    canonical_provider TEXT NOT NULL, canonical_conversation_id TEXT NOT NULL,
+                    canonical_artifact_id TEXT NOT NULL, content_fingerprint TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    UNIQUE(source_provider,source_conversation_id,source_artifact_id,source_fingerprint,
+                           canonical_provider,canonical_conversation_id,canonical_artifact_id)
+                );
                 CREATE TABLE IF NOT EXISTS duplicate_candidates (
                     duplicate_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     source_provider TEXT NOT NULL, source_conversation_id TEXT NOT NULL,
@@ -276,6 +312,58 @@ class VaultCatalog:
             """, (provider_key, conversation_key, fingerprint, content_fingerprint, payload["title"], url,
                   str(destination), completeness, len(messages), project_id, assignment_status,
                   _json(evidence), (metadata or {}).get("captured_at") or now, now))
+            for sequence, message in enumerate(messages):
+                role = str(message.get("role") or "unknown").casefold()
+                message_text = re.sub(r"\\s+", " ", str(message.get("content") or "")).strip().casefold()
+                if not message_text:
+                    continue
+                message_fingerprint = _digest((role + "\\0" + message_text).encode("utf-8"))
+                message_id = str(message.get("message_id") or message.get("id") or sequence)
+                canonical = db.execute(
+                    "SELECT provider,conversation_id,message_id,source_fingerprint FROM messages "
+                    "WHERE content_fingerprint=? LIMIT 1", (message_fingerprint,)
+                ).fetchone()
+                db.execute("""
+                    INSERT INTO messages(provider,conversation_id,source_fingerprint,sequence,message_id,
+                        role,content_fingerprint,archive_path) VALUES(?,?,?,?,?,?,?,?)
+                """, (provider_key, conversation_key, fingerprint, sequence, message_id,
+                      role, message_fingerprint, str(destination)))
+                if canonical:
+                    db.execute("""
+                        INSERT OR IGNORE INTO message_duplicate_candidates(
+                            source_provider,source_conversation_id,source_message_id,source_fingerprint,
+                            canonical_provider,canonical_conversation_id,canonical_message_id,
+                            content_fingerprint,created_at) VALUES(?,?,?,?,?,?,?,?,?)
+                    """, (provider_key, conversation_key, message_id, fingerprint,
+                          canonical["provider"], canonical["conversation_id"], canonical["message_id"],
+                          message_fingerprint, now))
+            for index, artifact in enumerate(artifacts or []):
+                if not isinstance(artifact, dict):
+                    continue
+                code = str(artifact.get("code") or "")
+                if not code.strip():
+                    continue
+                language = str(artifact.get("language") or "unknown").casefold()
+                artifact_fingerprint = str(artifact.get("fingerprint") or _digest((language + "\\0" + code).encode("utf-8")))
+                artifact_id = str(artifact.get("artifact_id") or index)
+                canonical = db.execute(
+                    "SELECT provider,conversation_id,artifact_id FROM code_artifacts "
+                    "WHERE content_fingerprint=? LIMIT 1", (artifact_fingerprint,)
+                ).fetchone()
+                db.execute("""
+                    INSERT INTO code_artifacts(provider,conversation_id,source_fingerprint,artifact_id,
+                        language,content_fingerprint,archive_path) VALUES(?,?,?,?,?,?,?)
+                """, (provider_key, conversation_key, fingerprint, artifact_id,
+                      language, artifact_fingerprint, str(destination)))
+                if canonical:
+                    db.execute("""
+                        INSERT OR IGNORE INTO code_duplicate_candidates(
+                            source_provider,source_conversation_id,source_artifact_id,source_fingerprint,
+                            canonical_provider,canonical_conversation_id,canonical_artifact_id,
+                            content_fingerprint,created_at) VALUES(?,?,?,?,?,?,?,?,?)
+                    """, (provider_key, conversation_key, artifact_id, fingerprint,
+                          canonical["provider"], canonical["conversation_id"], canonical["artifact_id"],
+                          artifact_fingerprint, now))
         return {"status": "archived", "duplicate": False, "fingerprint": fingerprint,
                 "archive_path": str(destination), "project_id": project_id,
                 "assignment_status": assignment_status, "message_count": len(messages)}
@@ -358,13 +446,45 @@ class VaultCatalog:
             rows = db.execute(query, params).fetchall()
         return [{**dict(row), "assignment_evidence": json.loads(row["assignment_evidence_json"])} for row in rows]
 
+
+    def list_messages(self, provider: str | None = None, conversation_id: str | None = None) -> list[dict[str, Any]]:
+        query = "SELECT * FROM messages WHERE 1=1"
+        params: list[Any] = []
+        if provider is not None:
+            query += " AND provider=?"
+            params.append(provider)
+        if conversation_id is not None:
+            query += " AND conversation_id=?"
+            params.append(conversation_id)
+        query += " ORDER BY provider,conversation_id,sequence"
+        with self._connect() as db:
+            return [dict(row) for row in db.execute(query, params).fetchall()]
+
+    def list_duplicate_messages(self) -> list[dict[str, Any]]:
+        with self._connect() as db:
+            return [dict(row) for row in db.execute(
+                "SELECT * FROM message_duplicate_candidates ORDER BY duplicate_id"
+            ).fetchall()]
+
+    def list_duplicate_code(self) -> list[dict[str, Any]]:
+        with self._connect() as db:
+            return [dict(row) for row in db.execute(
+                "SELECT * FROM code_duplicate_candidates ORDER BY duplicate_id"
+            ).fetchall()]
+
     def summary(self) -> dict[str, Any]:
         with self._connect() as db:
             conversations = db.execute("SELECT COUNT(*) FROM conversations").fetchone()[0]
             projects = db.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
             duplicates = db.execute("SELECT COUNT(*) FROM duplicate_candidates").fetchone()[0]
+            message_duplicates = db.execute("SELECT COUNT(*) FROM message_duplicate_candidates").fetchone()[0]
+            code_duplicates = db.execute("SELECT COUNT(*) FROM code_duplicate_candidates").fetchone()[0]
+            message_count = db.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+            code_count = db.execute("SELECT COUNT(*) FROM code_artifacts").fetchone()[0]
             quarantined = db.execute("SELECT COUNT(*) FROM conversations WHERE project_id IS NULL").fetchone()[0]
             snapshots = db.execute("SELECT COUNT(*) FROM tree_snapshots").fetchone()[0]
         return {"vault_root": str(self.root), "projects": projects,
                 "conversations": conversations, "duplicate_candidates": duplicates,
+                "messages": message_count, "duplicate_messages": message_duplicates,
+                "code_artifacts": code_count, "duplicate_code_artifacts": code_duplicates,
                 "quarantined_conversations": quarantined, "tree_snapshots": snapshots}
