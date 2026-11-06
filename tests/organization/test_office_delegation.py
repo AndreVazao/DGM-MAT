@@ -16,8 +16,8 @@ def test_full_office_bootstrap_is_idempotent_and_includes_specialists():
     assert bootstrap_full_office(registry) is registry
     assert registry.snapshot() == before
     for agent_id in (
-        "agent:bug-hunter", "agent:repository-cartographer",
-        "agent:frontend-engineer", "agent:back-office-coordinator",
+        "agent:bug-hunter", "agent:repository-cartographer", "agent:python-source-analyst",
+        "agent:python-test-inventory", "agent:frontend-engineer", "agent:back-office-coordinator",
         "agent:front-office-analyst", "agent:security-engineer",
     ):
         assert registry.get_agent(agent_id) is not None
@@ -52,6 +52,7 @@ def test_delegation_selects_exact_skill_match_and_assigns_task():
         lambda message: {"status": "handled"},
         capabilities=("file-inventory", "project-tree"),
     )
+    registry.set_status("agent:repository-cartographer", AgentStatus.AVAILABLE)
     task = Task(
         "task:inventory", "Inventory repository", "mission:test", "Create tree",
         metadata={"required_skills": ["file-inventory", "project-tree"], "required_permissions": ["reports:write"]},
@@ -201,3 +202,18 @@ def test_worker_runtime_rejects_string_required_capability_query():
         capabilities=("python",),
     )
     assert runtime.declares_capabilities("agent:worker", "python") is False
+
+
+
+def test_python_specialist_profiles_start_offline_with_exact_capabilities():
+    registry = bootstrap_full_office(AgentRegistry())
+    source = registry.get_agent("agent:python-source-analyst")
+    tests = registry.get_agent("agent:python-test-inventory")
+    cartographer = registry.get_agent("agent:repository-cartographer")
+    assert source.status == AgentStatus.OFFLINE
+    assert set(source.skills) >= {"python-source-analysis", "python-syntax", "python-import-analysis"}
+    assert set(source.permissions) == {"repo:read", "reports:write"}
+    assert tests.status == AgentStatus.OFFLINE
+    assert set(tests.skills) >= {"python-test-inventory", "python-test-structure", "python-test-gap-signals"}
+    assert set(tests.permissions) == {"repo:read", "reports:write"}
+    assert cartographer.status == AgentStatus.OFFLINE
