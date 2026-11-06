@@ -121,6 +121,26 @@ def _find_existing_dgm_process() -> int | None:
     return None
 
 
+def _find_dgm_listener_pid(host: str, port: int) -> int | None:
+    """Find only a verified DGM-MAT process owning the configured loopback listener."""
+    try:
+        import psutil
+        for connection in psutil.net_connections(kind="tcp"):
+            if connection.status != psutil.CONN_LISTEN or not connection.laddr:
+                continue
+            if int(connection.laddr.port) != int(port):
+                continue
+            address = str(connection.laddr.ip).strip("[]").casefold()
+            if _is_loopback_host(host) and address not in {"127.0.0.1", "::1", "localhost"}:
+                continue
+            pid = connection.pid
+            if isinstance(pid, int) and _pid_is_dgm_process(pid):
+                return pid
+    except Exception:
+        return None
+    return None
+
+
 def _runtime_readiness(host: str, port: int) -> tuple[bool, str]:
     """Verify the full runtime and its queue worker through a protected loopback session."""
     if not _is_loopback_host(host):
@@ -321,43 +341,81 @@ def status(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, mode: str | None 
     return 1
 
 def stop() -> int:
-    state = _read_state()
-    if not state or not isinstance(state.get("pid"), int):
-        print("NOT_RUNNING: no valid backend service state file")
-        return 0
-    pid = state["pid"]
+    state = _read_state() or {}
+    host = str(state.get("host", DEFAULT_HOST))
+    port = int(state.get("port", DEFAULT_PORT))
     mode = state.get("mode", "api")
-    identity_ok = _pid_is_full_runtime(pid) if mode == "full" else _pid_is_dgm_api(pid)
+    pid = state.get("pid") if isinstance(state.get("pid"), int) else None
+
+    identity_ok = (
+        _pid_is_full_runtime(pid) if mode == "full" else _pid_is_dgm_api(pid)
+    ) if pid is not None else False
     if not identity_ok:
-        healthy, _ = _health(str(state.get("host", DEFAULT_HOST)), int(state.get("port", DEFAULT_PORT)))
+        # A one-file PyInstaller runtime can leave its child serving the API after
+        # the bootloader parent exits. Recover only the verified DGM-MAT listener.
+        listener_pid = _find_dgm_listener_pid(host, port)
+        if listener_pid is not None:
+            pid = listener_pid
+            identity_ok = True
+
+    if not identity_ok or pid is None:
+        healthy, _ = _health(host, port)
         if healthy:
-            print("STOP_REFUSED: health is available, but recorded process identity cannot be verified safely.")
+            print("STOP_REFUSED: health is available, but no verified DGM-MAT process owns the configured listener.")
             return 2
-        print("NOT_RUNNING: recorded PID is not verifiably the selected DGM-MAT service; no process was terminated.")
+        print("NOT_RUNNING: no verified DGM-MAT process is serving the configured port.")
+        try:
+            STATE_FILE.unlink(missing_ok=True)
+        except OSError:
+            pass
         return 0
 
     try:
         import psutil
+
         process = psutil.Process(pid)
-        process.terminate()
+        # Stop verified DGM-MAT descendants first, then the recorded bootloader
+        # parent. Never terminate unrelated children of the service process.
+        descendants = process.children(recursive=True)
+        managed_children = [
+            child for child in descendants if _pid_is_dgm_process(int(child.pid))
+        ]
+        for child in reversed(managed_children):
+            try:
+                child.terminate()
+            except psutil.NoSuchProcess:
+                pass
+        _gone, alive = psutil.wait_procs(managed_children, timeout=5)
+        for child in alive:
+            try:
+                child.kill()
+            except psutil.NoSuchProcess:
+                pass
+        if alive:
+            psutil.wait_procs(alive, timeout=3)
+
         try:
-            process.wait(timeout=5)
-        except psutil.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=3)
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except psutil.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=3)
+        except psutil.NoSuchProcess:
+            pass
     except Exception as exc:
-        print(f"STOP_FAILED: {exc}")
+        print(f"STOP_FAILED: {type(exc).__name__}: {exc}")
         return 1
 
-    healthy, _ = _health(str(state.get("host", DEFAULT_HOST)), int(state.get("port", DEFAULT_PORT)))
+    healthy, _ = _health(host, port)
     if healthy:
-        print("STOP_WARNING: another process still answers the configured health endpoint.")
+        print("STOP_WARNING: a process still answers the configured health endpoint; state was preserved.")
         return 1
     try:
         STATE_FILE.unlink(missing_ok=True)
     except OSError:
         pass
-    print(f"STOPPED: DGM-MAT {mode} service PID {pid}")
+    print(f"STOPPED: DGM-MAT {mode} process tree rooted at PID {pid}")
     return 0
 
 def main() -> int:

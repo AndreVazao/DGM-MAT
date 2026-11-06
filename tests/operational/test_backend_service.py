@@ -156,3 +156,93 @@ def test_start_refuses_second_process_when_existing_dgm_process_is_not_healthy(c
     output = capsys.readouterr().out
     assert "PID 7552 already exists" in output
     assert "no second instance was started" in output
+
+
+def test_stop_terminates_verified_runtime_child_before_onefile_parent(tmp_path, capsys):
+    events = []
+
+    class FakeProcess:
+        def __init__(self, pid, children=None):
+            self.pid = pid
+            self._children = children or []
+
+        def children(self, recursive=True):
+            return self._children
+
+        def terminate(self):
+            events.append(f"terminate:{self.pid}")
+
+        def wait(self, timeout=None):
+            events.append(f"wait:{self.pid}")
+
+        def kill(self):
+            events.append(f"kill:{self.pid}")
+
+    child = FakeProcess(7020)
+    parent = FakeProcess(11288, [child])
+
+    class FakePsutil:
+        class NoSuchProcess(Exception):
+            pass
+        class TimeoutExpired(Exception):
+            pass
+        Process = staticmethod(lambda pid: parent if pid == 11288 else child)
+        @staticmethod
+        def wait_procs(processes, timeout=None):
+            return list(processes), []
+
+    state_file = tmp_path / "backend_service.json"
+    state_file.write_text('{"pid":11288,"mode":"full","host":"127.0.0.1","port":8181}', encoding="utf-8")
+    with patch.object(backend_service, "STATE_FILE", state_file), \
+         patch.object(backend_service, "_read_state", return_value={"pid":11288,"mode":"full","host":"127.0.0.1","port":8181}), \
+         patch.object(backend_service, "_pid_is_full_runtime", return_value=True), \
+         patch.object(backend_service, "_pid_is_dgm_process", return_value=True), \
+         patch.object(backend_service, "_health", return_value=(False, "offline")), \
+         patch.dict("sys.modules", {"psutil": FakePsutil}):
+        assert backend_service.stop() == 0
+
+    assert events.index("terminate:7020") < events.index("terminate:11288")
+    assert not state_file.exists()
+    assert "process tree rooted at PID 11288" in capsys.readouterr().out
+
+
+def test_stop_recovers_orphaned_verified_listener_when_recorded_parent_is_gone(tmp_path, capsys):
+    events = []
+
+    class FakeProcess:
+        pid = 7020
+        def children(self, recursive=True):
+            return []
+        def terminate(self):
+            events.append("terminate:7020")
+        def wait(self, timeout=None):
+            events.append("wait:7020")
+        def kill(self):
+            events.append("kill:7020")
+
+    process = FakeProcess()
+
+    class FakePsutil:
+        class NoSuchProcess(Exception):
+            pass
+        class TimeoutExpired(Exception):
+            pass
+        Process = staticmethod(lambda _pid: process)
+        @staticmethod
+        def wait_procs(processes, timeout=None):
+            return list(processes), []
+
+    state_file = tmp_path / "backend_service.json"
+    state_file.write_text('{"pid":11288,"mode":"full","host":"127.0.0.1","port":8181}', encoding="utf-8")
+    with patch.object(backend_service, "STATE_FILE", state_file), \
+         patch.object(backend_service, "_read_state", return_value={"pid":11288,"mode":"full","host":"127.0.0.1","port":8181}), \
+         patch.object(backend_service, "_pid_is_full_runtime", return_value=False), \
+         patch.object(backend_service, "_find_dgm_listener_pid", return_value=7020), \
+         patch.object(backend_service, "_pid_is_dgm_process", return_value=True), \
+         patch.object(backend_service, "_health", return_value=(False, "offline")), \
+         patch.dict("sys.modules", {"psutil": FakePsutil}):
+        assert backend_service.stop() == 0
+
+    assert "terminate:7020" in events
+    assert not state_file.exists()
+    assert "process tree rooted at PID 7020" in capsys.readouterr().out
