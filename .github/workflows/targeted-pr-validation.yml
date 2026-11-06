@@ -117,6 +117,11 @@ jobs:
           python -m pip install -e DGM-Contracts
           python -m pip install -e DGM-MAT-Agents
           python -m pip install -r requirements.txt pytest
+      - name: Install headless Qt system libraries when GUI regressions are selected
+        if: steps.select.outputs.has_tests == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0
       - name: Run selected regressions only
         if: steps.select.outputs.has_tests == 'true'
         env:
