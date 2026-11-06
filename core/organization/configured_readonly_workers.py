@@ -7,6 +7,8 @@ import re
 from pathlib import Path
 from typing import Mapping
 
+from .models import AgentStatus
+from .registry import AgentRegistry
 from .python_source_analyst_worker import PythonSourceAnalystWorker
 from .python_test_inventory_worker import PythonTestInventoryWorker
 from .repository_cartographer_worker import RepositoryCartographerWorker
@@ -56,6 +58,7 @@ def register_configured_readonly_workers(
     runtime: WorkerRuntime,
     *,
     environ: Mapping[str, str] | None = None,
+    registry: AgentRegistry | None = None,
 ) -> dict:
     """Register read-only repository specialists only when an operator supplies an allowlist.
 
@@ -67,6 +70,10 @@ def register_configured_readonly_workers(
         root, repositories = _load_repository_allowlist(source)
     except (OSError, RuntimeError, ValueError) as exc:
         reason = str(exc) or "repository_configuration_unavailable"
+        if registry is not None:
+            for agent_id in ("agent:repository-cartographer", "agent:python-source-analyst", "agent:python-test-inventory"):
+                if registry.get_agent(agent_id) is not None:
+                    registry.set_status(agent_id, AgentStatus.OFFLINE)
         return {
             "status": "DISABLED",
             "reason": reason,
@@ -87,6 +94,14 @@ def register_configured_readonly_workers(
             continue
         runtime.register_handler(worker.agent_id, worker)
         registered.append(worker.agent_id)
+
+    if registry is not None:
+        for agent_id in ("agent:repository-cartographer", "agent:python-source-analyst", "agent:python-test-inventory"):
+            if registry.get_agent(agent_id) is not None:
+                registry.set_status(
+                    agent_id,
+                    AgentStatus.AVAILABLE if runtime.has_handler(agent_id) else AgentStatus.OFFLINE,
+                )
 
     return {
         "status": "REGISTERED" if registered else "ALREADY_REGISTERED",
