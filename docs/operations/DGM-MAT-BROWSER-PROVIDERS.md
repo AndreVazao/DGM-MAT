@@ -12,6 +12,8 @@ The browser recovery and consultation architecture uses the following primary we
 | DeepSeek | `chat.deepseek.com` | Integrated in the browser mission operator |
 | Qwen | `chat.qwen.ai` | Integrated in the browser mission operator |
 
+After the first successful pairing, the extension enables read-only recovery and the approved-task queue by default, and scans already-open provider tabs. The operator can disable either toggle at any time. Mission messages still require approval in DGM-MAT before they are sent.
+
 Other genuinely free web AI services can be optional secondary consultation sources. They do not replace these five primary providers or introduce paid API dependencies.
 
 ## Two separate capabilities
