@@ -60,7 +60,7 @@ def test_dispatches_python_source_analyst(tmp_path):
     orchestrator, _, _ = setup_orchestrator(tmp_path)
     result = run(orchestrator, "agent:python-source-analyst")
     assert result["status"] == "COMPLETED"
-    assert result["result"]["files_analyzed"] == 1
+    assert result["result"]["files_analyzed"] == 2
     assert result["result"]["definitions"]["classes"] == 1
     assert result["result"]["code_executed"] is False
 
