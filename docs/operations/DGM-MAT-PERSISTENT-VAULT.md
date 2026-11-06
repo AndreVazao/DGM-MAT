@@ -43,9 +43,9 @@ To inventory a different repository, pass its path and register its project name
 python scripts\sync_dgm_vault.py --repository 'C:\Projects\Example' --project-id example --project-name Example --aliases 'Example,Example Project'
 ```
 
-## Browser import integration
+## Live browser capture and archive import
 
-When `DGM_VAULT_PATH` is configured, the Chrome archive importer copies the original JSON export into `providers/chrome-imports/` and writes normalized immutable conversations into the project Vault or quarantine. Without this setting, the legacy runtime archive location remains in use.
+When `DGM_VAULT_PATH` is configured, every live capture received by `/recovery/browser-capture/capture` writes both the exact raw JSON payload into `providers/browser-captures/<provider>/` and an immutable normalized transcript into the project Vault or quarantine. The API response reports `vault_status` and both Vault paths so a failed Vault copy is visible and can be retried. The Chrome archive importer separately copies downloaded inventory/export JSON into `providers/chrome-imports/` and imports normalized conversations. Without `DGM_VAULT_PATH`, the legacy runtime archive remains available but is not a substitute for the persistent Vault.
 
 ## Integrity and limits
 
