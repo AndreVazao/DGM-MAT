@@ -30,7 +30,9 @@ def test_extension_only_matches_chatgpt_gemini_and_grok_origins():
     assert any("bard.google.com" in item for item in matches)
     assert any("grok.com" in item for item in matches)
     assert any("x.com/i/grok" in item for item in matches)
-    assert len(matches) == 6
+    assert any("chat.deepseek.com" in item for item in matches)
+    assert any("chat.qwen.ai" in item for item in matches)
+    assert len(matches) == 8
 
 
 def test_extension_never_reads_auth_stores_or_calls_provider_private_apis():
