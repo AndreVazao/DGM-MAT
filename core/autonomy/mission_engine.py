@@ -24,6 +24,7 @@ from core.organization import CapabilityScout, InternalMessageBus, Message, Mess
 from core.organization.human_intervention_queue import HumanInterventionQueue
 from core.organization.worker_runtime import WorkerRuntime
 from core.organization.configured_readonly_workers import register_configured_readonly_workers
+from core.organization.read_only_worker_orchestrator import ReadOnlyWorkerOrchestrator
 from core.organization.qa_intake_worker import QAIntakeWorker
 from core.organization.qa_review_queue import QAReviewQueue
 from core.organization.qa_review_coordinator import QAReviewCoordinator
@@ -71,6 +72,9 @@ class MissionEngine:
         # explicitly supplies a host-owned workspace root and repository allowlist.
         self.readonly_worker_registration = register_configured_readonly_workers(
             self.worker_runtime
+        )
+        self.readonly_worker_orchestrator = ReadOnlyWorkerOrchestrator(
+            self.organization_bus, self.worker_runtime
         )
         self.human_intervention_queue = HumanInterventionQueue(
             storage_manager.get_path("tasks") / "human_intervention_queue.sqlite3"
@@ -121,6 +125,17 @@ class MissionEngine:
     def register_organization_worker(self, agent_id: str, handler):
         """Register an explicit local handler; no implicit AI/provider is activated."""
         self.worker_runtime.register_handler(agent_id, handler)
+
+    def run_readonly_repository_worker(
+        self, *, agent_id: str, repository_id: str, mission_id: str, correlation_id: str
+    ) -> Dict[str, Any]:
+        """Run one explicitly registered read-only specialist through the durable bus."""
+        return self.readonly_worker_orchestrator.run(
+            agent_id=agent_id,
+            repository_id=repository_id,
+            mission_id=mission_id,
+            correlation_id=correlation_id,
+        )
 
     def dispatch_organization_message(self, agent_id: str):
         """Dispatch at most one durable unread message to a registered local worker."""
