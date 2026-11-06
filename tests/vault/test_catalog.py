@@ -235,3 +235,25 @@ def test_older_build_refuses_to_downgrade_a_newer_vault_schema(tmp_path):
             "SELECT value FROM schema_meta WHERE key='schema_version'"
         ).fetchone()[0]
     assert version == "999"
+
+
+def test_known_project_catalog_prefers_specific_alias_and_preserves_custom_metadata(tmp_path):
+    vault = VaultCatalog(tmp_path / "vault")
+    repository = tmp_path / "dgm-mat"
+    repository.mkdir()
+    vault.register_project(
+        "dgm-mat", "DGM-MAT", repository_path=repository, aliases=["Custom DGM-MAT Alias"]
+    )
+    vault.register_known_projects()
+
+    mobile = vault.suggest_project(
+        "DGM-MAT Mobile — USB recovery",
+        "The DGM-MAT Mobile backoffice APK must reconnect to its local brain.",
+    )
+    assert mobile["project_id"] == "dgm-mat-mobile"
+    assert "DGM-MAT Mobile" in mobile["candidates"][0]["strongest_aliases"]
+
+    dgm = vault.get_project("dgm-mat")
+    assert "Custom DGM-MAT Alias" in dgm["aliases"]
+    assert dgm["repository_path"] == str(repository.resolve())
+    assert len(vault.list_projects()) == 9
