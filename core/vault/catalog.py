@@ -69,6 +69,14 @@ def _digest(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def _file_digest(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _segment(value: str, fallback: str = "item") -> str:
     normalized = SAFE_SEGMENT.sub("-", str(value).strip()).strip(".-_")[:80]
     return normalized or fallback
@@ -640,8 +648,16 @@ class VaultCatalog:
                     languages[language] = languages.get(language, 0) + 1
                 if name in MANIFEST_NAMES or name.endswith((".csproj", ".sln")):
                     manifests.append(relative)
-                entries.append({"path": relative, "size": stat.st_size,
-                                "extension": suffix, "language": language})
+                entry = {
+                    "path": relative,
+                    "size": stat.st_size,
+                    "mtime_ns": stat.st_mtime_ns,
+                    "extension": suffix,
+                    "language": language,
+                }
+                if language or name in MANIFEST_NAMES:
+                    entry["sha256"] = _file_digest(path)
+                entries.append(entry)
                 if len(entries) > max_entries:
                     raise ValueError(f"Repository tree exceeded max_entries={max_entries}; no partial snapshot saved")
         entries.sort(key=lambda item: item["path"].casefold())
