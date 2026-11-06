@@ -141,6 +141,12 @@ function createHarness(options = {}) {
         assert.equal(accepted, true);
       });
     },
+    ping() {
+      return new Promise(resolve => {
+        const accepted = listener({ type: "DGM_PROVIDER_PING" }, {}, response => resolve(response));
+        assert.equal(accepted, false);
+      });
+    },
     clicked: () => clicked
   };
 }
@@ -173,6 +179,12 @@ async function main() {
   assert.equal(unverifiedResponse.ok, true);
   assert.equal(unverifiedResponse.data.status, "submitted_unverified");
   assert.equal(unverified.clicked(), true);
+
+  for (const provider of ["chatgpt", "deepseek", "qwen"]) {
+    const ping = await createHarness({ provider }).ping();
+    assert.equal(ping.ok, true);
+    assert.equal(ping.provider, provider);
+  }
 
   const limited = createHarness({ bodyText: "You've reached your daily usage limit. Try again later." });
   const limitedResponse = await limited.execute({
@@ -213,7 +225,7 @@ async function main() {
   assert.equal(missionResponse.data.status, "completed");
   assert.match(missionResponse.data.assistant_text, /repository is clean/);
 
-  process.stdout.write("PASS: 8 visible-UI message, quota, five-provider and mission-response fixtures\\n");
+  process.stdout.write("PASS: 9 visible-UI message, readiness, quota, five-provider and mission-response fixtures\\n");
 }
 
 main().catch(error => {
