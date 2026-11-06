@@ -423,6 +423,17 @@ class VaultCatalog:
         if _digest(destination.read_bytes()) != fingerprint:
             destination.unlink(missing_ok=True)
             raise OSError("Repository tree snapshot verification failed")
+        text_destination = folder / f"{snapshot_id}.txt"
+        text_raw = _format_tree(root.name, entries).encode("utf-8")
+        with text_destination.open("xb") as stream:
+            stream.write(text_raw)
+        current_pointer = folder / "CURRENT.json"
+        temporary_pointer = folder / ".CURRENT.json.tmp"
+        temporary_pointer.write_text(_json({
+            "snapshot_id": snapshot_id, "json": destination.name,
+            "text": text_destination.name, "fingerprint": fingerprint,
+        }) + "\n", encoding="utf-8")
+        temporary_pointer.replace(current_pointer)
         with self._connect() as db:
             db.execute("""
                 INSERT INTO tree_snapshots(snapshot_id,project_id,repository_path,tree_fingerprint,
@@ -432,6 +443,7 @@ class VaultCatalog:
                   len(entries), _json(tree["languages"]), tree["generated_at"]))
         self.register_project(project_id, project["name"], root, project["aliases"])
         return {"snapshot_id": snapshot_id, "snapshot_path": str(destination),
+                "tree_text_path": str(text_destination), "current_pointer": str(current_pointer),
                 "fingerprint": fingerprint, "file_count": len(entries),
                 "languages": tree["languages"], "manifests": tree["manifests"]}
 
