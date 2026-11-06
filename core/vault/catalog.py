@@ -221,10 +221,10 @@ class VaultCatalog:
         transcript_identity = {
             "messages": [
                 {"role": str(message.get("role") or "unknown").casefold(),
-                 "content": re.sub(r"\\s+", " ", str(message.get("content") or "")).strip().casefold()}
+                 "content": re.sub(r"\s+", " ", str(message.get("content") or "")).strip().casefold()}
                 for message in messages
             ],
-            "content": re.sub(r"\\s+", " ", content).strip().casefold() if not messages else "",
+            "content": re.sub(r"\s+", " ", content).strip().casefold() if not messages else "",
         }
         content_fingerprint = _digest(_json(transcript_identity).encode("utf-8"))
         with self._connect() as db:

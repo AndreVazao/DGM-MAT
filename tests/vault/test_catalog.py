@@ -101,3 +101,22 @@ def test_reinstall_independent_catalog_reopens_from_same_vault(tmp_path):
     reopened = VaultCatalog(path)
     assert reopened.list_projects()[0]["project_id"] == "office-kit"
     assert reopened.list_conversations("office-kit")[0]["title"] == "Office Kit"
+
+
+def test_same_transcript_from_different_providers_is_cross_linked(tmp_path):
+    vault = VaultCatalog(tmp_path / "vault")
+    vault.register_project("dgm-mat", "DGM-MAT")
+    messages = [{"id": "m1", "role": "user", "content": "Recover the DGM-MAT context"}]
+    first = vault.archive_conversation(
+        provider="chatgpt", conversation_id="chat-1", title="DGM-MAT",
+        messages=messages, project_id="dgm-mat",
+    )
+    second = vault.archive_conversation(
+        provider="gemini", conversation_id="gem-9", title="Different title",
+        messages=messages, project_id="dgm-mat",
+    )
+    assert first["status"] == "archived"
+    assert second["status"] == "duplicate"
+    assert second["canonical_provider"] == "chatgpt"
+    assert vault.summary()["conversations"] == 1
+    assert vault.summary()["duplicate_candidates"] == 1
