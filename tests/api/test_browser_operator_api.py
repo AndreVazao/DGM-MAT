@@ -112,3 +112,26 @@ def test_idempotent_task_creation_returns_existing_task(monkeypatch, tmp_path):
     assert first.status_code == second.status_code == 201
     assert first.json()["task_id"] == second.json()["task_id"]
     assert len(queue.list_tasks()) == 1
+
+
+def test_mission_operator_accepts_deepseek_and_qwen_with_approval_gate(monkeypatch, tmp_path):
+    client, queue = make_client(monkeypatch, tmp_path)
+    providers = {
+        "deepseek": "https://chat.deepseek.com/a/chat/s/conversation-123",
+        "qwen": "https://chat.qwen.ai/chat/conversation-123",
+    }
+    for provider, url in providers.items():
+        body = payload()
+        body.update({
+            "idempotency_key": "mission-1234abcd-" + provider,
+            "provider": provider,
+            "source_id": "conversation-123",
+            "conversation_url": url,
+            "approval_required": True,
+        })
+        response = client.post("/browser-operator/tasks", json=body)
+        assert response.status_code == 201, (provider, response.text)
+        result = response.json()
+        assert result["status"] == "pending_approval"
+        assert result["approval_required"] is True
+        assert queue.get(result["task_id"])["provider"] == provider
