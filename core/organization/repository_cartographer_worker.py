@@ -134,6 +134,7 @@ class RepositoryCartographerWorker:
                 verified_root,
                 max_depth=self.max_depth,
                 max_entries=self.max_entries,
+                allowed_root=self.allowed_root,
             )
         except (OSError, RepositorySnapshotError):
             return self._blocked("repository_inventory_unavailable", message)
