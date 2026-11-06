@@ -210,6 +210,64 @@ def test_auto_help_marks_hub_withheld_responses_as_blocked_evidence(tmp_path, mo
     assert len(engine.collaboration_store.paused) == 2
 
 
+def test_auto_help_preserves_explicit_hub_evidence_abstention(tmp_path, monkeypatch):
+    import core.mobile_runtime.auto_help as module
+
+    monkeypatch.setattr(module, "append_command_audit", lambda **_kwargs: None)
+    monkeypatch.setenv("DGM_AUTONOMY_HELP_EXTERNAL_AGENTS_ENABLED", "1")
+    monkeypatch.setenv("DGM_AUTONOMY_HELP_FREE_CAPACITY_CONFIRMED", "1")
+
+    class AbstentionBridge:
+        def get_status(self):
+            return {
+                "providers": {
+                    "claude": {"enabled": True, "ready": True, "response_verified": True},
+                }
+            }
+
+        def consult(self, *, goal, context, providers):
+            return HubTaskResult(
+                task_id="hub-abstention-task",
+                conversation_id="dgm-mat-abstention",
+                results={
+                    "claude": {
+                        "status": "abstained",
+                        "text": "NÃO TENHO EVIDÊNCIA SUFICIENTE.",
+                        "grounding_status": "abstained_insufficient_evidence",
+                        "evidence_refs": [],
+                    }
+                },
+            )
+
+    conversations = ConversationStore(tmp_path / "conversations.json")
+    thread = conversations.create_thread("Evidence abstention")
+    engine = FakeEngine()
+    store = AutoHelpStore(tmp_path / "help.sqlite3")
+    worker = AutoHelpWorker(
+        conversation_store=conversations,
+        store=store,
+        bridge_factory=AbstentionBridge,
+        engine_factory=lambda: engine,
+        enabled=True,
+        providers=["claude"],
+    )
+    queued = worker.enqueue(
+        thread_id=thread.id,
+        goal="Audita a integração externa.",
+        reason="No registered executor",
+    )
+
+    assert queued["status"] == "PENDING"
+    assert worker.run_once() is True
+    assert store.status()["counts"] == {"BLOCKED_EVIDENCE": 1}
+    updated = conversations.get_thread(thread.id)
+    assert "abstenção explícita" in updated.messages[-1].content
+    assert updated.messages[-1].metadata["auto_help_status"] == "BLOCKED_EVIDENCE"
+    assert updated.messages[-1].metadata["providers"][0]["status"] == "ABSTAINED_INSUFFICIENT_EVIDENCE"
+    assert len(engine.collaboration_store.results) == 0
+    assert len(engine.collaboration_store.paused) == 1
+
+
 def test_auto_help_does_not_retry_after_hub_failure(tmp_path, monkeypatch):
     import core.mobile_runtime.auto_help as module
 
