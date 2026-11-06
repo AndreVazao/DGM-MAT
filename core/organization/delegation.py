@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from .models import AgentProfile, AgentStatus, Task, TaskStatus
 from .registry import AgentRegistry
 from .task_manager import OrganizationTaskManager
+from .worker_runtime import WorkerRuntime
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,9 +30,17 @@ class DelegationEngine:
     preferred_department. This router assigns work but never executes it.
     """
 
-    def __init__(self, registry: AgentRegistry, tasks: OrganizationTaskManager) -> None:
+    def __init__(
+        self,
+        registry: AgentRegistry,
+        tasks: OrganizationTaskManager,
+        worker_runtime: WorkerRuntime,
+    ) -> None:
+        if worker_runtime is None:
+            raise ValueError("worker_runtime is required for execution-aware delegation")
         self.registry = registry
         self.tasks = tasks
+        self.worker_runtime = worker_runtime
 
     @staticmethod
     def _strings(value: object) -> set[str]:
@@ -49,6 +58,8 @@ class DelegationEngine:
 
         result = []
         for agent in self.registry.list_agents(status=AgentStatus.AVAILABLE):
+            if not self.worker_runtime.has_handler(agent.agent_id):
+                continue
             department = self.registry.get_department(agent.department_id)
             if department is None or not department.active:
                 continue
@@ -79,7 +90,9 @@ class DelegationEngine:
             raise DelegationError(f"Task {task_id} has unsatisfied dependencies.")
         candidates = self.candidates(task)
         if not candidates:
-            raise DelegationError(f"No available agent satisfies task {task_id} constraints.")
+            raise DelegationError(
+                f"No available agent with a registered handler satisfies task {task_id} constraints."
+            )
         agent, score, matched = candidates[0]
         self.tasks.assign(task_id, agent.agent_id)
         return DelegationDecision(
