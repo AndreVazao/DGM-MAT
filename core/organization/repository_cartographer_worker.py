@@ -24,6 +24,7 @@ class RepositoryCartographerWorker:
     """Perform one bounded, read-only inventory for an explicitly allowed repo."""
 
     agent_id = "agent:repository-cartographer"
+    capabilities = ("file-inventory", "project-tree")
     _REQUEST_KEYS = {"schema_version", "operation", "repository_id"}
     _REPOSITORY_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$")
 
