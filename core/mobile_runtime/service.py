@@ -405,7 +405,7 @@ class MobileConversationService:
                     else:
                         provider_label = "os fornecedores gratuitos autorizados"
                     response_text += (
-                        f"\\n\\nRegistei a consulta gratuita {auto_help_request_id}. "
+                        f"\n\nRegistei a consulta gratuita {auto_help_request_id}. "
                         f"O DGM-MAT vai pedir uma segunda opinião a {provider_label} em segundo plano. "
                         "As respostas serão guardadas nesta thread como sugestões não verificadas; "
                         "não autorizam execução nem alterações."
