@@ -3,10 +3,13 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import os
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 from .pipeline import ConversationIntelligencePipeline
+from core.vault import VaultCatalog
 
 
 class ChromeConversationArchiveImporter:
@@ -22,12 +25,17 @@ class ChromeConversationArchiveImporter:
         inbox_dir: str | Path | None = None,
         archive_dir: str | Path | None = None,
         pipeline: ConversationIntelligencePipeline | None = None,
+        vault_catalog: VaultCatalog | None = None,
     ) -> None:
         project_root = Path(__file__).resolve().parents[2]
+        configured_vault = os.environ.get("DGM_VAULT_PATH")
+        self.vault = vault_catalog or (VaultCatalog(configured_vault) if configured_vault else None)
         self.inbox_dir = Path(inbox_dir) if inbox_dir else Path.home() / "Downloads" / "DGM-MAT-Conversation-Archive"
-        self.archive_dir = Path(archive_dir) if archive_dir else (
-            project_root / "storage" / "runtime" / "conversation_archive" / "chrome-imports"
+        default_archive = (
+            Path(configured_vault).expanduser() / "providers" / "chrome-imports"
+            if configured_vault else project_root / "storage" / "runtime" / "conversation_archive" / "chrome-imports"
         )
+        self.archive_dir = Path(archive_dir) if archive_dir else default_archive
         runtime = project_root / "storage" / "runtime" / "conversation_intelligence"
         self.pipeline = pipeline or ConversationIntelligencePipeline(
             progress_store_path=runtime / "progress.sqlite3",
@@ -89,6 +97,21 @@ class ChromeConversationArchiveImporter:
                     else "chrome-extension"
                 )
                 audits = self.pipeline.ingest_file(archived, provider=source_provider)
+                if self.vault:
+                    for audit in audits:
+                        conversation = audit.conversation
+                        self.vault.archive_conversation(
+                            provider=conversation.provider,
+                            conversation_id=conversation.conversation_id,
+                            title=conversation.title,
+                            url=conversation.url,
+                            content=conversation.content,
+                            messages=[asdict(message) for message in conversation.messages],
+                            completeness=str(conversation.metadata.get("completeness")
+                                             or conversation.metadata.get("capture_status") or "unknown"),
+                            metadata=conversation.metadata,
+                            artifacts=[asdict(artifact) for artifact in audit.artifacts],
+                        )
                 conversations = len(audits)
                 messages = sum(len(audit.conversation.messages) for audit in audits)
                 conversation_count += conversations
