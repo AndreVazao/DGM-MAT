@@ -41,9 +41,10 @@ _SECRET_PATTERNS = (
 _ACTIONABLE_INTENTS = frozenset({"repair", "implement", "deploy", "sync", "audit", "research"})
 _EVIDENCE_CONTRACT = (
     "Evidence contract: use exclusively the Hub section named CONTEXTO DE EVIDÊNCIA. "
-    "Every factual sentence must end with an exact reference ID copied from that section, "
-    "in the form [E1], [E2], etc. Never invent IDs and never cite CONTEXTO AUTORIZADO. "
-    "If no usable evidence references are supplied, answer exactly: "
+    "Every non-empty content line (facts, inferences, risks, recommendations, and conclusions) "
+    "must end with an exact reference ID copied from that section, in the form [E1], [E2], etc. "
+    "Markdown headings may omit citations. Never invent IDs and never cite CONTEXTO AUTORIZADO. "
+    "If no content line can be supported by the supplied evidence, answer exactly: "
     "NÃO TENHO EVIDÊNCIA SUFICIENTE."
 )
 
