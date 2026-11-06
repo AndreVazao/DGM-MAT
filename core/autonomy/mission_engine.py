@@ -1334,7 +1334,7 @@ class MissionEngine:
         if not segment:
             return []
         parts = re.split(r"\s+(?:e|and)\s+|[,;]", segment)
-        ignored = {"as", "os", "a", "o", "the", "my", "meus", "minhas", "todos", "todas", "all"}
+        ignored = {"as", "os", "a", "o", "the", "my", "meus", "minhas", "todos", "todas", "all", "local", "locais"}
         names = []
         for part in parts:
             candidate = re.sub(r"[^a-z0-9]+", "", part.casefold())
