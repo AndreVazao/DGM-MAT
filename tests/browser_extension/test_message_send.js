@@ -105,12 +105,16 @@ function createHarness(options = {}) {
       href: {
         chatgpt: "https://chatgpt.com/c/fixture-conversation",
         deepseek: "https://chat.deepseek.com/a/chat/s/fixture-conversation",
-        qwen: "https://chat.qwen.ai/chat/fixture-conversation"
+        qwen: "https://chat.qwen.ai/chat/fixture-conversation",
+        grok: "https://grok.com/chat/fixture-conversation",
+        gemini: "https://gemini.google.com/app/fixture-conversation"
       }[provider],
       pathname: {
         chatgpt: "/c/fixture-conversation",
         deepseek: "/a/chat/s/fixture-conversation",
-        qwen: "/chat/fixture-conversation"
+        qwen: "/chat/fixture-conversation",
+        grok: "/chat/fixture-conversation",
+        gemini: "/app/fixture-conversation"
       }[provider],
       assign() { throw new Error("Unexpected navigation."); }
     },
@@ -180,7 +184,7 @@ async function main() {
   assert.equal(unverifiedResponse.data.status, "submitted_unverified");
   assert.equal(unverified.clicked(), true);
 
-  for (const provider of ["chatgpt", "deepseek", "qwen"]) {
+  for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
     const ping = await createHarness({ provider }).ping();
     assert.equal(ping.ok, true);
     assert.equal(ping.provider, provider);
