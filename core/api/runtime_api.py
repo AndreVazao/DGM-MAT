@@ -7,8 +7,8 @@ import time
 from datetime import datetime
 import psutil
 from fastapi import APIRouter, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import List, Optional, Dict, Any, Literal
 from core.storage.storage_manager import storage_manager
 from core.repository_cognition.repo_scanner import CognitiveRepoScanner
 from core.autonomy.mission_engine import mission_engine
@@ -48,14 +48,13 @@ class MissionCreate(BaseModel):
 
 class MissionBrowserTaskCreate(BaseModel):
     idempotency_key: str = Field(min_length=8, max_length=200)
-    provider: str = Field(pattern=r"^(chatgpt|gemini|grok)$")
+    provider: Literal["chatgpt", "gemini", "grok"]
     source_id: str = Field(min_length=1, max_length=200)
     conversation_url: str = Field(min_length=12, max_length=2048)
     message: str = Field(min_length=1, max_length=30000)
     approval_required: bool = True
 
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 class ApprovalDecision(BaseModel):
@@ -314,7 +313,6 @@ def enqueue_mission_browser_task(mission_id: str, payload: MissionBrowserTaskCre
         "task_id": task.get("task_id"),
         "provider": payload.provider,
         "approval_required": task.get("status") == "pending_approval",
-        "idempotent_reuse": task.get("mission_id") == mission_id and task.get("idempotency_key") == payload.idempotency_key,
     }
 
 
