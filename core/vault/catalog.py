@@ -92,6 +92,15 @@ class VaultCatalog:
         if not configured:
             raise ValueError("Vault path is required; set DGM_VAULT_PATH or pass vault_root")
         self.root = Path(configured).expanduser().resolve()
+        application_root = Path(__file__).resolve().parents[2]
+        try:
+            self.root.relative_to(application_root)
+        except ValueError:
+            pass
+        else:
+            raise ValueError("Vault root must be outside the DGM-MAT application repository")
+        if any((parent / ".git").exists() for parent in (self.root, *self.root.parents)):
+            raise ValueError("Vault root must be outside every Git worktree/repository")
         self.index_dir = self.root / "index"
         self.index_dir.mkdir(parents=True, exist_ok=True)
         self.database_path = self.index_dir / "catalog.sqlite3"
