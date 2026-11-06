@@ -18,7 +18,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Copy completed DGM-MAT conversation knowledge into the persistent local Vault and snapshot a repository tree."
     )
-    parser.add_argument("--vault", default=os.environ.get("DGM_VAULT_PATH"),
+    parser.add_argument("--vault", default=os.environ.get("DGM_VAULT_PATH") or str(VaultCatalog.default_root()),
                         help="Persistent Vault root; defaults to DGM_VAULT_PATH")
     parser.add_argument("--progress-db", action="append", default=[],
                         help="Progress SQLite database; repeat for multiple stores. If omitted, known runtime stores are discovered.")
@@ -29,7 +29,7 @@ def main() -> int:
     parser.add_argument("--provider", action="append", default=[], help="Limit sync to provider; may be repeated")
     args = parser.parse_args()
     if not args.vault:
-        parser.error("--vault or DGM_VAULT_PATH is required; Vault data must not be stored under the install directory")
+        parser.error("A persistent Vault root could not be resolved")
 
     vault = VaultCatalog(args.vault)
     project = vault.register_project(args.project_id, args.project_name, args.repository,
