@@ -120,8 +120,12 @@ def test_same_transcript_from_different_providers_is_cross_linked(tmp_path):
         messages=messages, project_id="dgm-mat",
     )
     assert first["status"] == "archived"
-    assert second["status"] == "duplicate"
+    assert second["status"] == "archived_duplicate"
+    assert second["duplicate"] is True
     assert second["canonical_provider"] == "chatgpt"
+    assert Path(second["archive_path"]).is_file()
+    assert len(vault.list_conversations("dgm-mat")) == 4
+    assert vault.summary()["duplicate_candidates"] == 1
     assert vault.summary()["conversations"] == 1
     assert vault.summary()["duplicate_candidates"] == 1
 

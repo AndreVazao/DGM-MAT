@@ -309,24 +309,20 @@ class VaultCatalog:
             transcript_identity["empty_source"] = [provider_key, conversation_key, fingerprint]
         content_fingerprint = _digest(_json(transcript_identity).encode("utf-8"))
         with self._connect() as db:
-            existing = db.execute(
+            source_existing = db.execute(
+                "SELECT * FROM conversations WHERE provider=? AND conversation_id=? AND source_fingerprint=?",
+                (provider_key, conversation_key, fingerprint),
+            ).fetchone()
+            canonical = db.execute(
                 "SELECT * FROM conversations WHERE content_fingerprint=? ORDER BY created_at LIMIT 1",
                 (content_fingerprint,),
-            ).fetchone()
-        if existing:
-            with self._connect() as db:
-                db.execute("""
-                    INSERT OR IGNORE INTO duplicate_candidates(
-                        source_provider,source_conversation_id,source_fingerprint,
-                        canonical_provider,canonical_conversation_id,canonical_path,match_type,created_at
-                    ) VALUES(?,?,?,?,?,?,?,?)
-                """, (provider_key, conversation_key, fingerprint, existing["provider"],
-                      existing["conversation_id"], existing["archive_path"],
-                      "byte_identical" if existing["source_fingerprint"] == fingerprint else "same_transcript_content", _now()))
-            return {"status": "duplicate", "duplicate": True, "fingerprint": fingerprint,
-                    "archive_path": existing["archive_path"], "canonical_provider": existing["provider"],
-                    "canonical_conversation_id": existing["conversation_id"],
-                    "project_id": existing["project_id"]}
+            ).fetchone() if has_transcript else None
+        if source_existing:
+            # Re-importing the exact same source is idempotent. A different provider
+            # or conversation ID with the same transcript is still archived below.
+            return {"status": "duplicate", "duplicate": True, "source_reused": True,
+                    "fingerprint": fingerprint, "archive_path": source_existing["archive_path"],
+                    "project_id": source_existing["project_id"]}
 
         bucket = (self.root / "projects" / project_id / "conversations") if project_id else (self.root / "quarantine" / "conversations")
         bucket.mkdir(parents=True, exist_ok=True)
@@ -351,6 +347,15 @@ class VaultCatalog:
             """, (provider_key, conversation_key, fingerprint, content_fingerprint, payload["title"], url,
                   str(destination), completeness, len(messages), project_id, assignment_status,
                   _json(evidence), (metadata or {}).get("captured_at") or now, now))
+            if canonical:
+                db.execute("""
+                    INSERT OR IGNORE INTO duplicate_candidates(
+                        source_provider,source_conversation_id,source_fingerprint,
+                        canonical_provider,canonical_conversation_id,canonical_path,match_type,created_at
+                    ) VALUES(?,?,?,?,?,?,?,?)
+                """, (provider_key, conversation_key, fingerprint, canonical["provider"],
+                      canonical["conversation_id"], canonical["archive_path"],
+                      "byte_identical" if canonical["source_fingerprint"] == fingerprint else "same_transcript_content", now))
             for sequence, message in enumerate(messages):
                 role = str(message.get("role") or "unknown").casefold()
                 message_text = re.sub(r"\s+", " ", str(message.get("content") or "")).strip().casefold()
@@ -403,9 +408,13 @@ class VaultCatalog:
                     """, (provider_key, conversation_key, artifact_id, fingerprint,
                           canonical["provider"], canonical["conversation_id"], canonical["artifact_id"],
                           artifact_fingerprint, now))
-        return {"status": "archived", "duplicate": False, "fingerprint": fingerprint,
+        return {"status": "archived_duplicate" if canonical else "archived",
+                "duplicate": bool(canonical), "source_reused": False, "fingerprint": fingerprint,
                 "archive_path": str(destination), "project_id": project_id,
-                "assignment_status": assignment_status, "message_count": len(messages)}
+                "assignment_status": assignment_status, "message_count": len(messages),
+                "canonical_provider": canonical["provider"] if canonical else None,
+                "canonical_conversation_id": canonical["conversation_id"] if canonical else None,
+                "canonical_archive_path": canonical["archive_path"] if canonical else None}
 
     def snapshot_repository(
         self, project_id: str, repository_path: str | Path, *,
