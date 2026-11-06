@@ -298,17 +298,30 @@ class VaultCatalog:
         return [{**dict(row), "aliases": json.loads(row["aliases_json"])} for row in rows]
 
     def suggest_project(self, title: str, content: str = "") -> dict[str, Any]:
-        haystack = f"{title}\n{content}".casefold()
+        title_text = title.casefold()
+        content_text = content.casefold()
         candidates: list[dict[str, Any]] = []
         for project in self.list_projects():
-            hits = [alias for alias in project["aliases"] if alias and alias.casefold() in haystack]
-            if hits:
-                longest = max(len(alias) for alias in hits)
-                strongest = [alias for alias in hits if len(alias) == longest]
-                score = min(0.99, 0.78 + 0.004 * min(longest, 40) + 0.02 * (len(strongest) - 1))
-                candidates.append({"project_id": project["project_id"], "name": project["name"],
-                                   "confidence": round(score, 3), "matched_aliases": hits,
-                                   "strongest_aliases": strongest})
+            title_hits = [alias for alias in project["aliases"] if alias and alias.casefold() in title_text]
+            content_hits = [alias for alias in project["aliases"] if alias and alias.casefold() in content_text]
+            hits = list(dict.fromkeys([*title_hits, *content_hits]))
+            if not hits:
+                continue
+            # A project named in the title is stronger evidence than a mention
+            # buried in the transcript; within that source, prefer the longest alias.
+            strongest_source = title_hits or content_hits
+            longest = max(len(alias) for alias in strongest_source)
+            strongest = [alias for alias in strongest_source if len(alias) == longest]
+            base = 0.88 if title_hits else 0.74
+            score = min(0.99, base + 0.003 * min(longest, 30) + 0.015 * (len(strongest) - 1))
+            candidates.append({
+                "project_id": project["project_id"],
+                "name": project["name"],
+                "confidence": round(score, 3),
+                "matched_aliases": hits,
+                "strongest_aliases": strongest,
+                "evidence_source": "title" if title_hits else "content",
+            })
         candidates.sort(key=lambda item: (-item["confidence"], item["project_id"]))
         if not candidates:
             return {"project_id": None, "status": "unclassified", "candidates": []}
