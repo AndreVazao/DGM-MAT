@@ -16,6 +16,10 @@ $env:DGM_VAULT_PATH = 'C:\DGM-MAT-Vault'
 
 For a permanent user-level setting, use the Windows Environment Variables interface after confirming the intended path and backup policy. Do not place the Vault under `C:\ProgramasGodMode\DGM-MAT\installed`.
 
+## Project grouping
+
+The Vault seeds an explicit project registry for DGM-MAT, DGM-HUB, DGM-MCP, AndreOS Memory, DGM-MAT-Mobile, VAZAO EVSE Platform, VazaoSovereignTrader, Office Kit and Family DGM. Classification uses the strongest/longest matching project alias, so a specific name such as `DGM-MAT Mobile` wins over the broader `DGM-MAT` alias. User-added aliases and repository paths are preserved. No match or a tied match remains in quarantine for later review.
+
 ## Layout
 
 - `index/catalog.sqlite3` — searchable project, conversation, message, duplicate and tree index
