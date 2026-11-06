@@ -29,7 +29,8 @@ No implicit provider is activated.
 
 ## Maturity boundary
 
-This proves only HANDLER_REGISTERED. It does not prove:
+This proves only HANDLER_REGISTERED plus a declared capability match. The
+declaration is not a test result. It does not prove:
 - configuration or authentication;
 - endpoint reachability;
 - health under load;
@@ -44,10 +45,14 @@ registration must never be reported as READY or TASK_VALIDATED by itself.
 
 The office delegation regression now supplies an explicit WorkerRuntime and
 proves:
-- a matching registered handler can receive a task;
+- a matching registered handler with matching declared capabilities can receive a task;
 - an AVAILABLE role without a handler cannot receive a task;
 - offline and unauthorized agents remain excluded;
 - dependency gates remain active;
 - WorkerRuntime reports its registered handler inventory.
 
 No permissions are widened and no role is auto-activated.
+
+The legacy MissionEngine registration of QAIntakeWorker under agent:bug-hunter
+is now declared as qa-intake only. It therefore cannot be selected for
+reproduction/fault-isolation tasks merely because a handler exists.
