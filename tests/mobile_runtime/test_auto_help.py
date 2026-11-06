@@ -128,6 +128,9 @@ def test_auto_help_calls_only_free_allowlisted_hub_providers_and_persists_untrus
     assert worker.run_once() is True
     assert worker.run_once() is False
     assert bridge.calls[0]["providers"] == ["kilo", "llm7"]
+    assert "CONTEXTO DE EVIDÊNCIA" in bridge.calls[0]["goal"]
+    assert "[E1]" in bridge.calls[0]["goal"]
+    assert "CONTEXTO DE EVIDÊNCIA" in bridge.calls[0]["context"]
     assert len(engine.collaboration_store.results) == 2
     assert worker.store.status()["counts"] == {"COMPLETED": 1}
 
@@ -137,6 +140,74 @@ def test_auto_help_calls_only_free_allowlisted_hub_providers_and_persists_untrus
     assert "LLM7" in updated.messages[0].content
     assert updated.messages[0].metadata["result_trusted"] is False
     assert updated.messages[0].metadata["paid_fallback"] is False
+
+
+def test_auto_help_marks_hub_withheld_responses_as_blocked_evidence(tmp_path, monkeypatch):
+    import core.mobile_runtime.auto_help as module
+
+    monkeypatch.setattr(module, "append_command_audit", lambda **_kwargs: None)
+    monkeypatch.setenv("DGM_AUTONOMY_HELP_EXTERNAL_AGENTS_ENABLED", "1")
+    monkeypatch.setenv("DGM_AUTONOMY_HELP_FREE_CAPACITY_CONFIRMED", "1")
+
+    class EvidenceBridge:
+        def __init__(self):
+            self.calls = []
+
+        def get_status(self):
+            return {
+                "providers": {
+                    "codex": {"enabled": True, "ready": True, "response_verified": True},
+                    "claude": {"enabled": True, "ready": True, "response_verified": True},
+                }
+            }
+
+        def consult(self, *, goal, context, providers):
+            self.calls.append({"goal": goal, "context": context, "providers": providers})
+            return HubTaskResult(
+                task_id="hub-evidence-task",
+                conversation_id="dgm-mat-evidence",
+                results={
+                    name: {
+                        "status": "unverified",
+                        "text": "Resposta retida pelo contrato de evidência.",
+                        "grounding_status": "unverified",
+                        "evidence_refs": [],
+                    }
+                    for name in providers
+                },
+            )
+
+    conversations = ConversationStore(tmp_path / "conversations.json")
+    thread = conversations.create_thread("Evidence contract")
+    bridge = EvidenceBridge()
+    engine = FakeEngine()
+    store = AutoHelpStore(tmp_path / "help.sqlite3")
+    worker = AutoHelpWorker(
+        conversation_store=conversations,
+        store=store,
+        bridge_factory=lambda: bridge,
+        engine_factory=lambda: engine,
+        enabled=True,
+        providers=["codex", "claude"],
+    )
+    queued = worker.enqueue(
+        thread_id=thread.id,
+        goal="Audita a integração externa do DGM-MAT com o DGM-HUB.",
+        reason="No registered executor",
+    )
+
+    assert queued["status"] == "PENDING"
+    assert worker.run_once() is True
+    assert bridge.calls[0]["providers"] == ["codex", "claude"]
+    assert "CONTEXTO DE EVIDÊNCIA" in bridge.calls[0]["goal"]
+    assert "[E1]" in bridge.calls[0]["goal"]
+    assert "CONTEXTO DE EVIDÊNCIA" in bridge.calls[0]["context"]
+    assert store.status()["counts"] == {"BLOCKED_EVIDENCE": 1}
+    updated = conversations.get_thread(thread.id)
+    assert "reteve as respostas" in updated.messages[-1].content
+    assert updated.messages[-1].metadata["auto_help_status"] == "BLOCKED_EVIDENCE"
+    assert len(engine.collaboration_store.results) == 0
+    assert len(engine.collaboration_store.paused) == 2
 
 
 def test_auto_help_does_not_retry_after_hub_failure(tmp_path, monkeypatch):
@@ -171,6 +242,8 @@ def test_auto_help_does_not_retry_after_hub_failure(tmp_path, monkeypatch):
 
 def test_mobile_service_enqueues_consult_only_for_unsupported_actionable_requests(tmp_path):
     class FakeHelp:
+        providers = ("codex", "claude")
+
         def __init__(self):
             self.calls = []
 
@@ -197,6 +270,8 @@ def test_mobile_service_enqueues_consult_only_for_unsupported_actionable_request
     assert response["auto_help_request_id"] == "help_test_123"
     assert len(helper.calls) == 1
     assert "consulta gratuita" in response["message"]
+    assert "Codex e Claude Code" in response["message"]
+    assert "Kilo/LLM7" not in response["message"]
 
 
 def test_auto_help_never_replays_a_request_left_running_after_restart(tmp_path):
