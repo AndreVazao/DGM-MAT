@@ -62,6 +62,23 @@ function createHarness(options = {}) {
         querySelector() { return null; },
         contains() { return false; }
       });
+      if (options.assistantResponse) {
+        messages.push({
+          isConnected: true,
+          innerText: options.assistantResponse,
+          id: "assistant-turn-1",
+          tagName: "DIV",
+          parentElement: null,
+          getBoundingClientRect() { return { width: 500, height: 80 }; },
+          getAttribute(name) {
+            if (name === "data-message-author-role") return "assistant";
+            if (name === "data-message-id") return "assistant-turn-1";
+            return null;
+          },
+          querySelector() { return null; },
+          contains() { return false; }
+        });
+      }
     }
   };
   const document = {
@@ -107,6 +124,12 @@ function createHarness(options = {}) {
         assert.equal(accepted, true);
       });
     },
+    execute(request) {
+      return new Promise(resolve => {
+        const accepted = listener({ type: "DGM_EXECUTE_BROWSER_TASK", ...request }, {}, response => resolve(response));
+        assert.equal(accepted, true);
+      });
+    },
     clicked: () => clicked
   };
 }
@@ -140,7 +163,18 @@ async function main() {
   assert.equal(unverifiedResponse.data.status, "submitted_unverified");
   assert.equal(unverified.clicked(), true);
 
-  process.stdout.write("PASS: 4 visible-UI message-send safety fixtures\\n");
+  const mission = createHarness({ assistantResponse: "The repository is clean and the CI is green." });
+  const missionResponse = await mission.execute({
+    provider: "chatgpt",
+    source_id: "fixture-conversation",
+    message: "Inspect the repository and report.",
+    response_timeout_ms: 1000
+  });
+  assert.equal(missionResponse.ok, true, missionResponse.error);
+  assert.equal(missionResponse.data.status, "completed");
+  assert.match(missionResponse.data.assistant_text, /repository is clean/);
+
+  process.stdout.write("PASS: 5 visible-UI message and mission-response fixtures\\n");
 }
 
 main().catch(error => {
