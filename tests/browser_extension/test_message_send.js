@@ -83,7 +83,7 @@ function createHarness(options = {}) {
   };
   const document = {
     title: "Existing conversation | ChatGPT",
-    body: { innerText: "" },
+    body: { innerText: options.bodyText || "" },
     querySelectorAll(selector) {
       if (selector === "[data-message-author-role]") return messages;
       if (selector === "#prompt-textarea" || selector === '[data-testid="prompt-textarea"]' ||
@@ -163,6 +163,18 @@ async function main() {
   assert.equal(unverifiedResponse.data.status, "submitted_unverified");
   assert.equal(unverified.clicked(), true);
 
+  const limited = createHarness({ bodyText: "You've reached your daily usage limit. Try again later." });
+  const limitedResponse = await limited.execute({
+    provider: "chatgpt",
+    source_id: "fixture-conversation",
+    message: "Do not send while this provider is limited.",
+    response_timeout_ms: 1000
+  });
+  assert.equal(limitedResponse.ok, true, limitedResponse.error);
+  assert.equal(limitedResponse.data.status, "blocked");
+  assert.equal(limitedResponse.data.reason, "rate_limited");
+  assert.equal(limited.clicked(), false, "a provider quota page must be detected before sending");
+
   const mission = createHarness({ assistantResponse: "The repository is clean and the CI is green." });
   const missionResponse = await mission.execute({
     provider: "chatgpt",
@@ -174,7 +186,7 @@ async function main() {
   assert.equal(missionResponse.data.status, "completed");
   assert.match(missionResponse.data.assistant_text, /repository is clean/);
 
-  process.stdout.write("PASS: 5 visible-UI message and mission-response fixtures\\n");
+  process.stdout.write("PASS: 6 visible-UI message, quota and mission-response fixtures\\n");
 }
 
 main().catch(error => {
