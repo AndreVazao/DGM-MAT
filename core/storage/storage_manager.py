@@ -36,7 +36,7 @@ class RuntimeStorageManager:
 
     @staticmethod
     def default_persistent_path() -> Path:
-        """Stable per-user runtime path; never place mutable state beside the executable."""
+        """Stable runtime path inside the persistent Vault; never beside the executable."""
         configured_vault = os.environ.get("DGM_VAULT_PATH")
         if configured_vault:
             vault_root = Path(configured_vault).expanduser()
