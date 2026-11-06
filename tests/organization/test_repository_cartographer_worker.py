@@ -5,6 +5,7 @@ import re
 
 import pytest
 
+from core.organization import InternalMessageBus, WorkerRuntime
 from core.organization.models import Message
 from core.organization.repository_cartographer_worker import RepositoryCartographerWorker
 
@@ -138,3 +139,21 @@ def test_inventory_is_bounded_by_configured_entry_limit(tmp_path):
     assert result["counts"]["entries"] <= 2
     assert result["inventory_limit_reached"] is True
     assert len(result["sample"]) <= 1
+
+def test_worker_runs_through_explicit_durable_message_dispatch(tmp_path):
+    worker, _ = make_worker(tmp_path)
+    bus = InternalMessageBus()
+    runtime = WorkerRuntime(bus)
+    runtime.register_handler(worker.agent_id, worker)
+    message = make_message(request())
+    bus.send(message)
+
+    dispatch = runtime.dispatch_one(worker.agent_id)
+
+    assert dispatch.status == "HANDLED"
+    assert dispatch.result["status"] == "COMPLETED_READ_ONLY"
+    receipt = bus.get_dispatch_result(message.message_id)
+    assert receipt["status"] == "HANDLED"
+    assert receipt["result"]["repository_id"] == "demo"
+    assert bus.receive(worker.agent_id, unread_only=True) == []
+    bus.close()
