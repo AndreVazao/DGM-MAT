@@ -90,6 +90,8 @@ class RepositoryCartographerWorker:
         }
 
     def __call__(self, message: Message) -> dict:
+        if message.recipient_id != self.agent_id:
+            return self._blocked("recipient_mismatch", message)
         if message.sender_id not in self.allowed_senders:
             return self._blocked("sender_not_allowlisted", message)
         if not message.mission_id or not message.correlation_id:
@@ -122,9 +124,14 @@ class RepositoryCartographerWorker:
             return self._blocked("repository_not_allowlisted", message)
 
         try:
-            # build_inventory does not read file contents and does not follow symlinks.
+            # Re-resolve on every dispatch to detect a root replaced by an
+            # external symlink after host configuration was loaded.
+            verified_root = repository_root.resolve(strict=True)
+            if not verified_root.is_dir() or not verified_root.is_relative_to(self.allowed_root):
+                return self._blocked("repository_root_changed_or_outside_allowlist", message)
+            # build_inventory does not read file contents and does not follow child symlinks.
             report = build_inventory(
-                repository_root,
+                verified_root,
                 max_depth=self.max_depth,
                 max_entries=self.max_entries,
             )
