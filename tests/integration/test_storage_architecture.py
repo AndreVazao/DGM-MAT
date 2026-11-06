@@ -15,6 +15,7 @@ def test_storage_manager_default_path(monkeypatch, tmp_path):
     """Default runtime data is per-user and independent of the executable."""
     monkeypatch.delenv("DGM_STORAGE_PATH", raising=False)
     monkeypatch.delenv("DGM_BASE_PATH", raising=False)
+    monkeypatch.delenv("DGM_VAULT_PATH", raising=False)
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "AppData" / "Local"))
     manager = RuntimeStorageManager()
     expected = tmp_path / "AppData" / "Local" / "DGM-MAT" / "Vault" / "runtime"
@@ -77,6 +78,7 @@ def test_storage_manager_frozen_install_migrates_to_per_user_runtime(monkeypatch
     """A frozen build uses LOCALAPPDATA and copies the old install data without deleting it."""
     monkeypatch.delenv("DGM_STORAGE_PATH", raising=False)
     monkeypatch.delenv("DGM_BASE_PATH", raising=False)
+    monkeypatch.delenv("DGM_VAULT_PATH", raising=False)
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "AppData" / "Local"))
     executable = tmp_path / "DGM-MAT" / "installed" / "DGM-MAT.exe"
     project_root = executable.parent.parent
@@ -100,6 +102,7 @@ def test_storage_manager_frozen_install_migrates_to_per_user_runtime(monkeypatch
 def test_legacy_runtime_conflicts_are_preserved_separately(monkeypatch, tmp_path):
     monkeypatch.delenv("DGM_STORAGE_PATH", raising=False)
     monkeypatch.delenv("DGM_BASE_PATH", raising=False)
+    monkeypatch.delenv("DGM_VAULT_PATH", raising=False)
     local_data = tmp_path / "AppData" / "Local"
     monkeypatch.setenv("LOCALAPPDATA", str(local_data))
     executable = tmp_path / "DGM-MAT" / "installed" / "DGM-MAT.exe"
@@ -127,6 +130,7 @@ def test_legacy_runtime_conflicts_are_preserved_separately(monkeypatch, tmp_path
 def test_runtime_storage_is_nested_under_the_same_vault_override(tmp_path, monkeypatch):
     monkeypatch.delenv("DGM_STORAGE_PATH", raising=False)
     monkeypatch.delenv("DGM_BASE_PATH", raising=False)
+    monkeypatch.delenv("DGM_VAULT_PATH", raising=False)
     vault_root = tmp_path / "chosen-vault"
     monkeypatch.setenv("DGM_VAULT_PATH", str(vault_root))
     manager = RuntimeStorageManager()
