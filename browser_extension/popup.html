@@ -1,30 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-PT">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>DGM-MAT Recovery</title>
+  <title>DGM-MAT Browser Operator</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <main>
     <header>
       <strong>DGM-MAT</strong>
-      <span>Conversation recovery</span>
+      <span>Browser session operator</span>
     </header>
     <section id="pair-section">
-      <label for="pair-code">One-time pairing code</label>
+      <label for="pair-code">Código de ligação de utilização única</label>
       <input id="pair-code" type="password" autocomplete="off" spellcheck="false" placeholder="Code from the local DGM-MAT PC">
-      <button id="pair-button" type="button">Pair with DGM-MAT</button>
+      <button id="pair-button" type="button">Ligar ao DGM-MAT</button>
+    </section>
+    <section id="operator-section">
+      <label for="message-input">Send a message to the active AI conversation</label>
+      <textarea id="message-input" rows="5" maxlength="30000" placeholder="Write the instruction for ChatGPT, Gemini or Grok…"></textarea>
+      <button id="send-message-button" type="button">Send to active conversation</button>
+      <small>Sending requires a confirmation. Automatic retries are disabled to prevent duplicate messages.</small>
     </section>
     <section>
-      <label class="toggle"><input id="auto-checkbox" type="checkbox"> Enable unattended recovery across open provider tabs</label>
-      <button id="start-button" type="button" disabled>Scan and recover this provider</button>
-      <button id="retry-button" type="button" class="secondary" disabled>Retry blocked conversation</button>
-      <button id="stop-button" type="button" class="secondary">Stop recovery</button>
+      <label class="toggle"><input id="auto-checkbox" type="checkbox"> Ativar recuperação automática nos separadores abertos</label>
+      <button id="start-button" type="button" disabled>Analisar e recuperar este fornecedor</button>
+      <button id="retry-button" type="button" class="secondary" disabled>Repetir conversa bloqueada</button>
+      <button id="stop-button" type="button" class="secondary">Parar recuperação</button>
     </section>
     <p id="status" role="status">Checking local connection…</p>
-    <small>Only visible conversation content is read. No cookies, passwords or hidden provider APIs.</small>
+    <small>Só é lido conteúdo visível. Não são acedidos cookies, palavras-passe ou APIs ocultas.</small>
   </main>
   <script src="popup.js"></script>
 </body>
