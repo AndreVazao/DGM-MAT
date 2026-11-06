@@ -51,6 +51,5 @@ def bootstrap_full_office(registry: AgentRegistry | None = None) -> AgentRegistr
         if registry.get_department(department.department_id) is None:
             registry.register_department(department)
     for agent in OFFICE_AGENTS:
-        if registry.get_agent(agent.agent_id) is None:
-            registry.register_agent(agent)
+        registry.reconcile_agent_profile(agent)
     return registry
