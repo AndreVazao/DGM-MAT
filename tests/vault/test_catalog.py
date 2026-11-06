@@ -78,6 +78,10 @@ def test_repository_snapshot_ignores_generated_and_symlinked_directories(tmp_pat
     assert not any("node_modules" in item["path"] for item in data["entries"])
     assert not any(item["path"].startswith("linked/") for item in data["entries"])
     assert snapshot["languages"]["Python"] == 1
+    tree_text = Path(snapshot["tree_text_path"]).read_text(encoding="utf-8")
+    assert "src/" in tree_text and "main.py" in tree_text
+    current = json.loads(Path(snapshot["current_pointer"]).read_text(encoding="utf-8"))
+    assert current["snapshot_id"] == snapshot["snapshot_id"]
 
 
 def test_tree_limit_fails_without_writing_partial_snapshot(tmp_path):
