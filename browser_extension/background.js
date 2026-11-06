@@ -10,8 +10,37 @@ const PROVIDER_TABS_KEY = "dgmRecoveryProviderTabs";
 const BROWSER_QUEUE_AUTO_KEY = "dgmBrowserOperatorAutoEnabled";
 const BROWSER_TASK_KEY = "dgmBrowserOperatorCurrentTask";
 const BROWSER_ALARM = "dgm-browser-operator-poll";
+const PROVIDER_PAUSE_KEY = "dgmBrowserProviderPauses";
 let browserPollInProgress = false;
 let startInProgress = false;
+
+async function pauseBrowserProvider(provider, reason) {
+  if (!["chatgpt", "grok", "gemini", "deepseek", "qwen"].includes(provider)) return;
+  const stored = await chrome.storage.local.get(PROVIDER_PAUSE_KEY);
+  const pauses = stored[PROVIDER_PAUSE_KEY] || {};
+  const cooldownMs = reason === "rate_limited" ? 60 * 60 * 1000 : 15 * 60 * 1000;
+  pauses[provider] = {
+    reason: String(reason || "provider_blocked"),
+    paused_at: new Date().toISOString(),
+    resume_after: Date.now() + cooldownMs
+  };
+  await chrome.storage.local.set({
+    [PROVIDER_PAUSE_KEY]: pauses,
+    dgmBrowserOperatorLastStatus: provider + " paused after " + pauses[provider].reason +
+      "; another free provider will be tried and this one rechecked after cooldown."
+  });
+}
+
+async function isBrowserProviderPaused(provider) {
+  const stored = await chrome.storage.local.get(PROVIDER_PAUSE_KEY);
+  const pauses = stored[PROVIDER_PAUSE_KEY] || {};
+  const pause = pauses[provider];
+  if (!pause) return false;
+  if (Number(pause.resume_after) > Date.now()) return true;
+  delete pauses[provider];
+  await chrome.storage.local.set({ [PROVIDER_PAUSE_KEY]: pauses });
+  return false;
+}
 
 async function readState() {
   const data = await chrome.storage.local.get([TOKEN_KEY, TOKEN_EXPIRY_KEY, RUN_KEY]);
@@ -103,6 +132,7 @@ async function startNextAutoProvider(excludeProvider) {
   const tabs = stored[PROVIDER_TABS_KEY] || {};
   for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
     if (provider === excludeProvider || !Number.isInteger(tabs[provider])) continue;
+    if (await isBrowserProviderPaused(provider)) continue;
     try {
       const result = await startRecovery(tabs[provider], false);
       if (!result.finished) return { started: true, provider };
@@ -185,6 +215,7 @@ async function setAutoBrowserOperator(enabled) {
 
 async function finishBrowserOperatorTask(task, token, outcome) {
   if (outcome?.status === "blocked") {
+    await pauseBrowserProvider(task.provider, outcome.reason);
     await api("/browser-operator/tasks/" + encodeURIComponent(task.task_id) + "/fail", {
       claim_token: task.claim_token,
       reason: String(outcome.reason || "provider_blocked"),
@@ -241,7 +272,8 @@ async function pollBrowserOperatorQueue() {
     const state = await readState();
     if (!state.token || state.run?.active) return;
     const tabs = settings[PROVIDER_TABS_KEY] || {};
-    for (const provider of ["chatgpt", "gemini", "grok"]) {
+    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
+      if (await isBrowserProviderPaused(provider)) continue;
       const tabId = tabs[provider];
       if (!Number.isInteger(tabId)) continue;
       let tab;
@@ -385,6 +417,7 @@ async function handlePageReady(message, sender) {
   const pendingTask = pendingState[BROWSER_TASK_KEY];
   if (pendingTask && pendingTask.tab_id === sender.tab.id) {
     if (message.blocked) {
+      await pauseBrowserProvider(pendingTask.provider, message.blocked);
       await api("/browser-operator/tasks/" + encodeURIComponent(pendingTask.task_id) + "/fail", {
         claim_token: pendingTask.claim_token,
         reason: message.blocked,
@@ -392,6 +425,7 @@ async function handlePageReady(message, sender) {
       }, state.token).catch(() => {});
       await chrome.storage.local.remove(BROWSER_TASK_KEY);
       await chrome.storage.local.set({ dgmBrowserOperatorLastStatus: "Mission task blocked: " + message.blocked });
+      await pollBrowserOperatorQueue().catch(() => {});
       return;
     }
     if (message.provider !== pendingTask.provider) return;
@@ -424,6 +458,7 @@ async function handlePageReady(message, sender) {
   }
   if (run.tab_id !== sender.tab.id) return;
   if (message.blocked) {
+    await pauseBrowserProvider(run.provider, message.blocked);
     await api("/recovery/browser-capture/block", {
       provider: run.provider,
       source_id: run.current.source_id,
