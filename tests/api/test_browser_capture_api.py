@@ -16,6 +16,7 @@ def _client(monkeypatch, tmp_path):
     ledger = RecoveryLedger(tmp_path / "ledger.sqlite3")
     monkeypatch.setattr(browser_capture_api, "_ledger", lambda: ledger)
     monkeypatch.setenv("DGM_RECOVERY_ARCHIVE_ROOT", str(tmp_path / "archive"))
+    monkeypatch.setenv("DGM_VAULT_PATH", str(tmp_path / "vault"))
     from core.conversation_intelligence import pipeline as pipeline_module
     from core.storage.storage_manager import storage_manager
 
@@ -410,3 +411,31 @@ def test_deepseek_and_qwen_conversation_urls_are_provider_scoped(monkeypatch, tm
         assert wrong_id.status_code == 200
         assert wrong_id.json()["registered"] == 0
         assert wrong_id.json()["rejected"] == 1
+
+
+def test_deepseek_and_qwen_are_independent_visible_ui_capture_providers(monkeypatch, tmp_path):
+    client, ledger = _client(monkeypatch, tmp_path)
+    for provider in ("deepseek", "qwen"):
+        discovered = client.post(
+            "/recovery/browser-capture/discover",
+            json=_discovery(provider),
+        )
+        assert discovered.status_code == 200, discovered.text
+        assert discovered.json()["registered"] == 1
+        claimed = client.post(
+            "/recovery/browser-capture/next",
+            json={"provider": provider},
+        )
+        assert claimed.status_code == 200
+        assert claimed.json()["next"]["provider"] == provider
+        captured = client.post(
+            "/recovery/browser-capture/capture",
+            json=_capture(provider),
+        )
+        assert captured.status_code == 200, captured.text
+        result = captured.json()
+        assert result["provider"] == provider
+        assert result["vault_status"] == "archived"
+        assert Path(result["archive_path"]).is_file()
+        assert Path(result["vault_raw_archive_path"]).is_file()
+        assert ledger.get(provider, "conversation-1").capture_status == "verified"
