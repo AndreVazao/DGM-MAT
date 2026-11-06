@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "0.1.1";
+  const VERSION = "0.1.2";
   const PROVIDER_HOSTS = {
     chatgpt: new Set(["chatgpt.com", "chat.openai.com"]),
     gemini: new Set(["gemini.google.com", "bard.google.com"]),
@@ -175,8 +175,8 @@
   function messageIdentity(node, role, content, index) {
     const explicit = node.getAttribute("data-message-id") || node.id;
     if (explicit) return explicit.slice(0, 180);
-    // Text-derived IDs are stable across scroll windows; duplicate identical turns
-    // remain a documented selector limitation until provider DOM IDs are available.
+    // Text-derived IDs are only a fallback. collectVisible() detects a second
+    // distinct DOM node with the same fallback ID and marks the capture ambiguous.
     let hash = 2166136261;
     const value = role + "\u0000" + content;
     for (let i = 0; i < value.length; i++) {
@@ -233,29 +233,88 @@
     const scroller = findScrollContainer(provider);
     const originalTop = scroller.scrollTop;
     const collected = new Map();
-    let sequence = 0;
+    const orderedIds = [];
+    const seenNodeObjects = new WeakSet();
+    let sequenceOrderConflict = false;
     let steps = 0;
     let stableBottomRounds = 0;
 
-    function collectVisible() {
+    function mergeVisibleOrder(snapshotIds, phase) {
+      const uniqueIds = [...new Set(snapshotIds)];
+      if (!uniqueIds.length) return;
+      if (!orderedIds.length) {
+        orderedIds.push(...uniqueIds);
+        return;
+      }
+
+      let index = 0;
+      while (index < uniqueIds.length) {
+        if (orderedIds.includes(uniqueIds[index])) {
+          index++;
+          continue;
+        }
+
+        const runStart = index;
+        while (index < uniqueIds.length && !orderedIds.includes(uniqueIds[index])) {
+          index++;
+        }
+        const newRun = uniqueIds.slice(runStart, index);
+        const previousId = runStart > 0 ? uniqueIds[runStart - 1] : null;
+        const nextId = index < uniqueIds.length ? uniqueIds[index] : null;
+        const previousIndex = previousId ? orderedIds.indexOf(previousId) : -1;
+        const nextIndex = nextId ? orderedIds.indexOf(nextId) : -1;
+
+        if (previousIndex >= 0 && nextIndex >= 0) {
+          if (previousIndex >= nextIndex) {
+            sequenceOrderConflict = true;
+            orderedIds.push(...newRun);
+          } else {
+            // Insert the newly observed turns into the gap between stable anchors.
+            orderedIds.splice(nextIndex, 0, ...newRun);
+          }
+        } else if (previousIndex >= 0) {
+          orderedIds.splice(previousIndex + 1, 0, ...newRun);
+        } else if (nextIndex >= 0) {
+          orderedIds.splice(nextIndex, 0, ...newRun);
+        } else if (phase === "top") {
+          // A disjoint top snapshot is an older history window.
+          orderedIds.unshift(...newRun);
+        } else {
+          // A disjoint downward-scroll snapshot is later in the conversation.
+          orderedIds.push(...newRun);
+        }
+      }
+    }
+    function collectVisible(phase) {
       const nodes = messageNodes(provider);
-      for (const node of nodes) {
+      const snapshotIds = [];
+      for (let index = 0; index < nodes.length; index++) {
+        const node = nodes[index];
         const content = visibleText(node);
         if (!content) continue;
         const role = roleFor(node, provider);
-        const id = messageIdentity(node, role, content, sequence++);
+        const explicitId = node.getAttribute("data-message-id") || node.id;
+        const id = messageIdentity(node, role, content, collected.size + index);
+        snapshotIds.push(id);
+        const repeatedNodeObject = seenNodeObjects.has(node);
+        seenNodeObjects.add(node);
+        if (collected.has(id) && !explicitId && !repeatedNodeObject) {
+          // Identical text-only turns cannot be distinguished from a virtualized
+          // duplicate without a provider message ID. Preserve the snapshot but
+          // mark it truncated rather than silently claiming every turn survived.
+          sequenceOrderConflict = true;
+        }
         if (!collected.has(id)) {
           collected.set(id, {
             message_id: id,
             role,
             content: content.slice(0, 100000),
-            sequence: collected.size,
             timestamp: node.querySelector("time[datetime]")?.getAttribute("datetime") || null
           });
         }
       }
+      mergeVisibleOrder(snapshotIds, phase);
     }
-
     let topLoadSteps = 0;
     let topLoadLimitReached = false;
     try {
@@ -264,14 +323,14 @@
       // sufficient evidence that the oldest messages have loaded.
       scroller.scrollTop = 0;
       await sleep(350);
-      collectVisible();
+      collectVisible("top");
       let stableTopRounds = 0;
       let previousTopHeight = scroller.scrollHeight;
       let previousTopMessageCount = collected.size;
       while (topLoadSteps < 20 && stableTopRounds < 4) {
         scroller.scrollTop = 0;
         await sleep(500);
-        collectVisible();
+        collectVisible("top");
         const currentHeight = scroller.scrollHeight;
         const currentMessageCount = collected.size;
         if (currentHeight > previousTopHeight || currentMessageCount > previousTopMessageCount) {
@@ -295,7 +354,7 @@
           scroller.scrollTop = Math.min(max, before + Math.max(300, scroller.clientHeight * 0.75));
         }
         await sleep(250);
-        collectVisible();
+        collectVisible("scroll");
         steps++;
       }
     } finally {
@@ -303,8 +362,15 @@
     }
 
     if (!collected.size) throw new Error("No message containers were recognized; nothing was archived.");
-    const messages = [...collected.values()];
+    // Merge each DOM window against stable message IDs. Overlapping IDs
+    // establish a relative offset; disjoint top windows are older and prepend,
+    // while disjoint downward-scroll windows append. Ambiguous overlaps mark
+    // the capture truncated instead of asserting a trustworthy sequence.
+    const messages = orderedIds
+      .map(id => collected.get(id))
+      .filter(Boolean);
     messages.forEach((message, index) => { message.sequence = index; });
+    if (messages.length !== collected.size) sequenceOrderConflict = true;
     const unknownRoleCount = messages.filter(message => message.role === "unknown").length;
     return {
       provider,
@@ -312,15 +378,17 @@
       title: conversationTitle(null, location.href),
       url: location.href,
       messages,
-      truncated: steps >= 100 || topLoadLimitReached,
+      truncated: steps >= 100 || topLoadLimitReached || sequenceOrderConflict,
       // Reaching the current DOM top is not proof of oldest provider history.
       history_start_reached: false,
       oldest_boundary: "unknown",
+      oldest_boundary_evidence: "",
       messages_total: messages.length,
       unknown_role_count: unknownRoleCount,
       scroll_steps: steps,
       top_load_steps: topLoadSteps,
       top_load_limit_reached: topLoadLimitReached,
+      sequence_order_conflict: sequenceOrderConflict,
       adapter_version: VERSION,
       captured_at: new Date().toISOString()
     };
