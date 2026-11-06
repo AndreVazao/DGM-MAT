@@ -22,6 +22,9 @@ mission store, scheduler, executor, or memory database.
 - Adds an independent security review for high/critical risk.
 - Every task is marked planning_only=true, execution_authorized=false,
   toolchain_status=not_probed.
+- Language implementation and integration tasks are not pinned to an umbrella
+  department; the future dispatcher must match demonstrated skills and
+  permissions across the actual roster.
 - Implementation proposals require a later approval bound to an exact diff
   and request the sandbox-write permission.
 - Does not assign agents, run tools, apply patches, contact providers, or
