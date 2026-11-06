@@ -15,6 +15,7 @@ from core.recovery.chatgpt_export_importer import (
     import_chatgpt_export_zip,
 )
 from core.recovery.recovery_ledger import RecoveryLedger
+from core.conversation_intelligence.chrome_archive_importer import ChromeConversationArchiveImporter
 from core.recovery.ai_source_inventory import inventory_local_ai_sources
 
 router = APIRouter(prefix="/recovery", tags=["recovery"])
@@ -25,6 +26,12 @@ def get_recovery_ledger() -> RecoveryLedger:
     configured = os.getenv("DGM_RECOVERY_LEDGER_PATH", "").strip()
     path = Path(configured).expanduser() if configured else Path.home() / ".dgm-mat" / "recovery-ledger.sqlite3"
     return RecoveryLedger(path)
+
+
+@router.post("/chrome/import")
+def import_chrome_conversation_archive():
+    """Archive supported Chrome extension JSON exports without modifying source downloads."""
+    return ChromeConversationArchiveImporter().import_inbox()
 
 
 @router.get("/status")

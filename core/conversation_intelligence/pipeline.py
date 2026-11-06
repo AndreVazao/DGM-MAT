@@ -13,6 +13,7 @@ from .models import (
     AuditFinding,
     CodeArtifact,
     ConversationAudit,
+    ConversationMessage,
     ConversationRecord,
 )
 from .progress_store import ConversationProgressStore
@@ -30,7 +31,7 @@ class ConversationIntelligencePipeline:
 
     @staticmethod
     def _audit_to_snapshot(audit: ConversationAudit) -> dict:
-        """Persist reusable derived knowledge, not the full raw conversation transcript."""
+        """Persist the transcript and its reusable audit snapshot with provenance."""
         return {
             "conversation": {
                 "conversation_id": audit.conversation.conversation_id,
@@ -38,6 +39,8 @@ class ConversationIntelligencePipeline:
                 "title": audit.conversation.title,
                 "source": audit.conversation.source,
                 "url": audit.conversation.url,
+                "content": audit.conversation.content,
+                "messages": [asdict(message) for message in audit.conversation.messages],
                 "detected_projects": audit.conversation.detected_projects,
                 "tags": audit.conversation.tags,
                 "metadata": audit.conversation.metadata,
@@ -55,12 +58,16 @@ class ConversationIntelligencePipeline:
             conversation_id=stored_conversation.get("conversation_id", ""),
             provider=stored_conversation.get("provider", "unknown"),
             title=stored_conversation.get("title", "Imported conversation"),
-            content="",
+            content=stored_conversation.get("content", ""),
             source=stored_conversation.get("source", "progress-store"),
             url=stored_conversation.get("url"),
             detected_projects=stored_conversation.get("detected_projects", []),
             tags=stored_conversation.get("tags", []),
             metadata=stored_conversation.get("metadata", {}),
+            messages=[
+                ConversationMessage(**message)
+                for message in stored_conversation.get("messages", [])
+            ],
         )
         artifacts = []
         for item in snapshot.get("artifacts", []):
@@ -117,7 +124,8 @@ class ConversationIntelligencePipeline:
                                 or saved.get("source_fingerprint") != member["conversation_fingerprint"]
                                 or not (isinstance(snapshot, dict)
                                         and isinstance(snapshot.get("conversation"), dict)
-                                        and isinstance(snapshot.get("artifacts"), list))):
+                                        and isinstance(snapshot.get("artifacts"), list)
+                                        and isinstance(snapshot["conversation"].get("messages"), list))):
                             break
                         cached_audits.append(self._snapshot_to_audit(snapshot))
                     else:
@@ -208,8 +216,10 @@ class ConversationIntelligencePipeline:
             raise
         return audits
 
-    def build_delegation_context(self, provider: str | None = None) -> dict:
-        """Provide delegations with cached archive knowledge and open reviews, without rereading exports."""
+    def build_delegation_context(
+        self, provider: str | None = None, *, include_messages: bool = False
+    ) -> dict:
+        """Build bounded delegation context; include full messages only when explicitly requested."""
         audits = self.load_saved_audits(provider)
         conversations = []
         for audit in audits:
@@ -220,6 +230,14 @@ class ConversationIntelligencePipeline:
                 "url": audit.conversation.url,
                 "suggested_project": audit.suggested_project,
                 "suggested_title": audit.suggested_title,
+                "message_count": len(audit.conversation.messages),
+                "message_roles": [
+                    message.role for message in audit.conversation.messages
+                ],
+                "messages": (
+                    [asdict(message) for message in audit.conversation.messages]
+                    if include_messages else []
+                ),
                 "findings": [asdict(finding) for finding in audit.findings],
                 "artifacts": [{
                     "artifact_id": artifact.artifact_id,

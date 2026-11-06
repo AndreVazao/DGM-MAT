@@ -46,7 +46,18 @@ class ConversationIngestor:
                     content=content,
                     source=source,
                     url=item.get("url"),
-                    metadata={"raw_keys": sorted(item.keys())},
+                    metadata={
+                        **(item.get("metadata") if isinstance(item.get("metadata"), dict) else {}),
+                        **{
+                            key: item[key]
+                            for key in (
+                                "last_visit_at", "visit_count", "capture_status",
+                                "messages_captured", "source", "completeness", "captured_at",
+                            )
+                            if key in item
+                        },
+                        "raw_keys": sorted(item.keys()),
+                    },
                     messages=self._extract_messages(item, cid, source),
                 ))
         return result
@@ -114,7 +125,10 @@ class ConversationIngestor:
                 sequence=len(result),
                 timestamp=str(timestamp) if timestamp is not None else None,
                 source_path=source,
-                metadata={"raw_keys": sorted(message.keys())},
+                metadata={
+                    **(message.get("metadata") if isinstance(message.get("metadata"), dict) else {}),
+                    "raw_keys": sorted(message.keys()),
+                },
             ))
         return result
 
@@ -171,6 +185,8 @@ class ConversationIngestor:
             "grok": "grok", "xai": "grok",
             "deepseek": "deepseek", "gemini": "gemini",
             "copilot": "copilot", "telescope": "telescope",
+            "chrome-history": "chrome-history", "chrome-extension": "chrome-extension",
+            "dgm-hub": "dgm-hub", "dgm-mat-mobile": "dgm-mat-mobile",
         }
         return aliases.get(normalized, "unknown")
 

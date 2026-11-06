@@ -145,3 +145,14 @@ def test_api_only_mode_does_not_enable_repository_learning():
     configured = backend_service._configure_runtime_environment(environment, "api")
 
     assert configured == {}
+
+
+def test_start_refuses_second_process_when_existing_dgm_process_is_not_healthy(capsys):
+    with patch.object(backend_service, "_health", return_value=(False, "not ready")):
+        with patch.object(backend_service, "_find_existing_dgm_process", return_value=7552):
+            with patch.object(backend_service.subprocess, "Popen") as popen:
+                assert backend_service.start("127.0.0.1", 8181, mode="full") == 2
+    popen.assert_not_called()
+    output = capsys.readouterr().out
+    assert "PID 7552 already exists" in output
+    assert "no second instance was started" in output
