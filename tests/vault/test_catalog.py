@@ -196,5 +196,9 @@ def test_empty_captures_are_not_cross_provider_duplicates_and_whitespace_is_norm
         project_id="dgm-mat",
     )
     assert first["status"] == "archived"
-    assert second["status"] == "duplicate"
+    assert second["status"] == "archived_duplicate"
+    assert second["duplicate"] is True
     assert second["canonical_provider"] == "chatgpt"
+    assert Path(second["archive_path"]).is_file()
+    assert len(vault.list_conversations("dgm-mat")) == 4
+    assert vault.summary()["duplicate_candidates"] == 1
