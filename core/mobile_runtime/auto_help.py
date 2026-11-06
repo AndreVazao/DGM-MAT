@@ -1,8 +1,9 @@
 """Free-only, durable help-seeking worker for blocked mobile requests.
 
-Only Kilo's open/free route and anonymous LLM7 are eligible by default.
-External answers are untrusted, persisted for independent review, and never
-execute commands or edit repositories. Ambiguous calls are never retried.
+Kilo/LLM7 remain the default. Codex/Claude are explicit opt-ins requiring
+operator-attested free capacity and a verified DGM-HUB provider response.
+External answers are untrusted, reviewed independently, and never execute
+commands or edit repositories. Ambiguous calls are never retried.
 """
 from __future__ import annotations
 
@@ -38,6 +39,13 @@ _SECRET_PATTERNS = (
     re.compile(r"(?i)bearer\s+[A-Za-z0-9._~+/-]{20,}"),
 )
 _ACTIONABLE_INTENTS = frozenset({"repair", "implement", "deploy", "sync", "audit", "research"})
+_EVIDENCE_CONTRACT = (
+    "Evidence contract: use exclusively the Hub section named CONTEXTO DE EVIDÊNCIA. "
+    "Every factual sentence must end with an exact reference ID copied from that section, "
+    "in the form [E1], [E2], etc. Never invent IDs and never cite CONTEXTO AUTORIZADO. "
+    "If no usable evidence references are supplied, answer exactly: "
+    "NÃO TENHO EVIDÊNCIA SUFICIENTE."
+)
 
 
 def _now() -> str:
@@ -182,7 +190,7 @@ class AutoHelpStore:
         allowed = {
             "COMPLETED", "PARTIAL", "BLOCKED_PROVIDER_UNAVAILABLE",
             "BLOCKED_HUB", "BLOCKED_AUDIT", "BLOCKED_SECRET_CONTENT",
-            "FAILED_NO_RETRY",
+            "BLOCKED_EVIDENCE", "FAILED_NO_RETRY",
         }
         if status not in allowed:
             raise ValueError("Invalid terminal auto-help status")
@@ -466,14 +474,24 @@ class AutoHelpWorker:
                 )
                 packets[provider] = packet["collaboration_id"]
 
+            # The Hub evidence gate validates factual lines individually. Put its exact
+            # citation contract in the goal, not only in local collaboration metadata.
+            goal_suffix = "\\n\\n" + _EVIDENCE_CONTRACT
+            goal_budget = max(1, 4000 - len(goal_suffix))
+            hub_goal = request["goal"][:goal_budget].rstrip() + goal_suffix
+            hub_context = (
+                "Use only the Hub's CONTEXTO DE EVIDÊNCIA section as factual support. "
+                "Do not cite CONTEXTO AUTORIZADO. If no usable [E#] references exist, "
+                "say that evidence is insufficient instead of guessing. "
+                "The operator explicitly attested free-only capacity for this session; "
+                "the Hub does not expose a numeric remaining quota. Stop on any "
+                "rate/quota/capacity error. No retry or paid fallback. "
+                "No source code, file contents, conversation history, credentials, or tokens are included.\\n"
+                + "Local classification reason: " + request["reason"][:1500]
+            )
             task = bridge.consult(
-                goal=request["goal"],
-                context=(
-                    "Local classification reason: " + request["reason"][:1500] +
-                    "\nThe operator explicitly attested free-only capacity for this session; the Hub does not "
-                    "expose a numeric remaining quota. Stop on any rate/quota/capacity error. No retry or paid fallback."
-                    "\nNo source code, file contents, conversation history, credentials, or tokens are included."
-                ),
+                goal=hub_goal,
+                context=hub_context,
                 providers=selected,
             )
 
@@ -483,17 +501,30 @@ class AutoHelpWorker:
                 collaboration_id = packets[provider]
                 answer = result.get("text") if isinstance(result.get("text"), str) else ""
                 provider_status = str(result.get("status", "unknown"))[:40]
-                if provider_status != "ok" or not answer.strip() or _contains_secret(answer):
+                grounding_status = str(result.get("grounding_status", "not_reported"))[:100].casefold()
+                if provider_status == "unverified" or grounding_status in {"unverified", "rejected", "blocked"}:
+                    rejected_status = "UNVERIFIED_EVIDENCE"
+                    rejection_reason = (
+                        "DGM-HUB withheld the provider response because factual claims lacked valid evidence citations."
+                    )
+                elif provider_status != "ok" or not answer.strip() or _contains_secret(answer):
+                    rejected_status = "REJECTED_OR_UNAVAILABLE"
+                    rejection_reason = (
+                        "Provider returned an error/empty response or secret-like content."
+                    )
+                else:
+                    rejected_status = None
+                    rejection_reason = None
+                if rejected_status is not None:
                     engine.pause_specialist_collaboration(
                         collaboration_id,
-                        reason=(
-                            "Provider returned an error/empty response or secret-like content. "
-                            "The result was not promoted; no retry or paid fallback."
-                        ),
+                        reason=rejection_reason + " The result was not promoted; no retry or paid fallback.",
                     )
                     responses.append({
                         "provider_id": provider,
-                        "status": "REJECTED_OR_UNAVAILABLE",
+                        "status": rejected_status,
+                        "grounding_status": grounding_status,
+                        "evidence_refs": result.get("evidence_refs", []),
                         "collaboration_id": collaboration_id,
                         "result_trusted": False,
                     })
@@ -539,14 +570,31 @@ class AutoHelpWorker:
                 rendered.append(f"### {provider.upper()} (não verificado)\n{answer[:3200]}")
 
             successful = sum(item["status"] == "RESULT_RECEIVED" for item in responses)
-            overall = "COMPLETED" if successful == len(selected) and successful else "PARTIAL"
+            evidence_rejected = any(item["status"] == "UNVERIFIED_EVIDENCE" for item in responses)
+            overall = (
+                "COMPLETED" if successful == len(selected) and successful
+                else "PARTIAL" if successful
+                else "BLOCKED_EVIDENCE" if evidence_rejected
+                else "PARTIAL"
+            )
+            if rendered:
+                outcome_text = "\\n\\n".join(rendered)
+            elif evidence_rejected:
+                outcome_text = (
+                    "Codex/Claude responderam, mas o DGM-HUB reteve as respostas porque "
+                    "não cumpriram o contrato de citações [E#]. As respostas originais "
+                    "permanecem no histórico do Hub para revisão; não foram promovidas "
+                    "nem usadas como conhecimento factual."
+                )
+            else:
+                outcome_text = "Nenhum fornecedor devolveu uma resposta utilizável."
             response_text = (
                 "Pedi uma segunda opinião aos fornecedores gratuitos disponíveis no DGM-HUB. "
                 "As respostas são sugestões externas não verificadas; não alterei ficheiros, "
                 "não executei comandos e não autorizei qualquer fornecedor a agir. "
-                "Vou cruzar estas propostas com o código e os testes locais.\n\n"
-                + ("\n\n".join(rendered) if rendered else "Nenhum fornecedor devolveu uma resposta utilizável.")
-                + "\n\n**Estado:** resultado consultivo guardado; revisão independente necessária. "
+                "Vou cruzar propostas válidas com o código e os testes locais.\\n\\n"
+                + outcome_text
+                + "\\n\\n**Estado:** resultado consultivo guardado; revisão independente necessária. "
                 "Sem repetição automática e sem fallback pago."
             )
             result_payload = {
