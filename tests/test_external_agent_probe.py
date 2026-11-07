@@ -334,3 +334,47 @@ def test_combined_readiness_separates_fcc_inference_from_local_coding_agents(mon
     assert result["local_coding_agents"]["execution_ready"] is False
     assert result["local_coding_agents"]["codex_cli"]["installed"] is True
     assert result["local_coding_agents"]["claude_code_cli"]["authenticated"] is True
+
+
+def test_claude_command_refuses_cmd_wrapper_without_launching(monkeypatch):
+    monkeypatch.setattr(probe.shutil, "which", lambda _name: "/tmp/claude.cmd")
+
+    command, executable = probe._claude_command()
+
+    assert command is None
+    assert executable == "/tmp/claude.cmd"
+
+
+def test_claude_auth_probe_uses_minimal_environment_and_temporary_cwd(monkeypatch):
+    monkeypatch.setattr(probe, "_claude_command", lambda: (["/opt/claude", "auth", "status"], "/opt/claude"))
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-be-inherited")
+    monkeypatch.setenv("OPENAI_API_KEY", "must-not-be-inherited-either")
+    captured = {}
+
+    def fake_run(*args, **kwargs):
+        captured["args"] = args
+        captured.update(kwargs)
+        return SimpleNamespace(stdout='{"loggedIn": false}', stderr="", returncode=1)
+
+    monkeypatch.setattr(probe.subprocess, "run", fake_run)
+    result = probe.probe_claude_code()
+
+    assert result["status"] == "installed_logged_out"
+    assert captured["kwargs"] if "kwargs" in captured else True
+    assert captured["shell"] is False
+    assert captured["cwd"]
+    assert "ANTHROPIC_API_KEY" not in captured["env"]
+    assert "OPENAI_API_KEY" not in captured["env"]
+
+
+def test_claude_cmd_wrapper_probe_fails_closed_without_subprocess(monkeypatch):
+    monkeypatch.setattr(probe, "_claude_command", lambda: (None, "C:/Users/operator/AppData/Roaming/npm/claude.cmd"))
+    monkeypatch.setattr(probe.subprocess, "run", lambda *_args, **_kwargs: pytest.fail("cmd wrapper must not execute"))
+
+    result = probe.probe_claude_code()
+
+    assert result["installed"] is True
+    assert result["authenticated"] is None
+    assert result["status"] == "auth_probe_unavailable"
+    assert "cmd.exe reparses" in result["detail"]
+    assert result["model_requests_sent"] == 0
