@@ -38,7 +38,7 @@ class FakeMessage {
     this.parentElement = null;
     this.attributes = {
       "data-message-author-role": role,
-      "data-message-id": role + "-" + Math.random().toString(16).slice(2)
+      "data-message-id": role + "-turn"
     };
   }
   getBoundingClientRect() { return { width: 500, height: 60 }; }
