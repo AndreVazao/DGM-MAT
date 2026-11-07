@@ -235,9 +235,9 @@ def test_open_root_rejects_unsupported_filesystem_capabilities(tmp_path, monkeyp
 def test_backup_root_acl_is_verified_from_the_pinned_directory_handle(tmp_path):
     backend = WindowsDirectoryHandleBackend()
     backup_root = tmp_path / "private-backups"
-    handle = backend.ensure_directory(backup_root)
+    handle = backend.ensure_directory(backup_root, read_control=True, write_dac=True)
     try:
-        result = backend.assert_private_directory_acl(handle)
+        result = backend.restrict_private_directory_acl(handle)
         assert result["owner_verified"] is True
         assert result["current_user_inheritable_full_control"] is True
         assert result["ace_count"] >= 1
