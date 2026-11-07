@@ -42,7 +42,8 @@ The legacy branch also modified `core/api/api_server.py` and `core/api/security_
 - Added a cryptographically random one-time claim token; result/block operations must present the matching token, which is cleared on completion or block.
 - Added five-provider support and an opt-in extension polling toggle (disabled by default). The extension uses the already-tested visible-UI browser task executor and existing authenticated provider tabs; it does not use provider APIs or hidden endpoints.
 - Added a popup form to create a consultation, explicitly attest free-tier account status, review pending requests, and approve each send. Each provider request remains separately approved.
-- Added an optional AutoHelp fallback: only when the DGM-HUB has no ready free provider, and only when both browser-consult and free-capacity environment opt-ins are enabled, AutoHelp queues a consultation for the five browser providers and records `WAITING_FOR_OPERATOR_APPROVAL`. No message is sent at enqueue time. Completed answers are appended to the linked local mobile thread as untrusted external suggestions.
+- Added an optional AutoHelp fallback: only when the DGM-HUB has no ready free provider, and only when browser-consult, AutoHelp browser-consult and free-capacity environment opt-ins are enabled, AutoHelp queues a consultation for the five browser providers and records `WAITING_FOR_OPERATOR_APPROVAL`. No message is sent at enqueue time. Completed answers are appended to the linked local mobile thread as untrusted external suggestions.
+- On extension service-worker restart, any persisted in-flight consultation claim is blocked as interrupted and cleared without replay, even if polling has since been disabled.
 - Serialized consultation polling against mission browser execution so both cannot send concurrently in the same provider tab.
 - Added API tests for route scopes, authentication, explicit approval, free-capacity attestation, claim ownership and untrusted result persistence; expanded store tests for approval, deduplication, secret blocking, restart handling and claim tokens.
 
@@ -59,6 +60,7 @@ The legacy branch also modified `core/api/api_server.py` and `core/api/security_
 - GitHub branch creation and file preservation: completed.
 - File-level comparison against current `main`: completed for the candidate modules listed above.
 - Optional mobile AutoHelp-to-browser-consult handoff: implemented, gated by three explicit environment settings, and covered by a focused regression test.
+- Browser extension worker restart recovery: stale one-shot claims are blocked and never replayed.
 - Automated tests executed in this recovery session: **none** (GitHub-only environment); test coverage has been added but remains unexecuted.
 - Runtime/Windows/Chrome acceptance: **not performed**.
 - Activation, merge and legacy branch deletion: **not performed**. The feature remains disabled by default.
