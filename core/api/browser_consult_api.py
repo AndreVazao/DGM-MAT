@@ -136,6 +136,27 @@ def complete_browser_consultation(payload: BrowserConsultResultRequest, request:
     _principal(request)
     try:
         result = _store().finish(payload.consultation_id, claim_token=payload.claim_token, response_text=payload.response_text)
+        task_ref = str(result.get("task_ref") or "")
+        if result.get("status") == "COMPLETED" and task_ref.startswith("mobile-thread:"):
+            thread_id = task_ref[len("mobile-thread:"):]
+            try:
+                from core.api.mobile_bridge import service as mobile_service
+                mobile_service.store.append_message(
+                    thread_id,
+                    "assistant",
+                    "### " + str(result.get("provider", "AI")).upper() + " (resposta externa não verificada)\\n\\n" + payload.response_text[:12000],
+                    metadata={
+                        "browser_consultation_id": payload.consultation_id,
+                        "provider": result.get("provider"),
+                        "result_trusted": False,
+                        "approval_required": True,
+                        "paid_fallback": False,
+                        "source": "dgm-browser-consultation",
+                    },
+                )
+                result["conversation_updated"] = True
+            except Exception:
+                result["conversation_warning"] = "local_conversation_update_failed"
         try:
             _audit("command.completed", result["status"], request, result["provider"])
             result["audit_warning"] = None
