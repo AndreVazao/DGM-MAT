@@ -695,7 +695,6 @@ class WindowsDirectoryHandleBackend:
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
             | (self.READ_CONTROL if read_control else 0)
-            | (self.WRITE_DAC if write_dac else 0)
             | self.SYNCHRONIZE
         )
         current = self._nt_open(
@@ -711,14 +710,19 @@ class WindowsDirectoryHandleBackend:
         )
         try:
             self._assert_supported_volume(current)
-            for component in path.parts[1:]:
+            components = path.parts[1:]
+            for index, component in enumerate(components):
+                final_component = index == len(components) - 1
+                final_write_dac = write_dac and final_component
                 try:
-                    child = self.open_child_directory(current, component, read_control=read_control, write_dac=write_dac)
+                    child = self.open_child_directory(
+                        current, component, read_control=read_control, write_dac=final_write_dac
+                    )
                 except WindowsHandleError as exc:
                     if getattr(exc, "ntstatus", None) not in {0xC0000034, 0xC000003A}:
                         raise
                     try:
-                        child = self.create_directory(current, component, read_control=read_control, write_dac=write_dac)
+                        child = self.create_directory(current, component, read_control=read_control, write_dac=final_write_dac)
                     except WindowsHandleError as create_exc:
                         if getattr(create_exc, "ntstatus", None) != 0xC0000035:
                             raise
