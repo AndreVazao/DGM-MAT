@@ -26,6 +26,7 @@ from core.organization.worker_runtime import WorkerRuntime
 from core.organization.delegation import DelegationEngine
 from core.organization.task_manager import OrganizationTaskManager
 from core.organization.models import Task
+from core.execution.local_coding_agent_probe import LocalCodingAgentProbe
 from core.organization.configured_readonly_workers import register_configured_readonly_workers
 from core.organization.read_only_worker_orchestrator import ReadOnlyWorkerOrchestrator
 from core.organization.task_dispatcher import OrganizationTaskDispatcher
@@ -168,6 +169,10 @@ class MissionEngine:
             },
             "task_validated": False,
         }
+
+    def probe_local_coding_agents(self) -> Dict[str, Any]:
+        """Read-only PATH/version probe for Codex and Claude Code; never runs a task."""
+        return LocalCodingAgentProbe().probe_all()
 
     def create_organization_task(self, task: Task) -> Task:
         """Persist a bounded organization task; this does not execute it."""
