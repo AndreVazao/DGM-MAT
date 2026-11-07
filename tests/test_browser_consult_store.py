@@ -61,6 +61,7 @@ def test_enqueue_claim_complete_and_cooldown(monkeypatch, tmp_path):
     assert completed["accepted"] is None
     assert completed["result_trusted"] is False
     assert store.claim_next("chatgpt") is None
+    assert store.approve(queued["consultation_ids"][1], operator="test-operator") is True
     assert store.claim_next("gemini") is not None
 
 
@@ -113,3 +114,25 @@ def test_restart_marks_inflight_consultation_blocked_and_never_replays(monkeypat
     reopened = BrowserConsultStore(path)
     assert reopened.status()["counts"]["BLOCKED_RESTART"] == 1
     assert reopened.claim_next("chatgpt") is None
+
+
+def test_claim_token_is_required_and_single_use(monkeypatch, tmp_path):
+    _configure(monkeypatch, "chatgpt")
+    store = BrowserConsultStore(tmp_path / "consult.sqlite3")
+    queued = store.enqueue(task_ref="mission-6", goal="Review token binding", providers=["chatgpt"])
+    store.approve(queued["consultation_ids"][0], operator="test-operator")
+    item = store.claim_next("chatgpt")
+    with pytest.raises(ValueError):
+        store.finish(item["consultation_id"], claim_token="wrong-token", response_text="Nope")
+    result = store.finish(
+        item["consultation_id"],
+        claim_token=item["claim_token"],
+        response_text="Verified.",
+    )
+    assert result["status"] == "COMPLETED"
+    with pytest.raises(ValueError):
+        store.finish(
+            item["consultation_id"],
+            claim_token=item["claim_token"],
+            response_text="Replay.",
+        )
