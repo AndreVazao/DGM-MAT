@@ -5,17 +5,50 @@ name: Windows Executable Build
   push:
     branches:
       - main
+    paths:
+      - "**/*.py"
+      - "**/*.ps1"
+      - "**/*.bat"
+      - "**/*.js"
+      - "**/*.json"
+      - "**/*.qml"
+      - "**/*.ui"
+      - "**/*.qrc"
+      - "**/*.spec"
+      - "build/**"
+      - "config/**"
+      - "assets/**"
+      - "requirements*.txt"
+      - "requirements/**"
+      - "pyproject.toml"
+      - "setup.py"
+      - "setup.cfg"
+      - "*.toml"
+      - "*.ini"
+      - ".github/workflows/build-windows.yml"
   pull_request:
     branches:
       - main
     paths:
-      - "scripts/install_windows_update.ps1"
-      - "scripts/rollback_windows_update.ps1"
-      - "scripts/autostart/**"
+      - "**/*.py"
+      - "**/*.ps1"
+      - "**/*.bat"
+      - "**/*.js"
+      - "**/*.json"
+      - "**/*.qml"
+      - "**/*.ui"
+      - "**/*.qrc"
+      - "**/*.spec"
       - "build/**"
+      - "config/**"
+      - "assets/**"
       - "requirements*.txt"
       - "requirements/**"
-      - "browser_extension/**"
+      - "pyproject.toml"
+      - "setup.py"
+      - "setup.cfg"
+      - "*.toml"
+      - "*.ini"
       - ".github/workflows/build-windows.yml"
   workflow_dispatch:
 env:
