@@ -1,0 +1,26 @@
+name: Windows Installer Digest Gate
+
+on:
+  pull_request:
+    paths:
+      - "scripts/install_windows_update.ps1"
+      - "tests/windows/test_installer_digest_gate.ps1"
+      - ".github/workflows/installer-windows-validation.yml"
+      - ".github/workflows/build-windows.yml"
+      - "docs/operations/WINDOWS_SAFE_UPDATE_AND_DATA_PRESERVATION_2026-11-04.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installer-digest-gate:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout reviewed revision
+        uses: actions/checkout@v6
+
+      - name: Validate installer syntax and fail-closed digest behavior
+        shell: pwsh
+        run: ./tests/windows/test_installer_digest_gate.ps1
