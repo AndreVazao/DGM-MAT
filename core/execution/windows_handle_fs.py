@@ -48,6 +48,9 @@ class WindowsDirectoryHandleBackend:
     ACCESS_DENIED_ACE_TYPE = 1
     ACE_OBJECT_INHERIT = 0x01
     ACE_CONTAINER_INHERIT = 0x02
+    ACE_NO_PROPAGATE = 0x04
+    ACE_INHERIT_ONLY = 0x08
+    SE_DACL_PROTECTED = 0x1000
     GENERIC_ALL = 0x10000000
     FILE_ALL_ACCESS = 0x001F01FF
     WELL_KNOWN_BUILTIN_ADMINISTRATORS = 26
@@ -232,6 +235,10 @@ class WindowsDirectoryHandleBackend:
             ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(wintypes.BOOL),
         ]
         self.advapi32.GetSecurityDescriptorDacl.restype = wintypes.BOOL
+        self.advapi32.GetSecurityDescriptorControl.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(wintypes.WORD), ctypes.POINTER(wintypes.DWORD)
+        ]
+        self.advapi32.GetSecurityDescriptorControl.restype = wintypes.BOOL
         self.advapi32.GetAclInformation.argtypes = [
             ctypes.c_void_p, ctypes.c_void_p, wintypes.DWORD, ctypes.c_int
         ]
@@ -405,7 +412,7 @@ class WindowsDirectoryHandleBackend:
             if token:
                 self.close(token)
 
-    def assert_private_directory_acl(self, handle: Any) -> dict[str, int | bool]:
+    def assert_private_directory_acl(self, handle: Any, *, require_protected: bool = True) -> dict[str, int | bool]:
         """Require a backup directory ACL limited to the current user, SYSTEM and Administrators.
 
         This audits the effective DACL on the already-pinned directory handle.
@@ -496,6 +503,19 @@ class WindowsDirectoryHandleBackend:
                 raise WindowsHandleError(
                     "Backup root has a null or absent DACL; refusing to store patch backups."
                 )
+            if require_protected:
+                security_control = wintypes.WORD()
+                security_revision = wintypes.DWORD()
+                if not self.advapi32.GetSecurityDescriptorControl(
+                    security_descriptor,
+                    ctypes.byref(security_control),
+                    ctypes.byref(security_revision),
+                ):
+                    self._raise_last_error("GetSecurityDescriptorControl")
+                if not (security_control.value & self.SE_DACL_PROTECTED):
+                    raise WindowsHandleError(
+                        "Backup root DACL is not protected from parent inheritance."
+                    )
 
             acl_info = self.ACL_SIZE_INFORMATION()
             if not self.advapi32.GetAclInformation(
@@ -535,9 +555,11 @@ class WindowsDirectoryHandleBackend:
                         "Backup root DACL grants access to a SID other than the current user, SYSTEM or Administrators."
                     )
                 inheritance = self.ACE_OBJECT_INHERIT | self.ACE_CONTAINER_INHERIT
-                if (header.AceFlags & inheritance) != inheritance:
+                if (header.AceFlags & inheritance) != inheritance or (
+                    header.AceFlags & (self.ACE_NO_PROPAGATE | self.ACE_INHERIT_ONLY)
+                ):
                     raise WindowsHandleError(
-                        "Backup root access ACEs must inherit to files and child directories."
+                        "Backup root access ACEs must apply here and inherit to files and child directories."
                     )
                 mask = ctypes.c_uint32.from_address(ace_pointer.value + 4).value
                 if not (mask & self.GENERIC_ALL) and (
