@@ -45,7 +45,7 @@ class BrowserConsultEnqueueRequest(BaseModel):
     task_ref: str = Field(min_length=1, max_length=160)
     goal: str = Field(min_length=1, max_length=4000)
     context: str = Field(default="", max_length=4000)
-    providers: list[Literal["chatgpt", "gemini", "grok"]] = Field(min_length=1, max_length=3)
+    providers: list[Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]] = Field(min_length=1, max_length=3)
     free_capacity_confirmed: bool = False
 
     model_config = ConfigDict(extra="forbid")
@@ -53,6 +53,7 @@ class BrowserConsultEnqueueRequest(BaseModel):
 
 class BrowserConsultResultRequest(BaseModel):
     consultation_id: str = Field(min_length=1, max_length=80)
+    claim_token: str = Field(min_length=32, max_length=128)
     response_text: str = Field(min_length=1, max_length=16000)
 
     model_config = ConfigDict(extra="forbid")
@@ -60,6 +61,7 @@ class BrowserConsultResultRequest(BaseModel):
 
 class BrowserConsultBlockRequest(BaseModel):
     consultation_id: str = Field(min_length=1, max_length=80)
+    claim_token: str = Field(min_length=32, max_length=128)
     reason: Literal["rate_limited", "blocked_login", "blocked_challenge", "ui_mismatch", "interrupted", "secret_content"]
 
     model_config = ConfigDict(extra="forbid")
@@ -103,7 +105,7 @@ def approve_browser_consultation(consultation_id: str, request: Request):
 
 
 @router.post("/next")
-def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok"], request: Request):
+def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"], request: Request):
     _principal(request)
     try:
         item = _store().claim_next(provider)
@@ -112,7 +114,7 @@ def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok"], r
         try:
             _audit("command.sent", "prompt_released_to_extension", request, provider)
         except AuditWriteError:
-            _store().block(item["consultation_id"], reason="interrupted")
+            _store().block(item["consultation_id"], claim_token=item["claim_token"], reason="interrupted")
             raise
         return {
             "status": "claimed",
@@ -122,6 +124,7 @@ def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok"], r
                 "provider": item["provider"],
                 "prompt": item["prompt"],
                 "prompt_sha256": item["prompt_sha256"],
+                "claim_token": item["claim_token"],
             },
         }
     except (AuditWriteError, OSError) as exc:
@@ -132,7 +135,7 @@ def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok"], r
 def complete_browser_consultation(payload: BrowserConsultResultRequest, request: Request):
     _principal(request)
     try:
-        result = _store().finish(payload.consultation_id, response_text=payload.response_text)
+        result = _store().finish(payload.consultation_id, claim_token=payload.claim_token, response_text=payload.response_text)
         try:
             _audit("command.completed", result["status"], request, result["provider"])
             result["audit_warning"] = None
@@ -149,7 +152,7 @@ def complete_browser_consultation(payload: BrowserConsultResultRequest, request:
 def block_browser_consultation(payload: BrowserConsultBlockRequest, request: Request):
     _principal(request)
     try:
-        result = _store().block(payload.consultation_id, reason=payload.reason)
+        result = _store().block(payload.consultation_id, claim_token=payload.claim_token, reason=payload.reason)
         try:
             _audit("command.blocked", result["status"], request, result["provider"])
             result["audit_warning"] = None
