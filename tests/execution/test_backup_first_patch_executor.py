@@ -526,6 +526,9 @@ def test_windows_create_crash_before_identity_persistence_never_creates_repo_tar
     def create_then_interrupt(parent_handle, name, *, exclusive=False):
         handle = original_create(parent_handle, name, exclusive=exclusive)
         if name == "created-content.stage":
+            # A real process/power loss closes all process handles; simulate
+            # that OS cleanup before raising the interruption.
+            backend.close(handle)
             raise SystemExit("simulated power loss immediately after FILE_CREATE")
         return handle
 
