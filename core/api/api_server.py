@@ -174,6 +174,37 @@ def start_usb_recovery() -> None:
     start_usb_recovery_monitor()
 
 
+def _run_vault_bootstrap() -> None:
+    try:
+        from core.vault.bootstrap import bootstrap_vault
+
+        report = bootstrap_vault()
+        logging.getLogger(__name__).info(
+            "DGM-MAT Vault bootstrap %s: %s conversations archived, %s duplicates, tree %s",
+            report["status"],
+            report["progress_sync"]["conversations_archived"],
+            report["progress_sync"]["duplicates_detected"],
+            report["repository_tree"]["snapshot_id"],
+        )
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "DGM-MAT Vault bootstrap failed; source runtime and repository data were preserved"
+        )
+
+
+@app.on_event("startup")
+def start_vault_bootstrap() -> None:
+    # Opt-in until the first real Windows performance and persistence acceptance.
+    if os.getenv("DGM_VAULT_BOOTSTRAP_ENABLED", "0").strip().lower() not in {"1", "true", "yes", "on"}:
+        return
+    thread = threading.Thread(
+        target=_run_vault_bootstrap,
+        name="dgm-vault-bootstrap",
+        daemon=True,
+    )
+    thread.start()
+
+
 def _pc_cockpit_directory() -> Path | None:
     """Find the optional PC cockpit without making it a backend dependency.
 
