@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from core.autonomy.mission_models import MissionStatus
 from core.api.runtime_api import MissionBrowserTaskCreate
 
 
