@@ -199,7 +199,7 @@ async function main() {
   assert.equal(timeoutResult.data.reason, "assistant_response_timeout");
   assert.equal(timeout.sendClicks(), 1);
 
-  process.stdout.write("PASS: 5 browser operator content-task safety fixtures\\n");
+  process.stdout.write("PASS: 6 browser operator content-task safety fixtures\\n");
 }
 
 main().catch(error => {
