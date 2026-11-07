@@ -192,6 +192,8 @@ class OrganizationTaskManager:
         json.dumps(result, ensure_ascii=False, allow_nan=False)
         with self._lock:
             current = self._tasks[task_id]
+            if not isinstance(current.metadata, dict):
+                raise ValueError(f"Task {task_id} metadata is not a dictionary.")
             existing = current.metadata.get("worker_execution", {})
             if current.status == TaskStatus.COMPLETED:
                 if (
