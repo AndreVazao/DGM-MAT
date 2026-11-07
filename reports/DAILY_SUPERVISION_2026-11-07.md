@@ -238,3 +238,12 @@ Consulta direta ao endpoint de commit statuses para o head da PR #279 (`2456cc7e
 No mesmo head, os dois jobs GitHub Actions do run `42390097774` estão SUCCESS. O check CodeRabbit foi **skipped** com a razão “Review skipped: draft pull request”; não existe revisão independente atual desta PR. A pesquisa de código encontrou três referências relevantes ao instalador no main (documentação, teste de preservação e workflow); não foi encontrada chamada operacional adicional no código pesquisado. A pesquisa não prova que não existam invocações externas/locais.
 
 Limites do teste Windows atual: valida parser PowerShell e rejeição de digest incorreto antes da criação das pastas; não valida caminho positivo de instalação, rollback após interrupção, launcher real ou aceitação no Windows 10 do operador. O build Windows completo na branch também não foi executado. PR #279 mantém-se draft.
+
+
+### Build Windows automático em PR e revalidação — 2026-11-07 16:18 UTC
+
+A branch da PR #279 recebeu commit `0ea4960b99c618536e818dc9d72e56c24bd8652a`, que acrescenta trigger `pull_request` com paths restritos ao workflow de build Windows. Assim, alterações no instalador, rollback, launcher, build, dependências ou extensão passam a executar o mesmo build Windows de produção também em PR, sem publicar release nem alterar main.
+
+Foi criado o run [42390571513](https://github.com/AndreVazao/DGM-MAT/actions/runs/42390571513) para o head exato. Na última observação, o job `build (3.12)` estava IN_PROGRESS, no setup de Python 3.12; dependências, PyInstaller, validação profunda e upload ainda não tinham sido concluídos. Não declarar sucesso até ao resultado terminal.
+
+O Snyk voltou a indicar **“You have used your limit of private tests”** no novo head. Trata-se de quota de testes privados/scan indisponível, sem findings reportados e sem aprovação limpa. Os dois jobs do Focused PR Validation anterior continuam SUCCESS. A PR #279 permanece draft e sem merge; aceitação Windows 10 real continua pendente.
