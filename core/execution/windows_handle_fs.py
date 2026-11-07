@@ -607,8 +607,8 @@ class WindowsDirectoryHandleBackend:
             self._raise_last_error("GetFinalPathNameByHandleW")
         if length >= len(buffer):
             raise WindowsHandleError("Native final path exceeds the supported inspection bound.")
-        native_path = buffer.value.rstrip("\\\\")
-        component = native_path.rsplit("\\\\", 1)[-1]
+        native_path = buffer.value.rstrip("\\")
+        component = native_path.rsplit("\\", 1)[-1]
         if not component:
             raise WindowsHandleError("Native handle path has no verifiable final component.")
         return component
