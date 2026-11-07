@@ -258,6 +258,7 @@ class BackupFirstPatchExecutor:
                         "Backup root must be on the same NTFS volume as the repository for handle-relative staged promotion."
                     )
                 backup_dir_handle = backend.create_directory(backup_root_handle, backup_id)
+                backend.assert_private_directory_acl(backup_dir_handle)
                 if original is not None:
                     backup_handle = backend.create_file(backup_dir_handle, "original.bin", exclusive=True)
                     try:
@@ -408,7 +409,10 @@ class BackupFirstPatchExecutor:
             backend._validate_basename(backup_id)
             backup_root_handle = backend.open_root(self.backup_root, read_control=True)
             backend.assert_private_directory_acl(backup_root_handle)
-            backup_dir_handle = backend.open_child_directory(backup_root_handle, backup_id)
+            backup_dir_handle = backend.open_child_directory(
+                backup_root_handle, backup_id, read_control=True
+            )
+            backend.assert_private_directory_acl(backup_dir_handle)
             manifest_handle = backend.open_file(backup_dir_handle, "manifest.json", exclusive=True)
             try:
                 manifest = json.loads(
