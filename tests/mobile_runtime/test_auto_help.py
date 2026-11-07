@@ -489,3 +489,57 @@ def test_auto_help_is_disabled_by_default_and_does_not_enqueue(tmp_path):
     )
     assert result["status"] == "DISABLED"
     assert worker.store.status()["counts"] == {}
+
+
+def test_auto_help_falls_back_to_approved_browser_consultation_when_hub_has_no_free_provider(tmp_path, monkeypatch):
+    import core.mobile_runtime.auto_help as module
+
+    monkeypatch.setattr(module, "append_command_audit", lambda **_kwargs: None)
+    monkeypatch.setenv("DGM_AUTONOMY_HELP_BROWSER_CONSULT_ENABLED", "1")
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_ENABLED", "1")
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_FREE_CAPACITY_CONFIRMED", "1")
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_FREE_PROVIDERS", "chatgpt,grok,gemini,deepseek,qwen")
+
+    class EmptyHub:
+        def get_status(self):
+            return {"providers": {}}
+
+    class FakeBrowserConsultStore:
+        def __init__(self):
+            self.requests = []
+
+        def enqueue(self, **kwargs):
+            self.requests.append(kwargs)
+            return {
+                "status": "PENDING_APPROVAL",
+                "consultation_ids": ["browser_consult_123"],
+                "provider_count": 5,
+            }
+
+    browser_store = FakeBrowserConsultStore()
+    monkeypatch.setattr(module, "BrowserConsultStore", lambda: browser_store)
+    conversations = ConversationStore(tmp_path / "conversations.json")
+    thread = conversations.create_thread("Browser fallback")
+    worker = AutoHelpWorker(
+        conversation_store=conversations,
+        store=AutoHelpStore(tmp_path / "help.sqlite3"),
+        bridge_factory=EmptyHub,
+        engine_factory=FakeEngine,
+        enabled=True,
+        providers=["kilo", "llm7"],
+    )
+    queued = worker.enqueue(
+        thread_id=thread.id,
+        goal="Audita o fluxo de recuperação do browser",
+        reason="O Hub não tem fornecedores gratuitos prontos",
+    )
+
+    assert queued["status"] == "PENDING"
+    assert worker.run_once() is True
+    assert browser_store.requests[0]["task_ref"] == "mobile-thread:" + thread.id
+    assert browser_store.requests[0]["providers"] == ["chatgpt", "grok", "gemini", "deepseek", "qwen"]
+    assert worker.store.status()["counts"] == {"WAITING_FOR_OPERATOR_APPROVAL": 1}
+    updated = conversations.get_thread(thread.id)
+    assert "pendente de aprovação individual" in updated.messages[-1].content
+    assert updated.messages[-1].metadata["approval_required"] is True
+    assert updated.messages[-1].metadata["paid_fallback"] is False
