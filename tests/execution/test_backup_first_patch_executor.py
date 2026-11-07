@@ -109,7 +109,6 @@ def test_existing_file_requires_matching_expected_hash(tmp_path):
     assert target.read_text(encoding="utf-8") == "old\n"
 
 
-@pytest.mark.parametrize("path", ["../outside.txt", "/etc/passwd", ".env", "secrets/key.txt", "secre~1/key.txt", ".git/config", "id_rsa"])
 @pytest.mark.skipif(os.name != "nt", reason="Windows 8.3 alias validation.")
 @pytest.mark.parametrize("path", ["src/CREDE~10.JSO", "src/PROGRA~12.TXT"])
 def test_windows_short_name_aliases_with_multiple_digits_are_rejected(tmp_path, path):
@@ -120,6 +119,7 @@ def test_windows_short_name_aliases_with_multiple_digits_are_rejected(tmp_path, 
         executor._relative_target(path)
 
 
+@pytest.mark.parametrize("path", ["../outside.txt", "/etc/passwd", ".env", "secrets/key.txt", "secre~1/key.txt", ".git/config", "id_rsa"])
 def test_protected_and_escaping_paths_are_rejected(tmp_path, path):
     root = repository(tmp_path)
     executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
