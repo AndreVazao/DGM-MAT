@@ -100,6 +100,19 @@ class BrowserOperatorQueue:
             raise BrowserOperatorQueueError("Task identity field exceeds its limit")
         if provider not in {"chatgpt", "gemini", "grok", "deepseek", "qwen"}:
             raise BrowserOperatorQueueError("Unsupported browser provider")
+        parent_status = None
+        if self._mission_status_resolver is not None:
+            try:
+                raw_status = self._mission_status_resolver(mission_id)
+                parent_status = str(getattr(raw_status, "value", raw_status)).upper() if raw_status is not None else None
+            except Exception:
+                parent_status = None
+        if parent_status is None:
+            raise BrowserOperatorQueueError("Parent mission checkpoint is missing or unavailable")
+        if parent_status in {"COMPLETED", "CANCELLED", "FAILED"}:
+            raise BrowserOperatorQueueError("A terminal mission cannot receive a browser task")
+        if not approval_required and parent_status != "RUNNING":
+            raise BrowserOperatorQueueError("Approval bypass requires a freshly verified RUNNING parent mission")
         if len(conversation_url) > 2048 or len(message) > 30000:
             raise BrowserOperatorQueueError("Conversation URL or message exceeds its limit")
         now = self._now().isoformat()
@@ -113,8 +126,8 @@ class BrowserOperatorQueue:
             ).fetchone()
             if existing:
                 existing_item = self._decode(existing) or {}
-                expected = (mission_id, provider, source_id, conversation_url, message)
-                actual = tuple(existing_item.get(key) for key in ("mission_id", "provider", "source_id", "conversation_url", "message"))
+                expected = (mission_id, provider, source_id, conversation_url, message, bool(approval_required))
+                actual = tuple(existing_item.get(key) for key in ("mission_id", "provider", "source_id", "conversation_url", "message", "approval_required"))
                 if actual != expected:
                     db.rollback()
                     raise BrowserOperatorQueueError("Idempotency key is already bound to a different task envelope")
@@ -124,10 +137,11 @@ class BrowserOperatorQueue:
             db.execute("""
                 INSERT INTO browser_operator_tasks (
                     task_id,idempotency_key,mission_id,provider,source_id,conversation_url,
-                    message,status,created_at,updated_at,created_by,approved_by
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                    message,status,created_at,updated_at,created_by,approved_by,approval_required
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (task_id, idempotency_key, mission_id, provider, source_id,
-                  conversation_url, message, status, now, now, created_by, approved_by))
+                  conversation_url, message, status, now, now, created_by, approved_by,
+                  int(bool(approval_required))))
             row = db.execute(
                 "SELECT * FROM browser_operator_tasks WHERE task_id=?", (task_id,)
             ).fetchone()
