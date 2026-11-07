@@ -145,3 +145,46 @@ def test_browser_consult_result_is_appended_to_linked_mobile_thread(monkeypatch,
     assert fake_store.messages[0][0:2] == ("thread-123", "assistant")
     assert "QWEN (resposta externa não verificada)" in fake_store.messages[0][2]
     assert fake_store.messages[0][3]["result_trusted"] is False
+
+
+def test_approval_fails_closed_when_audit_write_fails(monkeypatch, tmp_path):
+    client, store = make_client(monkeypatch, tmp_path)
+    queued = client.post("/recovery/browser-consult/enqueue", json={
+        "task_ref": "mission_audit_approval",
+        "goal": "Review an approval audit failure",
+        "providers": ["chatgpt"],
+        "free_capacity_confirmed": True,
+    })
+    consultation_id = queued.json()["consultation_ids"][0]
+
+    def fail_audit(*_args, **_kwargs):
+        raise OSError("audit storage unavailable")
+
+    monkeypatch.setattr(browser_consult_api, "_audit", fail_audit)
+    response = client.post("/recovery/browser-consult/approve/" + consultation_id)
+
+    assert response.status_code == 503
+    assert store.status()["counts"] == {"PENDING_APPROVAL": 1}
+    assert store.claim_next("chatgpt") is None
+
+
+def test_prompt_is_blocked_when_release_audit_fails(monkeypatch, tmp_path):
+    client, store = make_client(monkeypatch, tmp_path)
+    queued = client.post("/recovery/browser-consult/enqueue", json={
+        "task_ref": "mission_audit_release",
+        "goal": "Review a prompt release audit failure",
+        "providers": ["qwen"],
+        "free_capacity_confirmed": True,
+    })
+    consultation_id = queued.json()["consultation_ids"][0]
+    assert client.post("/recovery/browser-consult/approve/" + consultation_id).status_code == 200
+
+    def fail_audit(*_args, **_kwargs):
+        raise OSError("audit storage unavailable")
+
+    monkeypatch.setattr(browser_consult_api, "_audit", fail_audit)
+    response = client.post("/recovery/browser-consult/next?provider=qwen", json={})
+
+    assert response.status_code == 503
+    assert store.status()["counts"] == {"BLOCKED_INTERRUPTED": 1}
+    assert store.claim_next("qwen") is None
