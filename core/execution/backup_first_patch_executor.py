@@ -258,7 +258,7 @@ class BackupFirstPatchExecutor:
                         "Backup root must be on the same NTFS volume as the repository for handle-relative staged promotion."
                     )
                 backup_dir_handle = backend.create_directory(backup_root_handle, backup_id)
-                backend.assert_private_directory_acl(backup_dir_handle)
+                backend.assert_private_directory_acl(backup_dir_handle, require_protected=False)
                 if original is not None:
                     backup_handle = backend.create_file(backup_dir_handle, "original.bin", exclusive=True)
                     try:
