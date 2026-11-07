@@ -39,8 +39,8 @@ class LocalCodingAgentProbe:
     """Discover only the two operator-authorized local coding-agent CLIs."""
 
     AGENT_COMMANDS = {
-        "codex": ("codex", "codex.exe", "codex.cmd"),
-        "claude_code": ("claude", "claude.exe", "claude.cmd"),
+        "codex": ("codex", "codex.exe", "codex.cmd", "codex.ps1"),
+        "claude_code": ("claude", "claude.exe", "claude.cmd", "claude.ps1"),
     }
     ENDPOINT_ENV_NAMES = (
         "DGM_FCC_BASE_URL",
@@ -88,8 +88,20 @@ class LocalCodingAgentProbe:
             return None
         return cleaned[: LocalCodingAgentProbe.MAX_VERSION_CHARS]
 
+    @staticmethod
+    def _is_windows() -> bool:
+        return os.name == "nt"
+
     @classmethod
     def _locate(cls, agent_id: str) -> str | None:
+        if cls._is_windows():
+            appdata = os.getenv("APPDATA")
+            if appdata:
+                binary = "codex" if agent_id == "codex" else "claude"
+                for suffix in (".ps1", ".cmd", ".exe"):
+                    candidate = Path(appdata) / "npm" / (binary + suffix)
+                    if candidate.is_file():
+                        return str(candidate.resolve())
         for command in cls.AGENT_COMMANDS[agent_id]:
             found = shutil.which(command)
             if found:
@@ -98,6 +110,24 @@ class LocalCodingAgentProbe:
                 except (OSError, RuntimeError):
                     return str(found)
         return None
+
+    @classmethod
+    def _version_command(cls, executable: str) -> list[str] | None:
+        suffix = Path(executable).suffix.casefold()
+        if cls._is_windows() and suffix == ".ps1":
+            shell = shutil.which("powershell") or shutil.which("pwsh")
+            if not shell:
+                return None
+            return [
+                shell, "-NoLogo", "-NoProfile", "-NonInteractive",
+                "-File", executable, "--version",
+            ]
+        if cls._is_windows() and suffix in {".cmd", ".bat"}:
+            shell = shutil.which("cmd.exe") or os.getenv("COMSPEC")
+            if not shell:
+                return None
+            return [shell, "/d", "/c", executable, "--version"]
+        return [executable, "--version"]
 
     def probe_agent(self, agent_id: str) -> LocalCodingAgentProbeResult:
         if agent_id not in self.AGENT_COMMANDS:
@@ -115,9 +145,15 @@ class LocalCodingAgentProbe:
                 configured_endpoint_env_names=endpoint_names,
             )
 
+        command = self._version_command(executable)
+        if command is None:
+            return LocalCodingAgentProbeResult(
+                agent_id, executable, True, "version_probe_unavailable", None,
+                "safe_interpreter_unavailable", endpoint_names,
+            )
         try:
             completed = subprocess.run(
-                [executable, "--version"],
+                command,
                 cwd=tempfile.gettempdir(),
                 env=self._minimal_environment(),
                 capture_output=True,
