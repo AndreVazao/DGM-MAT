@@ -181,11 +181,11 @@ def test_windows_powershell_shim_fails_closed_without_interpreter(monkeypatch, t
 
 
 def test_windows_cmd_shim_is_detected_but_never_executed(monkeypatch, tmp_path):
-    appdata = tmp_path / "Roaming"
+    appdata = tmp_path / "Roaming & Tools"
     npm = appdata / "npm"
     npm.mkdir(parents=True)
     shim = npm / "codex.cmd"
-    shim.write_text("@echo off\\necho Codex CLI 1.0.0\\n", encoding="utf-8")
+    shim.write_text("@echo off\necho Codex CLI 1.0.0\n", encoding="utf-8")
     monkeypatch.setattr(LocalCodingAgentProbe, "_is_windows", staticmethod(lambda: True))
     monkeypatch.setenv("APPDATA", str(appdata))
     monkeypatch.setattr(probe_module.shutil, "which", lambda _command: str(shim))
@@ -210,7 +210,7 @@ def test_windows_exe_is_preferred_over_cmd_wrapper(monkeypatch, tmp_path):
     exe = npm / "codex.exe"
     exe.write_bytes(b"fixture")
     cmd = npm / "codex.cmd"
-    cmd.write_text("@echo off\\n", encoding="utf-8")
+    cmd.write_text("@echo off\n", encoding="utf-8")
     monkeypatch.setattr(LocalCodingAgentProbe, "_is_windows", staticmethod(lambda: True))
     monkeypatch.setenv("APPDATA", str(appdata))
     captured = {}
@@ -218,7 +218,7 @@ def test_windows_exe_is_preferred_over_cmd_wrapper(monkeypatch, tmp_path):
     def fake_run(args, **kwargs):
         captured["args"] = args
         captured.update(kwargs)
-        return subprocess.CompletedProcess(args, 0, stdout="Codex CLI 1.0.0\\n", stderr="")
+        return subprocess.CompletedProcess(args, 0, stdout="Codex CLI 1.0.0\n", stderr="")
 
     monkeypatch.setattr(probe_module.subprocess, "run", fake_run)
     result = LocalCodingAgentProbe().probe_agent("codex")
