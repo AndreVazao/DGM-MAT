@@ -31,11 +31,11 @@ Usar exclusivamente o artefacto da execução GitHub Actions:
 
 No GitHub, abrir a execução acima, descer até **Artifacts** e descarregar exatamente o artefacto indicado. Não usar o botão genérico **Source code** nem um ZIP de uma branch.
 
-O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-2078d11.zip`, o respetivo ficheiro `.sha256` e o sidecar `publish\DGM-MAT.exe.sha256`.
+O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-2078d11.zip`, o respetivo ficheiro `.sha256` e a pasta `publish\` com o sidecar `DGM-MAT.exe.sha256`. O ZIP de distribuição, quando extraído para uma pasta própria, contém o executável e a pasta `scripts\` na raiz; não contém uma segunda pasta `publish\`.
 
 Verificar o SHA-256 do arquivo exterior descarregado contra o digest publicado pelo GitHub. Depois verificar o ZIP de distribuição contra o conteúdo de `DGM-MAT-Windows-3.12-2078d11.zip.sha256`. Não confundir estes dois níveis de arquivo.
 
-Depois de extrair o ZIP de distribuição, verificar o executável contra `publish\DGM-MAT.exe.sha256`. **O digest do artefacto GitHub não é o digest do executável.** O instalador seguro exige o digest do executável, fornecido explicitamente.
+Depois de extrair o ZIP de distribuição para uma pasta própria, verificar o executável `DGM-MAT.exe` dessa pasta contra o sidecar `publish\DGM-MAT.exe.sha256` que veio no arquivo exterior. **O digest do artefacto GitHub não é o digest do executável.** O instalador seguro exige o digest do executável, fornecido explicitamente.
 
 Comandos de verificação (ajustar apenas os caminhos para a pasta onde o download foi extraído):
 
@@ -43,7 +43,7 @@ Comandos de verificação (ajustar apenas os caminhos para a pasta onde o downlo
 Get-FileHash -Algorithm SHA256 -LiteralPath ".\DGM-MAT-Windows-3.12-2078d11.zip"
 Get-Content -LiteralPath ".\DGM-MAT-Windows-3.12-2078d11.zip.sha256"
 Get-Content -LiteralPath ".\publish\DGM-MAT.exe.sha256"
-Get-FileHash -Algorithm SHA256 -LiteralPath ".\publish\DGM-MAT.exe"
+Get-FileHash -Algorithm SHA256 -LiteralPath ".\DGM-MAT.exe"
 ```
 
 Os hashes calculados têm de coincidir exatamente com os respetivos sidecars. Se faltar um ficheiro, o nome/commit não corresponder ou qualquer hash divergir, parar e não instalar.
@@ -89,7 +89,7 @@ Antes de executar, confirmar que estes caminhos correspondem à instalação rea
 Exemplo de invocação, apenas depois de concluídas as verificações e de o utilizador autorizar a atualização:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\publish\scripts\install_windows_update.ps1" -PackageExe ".\publish\DGM-MAT.exe" -ExpectedExeSha256 (Get-Content ".\publish\DGM-MAT.exe.sha256" -Raw).Trim().Split(' ')[0]
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\install_windows_update.ps1" -PackageExe ".\DGM-MAT.exe" -ExpectedExeSha256 (Get-Content ".\publish\DGM-MAT.exe.sha256" -Raw).Trim().Split(' ')[0]
 ```
 
 Executar numa janela PowerShell normal do utilizador, sem elevar privilégios desnecessariamente. Guardar o caminho e conteúdo do manifesto `INSTALL-MANIFEST.json` criado pelo instalador.
@@ -97,7 +97,7 @@ Executar numa janela PowerShell normal do utilizador, sem elevar privilégios de
 Não remover backups após a instalação. O rollback disponível é:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\publish\scripts\rollback_windows_update.ps1" -ManifestPath "CAMINHO_REAL_DO_BACKUP\INSTALL-MANIFEST.json"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\rollback_windows_update.ps1" -ManifestPath "CAMINHO_REAL_DO_BACKUP\INSTALL-MANIFEST.json"
 ```
 
 O rollback só deve ser usado com o manifesto real da atualização correspondente e com o runtime parado.
