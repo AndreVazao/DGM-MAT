@@ -29,9 +29,11 @@ from core.storage.storage_manager import storage_manager
 from core.recovery.browser_consult_store import BrowserConsultStore, _free_providers
 
 
-FREE_PROVIDER_ALLOWLIST = ("kilo", "llm7", "codex", "claude")
+BROWSER_CONSULT_PROVIDERS = ("chatgpt", "grok", "gemini", "deepseek", "qwen")
+HUB_PROVIDER_ALLOWLIST = ("kilo", "llm7", "codex", "claude")
+FREE_PROVIDER_ALLOWLIST = HUB_PROVIDER_ALLOWLIST + BROWSER_CONSULT_PROVIDERS
 EXTERNAL_AGENT_PROVIDERS = frozenset({"codex", "claude"})
-NOT_CONFIGURED_PROVIDERS = ("chatgpt", "grok", "gemini")
+NOT_CONFIGURED_PROVIDERS = BROWSER_CONSULT_PROVIDERS
 _SECRET_PATTERNS = (
     re.compile(r"(?i)\b(api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|password|passwd|cookie|session[_-]?id)\s*[:=]\s*[^\s,;]{6,}"),
     re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
@@ -460,6 +462,8 @@ class AutoHelpWorker:
             selected: list[str] = []
             unverified: list[str] = []
             for provider in request["providers"]:
+                if provider not in HUB_PROVIDER_ALLOWLIST:
+                    continue
                 provider_status = available.get(provider)
                 if (
                     not isinstance(provider_status, dict)
@@ -715,6 +719,10 @@ class AutoHelpWorker:
             return True
 
         except HubProviderUnavailable as exc:
+            if not packets and self._queue_browser_consultation(
+                request, "O DGM-HUB declarou indisponibilidade de fornecedores gratuitos: " + type(exc).__name__
+            ):
+                return True
             for collaboration_id in packets.values():
                 try:
                     self.engine_factory().pause_specialist_collaboration(
