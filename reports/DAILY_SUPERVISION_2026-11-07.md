@@ -93,7 +93,7 @@ Correção isolada preparada:
 - check_for_updates continua a devolver None, com diagnóstico explícito.
 - Dois testes protegem o comportamento fail-closed.
 
-Focused PR Validation #646? **SUCCESS** no run 42384614731; compilação e os dois testes selecionados concluíram sem falhas. A PR continua draft e não foi integrada. Isto não implementa self-update; evita apenas um falso positivo.
+Focused PR Validation #645 **SUCCESS** no run 42384614731; compilação e os dois testes selecionados concluíram sem falhas. A PR continua draft e não foi integrada. Isto não implementa self-update; evita apenas um falso positivo.
 
 ## 5. Correções feitas e links
 
