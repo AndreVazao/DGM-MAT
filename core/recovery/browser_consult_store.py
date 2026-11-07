@@ -298,7 +298,7 @@ class BrowserConsultStore:
                     last_consultation_id=excluded.last_consultation_id
             """, (row["provider"], cooldown_until, status, consultation_id))
             db.commit()
-        return {"consultation_id": consultation_id, "provider": row["provider"], "status": status, "automatic_retry": False}
+        return {"consultation_id": consultation_id, "provider": row["provider"], "status": status, "automatic_retry": False, "accepted": None, "result_trusted": False}
 
     def finish(self, consultation_id: str, *, claim_token: str, response_text: str, provider_status: str = "ok") -> dict[str, Any]:
         if not isinstance(response_text, str) or not response_text.strip():
