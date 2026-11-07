@@ -256,3 +256,15 @@ O run [42390571513](https://github.com/AndreVazao/DGM-MAT/actions/runs/423905715
 O artefacto Actions `DGM-MAT-Windows-3.12-0b7992c` foi descarregado e inspecionado. O ZIP exterior tem 111,218,034 bytes e SHA-256 `950c186672bfbe14050fca5b0a05ad35d4ad96b55d6547573fc5fcae5403dc60`, coincidente com o digest reportado pela API de artefactos. O ZIP de distribuição interior contém `DGM-MAT.exe` e `DGM-MAT.exe.sha256`; o digest declarado no sidecar coincide com o SHA-256 calculado do EXE: `fc232e4f3eb551c8340ec3f15cb723cf973c626174087adcbb77e406fb2d6a71`. Artefacto expirável em 2027-02-05. Isto valida o build e consistência dos hashes, não assinatura digital nem aceitação no Windows 10 do operador.
 
 A PR #277 foi integrada em `main` por squash no commit `a765fcc8e224c02f163c59109641b08489a708e0`. A PR #278 é o relatório corrente e está pronta para merge. A PR #279 permanece aberta enquanto se faz revisão final e atualização da base após o merge anterior. #276 continua bloqueada pelas threads de segurança/recovery não resolvidas. Snyk ignorado temporariamente por quota free-tier esgotada; nenhum scan limpo é declarado.
+
+
+### Build final da main e inspeção do artefacto — 2026-11-07 16:31 UTC
+
+O build Windows da main, após integrar #277, #278 e #279, terminou **SUCCESS**:
+- Run [42391277932](https://github.com/AndreVazao/DGM-MAT/actions/runs/42391277932), commit 7f9429d4da5010a9bab5cc14548fa008206a8ee3.
+- Artefacto Actions: DGM-MAT-Windows-3.12-7f9429d, ID 13582121177, tamanho 111,219,334 bytes, expira 2027-02-05.
+- SHA-256 do ZIP exterior: aa655c1108808973f665e47d7b6bf07c69c18a0b07aa37b7b7deb8b95fdf669a — coincide com o digest da API de artefactos.
+- O ZIP interno contém DGM-MAT.exe (111,802,356 bytes) e DGM-MAT.exe.sha256. SHA-256 calculado diretamente do EXE: 2a07a8cdf2028005c402045b2e8f1634e3120cee8041d772003cd319de659888 — coincide com o sidecar.
+- O pacote foi descarregado e os dois níveis ZIP inspecionados. O build está verificado; não é assinatura de publisher nem validação de instalação no PC.
+
+Estado do repositório: PRs #277, #278 e #279 merged; única PR aberta é #276, draft, isolada e bloqueada por três riscos técnicos principais (backup-root dedicado antes de alterar DACL, ACL de ficheiros criados após promoção e rollback retomável após crash), testes adversariais ACL, docstrings/review fresco e aceitação Windows 10/storage. Threads já corrigidas: alias 8.3/native long-name, estado do manifesto antes de cleanup e limite UNICODE_STRING. Snyk temporariamente dispensado por quota free-tier esgotada; não há scan limpo declarado. Nenhuma instalação no PC nem eliminação de branches antigas.
