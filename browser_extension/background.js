@@ -204,6 +204,26 @@ async function claimAndNavigate(run, token) {
   return { finished: false, next: result.next };
 }
 
+async function listBrowserConsultations() {
+  const state = await readState();
+  if (!state.token) throw new Error("Pair the extension with DGM-MAT first.");
+  return apiGet("/recovery/browser-consult/status", state.token);
+}
+
+async function enqueueBrowserConsultation(payload) {
+  const state = await readState();
+  if (!state.token) throw new Error("Pair the extension with DGM-MAT first.");
+  return api("/recovery/browser-consult/enqueue", payload, state.token);
+}
+
+async function approveBrowserConsultation(consultationId) {
+  const state = await readState();
+  if (!state.token) throw new Error("Pair the extension with DGM-MAT first.");
+  const result = await api("/recovery/browser-consult/approve/" + encodeURIComponent(consultationId), {}, state.token);
+  await pollBrowserConsultQueue().catch(() => {});
+  return result;
+}
+
 async function setAutoBrowserConsult(enabled) {
   const state = await readState();
   if (enabled && !state.token) throw new Error("Pair the extension with DGM-MAT before enabling AI consultation.");
@@ -763,6 +783,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "DGM_RETRY_CURRENT") {
     retryCurrent(Number(message.tabId))
       .then(result => sendResponse({ ok: true, data: result }))
+      .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+    return true;
+  }
+  if (message.type === "DGM_LIST_BROWSER_CONSULTS") {
+    listBrowserConsultations()
+      .then(data => sendResponse({ ok: true, data }))
+      .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+    return true;
+  }
+  if (message.type === "DGM_ENQUEUE_BROWSER_CONSULT") {
+    enqueueBrowserConsultation(message.payload || {})
+      .then(data => sendResponse({ ok: true, data }))
+      .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+    return true;
+  }
+  if (message.type === "DGM_APPROVE_BROWSER_CONSULT") {
+    approveBrowserConsultation(String(message.consultationId || ""))
+      .then(data => sendResponse({ ok: true, data }))
       .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
     return true;
   }
