@@ -176,3 +176,60 @@ def test_idempotency_key_cannot_change_approval_requirement(tmp_path):
     else:
         raise AssertionError("idempotency key changed approval requirement")
     assert queue.get(first["task_id"])["approval_required"] is False
+
+def test_existing_queue_database_migrates_approval_policy_safely(tmp_path):
+    import sqlite3
+
+    database = tmp_path / "browser-operator.sqlite3"
+    with sqlite3.connect(database) as db:
+        db.execute("""
+            CREATE TABLE browser_operator_tasks (
+                task_id TEXT PRIMARY KEY,
+                idempotency_key TEXT NOT NULL UNIQUE,
+                mission_id TEXT NOT NULL,
+                provider TEXT NOT NULL,
+                source_id TEXT NOT NULL,
+                conversation_url TEXT NOT NULL,
+                message TEXT NOT NULL,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                created_by TEXT NOT NULL DEFAULT 'mission-engine',
+                approved_by TEXT,
+                claimed_by TEXT,
+                claim_token TEXT,
+                lease_until TEXT,
+                result_json TEXT,
+                error TEXT
+            )
+        """)
+        db.execute("""
+            INSERT INTO browser_operator_tasks (
+                task_id,idempotency_key,mission_id,provider,source_id,conversation_url,
+                message,status,created_at,updated_at,created_by,approved_by
+            ) VALUES (
+                'browser:auto','auto-key','mission_1234abcd','chatgpt','conversation-123',
+                'https://chatgpt.com/c/conversation-123','research','queued',
+                '2026-11-07T00:00:00+00:00','2026-11-07T00:00:00+00:00',
+                'mission-engine','mission-engine'
+            )
+        """)
+        db.execute("""
+            INSERT INTO browser_operator_tasks (
+                task_id,idempotency_key,mission_id,provider,source_id,conversation_url,
+                message,status,created_at,updated_at,created_by,approved_by
+            ) VALUES (
+                'browser:manual','manual-key','mission_1234abcd','chatgpt','conversation-124',
+                'https://chatgpt.com/c/conversation-124','research','queued',
+                '2026-11-07T00:00:01+00:00','2026-11-07T00:00:01+00:00',
+                'operator','operator'
+            )
+        """)
+
+    queue = BrowserOperatorQueue(
+        database,
+        lease_seconds=30,
+        mission_status_resolver=lambda _mission_id: "RUNNING",
+    )
+    assert queue.get("browser:auto")["approval_required"] is False
+    assert queue.get("browser:manual")["approval_required"] is True
