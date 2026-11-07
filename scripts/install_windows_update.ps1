@@ -4,6 +4,10 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$PackageExe,
 
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern("^[A-Fa-f0-9]{64}$")]
+    [string]$ExpectedExeSha256,
+
     [string]$TargetExe = "C:\ProgramasGodMode\DGM-MAT\installed\DGM-MAT.exe",
 
     [string]$BackupRoot = "C:\ProgramasGodMode\DGM-MAT\update-backups"
@@ -131,6 +135,13 @@ if ($packagePath -ieq $targetPath) {
     throw "PackageExe and TargetExe refer to the same file. Extract the package first."
 }
 
+# Verify the executable against the digest obtained separately from the official
+# GitHub Actions artifact before creating directories, backups, or stopping runtime.
+$packageHash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash
+if (-not [string]::Equals($packageHash, $ExpectedExeSha256, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "Package executable SHA-256 does not match the independently supplied expected digest. No installation changes were made."
+}
+
 New-Item -ItemType Directory -Path $targetDirectory -Force | Out-Null
 New-Item -ItemType Directory -Path $BackupRoot -Force | Out-Null
 
@@ -193,7 +204,7 @@ if (Test-Path -LiteralPath $launcherTarget) {
     $oldLauncherHash = (Get-FileHash -LiteralPath $launcherTarget -Algorithm SHA256).Hash
 }
 
-$sourceHash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash
+$sourceHash = $packageHash
 $launcherSourceHash = (Get-FileHash -LiteralPath $launcherSource -Algorithm SHA256).Hash
 $stagedPath = Join-Path $targetDirectory "DGM-MAT.exe.new"
 $stagedLauncherPath = "$launcherTarget.new"
@@ -251,6 +262,8 @@ $manifest = [ordered]@{
     package_exe = $packagePath
     target_exe = $targetPath
     new_sha256 = $sourceHash
+    expected_exe_sha256 = $ExpectedExeSha256.ToUpperInvariant()
+    package_sha256_verified_before_mutation = $true
     previous_sha256 = $oldExeHash
     previous_exe_backup = $oldExeBackup
     launcher_target = $launcherTarget
