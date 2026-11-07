@@ -207,3 +207,9 @@ A PR #279 melhora a deteção de corrupção/troca acidental do executável e ob
 
 ### Operações
 Não houve merge, alteração direta em `main`, instalação no PC, alteração de dados, exclusão de branches ou mutação de worktrees. A issue #244 foi atualizada com a ligação à PR #279.
+
+
+
+### Atualização de CI — 2026-11-07 16:13 UTC
+
+A Focused PR Validation #42389920969 da PR #279 terminou **SUCCESS**. O job concluiu checkout das dependências, compilação Python, seleção de regressões e execução dos testes afetados. O check `security/snyk` para o head da PR #279 está em **ERROR**. O workflow Windows de build não foi executado nesta branch: o workflow de build atual corre em push para `main` ou manualmente por `workflow_dispatch`, não em pull request. Portanto, ainda não há validação PowerShell/Windows da alteração, nem aceitação no Windows 10 real. A PR #279 permanece draft e sem merge.
