@@ -163,3 +163,37 @@ The successful CI closes the test-collection regression only. It does not close 
 6. fresh independent re-review of the corrected code head.
 
 Snyk remains `error`. Windows 10 operator-PC and real storage write-through/power-loss acceptance remain outstanding. PR #276 remains draft; no merge, MissionEngine integration, real-project mutation or auto-merge. POSIX mutation remains disabled.
+
+
+## Estado após merges #277–#279 — 2026-11-07 16:30 UTC
+
+### Head e CI atualizados
+
+PR #276 head atual: 2bf99e0bef79988ae52f1c75e5b23e70f509564b.
+- Windows Guard [42366157047](https://github.com/AndreVazao/DGM-MAT/actions/runs/42366157047): **SUCCESS**.
+- Focused PR Validation [42366157033](https://github.com/AndreVazao/DGM-MAT/actions/runs/42366157033): **SUCCESS**.
+- Os testes executados no runner Windows são hosted CI, não aceitação do Windows 10 físico do operador.
+
+### Threads de revisão verificadas e resolvidas
+
+Depois de inspecionar o código atual e o head de CI, foram resolvidas apenas as threads cujas correções estão presentes:
+- Alias 8.3 com vários dígitos e verificação do nome longo nativo por handle fixado (GetFinalPathNameByHandleW), antes da mutação.
+- Estado do manifesto validado antes de cleanup de staging em rollback.
+- Comprimento UTF-16 limitado antes de construir UNICODE_STRING (Length e MaximumLength cabem nos campos de 16 bits).
+- A proteção de restauração automática só corre quando a mutação do target começou; esta thread estava marcada outdated pelo CodeRabbit.
+
+### Findings que continuam bloqueantes
+
+1. **Backup root dedicado:** a configuração ainda permite que uma pasta partilhada existente seja escolhida como backup_root; restrict_private_directory_acl() altera a DACL dessa pasta. É necessário provar que a pasta é exclusiva do DGM-MAT antes de alterar ACLs, rejeitando pastas partilhadas e preservando ACLs de diretórios existentes.
+2. **ACL de ficheiros criados:** o staging nasce dentro do diretório privado de backup; a promoção por rename pode manter essa DACL em vez de herdar a política do diretório destino. É necessário garantir que o ficheiro promovido recebe a política de segurança do diretório de destino sem expor o conteúdo staged.
+3. **Rollback interrompido:** o manifesto ainda não persiste uma intenção/resultado de rollback antes da alteração do destino. Se o processo morrer depois de restaurar/apagar o target e antes de persistir rolled_back, uma repetição pode recusar um rollback que já foi aplicado. É necessário tornar essa fase retomável com verificação de hash/identidade e sem aceitar alterações externas.
+4. **Testes adversariais ACL:** ainda faltam casos de broad SID grants, DACL ausente/nula, root não protegido e flags de herança inválidas exercitando o auditor real.
+5. **Docstrings:** a métrica CodeRabbit de cobertura (~11,32% vs 80%) ainda não foi resolvida nem reavaliada num review fresco.
+6. **Revisão independente atualizada:** após os fixes restantes, pedir review novo do head atual.
+7. **Aceitação operacional:** Windows 10 do operador e storage/write-through/power-loss continuam pendentes.
+
+Snyk fica temporariamente dispensado por decisão do operador devido à quota free-tier esgotada. Não declarar scan limpo; retomar análise quando houver quota ou alternativa gratuita. Isto não elimina os blockers técnicos acima.
+
+### Integração
+
+PR #276 permanece draft, sem merge e sem ligação ao MissionEngine. Não executar mutações em projetos reais. A aprovação explícita, SAFE por defeito e recuperação manual continuam obrigatórios. As PRs #277, #278 e #279 foram integradas em main; main avançou para 7f9429d4da5010a9bab5cc14548fa008206a8ee3.
