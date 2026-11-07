@@ -674,7 +674,7 @@ class WindowsDirectoryHandleBackend:
         try:
             self._assert_supported_volume(current)
             for component in path.parts[1:]:
-                child = self.open_child_directory(current, component, read_control=read_control, write_dac=write_dac)
+                child = self.open_child_directory(current, component, read_control=read_control)
                 self.close(current)
                 current = child
             return current
@@ -713,7 +713,7 @@ class WindowsDirectoryHandleBackend:
             self._assert_supported_volume(current)
             for component in path.parts[1:]:
                 try:
-                    child = self.open_child_directory(current, component, read_control=read_control)
+                    child = self.open_child_directory(current, component, read_control=read_control, write_dac=write_dac)
                 except WindowsHandleError as exc:
                     if getattr(exc, "ntstatus", None) not in {0xC0000034, 0xC000003A}:
                         raise
