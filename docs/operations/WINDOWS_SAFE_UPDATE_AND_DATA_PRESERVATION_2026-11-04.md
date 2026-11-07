@@ -47,20 +47,26 @@ O script deixa deliberadamente intactos:
 
 ## Atualização
 
-A partir de PowerShell:
+A partir de PowerShell, depois de descarregar o ZIP e o sidecar `DGM-MAT.exe.sha256` do mesmo run oficial do GitHub Actions:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-.\scripts\install_windows_update.ps1 -PackageExe "C:\Caminho\Extraido\DGM-MAT.exe"
+$expectedExeSha256 = (Get-Content -LiteralPath ".\DGM-MAT.exe.sha256" -Raw).Trim().Split()[0]
+if ($expectedExeSha256 -notmatch "^[A-Fa-f0-9]{64}$") { throw "Sidecar SHA-256 inválido" }
+.\scripts\install_windows_update.ps1 -PackageExe "C:\Caminho\Extraido\DGM-MAT.exe" -ExpectedExeSha256 $expectedExeSha256
 ```
+
+O hash deve ser obtido do sidecar oficial descarregado separadamente do executável. Não calcular o valor esperado a partir do próprio executável depois de o receber.
 
 O instalador:
 
 - valida o tamanho do executável e a presença do gestor de arranque;
+- compara o SHA-256 do executável com o digest esperado fornecido separadamente, antes de criar diretórios/backups, parar processos ou tocar no destino;
 - cria uma pasta de backup com timestamp;
 - copia os dados persistentes listados acima;
 - guarda o executável e o gestor de arranque anteriores;
-- verifica SHA-256 do pacote, dos ficheiros preparados e dos ficheiros instalados;
+- verifica SHA-256 do pacote contra o sidecar independente, dos ficheiros preparados e dos ficheiros instalados;
+- regista no manifesto o digest esperado e a confirmação da validação prévia à mutação;
 - substitui o executável e o gestor de arranque;
 - grava `INSTALL-MANIFEST.json`;
 - não inicia automaticamente o runtime.
