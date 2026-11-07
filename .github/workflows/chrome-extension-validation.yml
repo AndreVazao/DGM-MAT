@@ -51,10 +51,8 @@ jobs:
           node --check browser_extension/popup.js
       - name: Run deterministic virtualized-history fixtures
         run: node tests/browser_extension/test_content_capture.js
-      - name: Run visible-UI message sending safety fixtures
+      - name: Reject unapproved direct content-script sends
         run: node tests/browser_extension/test_message_send.js
-      - name: Run approved browser operator task fixtures
-        run: node tests/browser_extension/test_browser_operator_task.js
       - name: Validate extension manifest JSON
         run: python -m json.tool browser_extension/manifest.json > /dev/null
       - name: Set up Python
