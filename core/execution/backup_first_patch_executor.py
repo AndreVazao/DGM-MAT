@@ -511,6 +511,13 @@ class BackupFirstPatchExecutor:
             state = manifest.get("state")
             if state == "applied" and current_sha != manifest.get("result_sha256"):
                 raise PatchRollbackError("Current file changed after the patch; refusing to overwrite newer work.")
+            # A staged create is fully written and hash-verified before its
+            # atomic promotion. Even while its manifest is still prepared,
+            # any later content change must be preserved, not deleted.
+            if created and state == "prepared" and current_sha != manifest.get("result_sha256"):
+                raise PatchRollbackError(
+                    "Prepared created file changed after promotion; refusing to delete newer work."
+                )
             if state not in {"prepared", "applied"}:
                 raise PatchRollbackError("Backup manifest is not in a recoverable state.")
 
