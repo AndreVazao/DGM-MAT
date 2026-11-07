@@ -165,3 +165,14 @@ def test_terminal_parent_mission_cannot_receive_browser_task(tmp_path):
         assert "terminal mission" in str(exc)
     else:
         raise AssertionError("terminal mission accepted a browser task")
+
+def test_idempotency_key_cannot_change_approval_requirement(tmp_path):
+    queue = make_queue(tmp_path)
+    first = enqueue(queue, approval_required=False, key="stable-approval-key")
+    try:
+        enqueue(queue, approval_required=True, key="stable-approval-key")
+    except ValueError as exc:
+        assert "different task envelope" in str(exc)
+    else:
+        raise AssertionError("idempotency key changed approval requirement")
+    assert queue.get(first["task_id"])["approval_required"] is False
