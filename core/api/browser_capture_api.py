@@ -327,7 +327,11 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         raise HTTPException(status_code=404, detail="Conversation was not discovered before capture.")
     ordered = sorted(payload.messages, key=lambda item: (item.sequence, item.message_id))
     actual_unknown_role_count = sum(1 for item in ordered if item.role == "unknown")
-    reported_messages_total = payload.messages_total or len(ordered)
+    reported_messages_total = (
+        payload.messages_total
+        if "messages_total" in payload.model_fields_set
+        else len(ordered)
+    )
     if len({item.message_id for item in ordered}) != len(ordered):
         raise HTTPException(status_code=422, detail="Duplicate message IDs in capture.")
     if len({item.sequence for item in ordered}) != len(ordered):
