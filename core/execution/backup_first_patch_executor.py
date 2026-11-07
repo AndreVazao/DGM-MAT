@@ -336,17 +336,18 @@ class BackupFirstPatchExecutor:
             self._write_manifest_windows(backup_dir_handle, manifest, replace_existing=True)
             return manifest
         except Exception as exc:
-            if target_handle is not None and ((existed and original is not None) or not existed):
+            # Replacements can be restored in-place through their still-pinned
+            # exclusive handle. For creates, never delete the promoted object
+            # here: leave the durable prepared manifest + identity/hash intact
+            # so explicit rollback can verify it after this failure.
+            if target_handle is not None and existed and original is not None:
                 try:
-                    if existed and original is not None:
-                        backend.truncate_file(target_handle)
-                        backend.write_all(target_handle, original)
-                        backend.reset_file_pointer(target_handle)
-                        restored = backend.read_all(target_handle, max_bytes=self.max_file_bytes)
-                        if self._sha256(restored) != self._sha256(original):
-                            raise PatchRollbackError("Automatic Windows rollback verification failed.")
-                    else:
-                        backend.delete_handle(target_handle)
+                    backend.truncate_file(target_handle)
+                    backend.write_all(target_handle, original)
+                    backend.reset_file_pointer(target_handle)
+                    restored = backend.read_all(target_handle, max_bytes=self.max_file_bytes)
+                    if self._sha256(restored) != self._sha256(original):
+                        raise PatchRollbackError("Automatic Windows rollback verification failed.")
                 except Exception as rollback_exc:
                     raise PatchRollbackError(
                         "Patch failed and automatic rollback could not be verified; preserve the backup for recovery."
