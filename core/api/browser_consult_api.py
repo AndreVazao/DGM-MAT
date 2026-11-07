@@ -45,7 +45,7 @@ class BrowserConsultEnqueueRequest(BaseModel):
     task_ref: str = Field(min_length=1, max_length=160)
     goal: str = Field(min_length=1, max_length=4000)
     context: str = Field(default="", max_length=4000)
-    providers: list[Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]] = Field(min_length=1, max_length=3)
+    providers: list[Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]] = Field(min_length=1, max_length=5)
     free_capacity_confirmed: bool = False
 
     model_config = ConfigDict(extra="forbid")
