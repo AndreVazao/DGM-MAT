@@ -94,22 +94,33 @@ class LocalCodingAgentProbe:
 
     @classmethod
     def _locate(cls, agent_id: str) -> str | None:
+        unsupported_wrapper: str | None = None
         if cls._is_windows():
             appdata = os.getenv("APPDATA")
             if appdata:
                 binary = "codex" if agent_id == "codex" else "claude"
-                for suffix in (".ps1", ".cmd", ".exe"):
+                for suffix in (".ps1", ".exe", ".cmd"):
                     candidate = Path(appdata) / "npm" / (binary + suffix)
-                    if candidate.is_file():
-                        return str(candidate.resolve())
+                    if not candidate.is_file():
+                        continue
+                    resolved = str(candidate.resolve())
+                    if suffix == ".cmd":
+                        unsupported_wrapper = unsupported_wrapper or resolved
+                        continue
+                    return resolved
         for command in cls.AGENT_COMMANDS[agent_id]:
             found = shutil.which(command)
-            if found:
-                try:
-                    return str(Path(found).expanduser().resolve(strict=True))
-                except (OSError, RuntimeError):
-                    return str(found)
-        return None
+            if not found:
+                continue
+            try:
+                resolved = str(Path(found).expanduser().resolve(strict=True))
+            except (OSError, RuntimeError):
+                resolved = str(found)
+            if Path(resolved).suffix.casefold() in {".cmd", ".bat"}:
+                unsupported_wrapper = unsupported_wrapper or resolved
+                continue
+            return resolved
+        return unsupported_wrapper
 
     @classmethod
     def _version_command(cls, executable: str) -> list[str] | None:
@@ -123,10 +134,10 @@ class LocalCodingAgentProbe:
                 "-File", executable, "--version",
             ]
         if cls._is_windows() and suffix in {".cmd", ".bat"}:
-            shell = shutil.which("cmd.exe") or os.getenv("COMSPEC")
-            if not shell:
-                return None
-            return [shell, "/d", "/c", executable, "--version"]
+            # cmd.exe reparses its command tail; do not execute a wrapper path
+            # that could contain shell metacharacters. Prefer the paired .ps1
+            # or .exe shim; otherwise report it without launching a process.
+            return None
         return [executable, "--version"]
 
     def probe_agent(self, agent_id: str) -> LocalCodingAgentProbeResult:
@@ -149,7 +160,7 @@ class LocalCodingAgentProbe:
         if command is None:
             return LocalCodingAgentProbeResult(
                 agent_id, executable, True, "version_probe_unavailable", None,
-                "safe_interpreter_unavailable", endpoint_names,
+                "cmd_wrapper_not_executed_for_safety" if Path(executable).suffix.casefold() in {".cmd", ".bat"} else "safe_interpreter_unavailable", endpoint_names,
             )
         try:
             completed = subprocess.run(
