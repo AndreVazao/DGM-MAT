@@ -665,3 +665,34 @@ def test_windows_prepared_create_refuses_to_delete_newer_content(tmp_path, monke
     with pytest.raises(PatchRollbackError, match="changed after promotion"):
         recovered.rollback(manifest["backup_id"])
     assert target.read_text(encoding="utf-8") == "newer independent content"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows staged-create failure recovery test.")
+def test_windows_create_apply_error_preserves_prepared_target_for_explicit_rollback(tmp_path, monkeypatch):
+    root = repository(tmp_path)
+    backup_root = tmp_path / "backups"
+    target = root / "src" / "new.py"
+    executor = BackupFirstPatchExecutor(root, backup_root=backup_root)
+    original_write_manifest = executor._write_manifest_windows
+
+    def fail_applied_manifest(directory_handle, manifest, *, replace_existing):
+        if manifest.get("state") == "applied":
+            raise OSError("simulated manifest promotion failure")
+        return original_write_manifest(
+            directory_handle, manifest, replace_existing=replace_existing
+        )
+
+    monkeypatch.setattr(executor, "_write_manifest_windows", fail_applied_manifest)
+    with pytest.raises(OSError, match="manifest promotion failure"):
+        executor.apply_text("src/new.py", "new content")
+
+    assert target.read_text(encoding="utf-8") == "new content"
+    backup_dir = next(backup_root.iterdir())
+    manifest = json.loads((backup_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["state"] == "prepared"
+    assert manifest["target_identity"] is not None
+
+    recovered = BackupFirstPatchExecutor(root, backup_root=backup_root)
+    result = recovered.rollback(manifest["backup_id"])
+    assert result["state"] == "rolled_back"
+    assert not target.exists()
