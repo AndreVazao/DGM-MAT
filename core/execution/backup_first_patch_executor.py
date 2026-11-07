@@ -247,6 +247,10 @@ class BackupFirstPatchExecutor:
             backup_file = self.backup_root / backup_id / "original.bin" if existed else None
             try:
                 backup_root_handle = backend.ensure_directory(self.backup_root)
+                if backend.file_identity(backup_root_handle)[0] != self._repo_identity[0]:
+                    raise PatchBackupError(
+                        "Backup root must be on the same NTFS volume as the repository for handle-relative staged promotion."
+                    )
                 backup_dir_handle = backend.create_directory(backup_root_handle, backup_id)
                 if original is not None:
                     backup_handle = backend.create_file(backup_dir_handle, "original.bin", exclusive=True)
