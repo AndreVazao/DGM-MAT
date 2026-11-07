@@ -5,8 +5,12 @@ from datetime import timedelta
 from core.providers.browser.browser_operator_queue import BrowserOperatorQueue
 
 
-def make_queue(tmp_path):
-    return BrowserOperatorQueue(tmp_path / "browser-operator.sqlite3", lease_seconds=30)
+def make_queue(tmp_path, resolver=None):
+    return BrowserOperatorQueue(
+        tmp_path / "browser-operator.sqlite3",
+        lease_seconds=30,
+        mission_status_resolver=resolver or (lambda _mission_id: "RUNNING"),
+    )
 
 
 def enqueue(queue, *, approval_required=True, key="mission-1-chatgpt"):
@@ -114,3 +118,50 @@ def test_provider_isolation_and_failure_checkpoint(tmp_path):
         blocked=True,
     ) is True
     assert queue.get(task["task_id"])["status"] == "blocked"
+
+def test_approval_bypass_requires_a_fresh_running_parent_mission(tmp_path):
+    queue = make_queue(tmp_path, lambda _mission_id: "APPROVAL_PENDING")
+    try:
+        enqueue(queue, approval_required=False)
+    except ValueError as exc:
+        assert "RUNNING parent mission" in str(exc)
+    else:
+        raise AssertionError("approval bypass was accepted for a non-running mission")
+    pending = enqueue(queue, approval_required=True, key="pending-approval-task")
+    assert pending["status"] == "pending_approval"
+
+
+def test_claim_rechecks_parent_mission_and_blocks_terminal_parent(tmp_path):
+    state = {"status": "RUNNING"}
+    queue = make_queue(tmp_path, lambda _mission_id: state["status"])
+    task = enqueue(queue, approval_required=False)
+    state["status"] = "COMPLETED"
+
+    assert queue.claim_next(provider="chatgpt", worker_id="extension-session") is None
+    saved = queue.get(task["task_id"])
+    assert saved["status"] == "needs_review"
+    assert "parent_mission_missing_or_terminal" in saved["error"]
+
+
+def test_approved_task_waits_until_parent_mission_is_running(tmp_path):
+    state = {"status": "APPROVAL_PENDING"}
+    queue = make_queue(tmp_path, lambda _mission_id: state["status"])
+    task = enqueue(queue, approval_required=True)
+    assert queue.approve(task["task_id"], operator="local-operator") is True
+    assert queue.claim_next(provider="chatgpt", worker_id="extension-session") is None
+    assert queue.get(task["task_id"])["status"] == "queued"
+
+    state["status"] = "RUNNING"
+    claimed = queue.claim_next(provider="chatgpt", worker_id="extension-session")
+    assert claimed is not None
+    assert claimed["task_id"] == task["task_id"]
+
+
+def test_terminal_parent_mission_cannot_receive_browser_task(tmp_path):
+    queue = make_queue(tmp_path, lambda _mission_id: "CANCELLED")
+    try:
+        enqueue(queue, approval_required=True)
+    except ValueError as exc:
+        assert "terminal mission" in str(exc)
+    else:
+        raise AssertionError("terminal mission accepted a browser task")
