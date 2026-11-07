@@ -615,13 +615,6 @@
       return true;
     }
 
-    if (message.type === "DGM_SEND_MESSAGE") {
-      sendMessageThroughVisibleUi(message)
-        .then(data => sendResponse({ ok: true, data }))
-        .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
-      return true;
-    }
-
     if (!message || typeof message.type !== "string") return false;
     if (message.type === "DGM_DISCOVER_VISIBLE") {
       discoverConversations()
