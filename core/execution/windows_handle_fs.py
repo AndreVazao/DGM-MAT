@@ -330,6 +330,166 @@ class WindowsDirectoryHandleBackend:
         if info["serial"] != self.file_identity(handle)[0]:
             raise WindowsHandleError("Volume identity changed while inspecting filesystem capabilities.")
 
+    def assert_private_directory_acl(self, handle: Any) -> dict[str, int | bool]:
+        """Require a backup directory ACL limited to the current user, SYSTEM and Administrators.
+
+        This audits the effective DACL on the already-pinned directory handle.
+        It deliberately rejects unsupported ACE forms, explicit deny ACEs,
+        non-inheritable grants and grants to any other SID.
+        """
+        ctypes = self.ctypes
+        wintypes = self.wintypes
+        owner_sid = ctypes.c_void_p()
+        dacl = ctypes.c_void_p()
+        security_descriptor = ctypes.c_void_p()
+        status = self.advapi32.GetSecurityInfo(
+            handle,
+            self.SE_FILE_OBJECT,
+            self.OWNER_SECURITY_INFORMATION | self.DACL_SECURITY_INFORMATION,
+            ctypes.byref(owner_sid),
+            None,
+            ctypes.byref(dacl),
+            None,
+            ctypes.byref(security_descriptor),
+        )
+        if status != 0:
+            raise WindowsHandleError(
+                f"GetSecurityInfo(backup root) failed with Win32 error {status}."
+            )
+
+        token = wintypes.HANDLE()
+        try:
+            if not self.advapi32.OpenProcessToken(
+                self.kernel32.GetCurrentProcess(),
+                self.TOKEN_QUERY,
+                ctypes.byref(token),
+            ):
+                self._raise_last_error("OpenProcessToken")
+            token_buffer = ctypes.create_string_buffer(1024)
+            returned = wintypes.DWORD()
+            if not self.advapi32.GetTokenInformation(
+                token,
+                self.TOKEN_USER_CLASS,
+                token_buffer,
+                len(token_buffer),
+                ctypes.byref(returned),
+            ):
+                self._raise_last_error("GetTokenInformation(TokenUser)")
+            current_user_sid = self.ctypes.cast(
+                token_buffer, ctypes.POINTER(self.TOKEN_USER)
+            ).contents.User.Sid
+            if not current_user_sid:
+                raise WindowsHandleError("The current process token has no user SID.")
+
+            well_known_buffers = []
+            approved_sids = [current_user_sid]
+            for sid_type in (
+                self.WELL_KNOWN_BUILTIN_ADMINISTRATORS,
+                self.WELL_KNOWN_LOCAL_SYSTEM,
+            ):
+                sid_buffer = ctypes.create_string_buffer(68)
+                sid_size = wintypes.DWORD(len(sid_buffer))
+                if not self.advapi32.CreateWellKnownSid(
+                    sid_type,
+                    None,
+                    sid_buffer,
+                    ctypes.byref(sid_size),
+                ):
+                    self._raise_last_error("CreateWellKnownSid")
+                well_known_buffers.append(sid_buffer)
+                approved_sids.append(ctypes.cast(sid_buffer, ctypes.c_void_p))
+
+            if not owner_sid or not any(
+                self.advapi32.EqualSid(owner_sid, approved)
+                for approved in approved_sids
+            ):
+                raise WindowsHandleError(
+                    "Backup root owner must be the current user, SYSTEM or Administrators."
+                )
+
+            dacl_present = wintypes.BOOL()
+            dacl_defaulted = wintypes.BOOL()
+            dacl_pointer = ctypes.c_void_p()
+            if not self.advapi32.GetSecurityDescriptorDacl(
+                security_descriptor,
+                ctypes.byref(dacl_present),
+                ctypes.byref(dacl_pointer),
+                ctypes.byref(dacl_defaulted),
+            ):
+                self._raise_last_error("GetSecurityDescriptorDacl")
+            if not dacl_present.value or not dacl_pointer:
+                raise WindowsHandleError(
+                    "Backup root has a null or absent DACL; refusing to store patch backups."
+                )
+
+            acl_info = self.ACL_SIZE_INFORMATION()
+            if not self.advapi32.GetAclInformation(
+                dacl_pointer,
+                ctypes.byref(acl_info),
+                ctypes.sizeof(acl_info),
+                self.ACL_SIZE_INFORMATION_CLASS,
+            ):
+                self._raise_last_error("GetAclInformation")
+            if acl_info.AceCount == 0 or acl_info.AceCount > 4096:
+                raise WindowsHandleError(
+                    "Backup root DACL is empty or exceeds the supported ACE inspection bound."
+                )
+
+            user_grant_verified = False
+            for index in range(acl_info.AceCount):
+                ace_pointer = ctypes.c_void_p()
+                if not self.advapi32.GetAce(
+                    dacl_pointer, index, ctypes.byref(ace_pointer)
+                ):
+                    self._raise_last_error("GetAce")
+                header = ctypes.cast(
+                    ace_pointer, ctypes.POINTER(self.ACE_HEADER)
+                ).contents
+                if header.AceType != self.ACCESS_ALLOWED_ACE_TYPE:
+                    raise WindowsHandleError(
+                        "Backup root DACL contains an unsupported or explicit-deny ACE; refusing mutation."
+                    )
+                if header.AceSize < 16:
+                    raise WindowsHandleError("Backup root DACL contains a malformed access ACE.")
+                sid_pointer = ctypes.c_void_p(ace_pointer.value + 8)
+                if not any(
+                    self.advapi32.EqualSid(sid_pointer, approved)
+                    for approved in approved_sids
+                ):
+                    raise WindowsHandleError(
+                        "Backup root DACL grants access to a SID other than the current user, SYSTEM or Administrators."
+                    )
+                inheritance = self.ACE_OBJECT_INHERIT | self.ACE_CONTAINER_INHERIT
+                if (header.AceFlags & inheritance) != inheritance:
+                    raise WindowsHandleError(
+                        "Backup root access ACEs must inherit to files and child directories."
+                    )
+                mask = ctypes.c_uint32.from_address(ace_pointer.value + 4).value
+                if not (mask & self.GENERIC_ALL) and (
+                    mask & self.FILE_ALL_ACCESS
+                ) != self.FILE_ALL_ACCESS:
+                    raise WindowsHandleError(
+                        "Backup root approved principals require full control for safe backup and recovery."
+                    )
+                if self.advapi32.EqualSid(sid_pointer, current_user_sid):
+                    user_grant_verified = True
+
+            if not user_grant_verified:
+                raise WindowsHandleError(
+                    "Backup root DACL has no inheritable full-control grant for the current user."
+                )
+            return {
+                "ace_count": int(acl_info.AceCount),
+                "allowed_ace_count": int(acl_info.AceCount),
+                "owner_verified": True,
+                "current_user_inheritable_full_control": True,
+            }
+        finally:
+            if token:
+                self.close(token)
+            if security_descriptor:
+                self.kernel32.LocalFree(security_descriptor)
+
     def _validate_basename(self, name: str) -> str:
         if (
             not isinstance(name, str)
