@@ -168,6 +168,11 @@ class BackupFirstPatchExecutor:
                 raise PatchRejected("Repository root changed after executor initialization.")
             for part in parts[:-1]:
                 child_handle = backend.open_child_directory(parent_handle, part)
+                if backend.final_path_component(child_handle).casefold() != part.casefold():
+                    backend.close(child_handle)
+                    raise PatchRejected(
+                        "Windows path component resolves through a short-name alias; native long-name identity must match."
+                    )
                 if parent_handle is not root_handle:
                     backend.close(parent_handle)
                 parent_handle = child_handle
@@ -228,6 +233,10 @@ class BackupFirstPatchExecutor:
                 parent_handle, target_name, exclusive=True
             )
             existed = target_handle is not None
+            if existed and backend.final_path_component(target_handle).casefold() != target_name.casefold():
+                raise PatchRejected(
+                    "Windows target resolves through a short-name alias; native long-name identity must match."
+                )
             if existed:
                 target_identity = backend.file_identity(target_handle)
                 if backend.file_link_count(target_handle) != 1:
@@ -456,10 +465,18 @@ class BackupFirstPatchExecutor:
                 exclusive=True,
             )
             expected_identity = manifest.get("target_identity")
+            if target_handle is not None and backend.final_path_component(target_handle).casefold() != target_name.casefold():
+                raise PatchRollbackError(
+                    "Rollback target resolves through a Windows short-name alias; refusing mutation."
+                )
             state = manifest.get("state")
             if state not in {"prepared", "applied"}:
                 raise PatchRollbackError("Backup manifest is not in a recoverable state.")
             if target_handle is None and created:
+                if expected_identity is None and state != "prepared":
+                    raise PatchRollbackError(
+                        "A created-file manifest without a persisted identity is recoverable only while prepared."
+                    )
                 staging_name = manifest.get("staging_name")
                 if not isinstance(staging_name, str):
                     raise PatchRollbackError("Created-file staging metadata is missing.")
