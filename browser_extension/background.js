@@ -242,9 +242,22 @@ async function pollBrowserConsultQueue() {
   consultPollInProgress = true;
   try {
     const settings = await chrome.storage.local.get([CONSULT_ENABLED_KEY, PROVIDER_TABS_KEY, CONSULT_CURRENT_KEY, BROWSER_TASK_KEY]);
-    if (!settings[CONSULT_ENABLED_KEY] || settings[CONSULT_CURRENT_KEY] || settings[BROWSER_TASK_KEY] || browserPollInProgress) return;
+    if (!settings[CONSULT_ENABLED_KEY] || settings[BROWSER_TASK_KEY] || browserPollInProgress) return;
     const state = await readState();
     if (!state.token || state.run?.active) return;
+    if (settings[CONSULT_CURRENT_KEY]) {
+      const interrupted = settings[CONSULT_CURRENT_KEY];
+      await api("/recovery/browser-consult/block", {
+        consultation_id: interrupted.consultation_id,
+        claim_token: interrupted.claim_token,
+        reason: "interrupted"
+      }, state.token).catch(() => {});
+      await chrome.storage.local.remove(CONSULT_CURRENT_KEY);
+      await chrome.storage.local.set({
+        dgmBrowserConsultLastStatus: "Previous consultation was interrupted by extension restart; it was not replayed."
+      });
+      return;
+    }
     const tabs = settings[PROVIDER_TABS_KEY] || {};
     for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
       if (await isBrowserProviderPaused(provider)) continue;
