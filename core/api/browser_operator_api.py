@@ -17,9 +17,27 @@ from core.api.browser_capture_api import _validate_provider_url
 router = APIRouter(prefix="/browser-operator", tags=["browser-operator"])
 
 
+def _mission_status(mission_id: str) -> str | None:
+    """Read the current durable parent checkpoint; never trust request-supplied state."""
+    if not isinstance(mission_id, str) or not __import__("re").fullmatch(r"mission_[0-9a-f]{8}", mission_id):
+        return None
+    checkpoint = storage_manager.get_path("missions") / (mission_id + ".json")
+    try:
+        with checkpoint.open("r", encoding="utf-8") as handle:
+            data = __import__("json").load(handle)
+        if data.get("mission_id") != mission_id:
+            return None
+        return data.get("status")
+    except (OSError, ValueError, TypeError):
+        return None
+
+
 @lru_cache(maxsize=1)
 def _queue() -> BrowserOperatorQueue:
-    return BrowserOperatorQueue(storage_manager.get_path("tasks") / "browser_operator.sqlite3")
+    return BrowserOperatorQueue(
+        storage_manager.get_path("tasks") / "browser_operator.sqlite3",
+        mission_status_resolver=_mission_status,
+    )
 
 
 def _principal(request: Request) -> dict[str, Any]:
@@ -65,7 +83,6 @@ class BrowserOperatorTaskCreate(BaseModel):
     source_id: str = Field(min_length=1, max_length=200)
     conversation_url: str = Field(min_length=12, max_length=2048)
     message: str = Field(min_length=1, max_length=30000)
-    approval_required: bool = True
 
     model_config = ConfigDict(extra="forbid")
 
@@ -98,7 +115,7 @@ def create_browser_operator_task(payload: BrowserOperatorTaskCreate, request: Re
             source_id=payload.source_id,
             conversation_url=payload.conversation_url,
             message=payload.message,
-            approval_required=payload.approval_required,
+            approval_required=True,
             created_by=str(principal.get("subject") or "local-operator"),
         )
     except (ValueError, BrowserOperatorQueueError) as exc:
