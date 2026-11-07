@@ -200,17 +200,28 @@ class BrowserConsultStore:
                     INSERT INTO browser_consultations(
                         consultation_id, task_ref, provider, prompt, prompt_sha256,
                         status, created_at
-                    ) VALUES (?, ?, ?, ?, ?, 'PENDING', ?)
+                    ) VALUES (?, ?, ?, ?, ?, 'PENDING_APPROVAL', ?)
                 """, (consultation_id, task_ref.strip(), provider, prompt, _hash(prompt), now))
                 ids.append(consultation_id)
             db.commit()
         return {
-            "status": "PENDING" if ids else "BLOCKED_COOLDOWN_OR_DUPLICATE",
+            "status": "PENDING_APPROVAL" if ids else "BLOCKED_COOLDOWN_OR_DUPLICATE",
             "consultation_ids": ids,
             "provider_count": len(ids),
             "prompt_sha256": _hash(prompt),
             "prompt_redacted": "[REDACTED_SECRET]" in prompt,
         }
+
+    def approve(self, consultation_id: str, *, operator: str) -> bool:
+        if not isinstance(operator, str) or not operator.strip():
+            raise ValueError("operator identity is required")
+        with self._connect() as db:
+            cursor = db.execute(\"\"\"
+                UPDATE browser_consultations SET status='PENDING'
+                WHERE consultation_id=? AND status='PENDING_APPROVAL'
+            \"\"\", (consultation_id,))
+            db.commit()
+            return cursor.rowcount == 1
 
     def claim_next(self, provider: str) -> dict[str, Any] | None:
         if not _enabled() or provider not in _free_providers():
