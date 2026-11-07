@@ -108,7 +108,14 @@ class OrganizationTaskDispatcher:
             correlation_id=f"task:{task.task_id}",
             task_id=task.task_id,
         )
-        status = response.get("status") if isinstance(response, dict) else None
+        if not isinstance(response, dict):
+            return {
+                "status": "RESULT_UNVERIFIED",
+                "task_id": task_id,
+                "task_status": task.status.value,
+                "reason": "worker_response_invalid",
+            }
+        status = response.get("status")
         if status in {"COMPLETED", "ALREADY_COMPLETED"}:
             if (
                 response.get("durable_receipt") is not True
