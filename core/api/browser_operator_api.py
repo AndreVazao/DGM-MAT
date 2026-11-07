@@ -1,6 +1,8 @@
 """Authenticated local queue API for visible-UI browser operator tasks."""
 from __future__ import annotations
 
+import json
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
@@ -19,12 +21,12 @@ router = APIRouter(prefix="/browser-operator", tags=["browser-operator"])
 
 def _mission_status(mission_id: str) -> str | None:
     """Read the current durable parent checkpoint; never trust request-supplied state."""
-    if not isinstance(mission_id, str) or not __import__("re").fullmatch(r"mission_[0-9a-f]{8}", mission_id):
+    if not isinstance(mission_id, str) or not re.fullmatch(r"mission_[0-9a-f]{8}", mission_id):
         return None
     checkpoint = storage_manager.get_path("missions") / (mission_id + ".json")
     try:
         with checkpoint.open("r", encoding="utf-8") as handle:
-            data = __import__("json").load(handle)
+            data = json.load(handle)
         if data.get("mission_id") != mission_id:
             return None
         return data.get("status")
