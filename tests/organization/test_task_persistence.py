@@ -7,11 +7,13 @@ from core.organization.task_manager import OrganizationTaskManager
 
 
 def _task(task_id="task:persisted", **kwargs):
+    title = kwargs.pop("title", "Persist lifecycle")
+    description = kwargs.pop("description", "Verify restart-safe task state.")
     return Task(
         task_id=task_id,
-        title="Persist lifecycle",
+        title=title,
         mission_id="mission:durability",
-        description="Verify restart-safe task state.",
+        description=description,
         **kwargs,
     )
 
