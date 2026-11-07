@@ -176,12 +176,33 @@ class BrowserOperatorQueue:
                     error='claim_lease_expired; automatic replay prohibited'
                 WHERE status='claimed' AND lease_until IS NOT NULL AND lease_until < ?
             """, (now.isoformat(), now.isoformat()))
-            row = db.execute("""
-                SELECT task_id FROM browser_operator_tasks
+            rows = db.execute("""
+                SELECT task_id, mission_id FROM browser_operator_tasks
                 WHERE status='queued' AND provider=?
-                ORDER BY created_at, task_id LIMIT 1
-            """, (provider,)).fetchone()
-            if row is None:
+                ORDER BY created_at, task_id LIMIT 200
+            """, (provider,)).fetchall()
+            selected_task_id = None
+            for candidate in rows:
+                parent_status = None
+                if self._mission_status_resolver is not None:
+                    try:
+                        raw_status = self._mission_status_resolver(candidate["mission_id"])
+                        parent_status = str(getattr(raw_status, "value", raw_status)).upper() if raw_status is not None else None
+                    except Exception:
+                        parent_status = None
+                if parent_status is None or parent_status in {"COMPLETED", "CANCELLED", "FAILED"}:
+                    db.execute("""
+                        UPDATE browser_operator_tasks
+                        SET status='needs_review', updated_at=?,
+                            error='parent_mission_missing_or_terminal; automatic send prohibited'
+                        WHERE task_id=? AND status='queued'
+                    """, (now.isoformat(), candidate["task_id"]))
+                    continue
+                if parent_status != "RUNNING":
+                    continue
+                selected_task_id = candidate["task_id"]
+                break
+            if selected_task_id is None:
                 db.commit()
                 return None
             lease_until = (now + timedelta(seconds=self.lease_seconds)).isoformat()
@@ -189,12 +210,12 @@ class BrowserOperatorQueue:
                 UPDATE browser_operator_tasks
                 SET status='claimed', claimed_by=?, claim_token=?, lease_until=?, updated_at=?
                 WHERE task_id=? AND status='queued'
-            """, (worker_id, token, lease_until, now.isoformat(), row["task_id"])).rowcount
+            """, (worker_id, token, lease_until, now.isoformat(), selected_task_id)).rowcount
             if changed != 1:
                 db.rollback()
                 return None
             claimed = db.execute(
-                "SELECT * FROM browser_operator_tasks WHERE task_id=?", (row["task_id"],)
+                "SELECT * FROM browser_operator_tasks WHERE task_id=?", (selected_task_id,)
             ).fetchone()
             db.commit()
             result = self._decode(claimed) or {}
