@@ -20,6 +20,13 @@ def _store() -> BrowserConsultStore:
     return _store_instance
 
 
+def _principal(request: Request) -> dict:
+    principal = request.scope.get("state", {}).get("dgm_principal")
+    if not isinstance(principal, dict) or not isinstance(principal.get("session_id"), str):
+        raise HTTPException(status_code=401, detail="Authenticated local DGM-MAT session required.")
+    return principal
+
+
 def _session_id(request: Request) -> str | None:
     principal = getattr(request.state, "dgm_principal", {}) or {}
     return principal.get("session_id") if isinstance(principal, dict) else None
@@ -59,12 +66,14 @@ class BrowserConsultBlockRequest(BaseModel):
 
 
 @router.get("/status")
-def browser_consult_status():
+def browser_consult_status(request: Request):
+    _principal(request)
     return _store().status()
 
 
 @router.post("/enqueue")
 def enqueue_browser_consultation(payload: BrowserConsultEnqueueRequest, request: Request):
+    principal = _principal(request)
     if not _enabled():
         raise HTTPException(status_code=409, detail="Free-tier browser consultation is disabled until explicitly enabled on this PC.")
     if payload.free_capacity_confirmed is not True:
@@ -79,11 +88,23 @@ def enqueue_browser_consultation(payload: BrowserConsultEnqueueRequest, request:
         )
     except (AuditWriteError, ValueError, OSError) as exc:
         raise HTTPException(status_code=503, detail="Consultation could not be safely queued or audited.") from exc
+    result["approval_required"] = bool(result.get("consultation_ids"))
+    result["created_by"] = principal.get("subject", "local-operator")
     return result
+
+
+@router.post("/approve/{consultation_id}")
+def approve_browser_consultation(consultation_id: str, request: Request):
+    principal = _principal(request)
+    if not _store().approve(consultation_id, operator=str(principal.get("subject") or "local-operator")):
+        raise HTTPException(status_code=409, detail="Consultation is missing or no longer awaiting approval.")
+    _audit("command.approved", "approved_for_visible_ui", request)
+    return {"status": "PENDING", "consultation_id": consultation_id}
 
 
 @router.post("/next")
 def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok"], request: Request):
+    _principal(request)
     try:
         item = _store().claim_next(provider)
         if item is None:
@@ -109,6 +130,7 @@ def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok"], r
 
 @router.post("/result")
 def complete_browser_consultation(payload: BrowserConsultResultRequest, request: Request):
+    _principal(request)
     try:
         result = _store().finish(payload.consultation_id, response_text=payload.response_text)
         try:
@@ -125,6 +147,7 @@ def complete_browser_consultation(payload: BrowserConsultResultRequest, request:
 
 @router.post("/block")
 def block_browser_consultation(payload: BrowserConsultBlockRequest, request: Request):
+    _principal(request)
     try:
         result = _store().block(payload.consultation_id, reason=payload.reason)
         try:
