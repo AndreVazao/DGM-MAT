@@ -567,6 +567,12 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         configured_vault = os.environ.get("DGM_VAULT_PATH") or VaultCatalog.default_root()
         vault = VaultCatalog(configured_vault)
         vault.register_known_projects()
+        from core.conversation_intelligence.telescope_archive_importer import redact_conversation_text
+        vault_title = redact_conversation_text(str(normalized_record.get("title", record["title"])))
+        vault_messages = [
+            {**message, "content": redact_conversation_text(str(message.get("content", "")))}
+            for message in normalized_record.get("messages", [])
+        ]
         raw_result = vault.archive_raw_capture(
             provider=payload.provider,
             source_id=payload.source_id,
@@ -575,13 +581,13 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         vault_result = vault.archive_conversation(
             provider=payload.provider,
             conversation_id=payload.source_id,
-            title=normalized_record.get("title", record["title"]),
+            title=vault_title,
             url=source_url,
             content="\\n\\n".join(
                 f"{message.get('role', 'unknown')}: {message.get('content', '')}"
-                for message in normalized_record.get("messages", [])
+                for message in vault_messages
             ),
-            messages=normalized_record.get("messages", []),
+            messages=vault_messages,
             completeness=record["history_completeness"],
             metadata={
                 "captured_at": payload.captured_at,
