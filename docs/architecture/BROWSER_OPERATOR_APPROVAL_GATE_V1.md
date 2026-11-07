@@ -46,3 +46,12 @@ Older queue databases gain an `approval_required` column with a safe default of 
 This gate authorizes only the browser extension's visible-UI task queue. It does not bypass provider login, MFA, CAPTCHA, rate limits or provider controls. It does not read browser cookies, tokens or browser databases. A lease expiry remains ambiguous and is never automatically replayed.
 
 Local acceptance with authenticated ChatGPT, Grok, Gemini, DeepSeek and Qwen tabs is still required when the operator PC is online.
+
+## Extension-side send boundary (PR #271)
+
+The extension no longer exposes a popup message composer or a direct `DGM_SEND_MESSAGE` content-script listener. A local `window.confirm()` is not an approval record and cannot authorize a provider send. The only send-capable content-script message is `DGM_EXECUTE_BROWSER_TASK`, reached by the service worker after the server has claimed a task from the durable, approval-gated queue.
+
+The popup toggle only permits processing of tasks already approved by DGM-MAT; it does not create or approve tasks. CI must run both complementary fixtures:
+- `test_message_send.js`: rejects the removed direct-send message type;
+- `test_browser_operator_task.js`: proves the approved server-claimed path still sends once, validates provider/conversation identity and handles blocked/unverified/timeout states without replay.
+
