@@ -9,7 +9,11 @@ from core.providers.browser.browser_operator_queue import BrowserOperatorQueue
 
 
 def make_client(monkeypatch, tmp_path):
-    queue = BrowserOperatorQueue(tmp_path / "browser-operator.sqlite3", lease_seconds=30)
+    queue = BrowserOperatorQueue(
+        tmp_path / "browser-operator.sqlite3",
+        lease_seconds=30,
+        mission_status_resolver=lambda _mission_id: "RUNNING",
+    )
     monkeypatch.setattr(browser_operator_api, "_queue", lambda: queue)
     app = FastAPI()
 
@@ -34,7 +38,6 @@ def payload(**overrides):
         "source_id": "conversation-123",
         "conversation_url": "https://chatgpt.com/c/conversation-123",
         "message": "Inspect the repository and report verified findings.",
-        "approval_required": True,
     }
     value.update(overrides)
     return value
@@ -127,7 +130,6 @@ def test_mission_operator_accepts_deepseek_and_qwen_with_approval_gate(monkeypat
             "provider": provider,
             "source_id": "conversation-123",
             "conversation_url": url,
-            "approval_required": True,
         })
         response = client.post("/browser-operator/tasks", json=body)
         assert response.status_code == 201, (provider, response.text)
@@ -135,3 +137,9 @@ def test_mission_operator_accepts_deepseek_and_qwen_with_approval_gate(monkeypat
         assert result["status"] == "pending_approval"
         assert result["approval_required"] is True
         assert queue.get(result["task_id"])["provider"] == provider
+
+def test_direct_operator_route_cannot_disable_per_task_approval(monkeypatch, tmp_path):
+    client, queue = make_client(monkeypatch, tmp_path)
+    response = client.post("/browser-operator/tasks", json=payload(approval_required=False))
+    assert response.status_code == 422
+    assert queue.list_tasks() == []
