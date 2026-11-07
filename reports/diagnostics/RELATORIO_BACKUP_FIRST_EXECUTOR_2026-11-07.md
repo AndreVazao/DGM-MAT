@@ -55,3 +55,38 @@ Cobertura nativa Windows:
 - Nenhuma integração MissionEngine, nenhuma escrita em projetos reais e nenhum auto-merge.
 - SAFE por defeito, aprovação explícita, allowlist de paths/repositórios, diff review, checkpoints duráveis e rollback continuam obrigatórios.
 - PC do operador está offline até 2026-11-09; não foi feita aceitação local.
+
+
+## ACL hardening and exact-head validation — 2026-11-07 10:30 UTC
+
+### Effective backup-root ACL
+
+The backup root is now secured and verified through pinned native Windows handles:
+
+- The root DACL is explicitly set with `SetSecurityInfo` and `PROTECTED_DACL_SECURITY_INFORMATION`, preventing broad parent ACL inheritance.
+- Grants are limited to the current process user, Local SYSTEM and Built-in Administrators.
+- All three principals receive full control inheritable by files and child directories.
+- The DACL audit reads owner, DACL and protected-DACL state through `GetSecurityInfo`; it rejects null/absent DACLs, unexpected SIDs, deny/unsupported ACE types, non-inheritable grants, inherit-only/no-propagate ACEs and insufficient masks.
+- The transaction directory is independently audited. It is expected to inherit the restricted root DACL and therefore is checked without requiring its own protected-DACL flag.
+- `READ_CONTROL` is requested for audit handles. `WRITE_DAC` is requested only on the final backup-root handle, not on drive/ancestor directories.
+- Rollback reopens and verifies the protected root and transaction directory before reading manifests or restoring files.
+
+The ACL change is fail-closed. If the current process cannot secure and verify the dedicated backup root, no transaction is written.
+
+### Exact current head
+
+Head: `c9662b8ff73b30024ffd96711b290add44e2bc02`
+
+- Windows Guard [42364111315](https://github.com/AndreVazao/DGM-MAT/actions/runs/42364111315): **SUCCESS — 50 passed, 8 skipped**. The 8 skips are POSIX-only tests, intentionally disabled because POSIX conditional mutation/rollback is not implemented.
+- Focused PR Validation [42364111361](https://github.com/AndreVazao/DGM-MAT/actions/runs/42364111361): **SUCCESS** — source compilation and selected regressions.
+- The Windows Guard test output reached 100%; all executed tests passed. The 8 skips are expected policy skips.
+- Intermediate Windows failures were not suppressed: missing READ_CONTROL, a path-traversal variable leak, fixture argument forwarding, transaction-vs-root DACL semantics and protected-DACL query flags were investigated and corrected.
+
+### Remaining gates
+
+1. Independent substantive security review of this exact head. CodeRabbit trigger acknowledgement is not a review.
+2. Windows 10 operator-PC acceptance: create/replace, ACL, backup verification, rollback, process restart/recovery and concurrent writers.
+3. Real storage/controller write-through and abrupt-power-loss acceptance.
+4. Snyk remains `error`; no clean scan or security approval is claimed.
+
+PR #276 remains draft. PR #220 is closed as superseded, without merge, with branch/history retained. No MissionEngine integration, no real-project mutation and no auto-merge. SAFE default and explicit approval remain mandatory.
