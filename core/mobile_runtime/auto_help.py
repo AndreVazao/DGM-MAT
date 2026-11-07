@@ -308,7 +308,7 @@ class AutoHelpWorker:
             thread_id=thread_id,
             goal=goal,
             reason=reason,
-            providers=list(self.providers),
+            providers=list(self.providers or self.browser_consult_providers),
         )
 
     def status(self) -> dict[str, Any]:
@@ -324,7 +324,7 @@ class AutoHelpWorker:
         return result
 
     def start(self) -> bool:
-        if not self.enabled or not self.providers:
+        if not self.enabled or not (self.providers or (self.browser_consult_enabled and self.browser_consult_providers)):
             return False
         with self._lock:
             if self._thread and self._thread.is_alive():
