@@ -696,3 +696,24 @@ def test_windows_create_apply_error_preserves_prepared_target_for_explicit_rollb
     result = recovered.rollback(manifest["backup_id"])
     assert result["state"] == "rolled_back"
     assert not target.exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows same-volume staging test.")
+def test_windows_create_rejects_backup_root_on_another_volume(tmp_path, monkeypatch):
+    root = repository(tmp_path)
+    backup_root = tmp_path / "backups"
+    target = root / "src" / "new.py"
+    executor = BackupFirstPatchExecutor(root, backup_root=backup_root)
+    backend = executor._windows_backend
+    assert backend is not None
+    original_identity = backend.file_identity
+    monkeypatch.setattr(
+        backend,
+        "file_identity",
+        lambda handle: (original_identity(handle)[0] + 1, original_identity(handle)[1]),
+    )
+
+    with pytest.raises(PatchBackupError, match="same NTFS volume"):
+        executor.apply_text("src/new.py", "new content")
+
+    assert not target.exists()
