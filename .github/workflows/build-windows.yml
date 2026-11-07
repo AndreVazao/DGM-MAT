@@ -116,6 +116,8 @@ jobs:
           mkdir publish\config
           mkdir publish\browser_extension
           copy dist\DGM-MAT.exe publish\
+          $exeHash = (Get-FileHash -LiteralPath "dist\DGM-MAT.exe" -Algorithm SHA256).Hash
+          "$exeHash  DGM-MAT.exe" | Out-File "publish\DGM-MAT.exe.sha256" -Encoding ascii
           Copy-Item -Path "browser_extension\*" -Destination "publish\browser_extension" -Recurse -Force
           copy health.json publish\
           copy ecosystem.json publish\
@@ -149,6 +151,9 @@ jobs:
           if (-not (Test-Path $checksum)) {
             throw "SHA-256 file missing: $checksum"
           }
+          if (-not (Select-String -Path "publish\DGM-MAT.exe.sha256" -Pattern "^[0-9A-Fa-f]{64}  DGM-MAT\.exe$" -Quiet)) {
+            throw "Executable SHA-256 sidecar missing or malformed"
+          }
           if (-not (Test-Path "publish\browser_extension\manifest.json")) {
             throw "Browser extension was not packaged."
           }
@@ -170,4 +175,5 @@ jobs:
           path: |
             DGM-MAT-Windows-${{ matrix.python-version }}-${{ env.VERSION }}.zip
             DGM-MAT-Windows-${{ matrix.python-version }}-${{ env.VERSION }}.zip.sha256
+            publish/DGM-MAT.exe.sha256
           if-no-files-found: error
