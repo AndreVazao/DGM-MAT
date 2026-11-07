@@ -516,6 +516,17 @@ class BackupFirstPatchExecutor:
             state = manifest.get("state")
             if state == "applied" and current_sha != manifest.get("result_sha256"):
                 raise PatchRollbackError("Current file changed after the patch; refusing to overwrite newer work.")
+            if not created and state == "prepared" and current_sha not in {
+                manifest.get("original_sha256"),
+                manifest.get("result_sha256"),
+            }:
+                # A crash during in-place replacement can leave partial bytes.
+                # After process death we cannot distinguish those bytes from a
+                # later independent writer. Preserve the current file and
+                # require operator recovery instead of overwriting it.
+                raise PatchRollbackError(
+                    "Prepared replacement content is neither the original nor the expected result; refusing to overwrite potentially newer work."
+                )
             # A staged create is fully written and hash-verified before its
             # atomic promotion. Even while its manifest is still prepared,
             # any later content change must be preserved, not deleted.
