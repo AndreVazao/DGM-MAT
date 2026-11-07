@@ -73,7 +73,7 @@ jobs:
           fi
           cat "${RUNNER_TEMP}/changed-files.txt"
           python - <<'PY'
-          import os, pathlib
+          import os, pathlib, re
           changed_file = pathlib.Path(os.environ["RUNNER_TEMP"]) / "changed-files.txt"
           changed = set(changed_file.read_text(encoding="utf-8").splitlines())
           tests = set()
@@ -106,8 +106,15 @@ jobs:
               })
           tests.update(path for path in changed if path.startswith("tests/") and path.endswith(".py"))
           existing = sorted(path for path in tests if pathlib.Path(path).is_file())
+          gui_markers = ("PySide6", "PyQt", "QApplication", "qtbot", "pytestqt")
+          has_gui_tests = any(
+              any(marker in pathlib.Path(path).read_text(encoding="utf-8", errors="replace")
+                  for marker in gui_markers)
+              for path in existing
+          )
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write("has_tests=" + ("true" if existing else "false") + "\n")
+              output.write("has_gui_tests=" + ("true" if has_gui_tests else "false") + "\n")
           (pathlib.Path(os.environ["RUNNER_TEMP"]) / "selected-tests.txt").write_text(
               "\n".join(existing) + ("\n" if existing else ""), encoding="utf-8"
           )
@@ -121,7 +128,7 @@ jobs:
           python -m pip install -e DGM-MAT-Agents
           python -m pip install -r requirements.txt pytest
       - name: Install headless Qt system libraries when GUI regressions are selected
-        if: steps.select.outputs.has_tests == 'true'
+        if: steps.select.outputs.has_gui_tests == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0
