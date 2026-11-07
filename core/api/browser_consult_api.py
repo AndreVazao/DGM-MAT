@@ -144,7 +144,7 @@ def complete_browser_consultation(payload: BrowserConsultResultRequest, request:
                 mobile_service.store.append_message(
                     thread_id,
                     "assistant",
-                    "### " + str(result.get("provider", "AI")).upper() + " (resposta externa não verificada)\\n\\n" + payload.response_text[:12000],
+                    "### " + str(result.get("provider", "AI")).upper() + " (resposta externa não verificada)\n\n" + payload.response_text[:12000],
                     metadata={
                         "browser_consultation_id": payload.consultation_id,
                         "provider": result.get("provider"),
