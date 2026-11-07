@@ -189,3 +189,21 @@ O André mantém autoridade sobre a mudança de modo e decisões de reunião.
 ---
 
 **Conclusão:** o DGM-MAT evoluiu significativamente no GitHub e o build Windows da main está disponível, mas a operação de ponta a ponta permanece **VERIFICAÇÃO INCOMPLETA**. Não há confirmação de runtime local, missão real, provider ativo, conversa recuperada, ligação Hub atual ou atualização instalada.
+
+
+
+## Adenda de continuidade — 2026-11-07 16:12 UTC
+
+Esta adenda preserva o relatório original e regista alterações posteriores.
+
+### Estado das PRs
+- #276 permanece OPEN / DRAFT, sem integração. Os gates de segurança e aceitação Windows 10 descritos acima continuam válidos.
+- #277 permanece OPEN / DRAFT. A Focused PR Validation #645 (run 42384614731) foi confirmada como SUCCESS: checkout das dependências, compilação Python, seleção e execução dos testes afetados concluíram com sucesso. O check `security/snyk` permanece em ERROR; não existe aprovação Snyk limpa.
+- #278 permanece OPEN / DRAFT e contém este relatório.
+- Foi aberta a PR #279, `fix/installer-independent-exe-digest-2026-11-07`, para exigir um digest SHA-256 esperado e obtido separadamente antes de qualquer mutação do instalador Windows. A PR gera/publica `DGM-MAT.exe.sha256` como ficheiro autónomo do artefacto Actions e inclui regressões estáticas. No momento desta adenda, a Focused PR Validation #42389920969 ainda estava em execução; não declarar sucesso até conclusão. A aceitação Windows 10 real permanece pendente.
+
+### Limite da nova proteção de instalador
+A PR #279 melhora a deteção de corrupção/troca acidental do executável e obriga a uma comparação com um sidecar descarregado separadamente. Não constitui assinatura digital nem atestação criptográfica de identidade/proveniência do publisher. Não implementa self-update automático, não descarrega nem instala artefactos e não toca no PC.
+
+### Operações
+Não houve merge, alteração direta em `main`, instalação no PC, alteração de dados, exclusão de branches ou mutação de worktrees. A issue #244 foi atualizada com a ligação à PR #279.
