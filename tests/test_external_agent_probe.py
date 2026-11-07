@@ -360,7 +360,6 @@ def test_claude_auth_probe_uses_minimal_environment_and_temporary_cwd(monkeypatc
     result = probe.probe_claude_code()
 
     assert result["status"] == "installed_logged_out"
-    assert captured["kwargs"] if "kwargs" in captured else True
     assert captured["shell"] is False
     assert captured["cwd"]
     assert "ANTHROPIC_API_KEY" not in captured["env"]
