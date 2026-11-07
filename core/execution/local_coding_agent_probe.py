@@ -39,8 +39,8 @@ class LocalCodingAgentProbe:
     """Discover only the two operator-authorized local coding-agent CLIs."""
 
     AGENT_COMMANDS = {
-        "codex": ("codex", "codex.exe", "codex.cmd", "codex.ps1"),
-        "claude_code": ("claude", "claude.exe", "claude.cmd", "claude.ps1"),
+        "codex": ("codex", "codex.exe", "codex.ps1", "codex.cmd"),
+        "claude_code": ("claude", "claude.exe", "claude.ps1", "claude.cmd"),
     }
     ENDPOINT_ENV_NAMES = (
         "DGM_FCC_BASE_URL",
