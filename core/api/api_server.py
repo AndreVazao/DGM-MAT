@@ -24,6 +24,7 @@ from core.api.dgm_hub_agents_api import router as dgm_hub_agents_router
 from core.api.provider_execution_api import router as provider_execution_router
 from core.api.recovery_api import router as recovery_router
 from core.api.browser_capture_api import router as browser_capture_router
+from core.api.browser_operator_api import router as browser_operator_router
 from core.api.repository_learning_api import router as repository_learning_router
 from core.api.auto_help_api import router as auto_help_router
 from core.api.conversation_archive_api import router as conversation_archive_router
@@ -64,6 +65,7 @@ app.include_router(dgm_hub_agents_router)
 app.include_router(provider_execution_router)
 app.include_router(recovery_router)
 app.include_router(browser_capture_router)
+app.include_router(browser_operator_router)
 app.include_router(repository_learning_router)
 app.include_router(auto_help_router)
 app.include_router(conversation_archive_router)
