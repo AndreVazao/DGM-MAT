@@ -49,7 +49,7 @@ def _claude_command() -> tuple[list[str] | None, str | None]:
         if not shell:
             return None, executable
         return [shell, "-NoLogo", "-NoProfile", "-NonInteractive", "-File", executable, "auth", "status"], executable
-    if os.name == "nt" and suffix in {".cmd", ".bat"}:
+    if suffix in {".cmd", ".bat"}:
         # cmd.exe reparses its command tail; never execute .cmd/.bat wrappers.
         return None, executable
     return [executable, "auth", "status"], executable
