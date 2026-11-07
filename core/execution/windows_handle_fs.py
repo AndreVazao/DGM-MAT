@@ -579,6 +579,7 @@ class WindowsDirectoryHandleBackend:
             self.FILE_LIST_DIRECTORY
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
+            | self.READ_CONTROL
             | self.SYNCHRONIZE
         )
         # Start at the drive root and resolve each component relative to the
@@ -618,6 +619,7 @@ class WindowsDirectoryHandleBackend:
             self.FILE_LIST_DIRECTORY
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
+            | self.READ_CONTROL
             | self.SYNCHRONIZE
         )
         current = self._nt_open(
@@ -659,6 +661,7 @@ class WindowsDirectoryHandleBackend:
             self.FILE_LIST_DIRECTORY
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
+            | self.READ_CONTROL
             | self.SYNCHRONIZE
         )
         return self._nt_open(
@@ -736,6 +739,7 @@ class WindowsDirectoryHandleBackend:
             self.FILE_LIST_DIRECTORY
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
+            | self.READ_CONTROL
             | self.DELETE
             | self.SYNCHRONIZE
         )
