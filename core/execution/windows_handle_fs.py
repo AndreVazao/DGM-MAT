@@ -427,7 +427,9 @@ class WindowsDirectoryHandleBackend:
         status = self.advapi32.GetSecurityInfo(
             handle,
             self.SE_FILE_OBJECT,
-            self.OWNER_SECURITY_INFORMATION | self.DACL_SECURITY_INFORMATION,
+            self.OWNER_SECURITY_INFORMATION
+            | self.DACL_SECURITY_INFORMATION
+            | self.PROTECTED_DACL_SECURITY_INFORMATION,
             ctypes.byref(owner_sid),
             None,
             ctypes.byref(dacl),
