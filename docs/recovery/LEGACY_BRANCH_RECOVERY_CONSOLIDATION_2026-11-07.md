@@ -71,3 +71,19 @@ The legacy branch also modified `core/api/api_server.py` and `core/api/security_
 ## Cleanup recommendation
 
 All five audited source branch refs can be deleted after the owner verifies that PR #283 contains the recovered consultation modules and archival integration snapshots. Four branches are already superseded/integrated; the free-tier consultation branch's five changed files are represented in PR #283 as active isolated modules or labelled archival snapshots. Keep the new `recovery/legacy-branch-consolidation-2026-11-07` branch and PR #283 open. Deleting old branch refs does not require deleting their PR/commit history; preserve that history.
+
+
+## Final CI and artifact update — 2026-11-07 21:29 UTC
+
+This section supersedes the interim workflow numbers above.
+
+- Validated head: `6be93325a8499683c39a360d58332cd367be95f1`.
+- Focused PR Validation **#703: SUCCESS**.
+- Chrome Extension Validation **#295: SUCCESS**.
+- Windows Executable Build **#287: SUCCESS**. Its job completed every step successfully, including installer validation, executable deep check, final build assertions and artifact upload.
+- Windows artifact: `DGM-MAT-Windows-3.12-eeaaec3`, 111,239,254 bytes.
+- Artifact SHA-256: `3467d141ca2b9f2ad6220609ce527b8de5913e78381fe5f732c4f2a6f760aaf6`.
+- Artifact expires: 2027-02-05 21:24 UTC.
+- GitHub Actions result is green on the exact PR head. This is CI/build evidence only; Windows 10 installation, startup, browser extension pairing and real provider E2E remain untested on the owner's PC.
+- PR #283 remains open and unmerged. All five source branches remain untouched.
+- Activation flags remain off by default; do not enable production use until local acceptance.
