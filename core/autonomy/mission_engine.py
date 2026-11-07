@@ -23,6 +23,9 @@ from core.realtime.realtime_broadcast import safe_broadcast
 from core.organization import CapabilityScout, InternalMessageBus, Message, MessagePriority
 from core.organization.human_intervention_queue import HumanInterventionQueue
 from core.organization.worker_runtime import WorkerRuntime
+from core.organization.delegation import DelegationEngine
+from core.organization.task_manager import OrganizationTaskManager
+from core.organization.models import Task
 from core.organization.configured_readonly_workers import register_configured_readonly_workers
 from core.organization.read_only_worker_orchestrator import ReadOnlyWorkerOrchestrator
 from core.organization.office import bootstrap_full_office
@@ -70,6 +73,12 @@ class MissionEngine:
         )
         self.worker_runtime = WorkerRuntime(self.organization_bus)
         self.organization_registry = bootstrap_full_office()
+        # One task manager shares the existing durable organization bus. It does
+        # not create a parallel database and never executes task descriptions.
+        self.organization_tasks = OrganizationTaskManager(self.organization_bus)
+        self.organization_delegation = DelegationEngine(
+            self.organization_registry, self.organization_tasks, self.worker_runtime
+        )
         # Read-only repository specialists remain disabled unless the operator
         # explicitly supplies a host-owned workspace root and repository allowlist.
         self.readonly_worker_registration = register_configured_readonly_workers(
@@ -132,7 +141,7 @@ class MissionEngine:
             self.organization_registry.set_status(agent_id, AgentStatus.AVAILABLE)
 
     def organization_readiness(self) -> Dict[str, Any]:
-        """Report roster status separately from registered handler capabilities."""
+        """Report roster, handler and durable task-store readiness separately."""
         report = []
         for agent in self.organization_registry.list_agents():
             registered = self.worker_runtime.has_handler(agent.agent_id)
@@ -146,8 +155,25 @@ class MissionEngine:
         return {
             "registered_handler_count": len(self.worker_runtime.registered_agents()),
             "agents": sorted(report, key=lambda item: item["agent_id"]),
+            "task_store": {
+                "backend": "sqlite" if self.organization_bus.db_path is not None else "memory",
+                "durable": self.organization_bus.db_path is not None,
+                "schema_version": OrganizationTaskManager.SCHEMA_VERSION,
+            },
             "task_validated": False,
         }
+
+    def create_organization_task(self, task: Task) -> Task:
+        """Persist a bounded organization task; this does not execute it."""
+        return self.organization_tasks.create(task)
+
+    def get_organization_task(self, task_id: str) -> Task | None:
+        """Return a detached task snapshot from the organization task store."""
+        return self.organization_tasks.get(task_id)
+
+    def delegate_organization_task(self, task_id: str):
+        """Assign a task to a registered, capability-compatible local handler."""
+        return self.organization_delegation.delegate(task_id)
 
     def run_readonly_repository_worker(
         self, *, agent_id: str, repository_id: str, mission_id: str, correlation_id: str
