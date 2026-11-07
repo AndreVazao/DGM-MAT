@@ -192,6 +192,23 @@ def test_parent_directory_symlink_swap_after_open_cannot_redirect_patch(tmp_path
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Native Windows integration test.")
+@pytest.mark.parametrize("expected_hash", [None, "0" * 64])
+def test_windows_existing_file_rejects_missing_or_mismatched_hash_without_mutation(tmp_path, expected_hash):
+    root = repository(tmp_path)
+    target = root / "src" / "guarded.py"
+    original = b"original bytes\\n"
+    target.write_bytes(original)
+    backup_root = tmp_path / "backups"
+    executor = BackupFirstPatchExecutor(root, backup_root=backup_root)
+
+    with pytest.raises(PatchRejected, match="matching expected_sha256"):
+        executor.apply_text("src/guarded.py", "must not replace\\n", expected_sha256=expected_hash)
+
+    assert target.read_bytes() == original
+    assert not backup_root.exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows integration test.")
 def test_windows_backup_first_replace_and_rollback(tmp_path):
     root = repository(tmp_path)
     target = root / "src" / "module.py"
