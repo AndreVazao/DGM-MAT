@@ -27,7 +27,7 @@ For each installed CLI it runs only `--version`, with:
 
 It records only the presence of selected endpoint environment variable names, never their values. A discovered CLI is not proof of provider identity, FCC routing, model identity, free billing or quota status.
 
-MissionEngine exposes `probe_local_coding_agents()` as a read-only readiness operation. It does not start a coding task or enable a handler.
+MissionEngine exposes `probe_local_coding_agents()` as a read-only readiness operation. The office roster now declares `agent:codex-cli` and `agent:claude-code-cli` as OFFLINE, read-only roles with no repository write permission. They do not have execution handlers. The probe does not start a coding task or enable either role.
 
 ## Explicitly not enabled
 
