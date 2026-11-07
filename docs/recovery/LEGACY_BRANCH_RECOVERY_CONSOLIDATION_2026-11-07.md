@@ -14,7 +14,7 @@ No legacy branch was deleted, rewritten, rebased, or modified. No recovered feat
 | `feat/browser-recovery-deepseek-qwen-2026-11-06` | **Already superseded / no copy** | Current `main` already recognizes DeepSeek and Qwen routes and provider hosts. Current `browser_extension/content.js` is newer (676 lines vs 493 in the legacy branch), and current capture API tests cover five providers. The legacy branch's content script must not overwrite the newer implementation. |
 | `feat/telescope-metadata-only-2026-11-03` | **Already integrated / no copy** | Current `main` contains `core/recovery/ai_source_inventory.py`, metadata-only `TelescopeAdapter`, the recovery API endpoint, inventory script and tests. The current adapter uses an explicit allowlist and avoids raw session detail payloads. |
 | `feat/external-agent-readiness-probe-2026-11-03` | **Already integrated and evolved / no copy** | Current `main` contains `core/development/external_agent_probe.py` and the associated readiness API/security route. Current implementation includes additional safe-process handling and uses the existing local coding-agent probe for Codex. Replacing it with the older branch version would regress it. |
-| `feat/browser-mission-queue-v1` | **Superseded / no copy** | The browser operator API and durable queue now exist in `main`. The extension installer PowerShell script in the legacy branch has the same blob SHA as current `main`; its install guide is not needed to recover implementation. |
+| `feat/browser-mission-queue-v1` | **Superseded / no copy** | The browser operator API and durable queue now exist in `main`. The extension background script and manifest have identical blob SHAs to current `main`; the installer PowerShell script also has the same blob SHA. The old popup's direct `DGM_SEND_MESSAGE` path bypassed the later server-side approval queue, so it was intentionally not recovered. Current `main` explicitly rejects direct content-script send requests and tests that bypass; approved sends use the server-governed browser operator. |
 
 ## Preserved free-tier consultation files
 
@@ -25,6 +25,10 @@ No legacy branch was deleted, rewritten, rebased, or modified. No recovered feat
 - `recovery/legacy-branch-snapshots/free-tier-browser-consult/core__api__security_policy.py.legacy-snapshot.txt`
 
 The store is SQLite-backed and has explicit enablement and provider allowlisting, bounded prompts/responses, secret-pattern checks, cooldowns, idempotency, no automatic replay after ambiguous restart, and marks provider output as untrusted. The API uses the existing local audit writer.
+
+## Security finding — legacy direct-send bypass
+
+The old `feat/browser-mission-queue-v1` popup implemented a direct `chrome.tabs.sendMessage(... DGM_SEND_MESSAGE ...)` path after a local browser confirmation. That path did not use the current server-side approval queue. Current `main` has a negative test asserting that direct content-script sends are rejected, and the browser operator API requires a server-recorded approval. This legacy direct-send path is deliberately excluded and must not be revived.
 
 ## Archived integration hooks
 
