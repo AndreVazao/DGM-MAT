@@ -34,6 +34,22 @@ class WindowsDirectoryHandleBackend:
 
     FILE_PERSISTENT_ACLS = 0x00000008
 
+    READ_CONTROL = 0x00020000
+    SE_FILE_OBJECT = 1
+    OWNER_SECURITY_INFORMATION = 0x00000001
+    DACL_SECURITY_INFORMATION = 0x00000004
+    TOKEN_QUERY = 0x0008
+    TOKEN_USER_CLASS = 1
+    ACL_SIZE_INFORMATION_CLASS = 2
+    ACCESS_ALLOWED_ACE_TYPE = 0
+    ACCESS_DENIED_ACE_TYPE = 1
+    ACE_OBJECT_INHERIT = 0x01
+    ACE_CONTAINER_INHERIT = 0x02
+    GENERIC_ALL = 0x10000000
+    FILE_ALL_ACCESS = 0x001F01FF
+    WELL_KNOWN_BUILTIN_ADMINISTRATORS = 26
+    WELL_KNOWN_LOCAL_SYSTEM = 22
+
     FILE_OPEN = 0x00000001
     FILE_CREATE = 0x00000002
 
@@ -125,6 +141,32 @@ class WindowsDirectoryHandleBackend:
                 ("FileName", ctypes.c_wchar * 1),
             ]
 
+        class ACL_SIZE_INFORMATION(ctypes.Structure):
+            _fields_ = [
+                ("AceCount", wintypes.DWORD),
+                ("AclBytesInUse", wintypes.DWORD),
+                ("AclBytesFree", wintypes.DWORD),
+            ]
+
+        class ACE_HEADER(ctypes.Structure):
+            _fields_ = [
+                ("AceType", wintypes.BYTE),
+                ("AceFlags", wintypes.BYTE),
+                ("AceSize", wintypes.WORD),
+            ]
+
+        class SID_AND_ATTRIBUTES(ctypes.Structure):
+            _fields_ = [
+                ("Sid", ctypes.c_void_p),
+                ("Attributes", wintypes.DWORD),
+            ]
+
+        class TOKEN_USER(ctypes.Structure):
+            _fields_ = [("User", SID_AND_ATTRIBUTES)]
+
+        self.ACL_SIZE_INFORMATION = ACL_SIZE_INFORMATION
+        self.ACE_HEADER = ACE_HEADER
+        self.TOKEN_USER = TOKEN_USER
         self.UNICODE_STRING = UNICODE_STRING
         self.OBJECT_ATTRIBUTES = OBJECT_ATTRIBUTES
         self.IO_STATUS_BLOCK = IO_STATUS_BLOCK
@@ -158,6 +200,49 @@ class WindowsDirectoryHandleBackend:
         self.ntdll.NtSetInformationFile.restype = ctypes.c_long
         self.kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
         self.kernel32.CloseHandle.restype = wintypes.BOOL
+        self.kernel32.GetCurrentProcess.argtypes = []
+        self.kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+        self.kernel32.LocalFree.argtypes = [ctypes.c_void_p]
+        self.kernel32.LocalFree.restype = ctypes.c_void_p
+
+        self.advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+        self.advapi32.GetSecurityInfo.argtypes = [
+            wintypes.HANDLE, ctypes.c_int, wintypes.DWORD,
+            ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_void_p),
+            ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_void_p),
+            ctypes.POINTER(ctypes.c_void_p),
+        ]
+        self.advapi32.GetSecurityInfo.restype = wintypes.DWORD
+        self.advapi32.GetSecurityDescriptorDacl.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(wintypes.BOOL),
+            ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(wintypes.BOOL),
+        ]
+        self.advapi32.GetSecurityDescriptorDacl.restype = wintypes.BOOL
+        self.advapi32.GetAclInformation.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, wintypes.DWORD, ctypes.c_int
+        ]
+        self.advapi32.GetAclInformation.restype = wintypes.BOOL
+        self.advapi32.GetAce.argtypes = [
+            ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(ctypes.c_void_p)
+        ]
+        self.advapi32.GetAce.restype = wintypes.BOOL
+        self.advapi32.OpenProcessToken.argtypes = [
+            wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE)
+        ]
+        self.advapi32.OpenProcessToken.restype = wintypes.BOOL
+        self.advapi32.GetTokenInformation.argtypes = [
+            wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p,
+            wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)
+        ]
+        self.advapi32.GetTokenInformation.restype = wintypes.BOOL
+        self.advapi32.EqualSid.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self.advapi32.EqualSid.restype = wintypes.BOOL
+        self.advapi32.CreateWellKnownSid.argtypes = [
+            ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p,
+            ctypes.POINTER(wintypes.DWORD)
+        ]
+        self.advapi32.CreateWellKnownSid.restype = wintypes.BOOL
+
         self.kernel32.GetVolumeInformationByHandleW.argtypes = [
             wintypes.HANDLE,
             wintypes.LPWSTR,
