@@ -122,7 +122,7 @@ class BackupFirstPatchExecutor:
         if pure.parts and ":" in pure.parts[0]:
             raise PatchRejected("Drive-qualified paths are denied.")
         if os.name == "nt" and any(
-            re.search(r"~[0-9](?:\.[A-Z0-9]{0,3})?$", part, re.IGNORECASE)
+            re.search(r"~[0-9]+(?:\.[A-Z0-9]{0,3})?$", part, re.IGNORECASE)
             for part in pure.parts
         ):
             raise PatchRejected("Windows 8.3 short-name path components are denied.")
@@ -219,6 +219,7 @@ class BackupFirstPatchExecutor:
         manifest: dict[str, Any] | None = None
         target_identity: tuple[int, int] | None = None
         existed = False
+        mutation_started = False
         original: bytes | None = None
         try:
             # Existing targets are opened exclusively: the handle denies new
@@ -303,6 +304,7 @@ class BackupFirstPatchExecutor:
 
             if existed:
                 assert target_handle is not None
+                mutation_started = True
                 backend.truncate_file(target_handle)
                 backend.write_all(target_handle, encoded)
                 backend.reset_file_pointer(target_handle)
@@ -351,7 +353,7 @@ class BackupFirstPatchExecutor:
             # exclusive handle. For creates, never delete the promoted object
             # here: leave the durable prepared manifest + identity/hash intact
             # so explicit rollback can verify it after this failure.
-            if target_handle is not None and existed and original is not None:
+            if mutation_started and target_handle is not None and existed and original is not None:
                 try:
                     backend.truncate_file(target_handle)
                     backend.write_all(target_handle, original)
@@ -454,6 +456,9 @@ class BackupFirstPatchExecutor:
                 exclusive=True,
             )
             expected_identity = manifest.get("target_identity")
+            state = manifest.get("state")
+            if state not in {"prepared", "applied"}:
+                raise PatchRollbackError("Backup manifest is not in a recoverable state.")
             if target_handle is None and created:
                 staging_name = manifest.get("staging_name")
                 if not isinstance(staging_name, str):
@@ -524,7 +529,6 @@ class BackupFirstPatchExecutor:
 
             current = backend.read_all(target_handle, max_bytes=self.max_file_bytes)
             current_sha = self._sha256(current)
-            state = manifest.get("state")
             if state == "applied" and current_sha != manifest.get("result_sha256"):
                 raise PatchRollbackError("Current file changed after the patch; refusing to overwrite newer work.")
             if not created and state == "prepared" and current_sha not in {
@@ -545,9 +549,6 @@ class BackupFirstPatchExecutor:
                 raise PatchRollbackError(
                     "Prepared created file changed after promotion; refusing to delete newer work."
                 )
-            if state not in {"prepared", "applied"}:
-                raise PatchRollbackError("Backup manifest is not in a recoverable state.")
-
             if manifest.get("backup_file"):
                 expected_backup = self.backup_root / backup_id / "original.bin"
                 if Path(manifest["backup_file"]) != expected_backup:
