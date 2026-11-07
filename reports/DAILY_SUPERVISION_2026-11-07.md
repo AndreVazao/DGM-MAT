@@ -229,3 +229,12 @@ Confirmação posterior: ambos os jobs da Focused PR Validation `42390097774` te
 - Compile and run only affected regressions: SUCCESS (compilação Python + regressões selecionadas).
 
 O check Snyk continua **ERROR**. A PR #279 mantém-se draft e sem merge; não foi executado o workflow completo de build do executável nem foi feita aceitação no PC Windows 10 do operador.
+
+
+### Diagnóstico do status Snyk e revisão — 2026-11-07 16:20 UTC
+
+Consulta direta ao endpoint de commit statuses para o head da PR #279 (`2456cc7eac6893ed82499e1aea4b041ae4774559`) devolveu o contexto `security/snyk (andrevazao)`, estado `error`, com descrição explícita: **“You have used your limit of private tests”**. O check não é um job GitHub Actions e o resultado não contém findings de vulnerabilidades. Classificação correta: indisponibilidade/limite de quota do serviço Snyk; não é prova de vulnerabilidade, nem scan limpo/aprovação. O workflow local `.github/workflows/security-scan.yml` é manual (`workflow_dispatch`) e executa Bandit, pip-audit e Safety; não substitui o Snyk nem está ligado ao status Snyk.
+
+No mesmo head, os dois jobs GitHub Actions do run `42390097774` estão SUCCESS. O check CodeRabbit foi **skipped** com a razão “Review skipped: draft pull request”; não existe revisão independente atual desta PR. A pesquisa de código encontrou três referências relevantes ao instalador no main (documentação, teste de preservação e workflow); não foi encontrada chamada operacional adicional no código pesquisado. A pesquisa não prova que não existam invocações externas/locais.
+
+Limites do teste Windows atual: valida parser PowerShell e rejeição de digest incorreto antes da criação das pastas; não valida caminho positivo de instalação, rollback após interrupção, launcher real ou aceitação no Windows 10 do operador. O build Windows completo na branch também não foi executado. PR #279 mantém-se draft.
