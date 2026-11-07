@@ -61,8 +61,11 @@ The legacy branch also modified `core/api/api_server.py` and `core/api/security_
 - File-level comparison against current `main`: completed for the candidate modules listed above.
 - Optional mobile AutoHelp-to-browser-consult handoff: implemented, gated by three explicit environment settings, and covered by a focused regression test.
 - Browser extension worker restart recovery: stale one-shot claims are blocked and never replayed.
-- Automated tests executed in this recovery session: **none** (GitHub-only environment); test coverage has been added but remains unexecuted.
-- Runtime/Windows/Chrome acceptance: **not performed**.
+- Local automated tests executed in this recovery session: **none** (GitHub-only environment).
+- GitHub Actions Focused PR Validation #702: **SUCCESS** — Python compilation, affected browser-consult store/API and AutoHelp regressions, audit fail-closed tests, and Windows installer digest gate.
+- GitHub Actions Chrome Extension Validation #294: **SUCCESS** — JavaScript syntax, extension fixtures, approval bypass rejection, provider adapters, manifest, Bandit and package validation.
+- Windows Executable Build #286: **IN PROGRESS**; previous build #283 succeeded on the immediately preceding code revision.
+- Runtime/Windows 10/Chrome acceptance with real free-tier accounts: **not performed**.
 - Activation, merge and legacy branch deletion: **not performed**. The feature remains disabled by default.
 
 ## Cleanup recommendation
