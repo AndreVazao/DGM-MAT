@@ -10,6 +10,7 @@ import os
 import shutil
 from datetime import datetime, timezone
 import subprocess
+import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -33,7 +34,6 @@ def _claude_command() -> tuple[list[str] | None, str | None]:
             # Prefer the PowerShell shim: it avoids cmd.exe argument parsing.
             for candidate in (
                 Path(appdata) / "npm" / "claude.ps1",
-                Path(appdata) / "npm" / "claude.cmd",
             ):
                 if candidate.is_file():
                     executable = str(candidate)
@@ -49,13 +49,20 @@ def _claude_command() -> tuple[list[str] | None, str | None]:
         if not shell:
             return None, executable
         return [shell, "-NoLogo", "-NoProfile", "-NonInteractive", "-File", executable, "auth", "status"], executable
-    if os.name == "nt" and suffix in {".cmd", ".bat"}:
-        shell = shutil.which("cmd") or os.getenv("COMSPEC")
-        if not shell:
-            return None, executable
-        return [shell, "/d", "/c", executable, "auth", "status"], executable
+    if suffix in {".cmd", ".bat"}:
+        # cmd.exe reparses its command tail; never execute .cmd/.bat wrappers.
+        return None, executable
     return [executable, "auth", "status"], executable
 
+
+def _probe_environment() -> dict[str, str]:
+    """Keep process plumbing/profile paths but omit inherited secret values."""
+    allowed = {"PATH"}
+    if os.name == "nt":
+        allowed.update({"SYSTEMROOT", "WINDIR", "PATHEXT", "TEMP", "TMP", "APPDATA", "LOCALAPPDATA", "USERPROFILE"})
+    else:
+        allowed.update({"HOME", "TMPDIR"})
+    return {key: value for key, value in os.environ.items() if key.upper() in allowed and isinstance(value, str)}
 
 def _json_object(output: str) -> dict[str, Any] | None:
     if not isinstance(output, str):
@@ -99,13 +106,15 @@ def probe_claude_code(*, timeout_seconds: float = 5.0) -> dict[str, Any]:
             "api_provider": None,
             "cost_status": "unverified",
             "execution_ready": False,
-            "detail": "The CLI wrapper was found but no safe interpreter was available to run its fixed auth-status command.",
+            "detail": ("The command wrapper was detected but deliberately not executed because cmd.exe reparses command arguments." if Path(executable).suffix.casefold() in {".cmd", ".bat"} else "The CLI wrapper was found but no safe interpreter was available to run its fixed auth-status command."),
             "model_requests_sent": 0,
         }
 
     try:
         result = subprocess.run(
             command,
+            cwd=Path(tempfile.gettempdir()),
+            env=_probe_environment(),
             shell=False,
             check=False,
             capture_output=True,
