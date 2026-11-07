@@ -707,11 +707,22 @@ def test_windows_create_rejects_backup_root_on_another_volume(tmp_path, monkeypa
     backend = executor._windows_backend
     assert backend is not None
     original_identity = backend.file_identity
-    monkeypatch.setattr(
-        backend,
-        "file_identity",
-        lambda handle: (original_identity(handle)[0] + 1, original_identity(handle)[1]),
-    )
+    original_ensure = backend.ensure_directory
+    backup_handles = []
+
+    def capture_backup_root(directory):
+        handle = original_ensure(directory)
+        backup_handles.append(handle)
+        return handle
+
+    def report_different_volume(handle):
+        identity = original_identity(handle)
+        if backup_handles and getattr(handle, "value", handle) == getattr(backup_handles[0], "value", backup_handles[0]):
+            return (identity[0] + 1, identity[1])
+        return identity
+
+    monkeypatch.setattr(backend, "ensure_directory", capture_backup_root)
+    monkeypatch.setattr(backend, "file_identity", report_different_volume)
 
     with pytest.raises(PatchBackupError, match="same NTFS volume"):
         executor.apply_text("src/new.py", "new content")
