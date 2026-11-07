@@ -11,6 +11,10 @@ const BROWSER_QUEUE_AUTO_KEY = "dgmBrowserOperatorAutoEnabled";
 const BROWSER_TASK_KEY = "dgmBrowserOperatorCurrentTask";
 const BROWSER_ALARM = "dgm-browser-operator-poll";
 const PROVIDER_PAUSE_KEY = "dgmBrowserProviderPauses";
+const CONSULT_ENABLED_KEY = "dgmBrowserConsultEnabled";
+const CONSULT_CURRENT_KEY = "dgmBrowserConsultCurrent";
+const CONSULT_ALARM = "dgm-browser-consult-poll";
+let consultPollInProgress = false;
 let browserPollInProgress = false;
 let startInProgress = false;
 
@@ -200,6 +204,101 @@ async function claimAndNavigate(run, token) {
   return { finished: false, next: result.next };
 }
 
+async function setAutoBrowserConsult(enabled) {
+  const state = await readState();
+  if (enabled && !state.token) throw new Error("Pair the extension with DGM-MAT before enabling AI consultation.");
+  await chrome.storage.local.set({ [CONSULT_ENABLED_KEY]: Boolean(enabled) });
+  if (enabled) {
+    chrome.alarms.create(CONSULT_ALARM, { periodInMinutes: 1 });
+    await pollBrowserConsultQueue();
+  } else {
+    await chrome.alarms.clear(CONSULT_ALARM);
+  }
+  return { enabled: Boolean(enabled) };
+}
+
+async function pollBrowserConsultQueue() {
+  if (consultPollInProgress) return;
+  consultPollInProgress = true;
+  try {
+    const settings = await chrome.storage.local.get([CONSULT_ENABLED_KEY, PROVIDER_TABS_KEY, CONSULT_CURRENT_KEY]);
+    if (!settings[CONSULT_ENABLED_KEY] || settings[CONSULT_CURRENT_KEY]) return;
+    const state = await readState();
+    if (!state.token || state.run?.active) return;
+    const tabs = settings[PROVIDER_TABS_KEY] || {};
+    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
+      if (await isBrowserProviderPaused(provider)) continue;
+      const tabId = tabs[provider];
+      if (!Number.isInteger(tabId)) continue;
+      let tab;
+      try { tab = await chrome.tabs.get(tabId); } catch (_) { continue; }
+      if (!tab) continue;
+      let readiness;
+      try { readiness = await sendToTab(tabId, { type: "DGM_PROVIDER_PING" }); }
+      catch (_) { continue; }
+      if (!readiness?.ok || readiness.provider !== provider || !readiness.source_id) continue;
+      if (readiness.blocked) {
+        await pauseBrowserProvider(provider, readiness.blocked);
+        continue;
+      }
+      const claimed = await api("/recovery/browser-consult/next?provider=" + encodeURIComponent(provider), {}, state.token);
+      if (claimed.status !== "claimed" || !claimed.next) continue;
+      const task = { ...claimed.next, tab_id: tabId, source_id: readiness.source_id };
+      // Persist before touching the provider UI. A worker restart never replays this one-shot claim.
+      await chrome.storage.local.set({ [CONSULT_CURRENT_KEY]: task });
+      try {
+        const response = await sendToTab(tabId, {
+          type: "DGM_EXECUTE_BROWSER_TASK",
+          provider,
+          source_id: task.source_id,
+          message: task.prompt,
+          response_timeout_ms: 180000
+        });
+        if (!response?.ok) throw new Error(response?.error || "Provider UI consultation failed.");
+        const outcome = response.data || {};
+        if (outcome.status === "completed" && typeof outcome.assistant_text === "string" && outcome.assistant_text.trim()) {
+          await api("/recovery/browser-consult/result", {
+            consultation_id: task.consultation_id,
+            claim_token: task.claim_token,
+            response_text: outcome.assistant_text.slice(0, 16000)
+          }, state.token);
+          await chrome.storage.local.set({ dgmBrowserConsultLastStatus: provider + " consultation completed; answer stored as untrusted." });
+        } else {
+          const reason = outcome.reason === "rate_limited" ? "rate_limited"
+            : outcome.reason === "blocked_login" ? "blocked_login"
+            : outcome.reason === "blocked_challenge" ? "blocked_challenge"
+            : "interrupted";
+          await api("/recovery/browser-consult/block", {
+            consultation_id: task.consultation_id,
+            claim_token: task.claim_token,
+            reason
+          }, state.token);
+          if (reason !== "interrupted") await pauseBrowserProvider(provider, reason);
+          await chrome.storage.local.set({ dgmBrowserConsultLastStatus: provider + " consultation stopped: " + reason + "; no automatic retry." });
+        }
+      } catch (error) {
+        await api("/recovery/browser-consult/block", {
+          consultation_id: task.consultation_id,
+          claim_token: task.claim_token,
+          reason: "interrupted"
+        }, state.token).catch(() => {});
+        await chrome.storage.local.set({
+          dgmBrowserConsultLastStatus: provider + " consultation interrupted; it will not be replayed automatically."
+        });
+      } finally {
+        await chrome.storage.local.remove(CONSULT_CURRENT_KEY);
+      }
+      return;
+    }
+  } catch (error) {
+    await chrome.storage.local.set({
+      dgmBrowserConsultLastStatus: "AI consultation paused: " + String(error.message || error)
+    });
+  } finally {
+    consultPollInProgress = false;
+  }
+}
+
 async function setAutoBrowserOperator(enabled) {
   const state = await readState();
   if (enabled && !state.token) throw new Error("Pair the extension with DGM-MAT before enabling mission execution.");
@@ -340,10 +439,11 @@ async function pair(code) {
     [TOKEN_KEY]: result.access_token,
     [TOKEN_EXPIRY_KEY]: expiry
   });
-  const current = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY]);
+  const current = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY, CONSULT_ENABLED_KEY]);
   const defaults = {};
   if (typeof current[AUTO_KEY] !== "boolean") defaults[AUTO_KEY] = true;
   if (typeof current[BROWSER_QUEUE_AUTO_KEY] !== "boolean") defaults[BROWSER_QUEUE_AUTO_KEY] = true;
+  if (typeof current[CONSULT_ENABLED_KEY] !== "boolean") defaults[CONSULT_ENABLED_KEY] = false;
   if (Object.keys(defaults).length) await chrome.storage.local.set(defaults);
   const settings = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY]);
   const tabs = await chrome.tabs.query({});
@@ -361,6 +461,10 @@ async function pair(code) {
   if (settings[BROWSER_QUEUE_AUTO_KEY]) {
     chrome.alarms.create(BROWSER_ALARM, { periodInMinutes: 0.5 });
     await pollBrowserOperatorQueue().catch(() => {});
+  }
+  if (settings[CONSULT_ENABLED_KEY]) {
+    chrome.alarms.create(CONSULT_ALARM, { periodInMinutes: 1 });
+    await pollBrowserConsultQueue().catch(() => {});
   }
   if (settings[AUTO_KEY]) {
     for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
@@ -610,18 +714,24 @@ async function handleProviderTabRemoved(tabId) {
 
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm?.name === BROWSER_ALARM) pollBrowserOperatorQueue().catch(() => {});
+  if (alarm?.name === CONSULT_ALARM) pollBrowserConsultQueue().catch(() => {});
 });
 chrome.runtime.onStartup.addListener(() => {
-  chrome.storage.local.get(BROWSER_QUEUE_AUTO_KEY).then(settings => {
+  chrome.storage.local.get([BROWSER_QUEUE_AUTO_KEY, CONSULT_ENABLED_KEY]).then(settings => {
     if (settings[BROWSER_QUEUE_AUTO_KEY]) {
       chrome.alarms.create(BROWSER_ALARM, { periodInMinutes: 0.5 });
       pollBrowserOperatorQueue().catch(() => {});
     }
+    if (settings[CONSULT_ENABLED_KEY]) {
+      chrome.alarms.create(CONSULT_ALARM, { periodInMinutes: 1 });
+      pollBrowserConsultQueue().catch(() => {});
+    }
   });
 });
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.get(BROWSER_QUEUE_AUTO_KEY).then(settings => {
+  chrome.storage.local.get([BROWSER_QUEUE_AUTO_KEY, CONSULT_ENABLED_KEY]).then(settings => {
     if (settings[BROWSER_QUEUE_AUTO_KEY]) chrome.alarms.create(BROWSER_ALARM, { periodInMinutes: 0.5 });
+    if (settings[CONSULT_ENABLED_KEY]) chrome.alarms.create(CONSULT_ALARM, { periodInMinutes: 1 });
   });
 });
 
@@ -656,6 +766,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
     return true;
   }
+  if (message.type === "DGM_SET_AUTO_BROWSER_CONSULT") {
+    setAutoBrowserConsult(Boolean(message.enabled))
+      .then(data => sendResponse({ ok: true, data }))
+      .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+    return true;
+  }
   if (message.type === "DGM_SET_AUTO_BROWSER_OPERATOR") {
     setAutoBrowserOperator(Boolean(message.enabled))
       .then(data => sendResponse({ ok: true, data }))
@@ -673,13 +789,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(async state => {
         const [last, settings] = await Promise.all([
           chrome.storage.local.get("dgmRecoveryLastStatus"),
-          chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY, "dgmBrowserOperatorLastStatus"])
+          chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY, CONSULT_ENABLED_KEY, "dgmBrowserOperatorLastStatus", "dgmBrowserConsultLastStatus"])
         ]);
         return {
           paired: Boolean(state.token),
           run: state.run,
           auto_enabled: Boolean(settings[AUTO_KEY]),
           browser_operator_auto_enabled: Boolean(settings[BROWSER_QUEUE_AUTO_KEY]),
+          browser_consult_enabled: Boolean(settings[CONSULT_ENABLED_KEY]),
+          browser_consult_status: settings.dgmBrowserConsultLastStatus || "AI consultation idle.",
           browser_operator_status: settings.dgmBrowserOperatorLastStatus || "Browser mission operator idle.",
           can_retry: Boolean(state.token && state.run && !state.run.active && (state.run.current || (state.run.blocked || []).length)),
           last_status: last.dgmRecoveryLastStatus || "Ready."
