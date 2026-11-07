@@ -569,7 +569,8 @@ class BackupFirstPatchExecutor:
             raise
         except Exception as exc:
             raise PatchRollbackError(
-                "Native Windows rollback failed; preserve the backup for manual recovery."
+                "Native Windows rollback failed "
+                f"({type(exc).__name__}: {exc}); preserve the backup for manual recovery."
             ) from exc
         finally:
             for handle in (target_handle, backup_dir_handle, backup_root_handle):
