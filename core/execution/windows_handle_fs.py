@@ -32,6 +32,8 @@ class WindowsDirectoryHandleBackend:
     FILE_SHARE_READ = 0x00000001
     FILE_SHARE_WRITE = 0x00000002
 
+    FILE_PERSISTENT_ACLS = 0x00000008
+
     FILE_OPEN = 0x00000001
     FILE_CREATE = 0x00000002
 
@@ -156,6 +158,17 @@ class WindowsDirectoryHandleBackend:
         self.ntdll.NtSetInformationFile.restype = ctypes.c_long
         self.kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
         self.kernel32.CloseHandle.restype = wintypes.BOOL
+        self.kernel32.GetVolumeInformationByHandleW.argtypes = [
+            wintypes.HANDLE,
+            wintypes.LPWSTR,
+            wintypes.DWORD,
+            ctypes.POINTER(wintypes.DWORD),
+            ctypes.POINTER(wintypes.DWORD),
+            ctypes.POINTER(wintypes.DWORD),
+            wintypes.LPWSTR,
+            wintypes.DWORD,
+        ]
+        self.kernel32.GetVolumeInformationByHandleW.restype = wintypes.BOOL
         self.kernel32.GetFileInformationByHandleEx.argtypes = [
             wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD
         ]
@@ -194,6 +207,43 @@ class WindowsDirectoryHandleBackend:
     def _raise_last_error(self, operation: str) -> None:
         code = self.ctypes.get_last_error()
         raise WindowsHandleError(f"{operation} failed with Win32 error {code}.")
+
+    def volume_information(self, handle: Any) -> dict[str, Any]:
+        """Read filesystem capabilities from the already-pinned volume handle."""
+        serial = self.wintypes.DWORD()
+        flags = self.wintypes.DWORD()
+        max_component = self.wintypes.DWORD()
+        filesystem = self.ctypes.create_unicode_buffer(64)
+        ok = self.kernel32.GetVolumeInformationByHandleW(
+            handle,
+            None,
+            0,
+            self.ctypes.byref(serial),
+            self.ctypes.byref(max_component),
+            self.ctypes.byref(flags),
+            filesystem,
+            len(filesystem),
+        )
+        if not ok:
+            self._raise_last_error("GetVolumeInformationByHandleW")
+        return {
+            "filesystem": filesystem.value,
+            "serial": int(serial.value),
+            "flags": int(flags.value),
+        }
+
+    def _assert_supported_volume(self, handle: Any) -> None:
+        info = self.volume_information(handle)
+        if info["filesystem"].casefold() != "ntfs":
+            raise WindowsHandleError(
+                "Backup-first mutation requires NTFS write-through metadata semantics."
+            )
+        if not (info["flags"] & self.FILE_PERSISTENT_ACLS):
+            raise WindowsHandleError(
+                "Backup-first mutation requires a filesystem with persistent ACL enforcement."
+            )
+        if info["serial"] != self.file_identity(handle)[0]:
+            raise WindowsHandleError("Volume identity changed while inspecting filesystem capabilities.")
 
     def _validate_basename(self, name: str) -> str:
         if (
@@ -301,6 +351,7 @@ class WindowsDirectoryHandleBackend:
             ),
         )
         try:
+            self._assert_supported_volume(current)
             for component in path.parts[1:]:
                 child = self.open_child_directory(current, component)
                 self.close(current)
@@ -336,6 +387,7 @@ class WindowsDirectoryHandleBackend:
             ),
         )
         try:
+            self._assert_supported_volume(current)
             for component in path.parts[1:]:
                 try:
                     child = self.open_child_directory(current, component)
