@@ -7,8 +7,8 @@ import time
 from datetime import datetime
 import psutil
 from fastapi import APIRouter, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import List, Optional, Dict, Any, Literal
 from core.storage.storage_manager import storage_manager
 from core.repository_cognition.repo_scanner import CognitiveRepoScanner
 from core.autonomy.mission_engine import mission_engine
@@ -26,6 +26,7 @@ from core.runtime.provider_freshness import (
 )
 from core.realtime.websocket_manager import manager
 from core.organization.office import OFFICE_AGENTS, OFFICE_DEPARTMENTS
+from core.api.browser_operator_api import _queue as browser_operator_queue
 
 router = APIRouter(prefix="/runtime", tags=["runtime"])
 connectors = create_runtime_connectors()
@@ -44,6 +45,17 @@ class MissionCreate(BaseModel):
         if not normalized:
             raise ValueError("goal must contain non-whitespace characters")
         return normalized
+
+class MissionBrowserTaskCreate(BaseModel):
+    idempotency_key: str = Field(min_length=8, max_length=200)
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
+    source_id: str = Field(min_length=1, max_length=200)
+    conversation_url: str = Field(min_length=12, max_length=2048)
+    message: str = Field(min_length=1, max_length=30000)
+    approval_required: bool = True
+
+    model_config = ConfigDict(extra="forbid")
+
 
 class ApprovalDecision(BaseModel):
     decision: str # "approve" or "reject"
@@ -266,6 +278,49 @@ def create_mission(mission_data: MissionCreate):
         "action_id": action_id,
         "action_status": action.get("status") if action else None,
     }
+
+@router.post("/missions/{mission_id}/browser-task", status_code=201)
+def enqueue_mission_browser_task(mission_id: str, payload: MissionBrowserTaskCreate):
+    """Attach one approved-by-operator browser instruction to an existing durable mission."""
+    if not re.fullmatch(r"mission_[0-9a-f]{8}", mission_id):
+        raise HTTPException(status_code=404, detail="Mission checkpoint not found.")
+    mission = mission_engine._reload_mission_checkpoint(mission_id)
+    if mission is None:
+        raise HTTPException(status_code=404, detail="Mission checkpoint not found.")
+    if mission.status in {MissionStatus.COMPLETED, MissionStatus.CANCELLED, MissionStatus.FAILED}:
+        raise HTTPException(status_code=409, detail="A terminal mission cannot receive a browser task.")
+    if not payload.approval_required and mission.status != MissionStatus.RUNNING:
+        raise HTTPException(
+            status_code=409,
+            detail="A browser task can bypass per-task approval only after its parent mission is approved and running.",
+        )
+    try:
+        from core.api.browser_capture_api import _validate_provider_url
+        _validate_provider_url(payload.provider, payload.conversation_url, payload.source_id)
+        task = browser_operator_queue().enqueue(
+            idempotency_key=payload.idempotency_key,
+            mission_id=mission_id,
+            provider=payload.provider,
+            source_id=payload.source_id,
+            conversation_url=payload.conversation_url,
+            message=payload.message,
+            approval_required=payload.approval_required,
+            created_by="mission-engine",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    mission.metadata["browser_operator_task_id"] = task.get("task_id")
+    mission.metadata["browser_operator_task_status"] = task.get("status")
+    mission.metadata["browser_operator_provider"] = payload.provider
+    mission_engine.save_mission(mission)
+    return {
+        "status": task.get("status"),
+        "mission_id": mission_id,
+        "task_id": task.get("task_id"),
+        "provider": payload.provider,
+        "approval_required": task.get("status") == "pending_approval",
+    }
+
 
 @router.get("/missions")
 def list_missions():

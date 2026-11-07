@@ -7,7 +7,40 @@ const TOKEN_KEY = "dgmRecoveryToken";
 const TOKEN_EXPIRY_KEY = "dgmRecoveryTokenExpiresAt";
 const AUTO_KEY = "dgmRecoveryAutoEnabled";
 const PROVIDER_TABS_KEY = "dgmRecoveryProviderTabs";
+const BROWSER_QUEUE_AUTO_KEY = "dgmBrowserOperatorAutoEnabled";
+const BROWSER_TASK_KEY = "dgmBrowserOperatorCurrentTask";
+const BROWSER_ALARM = "dgm-browser-operator-poll";
+const PROVIDER_PAUSE_KEY = "dgmBrowserProviderPauses";
+let browserPollInProgress = false;
 let startInProgress = false;
+
+async function pauseBrowserProvider(provider, reason) {
+  if (!["chatgpt", "grok", "gemini", "deepseek", "qwen"].includes(provider)) return;
+  const stored = await chrome.storage.local.get(PROVIDER_PAUSE_KEY);
+  const pauses = stored[PROVIDER_PAUSE_KEY] || {};
+  const cooldownMs = reason === "rate_limited" ? 60 * 60 * 1000 : 15 * 60 * 1000;
+  pauses[provider] = {
+    reason: String(reason || "provider_blocked"),
+    paused_at: new Date().toISOString(),
+    resume_after: Date.now() + cooldownMs
+  };
+  await chrome.storage.local.set({
+    [PROVIDER_PAUSE_KEY]: pauses,
+    dgmBrowserOperatorLastStatus: provider + " paused after " + pauses[provider].reason +
+      "; another free provider will be tried and this one rechecked after cooldown."
+  });
+}
+
+async function isBrowserProviderPaused(provider) {
+  const stored = await chrome.storage.local.get(PROVIDER_PAUSE_KEY);
+  const pauses = stored[PROVIDER_PAUSE_KEY] || {};
+  const pause = pauses[provider];
+  if (!pause) return false;
+  if (Number(pause.resume_after) > Date.now()) return true;
+  delete pauses[provider];
+  await chrome.storage.local.set({ [PROVIDER_PAUSE_KEY]: pauses });
+  return false;
+}
 
 async function readState() {
   const data = await chrome.storage.local.get([TOKEN_KEY, TOKEN_EXPIRY_KEY, RUN_KEY]);
@@ -34,6 +67,20 @@ async function api(path, body, token) {
     method: "POST",
     headers,
     body: JSON.stringify(body || {})
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (response.status === 401 && token) {
+    await chrome.storage.local.remove([TOKEN_KEY, TOKEN_EXPIRY_KEY]);
+    throw new Error("The local DGM-MAT session expired or the API restarted. Pair the extension again.");
+  }
+  if (!response.ok) throw new Error(payload.detail || ("DGM-MAT API returned HTTP " + response.status));
+  return payload;
+}
+
+async function apiGet(path, token) {
+  const response = await fetch(API + path, {
+    method: "GET",
+    headers: token ? { Authorization: "Bearer " + token } : {}
   });
   const payload = await response.json().catch(() => ({}));
   if (response.status === 401 && token) {
@@ -83,8 +130,9 @@ async function startNextAutoProvider(excludeProvider) {
   const stored = await chrome.storage.local.get([AUTO_KEY, PROVIDER_TABS_KEY]);
   if (!stored[AUTO_KEY]) return { started: false };
   const tabs = stored[PROVIDER_TABS_KEY] || {};
-  for (const provider of ["chatgpt", "gemini", "grok"]) {
+  for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
     if (provider === excludeProvider || !Number.isInteger(tabs[provider])) continue;
+    if (await isBrowserProviderPaused(provider)) continue;
     try {
       const result = await startRecovery(tabs[provider], false);
       if (!result.finished) return { started: true, provider };
@@ -152,15 +200,190 @@ async function claimAndNavigate(run, token) {
   return { finished: false, next: result.next };
 }
 
+async function setAutoBrowserOperator(enabled) {
+  const state = await readState();
+  if (enabled && !state.token) throw new Error("Pair the extension with DGM-MAT before enabling mission execution.");
+  await chrome.storage.local.set({ [BROWSER_QUEUE_AUTO_KEY]: Boolean(enabled) });
+  if (enabled) {
+    chrome.alarms.create(BROWSER_ALARM, { periodInMinutes: 0.5 });
+    await pollBrowserOperatorQueue();
+  } else {
+    await chrome.alarms.clear(BROWSER_ALARM);
+  }
+  return { enabled: Boolean(enabled) };
+}
+
+async function finishBrowserOperatorTask(task, token, outcome) {
+  if (outcome?.status === "blocked") {
+    await pauseBrowserProvider(task.provider, outcome.reason);
+    await api("/browser-operator/tasks/" + encodeURIComponent(task.task_id) + "/fail", {
+      claim_token: task.claim_token,
+      reason: String(outcome.reason || "provider_blocked"),
+      blocked: true
+    }, token);
+  } else {
+    const status = outcome?.status === "completed" ? "completed" : "unverified";
+    await api("/browser-operator/tasks/" + encodeURIComponent(task.task_id) + "/result", {
+      claim_token: task.claim_token,
+      status,
+      result: outcome || { status: "unverified", reason: "empty_browser_result" }
+    }, token);
+  }
+  await chrome.storage.local.remove(BROWSER_TASK_KEY);
+  await chrome.storage.local.set({
+    dgmBrowserOperatorLastStatus: outcome?.status === "completed"
+      ? "Mission task completed: " + task.task_id
+      : outcome?.status === "blocked"
+        ? "Mission task blocked: " + String(outcome.reason || "provider_blocked")
+        : "Mission task sent but not fully verified: " + task.task_id
+  });
+}
+
+async function executePendingBrowserOperatorTask(task, tabId, token) {
+  try {
+    const response = await sendToTab(tabId, {
+      type: "DGM_EXECUTE_BROWSER_TASK",
+      provider: task.provider,
+      source_id: task.source_id,
+      message: task.message,
+      response_timeout_ms: 120000
+    });
+    if (!response?.ok) throw new Error(response?.error || "Browser task execution failed.");
+    await finishBrowserOperatorTask(task, token, response.data);
+  } catch (error) {
+    await api("/browser-operator/tasks/" + encodeURIComponent(task.task_id) + "/fail", {
+      claim_token: task.claim_token,
+      reason: String(error.message || error),
+      blocked: false
+    }, token).catch(() => {});
+    await chrome.storage.local.remove(BROWSER_TASK_KEY);
+    await chrome.storage.local.set({
+      dgmBrowserOperatorLastStatus: "Mission task failed and will not be replayed automatically: " + task.task_id
+    });
+  }
+}
+
+async function pollBrowserOperatorQueue() {
+  if (browserPollInProgress) return;
+  browserPollInProgress = true;
+  try {
+    const settings = await chrome.storage.local.get([BROWSER_QUEUE_AUTO_KEY, PROVIDER_TABS_KEY, BROWSER_TASK_KEY]);
+    if (!settings[BROWSER_QUEUE_AUTO_KEY] || settings[BROWSER_TASK_KEY]) return;
+    const state = await readState();
+    if (!state.token || state.run?.active) return;
+    const tabs = settings[PROVIDER_TABS_KEY] || {};
+    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
+      if (await isBrowserProviderPaused(provider)) continue;
+      const tabId = tabs[provider];
+      if (!Number.isInteger(tabId)) continue;
+      let tab;
+      try { tab = await chrome.tabs.get(tabId); } catch (_) { continue; }
+      if (!tab) continue;
+      let readiness;
+      try {
+        readiness = await sendToTab(tabId, { type: "DGM_PROVIDER_PING" });
+      } catch (_) {
+        // Never claim a durable task until the content script confirms it is ready.
+        continue;
+      }
+      if (!readiness?.ok || readiness.provider !== provider) continue;
+      if (readiness.blocked) {
+        await pauseBrowserProvider(provider, readiness.blocked);
+        continue;
+      }
+      const response = await apiGet("/browser-operator/next?provider=" + encodeURIComponent(provider), state.token);
+      if (response.status !== "claimed" || !response.task) continue;
+      const task = { ...response.task, tab_id: tabId };
+      await chrome.storage.local.set({ [BROWSER_TASK_KEY]: task });
+      try {
+        if (tab.url !== task.conversation_url) {
+          await chrome.tabs.update(tabId, { url: task.conversation_url });
+        } else {
+          await executePendingBrowserOperatorTask(task, tabId, state.token);
+        }
+      } catch (error) {
+        await api("/browser-operator/tasks/" + encodeURIComponent(task.task_id) + "/fail", {
+          claim_token: task.claim_token,
+          reason: String(error.message || error),
+          blocked: false
+        }, state.token).catch(() => {});
+        await chrome.storage.local.remove(BROWSER_TASK_KEY);
+      }
+      return;
+    }
+  } catch (error) {
+    await chrome.storage.local.set({
+      dgmBrowserOperatorLastStatus: "Browser mission queue paused: " + String(error.message || error)
+    });
+  } finally {
+    browserPollInProgress = false;
+  }
+}
+
+function providerForTabUrl(value) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    if (host === "chatgpt.com" || host === "chat.openai.com") return "chatgpt";
+    if (host === "gemini.google.com" || host === "bard.google.com") return "gemini";
+    if (host === "grok.com" || (host === "x.com" && url.pathname.startsWith("/i/grok"))) return "grok";
+    if (host === "chat.deepseek.com") return "deepseek";
+    if (host === "chat.qwen.ai") return "qwen";
+  } catch (_) {}
+  return null;
+}
+
 async function pair(code) {
   const result = await api("/auth/pair", { code, client_id: CLIENT_ID }, "");
   const expiry = Date.now() + Math.max(60, Number(result.expires_in || 1800) - 60) * 1000;
   await chrome.storage.local.set({
     [TOKEN_KEY]: result.access_token,
-    [TOKEN_EXPIRY_KEY]: expiry,
-    dgmRecoveryLastStatus: "Paired to local DGM-MAT."
+    [TOKEN_EXPIRY_KEY]: expiry
   });
-  return { expires_at: expiry, scopes: result.scopes || [] };
+  const current = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY]);
+  const defaults = {};
+  if (typeof current[AUTO_KEY] !== "boolean") defaults[AUTO_KEY] = true;
+  if (typeof current[BROWSER_QUEUE_AUTO_KEY] !== "boolean") defaults[BROWSER_QUEUE_AUTO_KEY] = true;
+  if (Object.keys(defaults).length) await chrome.storage.local.set(defaults);
+  const settings = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY]);
+  const tabs = await chrome.tabs.query({});
+  const providerTabs = {};
+  for (const tab of tabs) {
+    if (!Number.isInteger(tab.id)) continue;
+    const provider = providerForTabUrl(tab.url || "");
+    if (!provider) continue;
+    providerTabs[provider] = tab.id;
+    await rememberProviderTab(provider, tab.id);
+  }
+  await chrome.storage.local.set({
+    dgmRecoveryLastStatus: "Paired to local DGM-MAT; automatic recovery and approved mission queue are enabled by default."
+  });
+  if (settings[BROWSER_QUEUE_AUTO_KEY]) {
+    chrome.alarms.create(BROWSER_ALARM, { periodInMinutes: 0.5 });
+    await pollBrowserOperatorQueue().catch(() => {});
+  }
+  if (settings[AUTO_KEY]) {
+    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
+      const tabId = providerTabs[provider];
+      if (!Number.isInteger(tabId) || await isBrowserProviderPaused(provider)) continue;
+      try {
+        const started = await startRecovery(tabId);
+        if (!started.finished) break;
+      } catch (error) {
+        await chrome.storage.local.set({
+          dgmRecoveryLastStatus: "Paired; automatic recovery will retry when a provider tab is ready: " +
+            String(error.message || error)
+        });
+      }
+    }
+  }
+  return {
+    expires_at: expiry,
+    scopes: result.scopes || [],
+    auto_recovery_enabled: Boolean(settings[AUTO_KEY]),
+    browser_operator_auto_enabled: Boolean(settings[BROWSER_QUEUE_AUTO_KEY]),
+    provider_tabs_found: Object.keys(providerTabs).length
+  };
 }
 
 async function startRecovery(tabId, chainOnEmpty = true) {
@@ -257,6 +480,37 @@ async function handlePageReady(message, sender) {
   const state = await readState();
   const run = state.run;
   if (!state.token) return;
+  const pendingState = await chrome.storage.local.get(BROWSER_TASK_KEY);
+  const pendingTask = pendingState[BROWSER_TASK_KEY];
+  if (pendingTask && pendingTask.tab_id === sender.tab.id) {
+    if (message.blocked) {
+      await pauseBrowserProvider(pendingTask.provider, message.blocked);
+      await api("/browser-operator/tasks/" + encodeURIComponent(pendingTask.task_id) + "/fail", {
+        claim_token: pendingTask.claim_token,
+        reason: message.blocked,
+        blocked: true
+      }, state.token).catch(() => {});
+      await chrome.storage.local.remove(BROWSER_TASK_KEY);
+      await chrome.storage.local.set({ dgmBrowserOperatorLastStatus: "Mission task blocked: " + message.blocked });
+      await pollBrowserOperatorQueue().catch(() => {});
+      return;
+    }
+    if (message.provider !== pendingTask.provider) return;
+    if (message.source_id !== pendingTask.source_id) {
+      try { await chrome.tabs.update(sender.tab.id, { url: pendingTask.conversation_url }); }
+      catch (error) {
+        await api("/browser-operator/tasks/" + encodeURIComponent(pendingTask.task_id) + "/fail", {
+          claim_token: pendingTask.claim_token,
+          reason: String(error.message || error),
+          blocked: false
+        }, state.token).catch(() => {});
+        await chrome.storage.local.remove(BROWSER_TASK_KEY);
+      }
+      return;
+    }
+    await executePendingBrowserOperatorTask(pendingTask, sender.tab.id, state.token);
+    return;
+  }
   if (!run || !run.active) {
     const settings = await chrome.storage.local.get(AUTO_KEY);
     if (settings[AUTO_KEY] && message.provider) {
@@ -271,6 +525,7 @@ async function handlePageReady(message, sender) {
   }
   if (run.tab_id !== sender.tab.id) return;
   if (message.blocked) {
+    await pauseBrowserProvider(run.provider, message.blocked);
     await api("/recovery/browser-capture/block", {
       provider: run.provider,
       source_id: run.current.source_id,
@@ -353,6 +608,23 @@ async function handleProviderTabRemoved(tabId) {
   }
 }
 
+chrome.alarms.onAlarm.addListener(alarm => {
+  if (alarm?.name === BROWSER_ALARM) pollBrowserOperatorQueue().catch(() => {});
+});
+chrome.runtime.onStartup.addListener(() => {
+  chrome.storage.local.get(BROWSER_QUEUE_AUTO_KEY).then(settings => {
+    if (settings[BROWSER_QUEUE_AUTO_KEY]) {
+      chrome.alarms.create(BROWSER_ALARM, { periodInMinutes: 0.5 });
+      pollBrowserOperatorQueue().catch(() => {});
+    }
+  });
+});
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.local.get(BROWSER_QUEUE_AUTO_KEY).then(settings => {
+    if (settings[BROWSER_QUEUE_AUTO_KEY]) chrome.alarms.create(BROWSER_ALARM, { periodInMinutes: 0.5 });
+  });
+});
+
 chrome.tabs.onRemoved.addListener(tabId => {
   handleProviderTabRemoved(tabId).catch(() => {});
 });
@@ -384,6 +656,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
     return true;
   }
+  if (message.type === "DGM_SET_AUTO_BROWSER_OPERATOR") {
+    setAutoBrowserOperator(Boolean(message.enabled))
+      .then(data => sendResponse({ ok: true, data }))
+      .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+    return true;
+  }
   if (message.type === "DGM_SET_AUTO_RECOVERY") {
     setAutoRecovery(Boolean(message.enabled), Number.isInteger(message.tabId) ? message.tabId : null)
       .then(data => sendResponse({ ok: true, data }))
@@ -395,12 +673,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(async state => {
         const [last, settings] = await Promise.all([
           chrome.storage.local.get("dgmRecoveryLastStatus"),
-          chrome.storage.local.get(AUTO_KEY)
+          chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY, "dgmBrowserOperatorLastStatus"])
         ]);
         return {
           paired: Boolean(state.token),
           run: state.run,
           auto_enabled: Boolean(settings[AUTO_KEY]),
+          browser_operator_auto_enabled: Boolean(settings[BROWSER_QUEUE_AUTO_KEY]),
+          browser_operator_status: settings.dgmBrowserOperatorLastStatus || "Browser mission operator idle.",
           can_retry: Boolean(state.token && state.run && !state.run.active && (state.run.current || (state.run.blocked || []).length)),
           last_status: last.dgmRecoveryLastStatus || "Ready."
         };

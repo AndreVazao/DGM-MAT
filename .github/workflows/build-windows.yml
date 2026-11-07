@@ -58,6 +58,20 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
+      - name: Validate Browser Extension Installer
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("scripts/install_browser_extension.ps1", [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            throw "Browser extension installer has PowerShell syntax errors."
+          }
+          if (-not (Test-Path "browser_extension/manifest.json")) {
+            throw "Browser extension manifest is missing."
+          }
+
       - name: Resolve build version
         shell: pwsh
         run: |
@@ -100,7 +114,9 @@ jobs:
           mkdir publish\scripts
           mkdir publish\scripts\autostart
           mkdir publish\config
+          mkdir publish\browser_extension
           copy dist\DGM-MAT.exe publish\
+          Copy-Item -Path "browser_extension\*" -Destination "publish\browser_extension" -Recurse -Force
           copy health.json publish\
           copy ecosystem.json publish\
           copy README.md publish\
@@ -110,6 +126,10 @@ jobs:
           copy scripts\runtime_smoke_test.py publish\scripts\
           copy scripts\install_windows_update.ps1 publish\scripts\
           copy scripts\rollback_windows_update.ps1 publish\scripts\
+          copy scripts\install_browser_extension.ps1 publish\scripts\
+          copy scripts\install_browser_extension.bat publish\scripts\
+          copy docs\operations\DGM-MAT-BROWSER-PROVIDERS.md publish\
+          copy docs\operations\INSTALL_DGM_MAT_BROWSER_EXTENSION.md publish\
           $zip = "DGM-MAT-Windows-${{ matrix.python-version }}-$env:VERSION.zip"
           Compress-Archive -Path publish\* -DestinationPath $zip
           certutil -hashfile $zip SHA256 | Select-Object -Skip 1 | ForEach-Object { $_.Trim() } | Out-File "$zip.sha256" -Encoding utf8
@@ -128,6 +148,12 @@ jobs:
           }
           if (-not (Test-Path $checksum)) {
             throw "SHA-256 file missing: $checksum"
+          }
+          if (-not (Test-Path "publish\browser_extension\manifest.json")) {
+            throw "Browser extension was not packaged."
+          }
+          if (-not (Test-Path "publish\scripts\install_browser_extension.bat")) {
+            throw "One-click browser extension installer was not packaged."
           }
           if ((Get-Item $zip).Length -le 0) {
             throw "Distribution ZIP is empty"

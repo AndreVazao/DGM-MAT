@@ -1,11 +1,13 @@
 (() => {
   "use strict";
 
-  const VERSION = "0.1.1";
+  const VERSION = "0.1.3";
   const PROVIDER_HOSTS = {
     chatgpt: new Set(["chatgpt.com", "chat.openai.com"]),
     gemini: new Set(["gemini.google.com", "bard.google.com"]),
-    grok: new Set(["grok.com", "x.com"])
+    grok: new Set(["grok.com", "x.com"]),
+    deepseek: new Set(["chat.deepseek.com"]),
+    qwen: new Set(["chat.qwen.ai"])
   };
 
   function providerForUrl(value) {
@@ -18,30 +20,61 @@
         if (host === "x.com" && !url.pathname.startsWith("/i/grok")) return null;
         return "grok";
       }
+      if (PROVIDER_HOSTS.deepseek.has(host)) return "deepseek";
+      if (PROVIDER_HOSTS.qwen.has(host)) return "qwen";
     } catch (_) {}
     return null;
   }
 
   function sourceIdForUrl(value, provider) {
     const url = new URL(value);
+    const segments = url.pathname.split("/").filter(Boolean);
     if (provider === "chatgpt") {
-      const match = url.pathname.match(/\/c\/([A-Za-z0-9_-]+)/);
-      return match ? match[1] : null;
+      const index = segments.indexOf("c");
+      return index >= 0 ? segments[index + 1] || null : null;
     }
     if (provider === "gemini") {
-      const match = url.pathname.match(/\/app\/([A-Za-z0-9_-]+)/);
-      return match ? match[1] : null;
+      const index = segments.indexOf("app");
+      return index >= 0 ? segments[index + 1] || null : null;
     }
-    const queryId = url.searchParams.get("conversation") || url.searchParams.get("id");
-    if (queryId && /^[A-Za-z0-9._:-]{1,200}$/.test(queryId)) return queryId;
-    const match = url.pathname.match(/\/(?:chat|c|i\/grok)\/([A-Za-z0-9_-]+)/);
-    return match ? match[1] : null;
+    const queryKeys = provider === "deepseek" || provider === "qwen"
+      ? ["conversation", "conversationId", "chatId", "chat_id", "id"]
+      : ["conversation", "id"];
+    for (const key of queryKeys) {
+      const queryId = url.searchParams.get(key);
+      if (queryId && /^[A-Za-z0-9._:-]{1,200}$/.test(queryId)) return queryId;
+    }
+    if (provider === "deepseek") {
+      const index = segments.indexOf("chat");
+      if (index >= 0) {
+        const candidate = segments[index + 1] === "s" ? segments[index + 2] : segments[index + 1];
+        return candidate && /^[A-Za-z0-9_-]+$/.test(candidate) ? candidate : null;
+      }
+      return null;
+    }
+    if (provider === "qwen") {
+      for (const marker of ["chat", "c", "conversation", "s"]) {
+        const index = segments.indexOf(marker);
+        if (index >= 0 && segments[index + 1] && /^[A-Za-z0-9_-]+$/.test(segments[index + 1])) {
+          return segments[index + 1];
+        }
+      }
+      return null;
+    }
+    for (const marker of ["chat", "c"]) {
+      const index = segments.indexOf(marker);
+      if (index >= 0 && segments[index + 1] && /^[A-Za-z0-9_-]+$/.test(segments[index + 1])) {
+        return segments[index + 1];
+      }
+    }
+    const grokIndex = segments.indexOf("i");
+    return grokIndex >= 0 && segments[grokIndex + 1] === "grok" ? segments[grokIndex + 2] || null : null;
   }
 
   function conversationTitle(anchor, url) {
     const text = (anchor?.innerText || anchor?.getAttribute("aria-label") || "").trim();
     if (text) return text.slice(0, 500);
-    const title = (document.title || "").replace(/\s*[|—-]\s*(ChatGPT|Gemini|Grok).*$/i, "").trim();
+    const title = (document.title || "").replace(/\s*[|—-]\s*(ChatGPT|Gemini|Grok|DeepSeek|Qwen).*$/i, "").trim();
     return title.slice(0, 500) || "Conversation " + url.pathname.split("/").filter(Boolean).pop();
   }
 
@@ -139,11 +172,15 @@
     if (provider === "gemini") {
       return [...document.querySelectorAll("user-query, model-response")];
     }
-    const selectors = [
-      '[data-testid="conversation-turn"]',
-      '[data-testid*="message"]',
-      '[data-message-id]'
-    ];
+    const selectors = provider === "deepseek"
+      ? ['[data-message-id]', '[data-testid*="message"]', 'div[class*="ds-message"]', 'div[class*="message"]']
+      : provider === "qwen"
+        ? ['[data-message-id]', '[data-testid*="message"]', 'div[class*="chat-message"]', 'div[class*="message-item"]', 'div[class*="message"]']
+        : [
+            '[data-testid="conversation-turn"]',
+            '[data-testid*="message"]',
+            '[data-message-id]'
+          ];
     const nodes = selectors.flatMap(selector => [...document.querySelectorAll(selector)]);
     return [...new Set(nodes)].filter(node => !nodes.some(other => other !== node && node.contains(other)));
   }
@@ -168,15 +205,15 @@
       typeof node.parentElement?.className === "string" ? node.parentElement.className : ""
     ].filter(Boolean).join(" ").toLowerCase();
     if (/\b(user|you|human|prompt|query)\b/.test(role) || /justify-end|self-end/.test(role)) return "user";
-    if (/\b(assistant|grok|model|ai|response)\b/.test(role) || /justify-start|self-start/.test(role)) return "assistant";
+    if (/\b(assistant|grok|deepseek|qwen|model|ai|response)\b/.test(role) || /justify-start|self-start/.test(role)) return "assistant";
     return "unknown";
   }
 
   function messageIdentity(node, role, content, index) {
     const explicit = node.getAttribute("data-message-id") || node.id;
     if (explicit) return explicit.slice(0, 180);
-    // Text-derived IDs are stable across scroll windows; duplicate identical turns
-    // remain a documented selector limitation until provider DOM IDs are available.
+    // Text-derived IDs are only a fallback. collectVisible() detects a second
+    // distinct DOM node with the same fallback ID and marks the capture ambiguous.
     let hash = 2166136261;
     const value = role + "\u0000" + content;
     for (let i = 0; i < value.length; i++) {
@@ -233,29 +270,88 @@
     const scroller = findScrollContainer(provider);
     const originalTop = scroller.scrollTop;
     const collected = new Map();
-    let sequence = 0;
+    const orderedIds = [];
+    const seenNodeObjects = new WeakSet();
+    let sequenceOrderConflict = false;
     let steps = 0;
     let stableBottomRounds = 0;
 
-    function collectVisible() {
+    function mergeVisibleOrder(snapshotIds, phase) {
+      const uniqueIds = [...new Set(snapshotIds)];
+      if (!uniqueIds.length) return;
+      if (!orderedIds.length) {
+        orderedIds.push(...uniqueIds);
+        return;
+      }
+
+      let index = 0;
+      while (index < uniqueIds.length) {
+        if (orderedIds.includes(uniqueIds[index])) {
+          index++;
+          continue;
+        }
+
+        const runStart = index;
+        while (index < uniqueIds.length && !orderedIds.includes(uniqueIds[index])) {
+          index++;
+        }
+        const newRun = uniqueIds.slice(runStart, index);
+        const previousId = runStart > 0 ? uniqueIds[runStart - 1] : null;
+        const nextId = index < uniqueIds.length ? uniqueIds[index] : null;
+        const previousIndex = previousId ? orderedIds.indexOf(previousId) : -1;
+        const nextIndex = nextId ? orderedIds.indexOf(nextId) : -1;
+
+        if (previousIndex >= 0 && nextIndex >= 0) {
+          if (previousIndex >= nextIndex) {
+            sequenceOrderConflict = true;
+            orderedIds.push(...newRun);
+          } else {
+            // Insert the newly observed turns into the gap between stable anchors.
+            orderedIds.splice(nextIndex, 0, ...newRun);
+          }
+        } else if (previousIndex >= 0) {
+          orderedIds.splice(previousIndex + 1, 0, ...newRun);
+        } else if (nextIndex >= 0) {
+          orderedIds.splice(nextIndex, 0, ...newRun);
+        } else if (phase === "top") {
+          // A disjoint top snapshot is an older history window.
+          orderedIds.unshift(...newRun);
+        } else {
+          // A disjoint downward-scroll snapshot is later in the conversation.
+          orderedIds.push(...newRun);
+        }
+      }
+    }
+    function collectVisible(phase) {
       const nodes = messageNodes(provider);
-      for (const node of nodes) {
+      const snapshotIds = [];
+      for (let index = 0; index < nodes.length; index++) {
+        const node = nodes[index];
         const content = visibleText(node);
         if (!content) continue;
         const role = roleFor(node, provider);
-        const id = messageIdentity(node, role, content, sequence++);
+        const explicitId = node.getAttribute("data-message-id") || node.id;
+        const id = messageIdentity(node, role, content, collected.size + index);
+        snapshotIds.push(id);
+        const repeatedNodeObject = seenNodeObjects.has(node);
+        seenNodeObjects.add(node);
+        if (collected.has(id) && !explicitId && !repeatedNodeObject) {
+          // Identical text-only turns cannot be distinguished from a virtualized
+          // duplicate without a provider message ID. Preserve the snapshot but
+          // mark it truncated rather than silently claiming every turn survived.
+          sequenceOrderConflict = true;
+        }
         if (!collected.has(id)) {
           collected.set(id, {
             message_id: id,
             role,
             content: content.slice(0, 100000),
-            sequence: collected.size,
             timestamp: node.querySelector("time[datetime]")?.getAttribute("datetime") || null
           });
         }
       }
+      mergeVisibleOrder(snapshotIds, phase);
     }
-
     let topLoadSteps = 0;
     let topLoadLimitReached = false;
     try {
@@ -264,14 +360,14 @@
       // sufficient evidence that the oldest messages have loaded.
       scroller.scrollTop = 0;
       await sleep(350);
-      collectVisible();
+      collectVisible("top");
       let stableTopRounds = 0;
       let previousTopHeight = scroller.scrollHeight;
       let previousTopMessageCount = collected.size;
       while (topLoadSteps < 20 && stableTopRounds < 4) {
         scroller.scrollTop = 0;
         await sleep(500);
-        collectVisible();
+        collectVisible("top");
         const currentHeight = scroller.scrollHeight;
         const currentMessageCount = collected.size;
         if (currentHeight > previousTopHeight || currentMessageCount > previousTopMessageCount) {
@@ -295,7 +391,7 @@
           scroller.scrollTop = Math.min(max, before + Math.max(300, scroller.clientHeight * 0.75));
         }
         await sleep(250);
-        collectVisible();
+        collectVisible("scroll");
         steps++;
       }
     } finally {
@@ -303,8 +399,15 @@
     }
 
     if (!collected.size) throw new Error("No message containers were recognized; nothing was archived.");
-    const messages = [...collected.values()];
+    // Merge each DOM window against stable message IDs. Overlapping IDs
+    // establish a relative offset; disjoint top windows are older and prepend,
+    // while disjoint downward-scroll windows append. Ambiguous overlaps mark
+    // the capture truncated instead of asserting a trustworthy sequence.
+    const messages = orderedIds
+      .map(id => collected.get(id))
+      .filter(Boolean);
     messages.forEach((message, index) => { message.sequence = index; });
+    if (messages.length !== collected.size) sequenceOrderConflict = true;
     const unknownRoleCount = messages.filter(message => message.role === "unknown").length;
     return {
       provider,
@@ -312,21 +415,213 @@
       title: conversationTitle(null, location.href),
       url: location.href,
       messages,
-      truncated: steps >= 100 || topLoadLimitReached,
+      truncated: steps >= 100 || topLoadLimitReached || sequenceOrderConflict,
       // Reaching the current DOM top is not proof of oldest provider history.
       history_start_reached: false,
       oldest_boundary: "unknown",
+      oldest_boundary_evidence: "",
       messages_total: messages.length,
       unknown_role_count: unknownRoleCount,
       scroll_steps: steps,
       top_load_steps: topLoadSteps,
       top_load_limit_reached: topLoadLimitReached,
+      sequence_order_conflict: sequenceOrderConflict,
       adapter_version: VERSION,
       captured_at: new Date().toISOString()
     };
   }
 
+  function findComposer(provider) {
+    const selectors = provider === "chatgpt"
+      ? ["#prompt-textarea", '[data-testid="prompt-textarea"]', 'textarea[placeholder]', '[contenteditable="true"].ProseMirror']
+      : provider === "gemini"
+        ? ["rich-textarea [contenteditable='true']", ".ql-editor[contenteditable='true']", "textarea"]
+        : provider === "deepseek"
+          ? ["textarea[placeholder]", "textarea", '[contenteditable="true"]', '[contenteditable="true"].ProseMirror']
+          : provider === "qwen"
+            ? ["textarea[placeholder]", "textarea", '[contenteditable="true"]', '[contenteditable="true"].ProseMirror']
+            : ["textarea[placeholder]", 'textarea', '[contenteditable="true"][data-placeholder]', '[contenteditable="true"].ProseMirror'];
+    for (const selector of selectors) {
+      for (const node of document.querySelectorAll(selector)) {
+        const rect = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        if (node.isConnected && rect.width > 0 && rect.height > 0 &&
+            style.display !== "none" && style.visibility !== "hidden" &&
+            !node.disabled && node.getAttribute("aria-disabled") !== "true") return node;
+      }
+    }
+    return null;
+  }
+
+  function setComposerText(composer, text) {
+    composer.focus();
+    if (composer instanceof HTMLTextAreaElement || composer instanceof HTMLInputElement) {
+      const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(composer), "value")?.set;
+      if (!setter) throw new Error("The provider text field cannot be updated safely.");
+      setter.call(composer, text);
+      composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+      composer.dispatchEvent(new Event("change", { bubbles: true }));
+    } else {
+      composer.replaceChildren();
+      composer.textContent = text;
+      composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+    }
+  }
+
+  function findSendButton(provider, composer) {
+    const selectors = [
+      'button[data-testid="send-button"]',
+      'button[aria-label*="Send" i]',
+      'button[aria-label*="Enviar" i]',
+      'button[title*="Send" i]',
+      'button[title*="Enviar" i]',
+      'button[aria-label*="发送" i]',
+      'button[title*="发送" i]',
+      'button[aria-label*="提交" i]',
+      'button[title*="提交" i]'
+    ];
+    for (const selector of selectors) {
+      for (const button of document.querySelectorAll(selector)) {
+        const rect = button.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0 && !button.disabled &&
+            button.getAttribute("aria-disabled") !== "true") return button;
+      }
+    }
+    const form = composer.closest("form");
+    if (form) {
+      const button = form.querySelector('button[type="submit"]');
+      if (button && !button.disabled && button.getAttribute("aria-disabled") !== "true") return button;
+    }
+    return null;
+  }
+
+  async function sendMessageThroughVisibleUi(request) {
+    const provider = providerForUrl(location.href);
+    if (!provider) throw new Error("This tab is not an allowed AI provider.");
+    const sourceId = sourceIdForUrl(location.href, provider);
+    if (!sourceId) throw new Error("Open an existing conversation before sending.");
+    if (request.source_id && request.source_id !== sourceId) {
+      throw new Error("The active conversation changed; message was not sent.");
+    }
+    const text = String(request.text || "");
+    if (!text.trim() || text.length > 30000) throw new Error("Message must contain 1–30000 characters.");
+    const blocked = detectBlockedPage();
+    if (blocked) throw new Error("Provider blocked: " + blocked + ". Message was not sent.");
+    const composer = findComposer(provider);
+    if (!composer) throw new Error("No supported visible message composer was found.");
+    setComposerText(composer, text);
+    await sleep(150);
+    const currentText = (composer.value ?? composer.innerText ?? composer.textContent ?? "").trim();
+    if (currentText !== text.trim()) throw new Error("Composer verification failed; message was not sent.");
+    const sendButton = findSendButton(provider, composer);
+    if (!sendButton) throw new Error("No enabled provider Send button was found; message was not sent.");
+    sendButton.click();
+    const deadline = Date.now() + 12000;
+    let observed = false;
+    while (Date.now() < deadline) {
+      await sleep(300);
+      const found = messageNodes(provider).some(node =>
+        roleFor(node, provider) === "user" && visibleText(node).trim().includes(text.trim())
+      );
+      if (found) { observed = true; break; }
+    }
+    return {
+      provider,
+      source_id: sourceId,
+      status: observed ? "submitted_and_visible" : "submitted_unverified",
+      verification: observed ? "user_message_observed_in_conversation" : "send_clicked_but_message_not_observed",
+      sent_at: new Date().toISOString()
+    };
+  }
+
+
+  async function executeBrowserOperatorTask(request) {
+    const provider = providerForUrl(location.href);
+    if (!provider || provider !== request.provider) throw new Error("Active provider does not match the queued task.");
+    const sourceId = sourceIdForUrl(location.href, provider);
+    if (!sourceId || sourceId !== request.source_id) throw new Error("Active conversation does not match the queued task.");
+    const initialBlock = detectBlockedPage();
+    if (initialBlock) {
+      return { provider, source_id: sourceId, status: "blocked",
+        reason: initialBlock, assistant_text: "", sent_status: "not_sent" };
+    }
+    const sent = await sendMessageThroughVisibleUi({
+      text: request.message,
+      source_id: request.source_id
+    });
+    if (sent.status !== "submitted_and_visible") {
+      return { ...sent, status: "unverified", assistant_text: "", reason: "user_message_not_verified" };
+    }
+
+    const timeoutMs = Math.max(1000, Math.min(Number(request.response_timeout_ms) || 120000, 180000));
+    const deadline = Date.now() + timeoutMs;
+    let previousText = "";
+    let stableRounds = 0;
+    while (Date.now() < deadline) {
+      const blocked = detectBlockedPage();
+      if (blocked) {
+        return {
+          provider, source_id: sourceId, status: "blocked",
+          reason: blocked, assistant_text: "", sent_status: sent.status
+        };
+      }
+      const nodes = messageNodes(provider);
+      const userIndex = nodes.findIndex(node =>
+        roleFor(node, provider) === "user" &&
+        visibleText(node).trim().includes(String(request.message).trim())
+      );
+      if (userIndex >= 0) {
+        const assistant = nodes.slice(userIndex + 1).filter(node =>
+          ["assistant", "model"].includes(roleFor(node, provider))
+        );
+        const candidate = assistant.length ? visibleText(assistant[assistant.length - 1]) : "";
+        if (candidate && candidate === previousText) stableRounds++;
+        else stableRounds = candidate ? 1 : 0;
+        previousText = candidate;
+        if (candidate && stableRounds >= 5) {
+          return {
+            provider, source_id: sourceId, status: "completed",
+            assistant_text: candidate.slice(0, 100000),
+            sent_status: sent.status,
+            verification: "assistant_response_observed_stable"
+          };
+        }
+      }
+      await sleep(1000);
+    }
+    return {
+      provider, source_id: sourceId, status: "unverified",
+      assistant_text: previousText.slice(0, 100000),
+      sent_status: sent.status,
+      reason: "assistant_response_timeout"
+    };
+  }
+
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type === "DGM_PROVIDER_PING") {
+      const provider = providerForUrl(location.href);
+      sendResponse({
+        ok: Boolean(provider),
+        provider,
+        source_id: provider ? sourceIdForUrl(location.href, provider) : null,
+        blocked: detectBlockedPage()
+      });
+      return false;
+    }
+    if (message.type === "DGM_EXECUTE_BROWSER_TASK") {
+      executeBrowserOperatorTask(message)
+        .then(data => sendResponse({ ok: true, data }))
+        .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+      return true;
+    }
+
+    if (message.type === "DGM_SEND_MESSAGE") {
+      sendMessageThroughVisibleUi(message)
+        .then(data => sendResponse({ ok: true, data }))
+        .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+      return true;
+    }
+
     if (!message || typeof message.type !== "string") return false;
     if (message.type === "DGM_DISCOVER_VISIBLE") {
       discoverConversations()
@@ -368,7 +663,7 @@
     if (/captcha|verify you are human|unusual traffic|security challenge/.test(text)) {
       return "blocked_challenge";
     }
-    if (/too many requests|rate limit|try again later/.test(text)) {
+    if (/too many requests|rate limit|try again later|quota exceeded|daily quota|usage limit|message limit|you(?:'ve| have) reached (?:your )?.{0,50}limit|limit reached|limite de mensagens|limite diário|atingiste o limite|atingiu o limite|cota excedida/.test(text)) {
       return "rate_limited";
     }
     return "";

@@ -1,30 +1,40 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-PT">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>DGM-MAT Recovery</title>
+  <title>DGM-MAT Browser Operator</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <main>
     <header>
       <strong>DGM-MAT</strong>
-      <span>Conversation recovery</span>
+      <span>Operador de sessões do navegador</span>
     </header>
     <section id="pair-section">
-      <label for="pair-code">One-time pairing code</label>
-      <input id="pair-code" type="password" autocomplete="off" spellcheck="false" placeholder="Code from the local DGM-MAT PC">
-      <button id="pair-button" type="button">Pair with DGM-MAT</button>
+      <label for="pair-code">Código de ligação de utilização única</label>
+      <input id="pair-code" type="password" autocomplete="off" spellcheck="false" placeholder="Código gerado no PC DGM-MAT">
+      <button id="pair-button" type="button">Ligar ao DGM-MAT</button>
     </section>
     <section>
-      <label class="toggle"><input id="auto-checkbox" type="checkbox"> Enable unattended recovery across open provider tabs</label>
-      <button id="start-button" type="button" disabled>Scan and recover this provider</button>
-      <button id="retry-button" type="button" class="secondary" disabled>Retry blocked conversation</button>
-      <button id="stop-button" type="button" class="secondary">Stop recovery</button>
+      <label class="toggle"><input id="browser-operator-checkbox" type="checkbox"> Executar automaticamente tarefas de missões já aprovadas no DGM-MAT</label>
+      <small>Usa apenas separadores autenticados já abertos. As tarefas exigem aprovação no DGM-MAT e nunca são repetidas automaticamente após uma falha.</small>
+    </section>
+    <section id="operator-section">
+      <label for="message-input">Enviar uma mensagem para a conversa de IA ativa</label>
+      <textarea id="message-input" rows="5" maxlength="30000" placeholder="Escreve a instrução para ChatGPT, Grok, Gemini, DeepSeek ou Qwen…"></textarea>
+      <button id="send-message-button" type="button">Enviar para a conversa ativa</button>
+      <small>O envio exige confirmação. Não há repetição automática para evitar mensagens duplicadas.</small>
+    </section>
+    <section>
+      <label class="toggle"><input id="auto-checkbox" type="checkbox"> Ativar recuperação automática nos separadores abertos</label>
+      <button id="start-button" type="button" disabled>Analisar e recuperar este fornecedor</button>
+      <button id="retry-button" type="button" class="secondary" disabled>Repetir conversa bloqueada</button>
+      <button id="stop-button" type="button" class="secondary">Parar recuperação</button>
     </section>
     <p id="status" role="status">Checking local connection…</p>
-    <small>Only visible conversation content is read. No cookies, passwords or hidden provider APIs.</small>
+    <small>Só é lido conteúdo visível. Não são acedidos cookies, palavras-passe ou APIs ocultas.</small>
   </main>
   <script src="popup.js"></script>
 </body>
