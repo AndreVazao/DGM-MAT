@@ -219,3 +219,13 @@ A Focused PR Validation #42389920969 da PR #279 terminou **SUCCESS**. O job conc
 ### Windows runner adicional — 2026-11-07 16:15 UTC
 
 Foi acrescentado um job Windows ao workflow Focused PR Validation existente. Na execução `42390097774`, o job **Windows installer digest gate** terminou SUCCESS: o parser PowerShell aceitou o instalador e o teste negativo confirmou que um digest incorreto é rejeitado antes da criação das pastas de destino e backup. O job Linux de regressões ainda estava a instalar dependências na última observação; o seu resultado final não é declarado aqui. Snyk no head da PR #279 continua ERROR. A PR permanece draft.
+
+
+
+### Resultado final dos dois jobs — 2026-11-07 16:16 UTC
+
+Confirmação posterior: ambos os jobs da Focused PR Validation `42390097774` terminaram **SUCCESS**:
+- Windows installer digest gate: SUCCESS (parser PowerShell + teste de rejeição pré-mutação).
+- Compile and run only affected regressions: SUCCESS (compilação Python + regressões selecionadas).
+
+O check Snyk continua **ERROR**. A PR #279 mantém-se draft e sem merge; não foi executado o workflow completo de build do executável nem foi feita aceitação no PC Windows 10 do operador.
