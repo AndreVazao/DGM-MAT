@@ -51,8 +51,8 @@ The extension must be installed in the existing Chrome profile by loading the un
 - Original downloads are copied, never moved or deleted.
 - SHA-256 is computed and verified on the archived copy.
 - Imports are idempotent for identical files.
-- Raw source files are retained under `storage/runtime/conversation_archive/chrome-imports`.
-- Progress and knowledge snapshots are stored under `storage/runtime/conversation_intelligence`.
+- Raw source files are retained under `Vault/providers/chrome-imports`.
+- Progress and knowledge snapshots are stored under `Vault/runtime/cognition/conversation_intelligence`.
 - Script: `scripts/import_chrome_conversation_archive.py`.
 - Operator-only API: `POST /recovery/chrome/import`.
 
