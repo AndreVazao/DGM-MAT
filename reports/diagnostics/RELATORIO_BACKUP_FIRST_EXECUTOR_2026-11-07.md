@@ -142,3 +142,24 @@ Additional commits:
 Latest code/test head at this report update: `ce9fa0ebc9266b35fa2ad6c02cef2882e756033e`.
 
 These changes are not yet a substitute for the remaining backup-root scope, staged-file ACL inheritance, durable rollback-intent, adversarial ACL test and docstring findings. Do not merge until those are resolved and the latest Windows Guard and focused validation runs pass on the same reviewed code head.
+
+
+## CI correction and exact-code validation — 2026-11-07
+
+The first test rerun after the remediation commits failed during pytest collection because the existing protected-path parametrization decorator was inadvertently attached to the new Windows alias test, creating duplicate parametrization of `path`. Both the Windows Guard and Focused PR Validation exposed the same collection error. The test decorators were separated in commit `f37c8da187c550d73717ade6761380b9e246b3fc`; the failure was not suppressed.
+
+Exact code/test head `f37c8da187c550d73717ade6761380b9e246b3fc` now has:
+- Windows Guard [42366097061](https://github.com/AndreVazao/DGM-MAT/actions/runs/42366097061): **SUCCESS**.
+- Focused PR Validation [42366096817](https://github.com/AndreVazao/DGM-MAT/actions/runs/42366096817): **SUCCESS**.
+- Python source compilation and selected regressions completed successfully.
+- The Windows Guard ran both executor and native handle test modules successfully. This is hosted Windows CI, not Windows 10 operator-PC acceptance.
+
+The successful CI closes the test-collection regression only. It does not close the remaining CodeRabbit findings:
+1. prove backup_root is a dedicated directory before changing its DACL; preserve shared-directory ACLs;
+2. apply the destination directory security policy to staged creates before promotion;
+3. persist and resume rollback intent/outcome after interruption;
+4. adversarial ACL rejection tests for broad SIDs, absent/null DACLs, unprotected roots and invalid inheritance;
+5. docstring coverage (CodeRabbit reported 11.32% against an 80% threshold);
+6. fresh independent re-review of the corrected code head.
+
+Snyk remains `error`. Windows 10 operator-PC and real storage write-through/power-loss acceptance remain outstanding. PR #276 remains draft; no merge, MissionEngine integration, real-project mutation or auto-merge. POSIX mutation remains disabled.
