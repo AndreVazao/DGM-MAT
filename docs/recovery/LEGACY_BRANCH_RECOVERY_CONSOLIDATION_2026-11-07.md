@@ -45,7 +45,7 @@ The legacy branch also modified `core/api/api_server.py` and `core/api/security_
 - Added an optional AutoHelp fallback: only when the DGM-HUB has no ready free provider, and only when browser-consult, AutoHelp browser-consult and free-capacity environment opt-ins are enabled, AutoHelp queues a consultation for the five browser providers and records `WAITING_FOR_OPERATOR_APPROVAL`. No message is sent at enqueue time. Completed answers are appended to the linked local mobile thread as untrusted external suggestions.
 - On extension service-worker restart, any persisted in-flight consultation claim is blocked as interrupted and cleared without replay, even if polling has since been disabled.
 - Serialized consultation polling against mission browser execution so both cannot send concurrently in the same provider tab.
-- Added API tests for route scopes, authentication, explicit approval, free-capacity attestation, claim ownership and untrusted result persistence; expanded store tests for approval, deduplication, secret blocking, restart handling and claim tokens.
+- Added API tests for route scopes, authentication, explicit approval, free-capacity attestation, claim ownership, untrusted result persistence and fail-closed audit errors on approval/prompt release; expanded store tests for approval, deduplication, secret blocking, restart handling and claim tokens.
 
 ## Remaining validation before activation/merge
 
