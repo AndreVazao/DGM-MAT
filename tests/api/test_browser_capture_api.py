@@ -489,3 +489,25 @@ def test_sequence_conflict_and_reported_count_mismatch_never_claim_full_history(
     assert response.json()["sequence_order_conflict"] is True
     assert response.json()["history_completeness"] == "partial_or_unknown"
     assert response.json()["full_history_verified"] is False
+
+def test_explicit_zero_reported_message_count_forces_partial_history(monkeypatch, tmp_path):
+    client, _ = _client(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        browser_capture_api,
+        "PROVIDER_OLDEST_BOUNDARY_EVIDENCE",
+        {"chatgpt": {"fixture-oldest-marker"}},
+    )
+    client.post("/recovery/browser-capture/discover", json=_discovery())
+    client.post("/recovery/browser-capture/next", json={"provider": "chatgpt"})
+    payload = _capture()
+    payload["messages_total"] = 0
+    payload["history_start_reached"] = True
+    payload["oldest_boundary"] = "confirmed"
+    payload["oldest_boundary_evidence"] = "fixture-oldest-marker"
+
+    response = client.post("/recovery/browser-capture/capture", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["message_count"] == 2
+    assert response.json()["messages_total"] == 0
+    assert response.json()["history_completeness"] == "partial_or_unknown"
