@@ -242,7 +242,7 @@ async function pollBrowserConsultQueue() {
   consultPollInProgress = true;
   try {
     const settings = await chrome.storage.local.get([CONSULT_ENABLED_KEY, PROVIDER_TABS_KEY, CONSULT_CURRENT_KEY, BROWSER_TASK_KEY]);
-    if (settings[BROWSER_TASK_KEY] || browserPollInProgress) return;
+    if (browserPollInProgress) return;
     const state = await readState();
     if (!state.token) return;
     if (settings[CONSULT_CURRENT_KEY]) {
@@ -258,7 +258,7 @@ async function pollBrowserConsultQueue() {
       });
       return;
     }
-    if (!settings[CONSULT_ENABLED_KEY] || state.run?.active) return;
+    if (settings[BROWSER_TASK_KEY] || !settings[CONSULT_ENABLED_KEY] || state.run?.active) return;
     const tabs = settings[PROVIDER_TABS_KEY] || {};
     for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
       if (await isBrowserProviderPaused(provider)) continue;
