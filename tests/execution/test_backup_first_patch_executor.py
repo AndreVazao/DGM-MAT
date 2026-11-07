@@ -728,3 +728,81 @@ def test_windows_create_rejects_backup_root_on_another_volume(tmp_path, monkeypa
         executor.apply_text("src/new.py", "new content")
 
     assert not target.exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows prepared-replacement recovery test.")
+@pytest.mark.parametrize(
+    "post_crash_content",
+    ["partial interrupted write", "newer independent writer content"],
+)
+def test_windows_prepared_replace_refuses_unrecognized_content(tmp_path, monkeypatch, post_crash_content):
+    root = repository(tmp_path)
+    backup_root = tmp_path / "backups"
+    target = root / "src" / "existing.py"
+    target.write_text("original content", encoding="utf-8")
+    executor = BackupFirstPatchExecutor(root, backup_root=backup_root)
+    backend = executor._windows_backend
+    assert backend is not None
+    original_truncate = backend.truncate_file
+    original_write = backend.write_all
+
+    def interrupt_during_replace(handle):
+        original_truncate(handle)
+        original_write(handle, b"partial interrupted write")
+        raise SystemExit("simulated power loss during in-place replacement")
+
+    monkeypatch.setattr(backend, "truncate_file", interrupt_during_replace)
+    with pytest.raises(SystemExit, match="during in-place replacement"):
+        executor.apply_text(
+            "src/existing.py",
+            "expected replacement content",
+            expected_sha256=hashlib.sha256(b"original content").hexdigest(),
+        )
+
+    if post_crash_content != "partial interrupted write":
+        target.write_text(post_crash_content, encoding="utf-8")
+
+    backup_dir = next(backup_root.iterdir())
+    manifest = json.loads((backup_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["operation"] == "replace"
+    assert manifest["state"] == "prepared"
+
+    recovered = BackupFirstPatchExecutor(root, backup_root=backup_root)
+    with pytest.raises(PatchRollbackError, match="neither the original nor the expected result"):
+        recovered.rollback(manifest["backup_id"])
+    assert target.read_text(encoding="utf-8") == post_crash_content
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows prepared-replacement recovery test.")
+def test_windows_prepared_replace_restores_only_recognized_result_hash(tmp_path, monkeypatch):
+    root = repository(tmp_path)
+    backup_root = tmp_path / "backups"
+    target = root / "src" / "existing.py"
+    target.write_text("original content", encoding="utf-8")
+    executor = BackupFirstPatchExecutor(root, backup_root=backup_root)
+    backend = executor._windows_backend
+    assert backend is not None
+    original_write_manifest = executor._write_manifest_windows
+
+    def interrupt_before_applied_manifest(directory_handle, manifest, *, replace_existing):
+        if manifest.get("state") == "applied":
+            raise SystemExit("simulated power loss after replacement")
+        return original_write_manifest(
+            directory_handle, manifest, replace_existing=replace_existing
+        )
+
+    monkeypatch.setattr(executor, "_write_manifest_windows", interrupt_before_applied_manifest)
+    with pytest.raises(SystemExit, match="after replacement"):
+        executor.apply_text(
+            "src/existing.py",
+            "expected replacement content",
+            expected_sha256=hashlib.sha256(b"original content").hexdigest(),
+        )
+
+    backup_dir = next(backup_root.iterdir())
+    manifest = json.loads((backup_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["state"] == "prepared"
+    recovered = BackupFirstPatchExecutor(root, backup_root=backup_root)
+    result = recovered.rollback(manifest["backup_id"])
+    assert result["state"] == "rolled_back"
+    assert target.read_text(encoding="utf-8") == "original content"
