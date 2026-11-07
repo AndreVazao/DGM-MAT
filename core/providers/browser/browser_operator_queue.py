@@ -7,7 +7,7 @@ import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 class BrowserOperatorQueueError(ValueError):
@@ -17,12 +17,13 @@ class BrowserOperatorQueueError(ValueError):
 class BrowserOperatorQueue:
     """SQLite queue; expired in-flight sends require review and are never replayed."""
 
-    def __init__(self, database_path: str | Path, *, lease_seconds: int = 180) -> None:
+    def __init__(self, database_path: str | Path, *, lease_seconds: int = 180, mission_status_resolver: Callable[[str], str | None] | None = None) -> None:
         if not 30 <= lease_seconds <= 900:
             raise ValueError("lease_seconds must be between 30 and 900")
         self.database_path = Path(database_path)
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         self.lease_seconds = lease_seconds
+        self._mission_status_resolver = mission_status_resolver
         self._lock = threading.RLock()
         self._initialize()
 
@@ -49,6 +50,7 @@ class BrowserOperatorQueue:
                     updated_at TEXT NOT NULL,
                     created_by TEXT NOT NULL DEFAULT 'mission-engine',
                     approved_by TEXT,
+                    approval_required INTEGER NOT NULL DEFAULT 1,
                     claimed_by TEXT,
                     claim_token TEXT,
                     lease_until TEXT,
@@ -61,6 +63,9 @@ class BrowserOperatorQueue:
                 db.execute("ALTER TABLE browser_operator_tasks ADD COLUMN created_by TEXT NOT NULL DEFAULT 'mission-engine'")
             if "approved_by" not in columns:
                 db.execute("ALTER TABLE browser_operator_tasks ADD COLUMN approved_by TEXT")
+            if "approval_required" not in columns:
+                db.execute("ALTER TABLE browser_operator_tasks ADD COLUMN approval_required INTEGER NOT NULL DEFAULT 1")
+                db.execute("UPDATE browser_operator_tasks SET approval_required=0 WHERE created_by='mission-engine' AND approved_by='mission-engine' AND status IN ('queued','claimed','completed','unverified','needs_review')")
             db.execute("""
                 CREATE INDEX IF NOT EXISTS idx_browser_operator_pending
                 ON browser_operator_tasks(status, provider, created_at)
@@ -75,6 +80,7 @@ class BrowserOperatorQueue:
         if row is None:
             return None
         item = dict(row)
+        item["approval_required"] = bool(item.get("approval_required", 1))
         raw = item.pop("result_json", None)
         try:
             item["result"] = json.loads(raw) if raw else None
