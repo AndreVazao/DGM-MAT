@@ -221,10 +221,10 @@ class BrowserConsultStore:
         if not isinstance(operator, str) or not operator.strip():
             raise ValueError("operator identity is required")
         with self._connect() as db:
-            cursor = db.execute(\"\"\"
+            cursor = db.execute("""
                 UPDATE browser_consultations SET status='PENDING'
                 WHERE consultation_id=? AND status='PENDING_APPROVAL'
-            \"\"\", (consultation_id,))
+            """, (consultation_id,))
             db.commit()
             return cursor.rowcount == 1
 
