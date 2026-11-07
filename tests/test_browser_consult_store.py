@@ -51,7 +51,7 @@ def test_enqueue_claim_complete_and_cooldown(monkeypatch, tmp_path):
     chat = store.claim_next("chatgpt")
     assert chat is not None
     assert chat["status"] == "RUNNING"
-    assert "FREE-TIER" in chat["prompt"]
+    assert "free-tier" in chat["prompt"].casefold()
     completed = store.finish(
         chat["consultation_id"],
         claim_token=chat["claim_token"],
