@@ -247,3 +247,12 @@ A branch da PR #279 recebeu commit `0ea4960b99c618536e818dc9d72e56c24bd8652a`, q
 Foi criado o run [42390571513](https://github.com/AndreVazao/DGM-MAT/actions/runs/42390571513) para o head exato. Na última observação, o job `build (3.12)` estava IN_PROGRESS, no setup de Python 3.12; dependências, PyInstaller, validação profunda e upload ainda não tinham sido concluídos. Não declarar sucesso até ao resultado terminal.
 
 O Snyk voltou a indicar **“You have used your limit of private tests”** no novo head. Trata-se de quota de testes privados/scan indisponível, sem findings reportados e sem aprovação limpa. Os dois jobs do Focused PR Validation anterior continuam SUCCESS. A PR #279 permanece draft e sem merge; aceitação Windows 10 real continua pendente.
+
+
+### Resultado final do build Windows da PR #279 — 2026-11-07 16:26 UTC
+
+O run [42390571513](https://github.com/AndreVazao/DGM-MAT/actions/runs/42390571513) terminou **SUCCESS** no job Windows 3.12. Passaram checkout das três dependências, instalação, validação do instalador da extensão, PyInstaller, deep check do executável, assertions e upload. O Focused PR Validation [42390571488](https://github.com/AndreVazao/DGM-MAT/actions/runs/42390571488) também terminou com os dois jobs **SUCCESS** (Windows digest gate e regressões Python).
+
+O artefacto Actions `DGM-MAT-Windows-3.12-0b7992c` foi descarregado e inspecionado. O ZIP exterior tem 111,218,034 bytes e SHA-256 `950c186672bfbe14050fca5b0a05ad35d4ad96b55d6547573fc5fcae5403dc60`, coincidente com o digest reportado pela API de artefactos. O ZIP de distribuição interior contém `DGM-MAT.exe` e `DGM-MAT.exe.sha256`; o digest declarado no sidecar coincide com o SHA-256 calculado do EXE: `fc232e4f3eb551c8340ec3f15cb723cf973c626174087adcbb77e406fb2d6a71`. Artefacto expirável em 2027-02-05. Isto valida o build e consistência dos hashes, não assinatura digital nem aceitação no Windows 10 do operador.
+
+A PR #277 foi integrada em `main` por squash no commit `a765fcc8e224c02f163c59109641b08489a708e0`. A PR #278 é o relatório corrente e está pronta para merge. A PR #279 permanece aberta enquanto se faz revisão final e atualização da base após o merge anterior. #276 continua bloqueada pelas threads de segurança/recovery não resolvidas. Snyk ignorado temporariamente por quota free-tier esgotada; nenhum scan limpo é declarado.
