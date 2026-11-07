@@ -17,6 +17,12 @@ class BrowserOperatorQueueError(ValueError):
 class BrowserOperatorQueue:
     """SQLite queue; expired in-flight sends require review and are never replayed."""
 
+    MISSION_STATES = {
+        "CREATED", "QUEUED", "APPROVAL_PENDING", "RUNNING",
+        "WAITING_FOR_USER", "COMPLETED", "CANCELLED", "FAILED",
+    }
+    TERMINAL_MISSION_STATES = {"COMPLETED", "CANCELLED", "FAILED"}
+
     def __init__(self, database_path: str | Path, *, lease_seconds: int = 180, mission_status_resolver: Callable[[str], str | None] | None = None) -> None:
         if not 30 <= lease_seconds <= 900:
             raise ValueError("lease_seconds must be between 30 and 900")
@@ -75,6 +81,19 @@ class BrowserOperatorQueue:
     def _now() -> datetime:
         return datetime.now(timezone.utc)
 
+    def _parent_status(self, mission_id: str) -> str | None:
+        if self._mission_status_resolver is None:
+            return None
+        try:
+            raw_status = self._mission_status_resolver(mission_id)
+        except Exception:
+            return None
+        status = getattr(raw_status, "value", raw_status)
+        if not isinstance(status, str):
+            return None
+        normalized = status.upper()
+        return normalized if normalized in self.MISSION_STATES else None
+
     @staticmethod
     def _decode(row: sqlite3.Row | None) -> dict[str, Any] | None:
         if row is None:
@@ -100,16 +119,10 @@ class BrowserOperatorQueue:
             raise BrowserOperatorQueueError("Task identity field exceeds its limit")
         if provider not in {"chatgpt", "gemini", "grok", "deepseek", "qwen"}:
             raise BrowserOperatorQueueError("Unsupported browser provider")
-        parent_status = None
-        if self._mission_status_resolver is not None:
-            try:
-                raw_status = self._mission_status_resolver(mission_id)
-                parent_status = str(getattr(raw_status, "value", raw_status)).upper() if raw_status is not None else None
-            except Exception:
-                parent_status = None
+        parent_status = self._parent_status(mission_id)
         if parent_status is None:
             raise BrowserOperatorQueueError("Parent mission checkpoint is missing or unavailable")
-        if parent_status in {"COMPLETED", "CANCELLED", "FAILED"}:
+        if parent_status in self.TERMINAL_MISSION_STATES:
             raise BrowserOperatorQueueError("A terminal mission cannot receive a browser task")
         if not approval_required and parent_status != "RUNNING":
             raise BrowserOperatorQueueError("Approval bypass requires a freshly verified RUNNING parent mission")
@@ -183,14 +196,8 @@ class BrowserOperatorQueue:
             """, (provider,)).fetchall()
             selected_task_id = None
             for candidate in rows:
-                parent_status = None
-                if self._mission_status_resolver is not None:
-                    try:
-                        raw_status = self._mission_status_resolver(candidate["mission_id"])
-                        parent_status = str(getattr(raw_status, "value", raw_status)).upper() if raw_status is not None else None
-                    except Exception:
-                        parent_status = None
-                if parent_status is None or parent_status in {"COMPLETED", "CANCELLED", "FAILED"}:
+                parent_status = self._parent_status(candidate["mission_id"])
+                if parent_status is None or parent_status in self.TERMINAL_MISSION_STATES:
                     db.execute("""
                         UPDATE browser_operator_tasks
                         SET status='needs_review', updated_at=?,
