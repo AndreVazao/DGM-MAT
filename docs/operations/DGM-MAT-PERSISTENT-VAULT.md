@@ -6,7 +6,7 @@ The Vault is local, portable data and must survive application upgrades or repla
 
 ## Automatic first-run/bootstrap work
 
-When the DGM-MAT API starts, a background bootstrap (enabled by default) registers the known projects, imports completed conversation records from the migrated and current progress databases, and snapshots the local DGM-MAT repository. Identical records are indexed as duplicates; identical trees reuse the existing snapshot. This operation is local and read-only against the repository; it does not execute project code or contact external AI services. Set `DGM_VAULT_BOOTSTRAP_ENABLED=0` to disable it.
+Vault bootstrap is opt-in while first-run performance and persistence are being validated on the Windows host. Run `python scripts\\sync_dgm_vault.py --repository .` from the repository root to register known projects, import completed conversation records from local progress databases and snapshot the repository. Identical records are indexed as duplicates; identical trees reuse the existing snapshot. The operation is local and read-only against the repository; it does not execute project code or contact external AI services. To enable the bounded startup bootstrap after host acceptance, set `DGM_VAULT_BOOTSTRAP_ENABLED=1`.
 
 ## Legacy runtime migration
 
