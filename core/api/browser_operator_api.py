@@ -27,7 +27,7 @@ def _mission_status(mission_id: str) -> str | None:
     try:
         with checkpoint.open("r", encoding="utf-8") as handle:
             data = json.load(handle)
-        if data.get("mission_id") != mission_id:
+        if not isinstance(data, dict) or data.get("mission_id") != mission_id:
             return None
         return data.get("status")
     except (OSError, ValueError, TypeError):
