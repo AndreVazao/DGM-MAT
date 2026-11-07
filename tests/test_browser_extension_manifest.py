@@ -11,7 +11,7 @@ EXTENSION = ROOT / "browser_extension"
 def test_extension_uses_manifest_v3_and_minimal_permissions():
     manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["manifest_version"] == 3
-    assert set(manifest["permissions"]) == {"activeTab", "storage"}
+    assert set(manifest["permissions"]) == {"activeTab", "storage", "alarms"}
     denied = {"cookies", "history", "webRequest", "debugger", "downloads", "scripting", "management"}
     assert not denied.intersection(manifest["permissions"])
     assert all("://" in host for host in manifest["host_permissions"])
@@ -21,7 +21,7 @@ def test_extension_uses_manifest_v3_and_minimal_permissions():
     )
 
 
-def test_extension_only_matches_chatgpt_gemini_and_grok_origins():
+def test_extension_only_matches_the_five_primary_provider_origins():
     manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
     matches = manifest["content_scripts"][0]["matches"]
     assert any("chatgpt.com" in item for item in matches)
@@ -30,7 +30,9 @@ def test_extension_only_matches_chatgpt_gemini_and_grok_origins():
     assert any("bard.google.com" in item for item in matches)
     assert any("grok.com" in item for item in matches)
     assert any("x.com/i/grok" in item for item in matches)
-    assert len(matches) == 6
+    assert any("chat.deepseek.com" in item for item in matches)
+    assert any("chat.qwen.ai" in item for item in matches)
+    assert len(matches) == 8
 
 
 def test_extension_never_reads_auth_stores_or_calls_provider_private_apis():
@@ -42,11 +44,37 @@ def test_extension_never_reads_auth_stores_or_calls_provider_private_apis():
         assert marker not in combined
     assert "DGM_DISCOVER_VISIBLE" in content
     assert "DGM_CAPTURE_CURRENT" in content
+    assert "DGM_EXECUTE_BROWSER_TASK" in content
     assert "/recovery/browser-capture/discover" in background
     assert "/recovery/browser-capture/capture" in background
+    assert "/browser-operator/next" in background
+    assert "/browser-operator/tasks/" in background
+    assert "dgmBrowserProviderPauses" in background
+    assert "pauseBrowserProvider" in background
+    assert 'for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"])' in background
+    assert "quota exceeded" in content or "usage limit" in content
+    assert 'defaults[AUTO_KEY] = true' in background
+    assert 'defaults[BROWSER_QUEUE_AUTO_KEY] = true' in background
+    assert "providerForTabUrl" in background
+    assert "startRecovery(tabId)" in background
+    assert "DGM_PROVIDER_PING" in content
+    assert "DGM_PROVIDER_PING" in background
 
 
 def test_extension_uses_only_the_local_dgm_mat_api_endpoint():
     background = (EXTENSION / "background.js").read_text(encoding="utf-8")
     assert 'const API = "http://127.0.0.1:8181";' in background
     assert "fetch(API + path" in background
+
+
+def test_windows_distribution_packages_extension_and_one_click_installer():
+    workflow = (ROOT / ".github" / "workflows" / "build-windows.yml").read_text(encoding="utf-8")
+    installer = ROOT / "scripts" / "install_browser_extension.ps1"
+    launcher = ROOT / "scripts" / "install_browser_extension.bat"
+    assert "publish\\browser_extension" in workflow
+    assert "install_browser_extension.ps1" in workflow
+    assert "install_browser_extension.bat" in workflow
+    assert installer.is_file() and launcher.is_file()
+    source = installer.read_text(encoding="utf-8")
+    assert "BrowserExtension.backups" in source
+    assert "chrome://extensions" in source
