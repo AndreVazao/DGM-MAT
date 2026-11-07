@@ -13,8 +13,10 @@
 ## Implemented probe
 
 `LocalCodingAgentProbe` recognizes only two fixed agent IDs:
-- `codex` → `codex`, `codex.exe`, `codex.cmd`
-- `claude_code` → `claude`, `claude.exe`, `claude.cmd`
+- `codex` → `codex`, `codex.exe`, `codex.ps1`, `codex.cmd`
+- `claude_code` → `claude`, `claude.exe`, `claude.ps1`, `claude.cmd`
+
+On Windows, the probe checks the standard `%APPDATA%\\npm` shims first. PowerShell wrappers run only through `powershell.exe`/`pwsh` with `-NoProfile -NonInteractive`; command wrappers use `cmd.exe /d /c` with the fixed `--version` argument. If a safe interpreter is unavailable, the probe fails closed.
 
 For each installed CLI it runs only `--version`, with:
 - a bounded timeout;
