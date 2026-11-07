@@ -26,6 +26,7 @@ from core.organization.dgm_hub_multichat_bridge import (
 )
 from core.operations.operation_audit import append_command_audit
 from core.storage.storage_manager import storage_manager
+from core.recovery.browser_consult_store import BrowserConsultStore, _free_providers
 
 
 FREE_PROVIDER_ALLOWLIST = ("kilo", "llm7", "codex", "claude")
@@ -191,6 +192,7 @@ class AutoHelpStore:
         allowed = {
             "COMPLETED", "PARTIAL", "BLOCKED_PROVIDER_UNAVAILABLE",
             "BLOCKED_HUB", "BLOCKED_AUDIT", "BLOCKED_SECRET_CONTENT",
+            "WAITING_FOR_OPERATOR_APPROVAL",
             "BLOCKED_EVIDENCE", "FAILED_NO_RETRY",
         }
         if status not in allowed:
@@ -269,6 +271,13 @@ class AutoHelpWorker:
         self.enabled = bool(enabled)
         self.external_agents_enabled = _env_enabled("DGM_AUTONOMY_HELP_EXTERNAL_AGENTS_ENABLED")
         self.free_capacity_confirmed = _env_enabled("DGM_AUTONOMY_HELP_FREE_CAPACITY_CONFIRMED")
+        self.browser_consult_enabled = (
+            _env_enabled("DGM_AUTONOMY_HELP_BROWSER_CONSULT_ENABLED")
+            and _env_enabled("DGM_BROWSER_CONSULT_ENABLED")
+            and _env_enabled("DGM_BROWSER_CONSULT_FREE_CAPACITY_CONFIRMED")
+        )
+        self.browser_consult_store = BrowserConsultStore() if self.browser_consult_enabled else None
+        self.browser_consult_providers = _free_providers() if self.browser_consult_enabled else ()
         configured = providers
         if configured is None:
             raw = os.getenv("DGM_AUTONOMY_HELP_PROVIDERS", "kilo,llm7")
@@ -308,6 +317,8 @@ class AutoHelpWorker:
         result["external_agents_enabled"] = self.external_agents_enabled
         result["free_capacity_confirmed"] = self.free_capacity_confirmed
         result["external_agents_require_verified_response"] = True
+        result["browser_consult_enabled"] = self.browser_consult_enabled
+        result["browser_consult_providers"] = list(self.browser_consult_providers)
         return result
 
     def start(self) -> bool:
@@ -365,6 +376,58 @@ class AutoHelpWorker:
             session_id=None,
         )
 
+    def _queue_browser_consultation(self, request: dict[str, Any], reason: str) -> bool:
+        """Queue an opt-in browser consultation for explicit owner approval; never send here."""
+        if (
+            not self.browser_consult_enabled
+            or self.browser_consult_store is None
+            or not self.browser_consult_providers
+        ):
+            return False
+        queued = self.browser_consult_store.enqueue(
+            task_ref="mobile-thread:" + str(request["thread_id"]),
+            goal=request["goal"],
+            context=(str(request.get("reason") or "") + "\\n" + reason)[:4000],
+            providers=list(self.browser_consult_providers),
+        )
+        ids = queued.get("consultation_ids") if isinstance(queued, dict) else None
+        if not ids:
+            return False
+        response = (
+            "O DGM-HUB não disponibilizou um fornecedor gratuito pronto. "
+            "Preparei uma consulta alternativa através dos separadores autenticados: "
+            + ", ".join(self.browser_consult_providers)
+            + ". A consulta está pendente de aprovação individual no popup da extensão DGM-MAT. "
+            "Ainda não foi enviada qualquer mensagem aos fornecedores. "
+            "Apenas a aprovação explícita autoriza o envio; as respostas serão guardadas como não verificadas. "
+            "Sem APIs pagas, sem repetição automática e sem execução de instruções externas."
+        )
+        metadata = {
+            "auto_help_status": "WAITING_FOR_OPERATOR_APPROVAL",
+            "browser_consultation_ids": ids,
+            "browser_consult_providers": list(self.browser_consult_providers),
+            "external_call": False,
+            "approval_required": True,
+            "result_trusted": False,
+            "paid_fallback": False,
+        }
+        self.store.finish(
+            request["request_id"],
+            status="WAITING_FOR_OPERATOR_APPROVAL",
+            response_text=response,
+            result=metadata,
+            error_type="hub_provider_unavailable",
+        )
+        self._append_result_message(request, response, {
+            "auto_help_request_id": request["request_id"],
+            **metadata,
+        })
+        try:
+            self._audit("command.completed", "pending_operator_approval")
+        except Exception:
+            pass
+        return True
+
     def run_once(self) -> bool:
         request = self.store.claim_next()
         if request is None:
@@ -413,6 +476,10 @@ class AutoHelpWorker:
                     continue
                 selected.append(provider)
             if not selected:
+                if self._queue_browser_consultation(
+                    request, "DGM-HUB não tinha nenhum fornecedor gratuito pronto e verificado."
+                ):
+                    return True
                 response = (
                     "Fiquei bloqueado: nenhum fornecedor gratuito autorizado está pronto e verificado. "
                     "Codex/Claude só podem ser chamados após opt-in explícito, confirmação de capacidade "
@@ -670,6 +737,37 @@ class AutoHelpWorker:
                 "paid_fallback": False,
             })
             self._audit("command.completed", "blocked")
+            return True
+        except HubBridgeError as exc:
+            if not packets and self._queue_browser_consultation(
+                request, "Falha de ligação/estado do DGM-HUB: " + type(exc).__name__
+            ):
+                return True
+            for collaboration_id in packets.values():
+                try:
+                    self.engine_factory().pause_specialist_collaboration(
+                        collaboration_id, reason=f"{type(exc).__name__}; no retry or paid fallback."
+                    )
+                except Exception:
+                    pass
+            response = (
+                "A consulta ao DGM-HUB ficou bloqueada. Registei a falha e não repeti a chamada. "
+                "Não foi usado qualquer serviço pago."
+            )
+            self.store.finish(
+                request_id, status="BLOCKED_HUB", response_text=response,
+                error_type=type(exc).__name__,
+            )
+            self._append_result_message(request, response, {
+                "auto_help_request_id": request_id,
+                "auto_help_status": "BLOCKED_HUB",
+                "external_call": False,
+                "paid_fallback": False,
+            })
+            try:
+                self._audit("command.completed", "blocked")
+            except Exception:
+                pass
             return True
         except Exception as exc:
             for collaboration_id in packets.values():
