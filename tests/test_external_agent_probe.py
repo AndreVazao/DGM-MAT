@@ -139,6 +139,11 @@ def test_fcc_stopped_listener_is_reported_without_starting_service(monkeypatch):
 def test_combined_readiness_never_claims_execution_without_free_cost_proof(monkeypatch):
     monkeypatch.setattr(
         probe,
+        "probe_codex_cli",
+        lambda: {"provider_id": "codex_cli", "installed": True, "status": "available", "execution_ready": False},
+    )
+    monkeypatch.setattr(
+        probe,
         "probe_claude_code",
         lambda: {"authenticated": True, "status": "authenticated_cost_unverified"},
     )
@@ -271,3 +276,61 @@ def test_readiness_does_not_query_fcc_admin_when_listener_is_not_loopback(monkey
 
     assert result["execution_ready"] is False
     assert "fcc_gateway_not_loopback_only" in result["blockers"]
+
+
+def test_codex_probe_reports_version_without_auth_or_cost_claim(monkeypatch):
+    class FakeProbeResult:
+        def to_dict(self):
+            return {
+                "agent_id": "codex",
+                "executable_path": "C:/tools/codex.cmd",
+                "available": True,
+                "status": "available",
+                "version": "codex-cli 1.2.3",
+                "configured_endpoint_env_names": ["OPENAI_BASE_URL"],
+                "identity_verified": False,
+                "billing_verified": False,
+                "execution_enabled": False,
+            }
+
+    class FakeProbe:
+        def probe_agent(self, agent_id):
+            assert agent_id == "codex"
+            return FakeProbeResult()
+
+    monkeypatch.setattr(probe, "LocalCodingAgentProbe", FakeProbe)
+    result = probe.probe_codex_cli()
+
+    assert result["installed"] is True
+    assert result["version"] == "codex-cli 1.2.3"
+    assert result["authenticated"] is None
+    assert result["identity_verified"] is False
+    assert result["cost_status"] == "unverified"
+    assert result["execution_ready"] is False
+    assert result["model_requests_sent"] == 0
+
+
+def test_combined_readiness_separates_fcc_inference_from_local_coding_agents(monkeypatch):
+    monkeypatch.setattr(probe, "probe_codex_cli", lambda: {
+        "provider_id": "codex_cli", "installed": True, "status": "available", "execution_ready": False
+    })
+    monkeypatch.setattr(probe, "probe_claude_code", lambda: {
+        "provider_id": "claude_code_cli", "installed": True, "authenticated": True,
+        "execution_ready": False, "cost_status": "unverified"
+    })
+    monkeypatch.setattr(probe, "probe_fcc_gateway", lambda: {
+        "gateway_status": "loopback_only", "bind_scope": "loopback", "cli_installed": True
+    })
+    monkeypatch.setattr(probe, "probe_fcc_admin_status", lambda: {
+        "free_endpoint_verified": True, "execution_ready": True,
+        "cost_status": "official_free_endpoint", "quota_status": "free_endpoint_rate_limits_and_account_quota_apply"
+    })
+
+    result = probe.get_external_agent_readiness()
+
+    assert result["fcc_inference_ready"] is True
+    assert result["execution_scope"] == "fcc_inference_only"
+    assert result["local_coding_agents_execution_ready"] is False
+    assert result["local_coding_agents"]["execution_ready"] is False
+    assert result["local_coding_agents"]["codex_cli"]["installed"] is True
+    assert result["local_coding_agents"]["claude_code_cli"]["authenticated"] is True

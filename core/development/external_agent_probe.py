@@ -15,6 +15,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from core.execution.local_coding_agent_probe import LocalCodingAgentProbe
+
 
 def _timeout(value: float) -> float:
     try:
@@ -175,6 +177,31 @@ def probe_claude_code(*, timeout_seconds: float = 5.0) -> dict[str, Any]:
         ),
         "model_requests_sent": 0,
         "probe_exit_code": result.returncode,
+    }
+
+
+def probe_codex_cli() -> dict[str, Any]:
+    """Run the fixed Codex version probe only; auth, route and cost remain unverified."""
+    result = LocalCodingAgentProbe().probe_agent("codex").to_dict()
+    installed = bool(result.get("available"))
+    return {
+        "provider_id": "codex_cli",
+        "installed": installed,
+        "authenticated": None,
+        "status": result.get("status", "probe_unavailable"),
+        "executable_path": result.get("executable_path"),
+        "version": result.get("version"),
+        "configured_endpoint_env_names": result.get("configured_endpoint_env_names", []),
+        "identity_verified": False,
+        "api_provider": None,
+        "cost_status": "unverified",
+        "execution_ready": False,
+        "detail": (
+            "Codex CLI version was discovered; authentication, provider/model identity and zero-cost policy remain unverified."
+            if installed else
+            "Codex CLI was not found; no prompt or model request was attempted."
+        ),
+        "model_requests_sent": 0,
     }
 
 
@@ -407,6 +434,7 @@ def probe_fcc_admin_status(*, timeout_seconds: float = 2.0) -> dict[str, Any]:
 def get_external_agent_readiness() -> dict[str, Any]:
     """Return truthful, non-invasive readiness for the configured external agents."""
     claude = probe_claude_code()
+    codex = probe_codex_cli()
     fcc = probe_fcc_gateway()
     admin = (
         probe_fcc_admin_status()
@@ -443,9 +471,18 @@ def get_external_agent_readiness() -> dict[str, Any]:
         "schema": "dgm-mat.external-agent-readiness.v1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "execution_ready": execution_ready,
+        "fcc_inference_ready": execution_ready,
+        "execution_scope": "fcc_inference_only",
+        "local_coding_agents_execution_ready": False,
         "policy": "FREE_ONLY_PAID_DENY",
         "provider_calls_performed": 0,
         "claude_code": claude,
+        "local_coding_agents": {
+            "codex_cli": codex,
+            "claude_code_cli": claude,
+            "execution_ready": False,
+            "status": "probe_only",
+        },
         "fcc": {**fcc, "admin": admin, "cost_status": admin.get("cost_status", "unverified"), "execution_ready": bool(execution_ready)},
         "blockers": blockers,
         "limitations": [
