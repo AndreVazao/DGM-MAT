@@ -20,6 +20,7 @@ def test_open_directory_handle_blocks_parent_rename(tmp_path):
     child_handle = None
     try:
         child_handle = backend.open_child_directory(root_handle, "src")
+        assert backend.final_path_component(child_handle) == "src"
         with pytest.raises(OSError):
             os.rename(source, root / "src-moved")
         assert source.is_dir()
