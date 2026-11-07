@@ -98,7 +98,10 @@ def enqueue_browser_consultation(payload: BrowserConsultEnqueueRequest, request:
 @router.post("/approve/{consultation_id}")
 def approve_browser_consultation(consultation_id: str, request: Request):
     principal = _principal(request)
-    _audit("command.approved", "approval_requested", request)
+    try:
+        _audit("command.approved", "approval_requested", request)
+    except (AuditWriteError, OSError) as exc:
+        raise HTTPException(status_code=503, detail="Approval audit unavailable; consultation remains pending.") from exc
     if not _store().approve(consultation_id, operator=str(principal.get("subject") or "local-operator")):
         raise HTTPException(status_code=409, detail="Consultation is missing or no longer awaiting approval.")
     return {"status": "PENDING", "consultation_id": consultation_id}
@@ -113,7 +116,7 @@ def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "d
             return {"status": "queue_empty", "next": None}
         try:
             _audit("command.sent", "prompt_released_to_extension", request, provider)
-        except AuditWriteError:
+        except (AuditWriteError, OSError):
             _store().block(item["consultation_id"], claim_token=item["claim_token"], reason="interrupted")
             raise
         return {
