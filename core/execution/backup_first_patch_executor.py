@@ -246,7 +246,7 @@ class BackupFirstPatchExecutor:
             backup_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + "-" + uuid4().hex[:12]
             backup_file = self.backup_root / backup_id / "original.bin" if existed else None
             try:
-                backup_root_handle = backend.ensure_directory(self.backup_root)
+                backup_root_handle = backend.ensure_directory(self.backup_root, read_control=True)
                 backend.assert_private_directory_acl(backup_root_handle)
                 if backend.file_identity(backup_root_handle)[0] != self._repo_identity[0]:
                     raise PatchBackupError(
@@ -401,7 +401,7 @@ class BackupFirstPatchExecutor:
         backup_root_handle = backup_dir_handle = root_handle = parent_handle = target_handle = None
         try:
             backend._validate_basename(backup_id)
-            backup_root_handle = backend.open_root(self.backup_root)
+            backup_root_handle = backend.open_root(self.backup_root, read_control=True)
             backend.assert_private_directory_acl(backup_root_handle)
             backup_dir_handle = backend.open_child_directory(backup_root_handle, backup_id)
             manifest_handle = backend.open_file(backup_dir_handle, "manifest.json", exclusive=True)
