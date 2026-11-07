@@ -674,7 +674,7 @@ class WindowsDirectoryHandleBackend:
         try:
             self._assert_supported_volume(current)
             for component in path.parts[1:]:
-                child = self.open_child_directory(current, component, read_control=read_control, write_dac=final_write_dac)
+                child = self.open_child_directory(current, component, read_control=read_control)
                 self.close(current)
                 current = child
             return current
