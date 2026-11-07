@@ -6,6 +6,7 @@ all requests and responses remain in the local DGM-MAT data directory.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -18,7 +19,7 @@ from uuid import uuid4
 
 from core.storage.storage_manager import storage_manager
 
-PROVIDERS = ("chatgpt", "gemini", "grok")
+PROVIDERS = ("chatgpt", "gemini", "grok", "deepseek", "qwen")
 MAX_PROMPT_CHARS = 8000
 MAX_RESPONSE_CHARS = 16000
 _SECRET_PATTERNS = (
@@ -115,6 +116,7 @@ class BrowserConsultStore:
                     status TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     claimed_at TEXT,
+                    claim_token TEXT,
                     completed_at TEXT,
                     response_text TEXT,
                     response_sha256 TEXT,
@@ -132,9 +134,12 @@ class BrowserConsultStore:
                     last_consultation_id TEXT
                 );
             """)
+            columns = {row[1] for row in db.execute("PRAGMA table_info(browser_consultations)")}
+            if "claim_token" not in columns:
+                db.execute("ALTER TABLE browser_consultations ADD COLUMN claim_token TEXT")
             db.execute("""
                 UPDATE browser_consultations
-                SET status='BLOCKED_RESTART', error_type='ambiguous_process_restart'
+                SET status='BLOCKED_RESTART', error_type='ambiguous_process_restart', claim_token=NULL
                 WHERE status='RUNNING'
             """)
             db.commit()
@@ -244,18 +249,20 @@ class BrowserConsultStore:
             if row is None:
                 db.commit()
                 return None
+            claim_token = uuid4().hex + uuid4().hex
             db.execute("""
                 UPDATE browser_consultations
-                SET status='RUNNING', claimed_at=?, attempts=attempts+1
+                SET status='RUNNING', claimed_at=?, claim_token=?, attempts=attempts+1
                 WHERE consultation_id=? AND status='PENDING'
-            """, (now, row["consultation_id"]))
+            """, (now, claim_token, row["consultation_id"]))
             db.commit()
         result = dict(row)
         result["status"] = "RUNNING"
+        result["claim_token"] = claim_token
         result["attempts"] = int(row["attempts"]) + 1
         return result
 
-    def block(self, consultation_id: str, *, reason: str) -> dict[str, Any]:
+    def block(self, consultation_id: str, *, claim_token: str, reason: str) -> dict[str, Any]:
         mapping = {
             "rate_limited": "BLOCKED_RATE_LIMIT",
             "blocked_login": "BLOCKED_LOGIN",
@@ -271,15 +278,15 @@ class BrowserConsultStore:
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute(
-                "SELECT provider, status FROM browser_consultations WHERE consultation_id=?",
+                "SELECT provider, status, claim_token FROM browser_consultations WHERE consultation_id=?",
                 (consultation_id,),
             ).fetchone()
-            if row is None or row["status"] != "RUNNING":
+            if row is None or row["status"] != "RUNNING" or not claim_token or not hmac.compare_digest(str(row["claim_token"] or ""), claim_token):
                 db.rollback()
-                raise ValueError("consultation is not running")
+                raise ValueError("consultation claim is missing, stale or owned by another extension session")
             status = mapping[reason]
             db.execute(
-                "UPDATE browser_consultations SET status=?, completed_at=?, error_type=? WHERE consultation_id=?",
+                "UPDATE browser_consultations SET status=?, completed_at=?, error_type=?, claim_token=NULL WHERE consultation_id=?",
                 (status, now.isoformat(), reason, consultation_id),
             )
             db.execute("""
@@ -293,13 +300,13 @@ class BrowserConsultStore:
             db.commit()
         return {"consultation_id": consultation_id, "provider": row["provider"], "status": status, "automatic_retry": False}
 
-    def finish(self, consultation_id: str, *, response_text: str, provider_status: str = "ok") -> dict[str, Any]:
+    def finish(self, consultation_id: str, *, claim_token: str, response_text: str, provider_status: str = "ok") -> dict[str, Any]:
         if not isinstance(response_text, str) or not response_text.strip():
             raise ValueError("response_text is required")
         if len(response_text) > MAX_RESPONSE_CHARS:
             raise ValueError("response exceeds the 16000-character limit")
         if any(pattern.search(response_text) for pattern in _SECRET_PATTERNS):
-            return self.block(consultation_id, reason="secret_content")
+            return self.block(consultation_id, claim_token=claim_token, reason="secret_content")
         if provider_status not in {"ok", "rate_limited", "blocked_login", "blocked_challenge", "ui_mismatch", "interrupted"}:
             raise ValueError("unsupported provider status")
         now = datetime.now(timezone.utc)
@@ -307,14 +314,14 @@ class BrowserConsultStore:
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute("""
-                SELECT provider, status FROM browser_consultations WHERE consultation_id=?
+                SELECT provider, status, claim_token FROM browser_consultations WHERE consultation_id=?
             """, (consultation_id,)).fetchone()
             if row is None:
                 db.rollback()
                 raise KeyError("consultation not found")
-            if row["status"] != "RUNNING":
+            if row["status"] != "RUNNING" or not claim_token or not hmac.compare_digest(str(row["claim_token"] or ""), claim_token):
                 db.rollback()
-                raise ValueError("consultation is not in RUNNING state")
+                raise ValueError("consultation claim is missing, stale or owned by another extension session")
             if provider_status == "ok":
                 status = "COMPLETED"
                 cooldown_until = (now + timedelta(seconds=self.cooldown_seconds)).isoformat()
@@ -330,7 +337,7 @@ class BrowserConsultStore:
             db.execute("""
                 UPDATE browser_consultations
                 SET status=?, completed_at=?, response_text=?, response_sha256=?,
-                    error_type=?
+                    error_type=?, claim_token=NULL
                 WHERE consultation_id=? AND status='RUNNING'
             """, (
                 status, now.isoformat(), response_text[:MAX_RESPONSE_CHARS], digest,
