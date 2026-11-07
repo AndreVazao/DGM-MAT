@@ -299,7 +299,7 @@ def test_auto_help_does_not_retry_after_hub_failure(tmp_path, monkeypatch):
     assert worker.run_once() is True
     assert worker.run_once() is False
     assert bridge.calls == 1
-    assert worker.store.status()["counts"] == {"FAILED_NO_RETRY": 1}
+    assert worker.store.status()["counts"] == {"BLOCKED_HUB": 1}
 
 
 def test_mobile_service_enqueues_consult_only_for_unsupported_actionable_requests(tmp_path):
