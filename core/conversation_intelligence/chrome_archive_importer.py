@@ -3,10 +3,13 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import os
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 from .pipeline import ConversationIntelligencePipeline
+from core.vault import VaultCatalog
 
 
 class ChromeConversationArchiveImporter:
@@ -22,13 +25,21 @@ class ChromeConversationArchiveImporter:
         inbox_dir: str | Path | None = None,
         archive_dir: str | Path | None = None,
         pipeline: ConversationIntelligencePipeline | None = None,
+        vault_catalog: VaultCatalog | None = None,
     ) -> None:
         project_root = Path(__file__).resolve().parents[2]
+        configured_vault = os.environ.get("DGM_VAULT_PATH") or VaultCatalog.default_root()
+        self.vault = vault_catalog or VaultCatalog(configured_vault)
+        self.vault.register_known_projects()
         self.inbox_dir = Path(inbox_dir) if inbox_dir else Path.home() / "Downloads" / "DGM-MAT-Conversation-Archive"
-        self.archive_dir = Path(archive_dir) if archive_dir else (
-            project_root / "storage" / "runtime" / "conversation_archive" / "chrome-imports"
+        vault_root = self.vault.root if self.vault else None
+        default_archive = (
+            vault_root / "providers" / "chrome-imports"
+            if vault_root else project_root / "storage" / "runtime" / "conversation_archive" / "chrome-imports"
         )
-        runtime = project_root / "storage" / "runtime" / "conversation_intelligence"
+        self.archive_dir = Path(archive_dir) if archive_dir else default_archive
+        runtime = self.vault.root / "runtime" / "cognition" / "conversation_intelligence"
+        runtime.mkdir(parents=True, exist_ok=True)
         self.pipeline = pipeline or ConversationIntelligencePipeline(
             progress_store_path=runtime / "progress.sqlite3",
             knowledge_store_path=runtime / "knowledge.sqlite3",
@@ -89,6 +100,21 @@ class ChromeConversationArchiveImporter:
                     else "chrome-extension"
                 )
                 audits = self.pipeline.ingest_file(archived, provider=source_provider)
+                if self.vault:
+                    for audit in audits:
+                        conversation = audit.conversation
+                        self.vault.archive_conversation(
+                            provider=conversation.provider,
+                            conversation_id=conversation.conversation_id,
+                            title=conversation.title,
+                            url=conversation.url,
+                            content=conversation.content,
+                            messages=[asdict(message) for message in conversation.messages],
+                            completeness=str(conversation.metadata.get("completeness")
+                                             or conversation.metadata.get("capture_status") or "unknown"),
+                            metadata=conversation.metadata,
+                            artifacts=[asdict(artifact) for artifact in audit.artifacts],
+                        )
                 conversations = len(audits)
                 messages = sum(len(audit.conversation.messages) for audit in audits)
                 conversation_count += conversations
