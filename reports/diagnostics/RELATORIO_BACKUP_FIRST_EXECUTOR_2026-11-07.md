@@ -90,3 +90,40 @@ Head: `c9662b8ff73b30024ffd96711b290add44e2bc02`
 4. Snyk remains `error`; no clean scan or security approval is claimed.
 
 PR #276 remains draft. PR #220 is closed as superseded, without merge, with branch/history retained. No MissionEngine integration, no real-project mutation and no auto-merge. SAFE default and explicit approval remain mandatory.
+
+
+## CodeRabbit review follow-up — 2026-11-07
+
+The independent CodeRabbit review was published against head `d348c164a50493a229e95749ea1bbe631bcb9173`. It identified seven security findings, two test-coverage findings and a docstring-coverage warning. This review is substantive; the earlier acknowledgement was not treated as approval.
+
+### Changes committed after that review
+
+- `e8b5e02`: Windows 8.3 alias detection now accepts one or more digits after `~`, covering aliases such as `CREDE~10.JSO`.
+- `e8b5e02`: rollback validates the manifest state before entering the missing-destination create cleanup path.
+- `e8b5e02`: automatic replacement restoration is gated on whether target mutation actually started, avoiding a rewrite when validation or backup fails before mutation.
+- `674da67`: native `UNICODE_STRING` names are rejected before construction if their UTF-16 byte length or maximum length would exceed the 16-bit fields.
+- `98b8e8a` and `06d38a9`: Windows-only tests cover missing/mismatched replacement hashes and multi-digit 8.3 aliases.
+
+### Current validation status
+
+Current PR head: `06d38a9015731d7560ce642c26662580b6915cb9`.
+
+The commits above have been pushed to the existing PR branch. The GitHub connector did not yet report workflow runs or combined statuses for this exact head at the time this report update was prepared. Therefore no CI success is claimed for these changes.
+
+### Findings still open — do not merge
+
+1. **Backup root ownership/scope:** prove the configured backup root is a dedicated directory before changing its DACL; reject shared directories and repository parents without altering their existing ACLs.
+2. **Created-file security:** ensure staged content receives the destination directory's security policy before atomic promotion, without exposing untrusted staging content.
+3. **Mutation/rollback intent durability:** persist and verify rollback intent/outcome so restart during rollback can resume safely.
+4. **Native path identity:** validate opened path components against their native long names, not only syntactic 8.3 patterns.
+5. **ACL adversarial tests:** exercise broad SID grants, absent/null DACLs, unprotected roots and invalid inheritance flags through the actual ACL auditor.
+6. **Docstrings:** CodeRabbit reported 11.32% coverage for the touched complex functions against its 80% threshold; this remains unresolved.
+7. **Independent re-review:** request a fresh review of the corrected head after the remaining findings are addressed.
+
+### Operational gates unchanged
+
+- Windows 10 operator-PC acceptance is not available while the operator PC is offline.
+- Real storage write-through and abrupt-power-loss acceptance remain outstanding.
+- Snyk has not produced a clean result.
+- PR remains draft; no merge, no MissionEngine integration, no real-project mutation and no auto-merge.
+- POSIX mutation remains deliberately disabled.
