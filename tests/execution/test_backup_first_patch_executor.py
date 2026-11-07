@@ -569,3 +569,70 @@ def test_windows_staged_create_persists_identity_before_atomic_promotion(tmp_pat
     rolled_back = executor.rollback(result["backup_id"])
     assert rolled_back["state"] == "rolled_back"
     assert not target.exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows staged-create recovery test.")
+def test_windows_create_crash_after_identity_persisted_recovers_staging_file(tmp_path, monkeypatch):
+    root = repository(tmp_path)
+    backup_root = tmp_path / "backups"
+    target = root / "src" / "new.py"
+    executor = BackupFirstPatchExecutor(root, backup_root=backup_root)
+    backend = executor._windows_backend
+    assert backend is not None
+    original_rename = backend.rename_relative
+
+    def interrupt_before_promotion(source_handle, parent_handle, target_name, *, replace_existing):
+        if target_name == "new.py":
+            raise SystemExit("simulated power loss before staged promotion")
+        return original_rename(
+            source_handle, parent_handle, target_name,
+            replace_existing=replace_existing,
+        )
+
+    monkeypatch.setattr(backend, "rename_relative", interrupt_before_promotion)
+    with pytest.raises(SystemExit, match="before staged promotion"):
+        executor.apply_text("src/new.py", "new content")
+
+    assert not target.exists()
+    backup_dir = next(backup_root.iterdir())
+    manifest = json.loads((backup_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["target_identity"] is not None
+    assert (backup_dir / manifest["staging_name"]).is_file()
+
+    recovered = BackupFirstPatchExecutor(root, backup_root=backup_root)
+    result = recovered.rollback(manifest["backup_id"])
+    assert result["state"] == "rolled_back"
+    assert not target.exists()
+    assert not (backup_dir / manifest["staging_name"]).exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Native Windows staged-create recovery test.")
+def test_windows_create_crash_after_promotion_recovers_repository_target(tmp_path, monkeypatch):
+    root = repository(tmp_path)
+    backup_root = tmp_path / "backups"
+    target = root / "src" / "new.py"
+    executor = BackupFirstPatchExecutor(root, backup_root=backup_root)
+    original_write_manifest = executor._write_manifest_windows
+
+    def interrupt_before_applied_manifest(directory_handle, manifest, *, replace_existing):
+        if manifest.get("state") == "applied":
+            raise SystemExit("simulated power loss after promotion")
+        return original_write_manifest(
+            directory_handle, manifest, replace_existing=replace_existing
+        )
+
+    monkeypatch.setattr(executor, "_write_manifest_windows", interrupt_before_applied_manifest)
+    with pytest.raises(SystemExit, match="after promotion"):
+        executor.apply_text("src/new.py", "new content")
+
+    assert target.read_text(encoding="utf-8") == "new content"
+    backup_dir = next(backup_root.iterdir())
+    manifest = json.loads((backup_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["state"] == "prepared"
+    assert manifest["target_identity"] is not None
+    assert not (backup_dir / manifest["staging_name"]).exists()
+
+    recovered = BackupFirstPatchExecutor(root, backup_root=backup_root)
+    result = recovered.rollback(manifest["backup_id"])
+    assert result["state"] == "rolled_back"
+    assert not target.exists()
