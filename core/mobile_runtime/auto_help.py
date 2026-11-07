@@ -387,7 +387,7 @@ class AutoHelpWorker:
         queued = self.browser_consult_store.enqueue(
             task_ref="mobile-thread:" + str(request["thread_id"]),
             goal=request["goal"],
-            context=(str(request.get("reason") or "") + "\\n" + reason)[:4000],
+            context=(str(request.get("reason") or "") + "\n" + reason)[:4000],
             providers=list(self.browser_consult_providers),
         )
         ids = queued.get("consultation_ids") if isinstance(queued, dict) else None
