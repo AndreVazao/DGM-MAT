@@ -240,6 +240,13 @@ def test_backup_root_acl_is_verified_from_the_pinned_directory_handle(tmp_path):
         result = backend.restrict_private_directory_acl(handle)
         assert result["owner_verified"] is True
         assert result["current_user_inheritable_full_control"] is True
-        assert result["ace_count"] >= 1
+        assert result["ace_count"] == 3
+        child = backend.create_directory(handle, "transaction-test")
+        try:
+            child_result = backend.assert_private_directory_acl(child)
+            assert child_result["owner_verified"] is True
+            assert child_result["current_user_inheritable_full_control"] is True
+        finally:
+            backend.close(child)
     finally:
         backend.close(handle)
