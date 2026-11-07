@@ -108,3 +108,40 @@ def test_consultation_api_rejects_missing_principal(monkeypatch, tmp_path):
     app.include_router(browser_consult_api.router)
     response = TestClient(app).get("/recovery/browser-consult/status")
     assert response.status_code == 401
+
+
+def test_browser_consult_result_is_appended_to_linked_mobile_thread(monkeypatch, tmp_path):
+    client, store = make_client(monkeypatch, tmp_path)
+    from core.api import mobile_bridge
+
+    class FakeConversationStore:
+        def __init__(self):
+            self.messages = []
+
+        def append_message(self, thread_id, role, content, *, metadata):
+            self.messages.append((thread_id, role, content, metadata))
+
+    fake_store = FakeConversationStore()
+    monkeypatch.setattr(mobile_bridge, "service", type("FakeService", (), {"store": fake_store})())
+
+    queued = client.post("/recovery/browser-consult/enqueue", json={
+        "task_ref": "mobile-thread:thread-123",
+        "goal": "Review this mobile mission fallback",
+        "providers": ["qwen"],
+        "free_capacity_confirmed": True,
+    })
+    consultation_id = queued.json()["consultation_ids"][0]
+    client.post("/recovery/browser-consult/approve/" + consultation_id)
+    claimed = client.post("/recovery/browser-consult/next?provider=qwen", json={}).json()["next"]
+
+    result = client.post("/recovery/browser-consult/result", json={
+        "consultation_id": consultation_id,
+        "claim_token": claimed["claim_token"],
+        "response_text": "The independent review recommends a regression test.",
+    })
+
+    assert result.status_code == 200
+    assert result.json()["conversation_updated"] is True
+    assert fake_store.messages[0][0:2] == ("thread-123", "assistant")
+    assert "QWEN (resposta externa não verificada)" in fake_store.messages[0][2]
+    assert fake_store.messages[0][3]["result_trusted"] is False
