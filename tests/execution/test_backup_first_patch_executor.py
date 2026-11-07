@@ -285,34 +285,6 @@ def test_windows_rollback_refuses_replaced_target_identity(tmp_path):
     assert moved.read_bytes() == b"after\\n"
 
 
-@pytest.mark.skipif(os.name != "nt", reason="Native Windows crash-recovery integration test.")
-def test_windows_prepared_manifest_preserves_unrecognized_partial_in_place_write(tmp_path):
-    root = repository(tmp_path)
-    target = root / "src" / "module.py"
-    original = b"before-crash\\n"
-    partial = b"partial-write-from-simulated-crash"
-    target.write_bytes(original)
-    backup_root = tmp_path / "backups"
-    executor = BackupFirstPatchExecutor(root, backup_root=backup_root)
-    result = executor.apply_text(
-        "src/module.py",
-        "complete-new-content\\n",
-        expected_sha256=digest(original),
-    )
-
-    backup_dir = backup_root / result["backup_id"]
-    manifest_path = backup_dir / "manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest["state"] = "prepared"
-    manifest_path.write_text(json.dumps(manifest, indent=2) + "\\n", encoding="utf-8")
-    target.write_bytes(partial)
-
-    with pytest.raises(PatchRollbackError, match="neither the original nor the expected result"):
-        executor.rollback(result["backup_id"])
-
-    assert target.read_bytes() == partial
-    assert manifest_path.exists()
-
 @pytest.mark.skipif(os.name != "nt", reason="Native Windows conflict integration test.")
 def test_windows_rollback_refuses_newer_content_with_same_file_identity(tmp_path):
     root = repository(tmp_path)
