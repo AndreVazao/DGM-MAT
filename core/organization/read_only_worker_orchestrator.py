@@ -48,6 +48,7 @@ class ReadOnlyWorkerOrchestrator:
         repository_id: str,
         mission_id: str,
         correlation_id: str,
+        task_id: str | None = None,
     ) -> dict:
         worker = self._WORKERS.get(agent_id)
         if worker is None:
@@ -57,6 +58,10 @@ class ReadOnlyWorkerOrchestrator:
         for value, field in ((mission_id, "mission_id"), (correlation_id, "correlation_id")):
             if not isinstance(value, str) or not value.strip() or len(value) > 160:
                 return self._invalid(f"{field}_invalid")
+        if task_id is not None and (
+            not isinstance(task_id, str) or not task_id.strip() or len(task_id) > 160
+        ):
+            return self._invalid("task_id_invalid")
         if not self.runtime.has_handler(agent_id):
             return self._invalid("worker_handler_not_registered")
         if not self.runtime.declares_capabilities(agent_id, worker["capabilities"]):
@@ -79,6 +84,7 @@ class ReadOnlyWorkerOrchestrator:
             subject=worker["subject"],
             body=body,
             message_id=message_id,
+            task_id=task_id,
             mission_id=mission_id,
             priority=MessagePriority.NORMAL,
             requires_response=True,
