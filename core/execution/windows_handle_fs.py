@@ -35,6 +35,9 @@ class WindowsDirectoryHandleBackend:
     FILE_PERSISTENT_ACLS = 0x00000008
 
     READ_CONTROL = 0x00020000
+    WRITE_DAC = 0x00040000
+    ACL_REVISION = 2
+    PROTECTED_DACL_SECURITY_INFORMATION = 0x80000000
     SE_FILE_OBJECT = 1
     OWNER_SECURITY_INFORMATION = 0x00000001
     DACL_SECURITY_INFORMATION = 0x00000004
@@ -213,6 +216,17 @@ class WindowsDirectoryHandleBackend:
             ctypes.POINTER(ctypes.c_void_p),
         ]
         self.advapi32.GetSecurityInfo.restype = wintypes.DWORD
+        self.advapi32.SetSecurityInfo.argtypes = [
+            wintypes.HANDLE, ctypes.c_int, wintypes.DWORD,
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
+        ]
+        self.advapi32.SetSecurityInfo.restype = wintypes.DWORD
+        self.advapi32.InitializeAcl.argtypes = [ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD]
+        self.advapi32.InitializeAcl.restype = wintypes.BOOL
+        self.advapi32.AddAccessAllowedAceEx.argtypes = [
+            ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p
+        ]
+        self.advapi32.AddAccessAllowedAceEx.restype = wintypes.BOOL
         self.advapi32.GetSecurityDescriptorDacl.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(wintypes.BOOL),
             ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(wintypes.BOOL),
@@ -329,6 +343,67 @@ class WindowsDirectoryHandleBackend:
             )
         if info["serial"] != self.file_identity(handle)[0]:
             raise WindowsHandleError("Volume identity changed while inspecting filesystem capabilities.")
+
+    def restrict_private_directory_acl(self, handle: Any) -> dict[str, int | bool]:
+        """Set a protected backup-root DACL for user, SYSTEM and Administrators only."""
+        ctypes = self.ctypes
+        wintypes = self.wintypes
+        token = wintypes.HANDLE()
+        if not self.advapi32.OpenProcessToken(
+            self.kernel32.GetCurrentProcess(), self.TOKEN_QUERY, ctypes.byref(token)
+        ):
+            self._raise_last_error("OpenProcessToken")
+        sid_buffers: list[Any] = []
+        try:
+            token_buffer = ctypes.create_string_buffer(1024)
+            returned = wintypes.DWORD()
+            if not self.advapi32.GetTokenInformation(
+                token, self.TOKEN_USER_CLASS, token_buffer, len(token_buffer), ctypes.byref(returned)
+            ):
+                self._raise_last_error("GetTokenInformation(TokenUser)")
+            user_sid = ctypes.cast(token_buffer, ctypes.POINTER(self.TOKEN_USER)).contents.User.Sid
+            if not user_sid:
+                raise WindowsHandleError("The current process token has no user SID.")
+            approved_sids = [user_sid]
+            for sid_type in (self.WELL_KNOWN_LOCAL_SYSTEM, self.WELL_KNOWN_BUILTIN_ADMINISTRATORS):
+                sid_buffer = ctypes.create_string_buffer(68)
+                sid_size = wintypes.DWORD(len(sid_buffer))
+                if not self.advapi32.CreateWellKnownSid(
+                    sid_type, None, sid_buffer, ctypes.byref(sid_size)
+                ):
+                    self._raise_last_error("CreateWellKnownSid")
+                sid_buffers.append(sid_buffer)
+                approved_sids.append(ctypes.cast(sid_buffer, ctypes.c_void_p))
+
+            acl_buffer = ctypes.create_string_buffer(4096)
+            acl_pointer = ctypes.cast(acl_buffer, ctypes.c_void_p)
+            if not self.advapi32.InitializeAcl(
+                acl_pointer, len(acl_buffer), self.ACL_REVISION
+            ):
+                self._raise_last_error("InitializeAcl")
+            inherit = self.ACE_OBJECT_INHERIT | self.ACE_CONTAINER_INHERIT
+            for sid in approved_sids:
+                if not self.advapi32.AddAccessAllowedAceEx(
+                    acl_pointer, self.ACL_REVISION, inherit, self.FILE_ALL_ACCESS, sid
+                ):
+                    self._raise_last_error("AddAccessAllowedAceEx")
+            status = self.advapi32.SetSecurityInfo(
+                handle,
+                self.SE_FILE_OBJECT,
+                self.DACL_SECURITY_INFORMATION | self.PROTECTED_DACL_SECURITY_INFORMATION,
+                None,
+                None,
+                acl_pointer,
+                None,
+            )
+            if status != 0:
+                raise WindowsHandleError(
+                    f"SetSecurityInfo(backup root DACL) failed with Win32 error {status}."
+                )
+            return self.assert_private_directory_acl(handle)
+        finally:
+            if token:
+                self.close(token)
 
     def assert_private_directory_acl(self, handle: Any) -> dict[str, int | bool]:
         """Require a backup directory ACL limited to the current user, SYSTEM and Administrators.
@@ -599,7 +674,7 @@ class WindowsDirectoryHandleBackend:
         try:
             self._assert_supported_volume(current)
             for component in path.parts[1:]:
-                child = self.open_child_directory(current, component, read_control=read_control)
+                child = self.open_child_directory(current, component, read_control=read_control, write_dac=write_dac)
                 self.close(current)
                 current = child
             return current
@@ -607,7 +682,7 @@ class WindowsDirectoryHandleBackend:
             self.close(current)
             raise
 
-    def ensure_directory(self, directory_path: str | Path, *, read_control: bool = True) -> Any:
+    def ensure_directory(self, directory_path: str | Path, *, read_control: bool = True, write_dac: bool = False) -> Any:
         """Create missing local directory components relative to pinned handles."""
         raw_path = Path(directory_path).expanduser()
         if ".." in raw_path.parts:
@@ -620,6 +695,7 @@ class WindowsDirectoryHandleBackend:
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
             | (self.READ_CONTROL if read_control else 0)
+            | (self.WRITE_DAC if write_dac else 0)
             | self.SYNCHRONIZE
         )
         current = self._nt_open(
@@ -642,7 +718,7 @@ class WindowsDirectoryHandleBackend:
                     if getattr(exc, "ntstatus", None) not in {0xC0000034, 0xC000003A}:
                         raise
                     try:
-                        child = self.create_directory(current, component, read_control=read_control)
+                        child = self.create_directory(current, component, read_control=read_control, write_dac=write_dac)
                     except WindowsHandleError as create_exc:
                         if getattr(create_exc, "ntstatus", None) != 0xC0000035:
                             raise
@@ -655,13 +731,14 @@ class WindowsDirectoryHandleBackend:
             self.close(current)
             raise
 
-    def open_child_directory(self, parent_handle: Any, name: str, *, read_control: bool = True) -> Any:
+    def open_child_directory(self, parent_handle: Any, name: str, *, read_control: bool = True, write_dac: bool = False) -> Any:
         name = self._validate_basename(name)
         access = (
             self.FILE_LIST_DIRECTORY
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
             | (self.READ_CONTROL if read_control else 0)
+            | (self.WRITE_DAC if write_dac else 0)
             | self.SYNCHRONIZE
         )
         return self._nt_open(
@@ -733,13 +810,14 @@ class WindowsDirectoryHandleBackend:
             share_mode=self.FILE_SHARE_READ if exclusive else None,
         )
 
-    def create_directory(self, parent_handle: Any, name: str, *, read_control: bool = True) -> Any:
+    def create_directory(self, parent_handle: Any, name: str, *, read_control: bool = True, write_dac: bool = False) -> Any:
         name = self._validate_basename(name)
         access = (
             self.FILE_LIST_DIRECTORY
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
             | (self.READ_CONTROL if read_control else 0)
+            | (self.WRITE_DAC if write_dac else 0)
             | self.DELETE
             | self.SYNCHRONIZE
         )
