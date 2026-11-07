@@ -98,9 +98,9 @@ def enqueue_browser_consultation(payload: BrowserConsultEnqueueRequest, request:
 @router.post("/approve/{consultation_id}")
 def approve_browser_consultation(consultation_id: str, request: Request):
     principal = _principal(request)
+    _audit("command.approved", "approval_requested", request)
     if not _store().approve(consultation_id, operator=str(principal.get("subject") or "local-operator")):
         raise HTTPException(status_code=409, detail="Consultation is missing or no longer awaiting approval.")
-    _audit("command.approved", "approved_for_visible_ui", request)
     return {"status": "PENDING", "consultation_id": consultation_id}
 
 
