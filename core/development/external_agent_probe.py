@@ -10,6 +10,7 @@ import os
 import shutil
 from datetime import datetime, timezone
 import subprocess
+import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -112,7 +113,7 @@ def probe_claude_code(*, timeout_seconds: float = 5.0) -> dict[str, Any]:
     try:
         result = subprocess.run(
             command,
-            cwd=Path(__import__("tempfile").gettempdir()),
+            cwd=Path(tempfile.gettempdir()),
             env=_probe_environment(),
             shell=False,
             check=False,
