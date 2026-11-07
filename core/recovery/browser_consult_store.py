@@ -184,7 +184,7 @@ class BrowserConsultStore:
         ids: list[str] = []
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            for provider in selected[:2]:
+            for provider in selected[:5]:
                 cooldown = db.execute(
                     "SELECT cooldown_until FROM browser_consult_provider_state WHERE provider=?",
                     (provider,),
