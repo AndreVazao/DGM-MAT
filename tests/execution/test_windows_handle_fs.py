@@ -209,3 +209,24 @@ def test_relative_handle_rename_without_replace_preserves_existing_file(tmp_path
             backend.close(temporary_handle)
         backend.close(source_handle)
         backend.close(root_handle)
+
+
+@pytest.mark.parametrize(
+    "filesystem,flags,message",
+    [
+        ("FAT32", WindowsDirectoryHandleBackend.FILE_PERSISTENT_ACLS, "requires NTFS"),
+        ("NTFS", 0, "persistent ACL"),
+    ],
+)
+def test_open_root_rejects_unsupported_filesystem_capabilities(tmp_path, monkeypatch, filesystem, flags, message):
+    root = tmp_path / "repo"
+    root.mkdir()
+    backend = WindowsDirectoryHandleBackend()
+    monkeypatch.setattr(
+        backend,
+        "volume_information",
+        lambda _handle: {"filesystem": filesystem, "serial": 1, "flags": flags},
+    )
+
+    with pytest.raises(WindowsHandleError, match=message):
+        backend.open_root(root)
