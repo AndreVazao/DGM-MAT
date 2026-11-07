@@ -52,4 +52,4 @@ The legacy branch also modified `core/api/api_server.py` and `core/api/security_
 
 ## Cleanup recommendation
 
-The four legacy branches assessed as superseded/integrated may be considered for deletion only after the owner reviews this report and confirms that the source branches are no longer needed for provenance. Keep `feat/free-tier-browser-ai-consult-2026-11-05` until its isolated recovery PR is either completed or explicitly rejected. Preserve GitHub PR/commit history even after deleting branch refs.
+All five audited source branch refs can be deleted after the owner verifies that PR #283 contains the recovered consultation modules and archival integration snapshots. Four branches are already superseded/integrated; the free-tier consultation branch's five changed files are represented in PR #283 as active isolated modules or labelled archival snapshots. Keep the new `recovery/legacy-branch-consolidation-2026-11-07` branch and PR #283 open. Deleting old branch refs does not require deleting their PR/commit history; preserve that history.
