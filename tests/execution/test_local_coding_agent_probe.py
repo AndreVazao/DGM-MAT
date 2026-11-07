@@ -123,3 +123,89 @@ def test_unknown_agent_id_is_rejected_before_any_process_lookup(monkeypatch):
 def test_probe_timeout_is_strictly_validated(timeout):
     with pytest.raises(ValueError):
         LocalCodingAgentProbe(timeout_seconds=timeout)
+
+
+def test_windows_npm_powershell_shim_is_found_and_invoked_without_profile(monkeypatch, tmp_path):
+    appdata = tmp_path / "Roaming"
+    npm = appdata / "npm"
+    npm.mkdir(parents=True)
+    shim = npm / "claude.ps1"
+    shim.write_text("Write-Output 'Claude Code 2.1.0'\n", encoding="utf-8")
+    monkeypatch.setattr(LocalCodingAgentProbe, "_is_windows", staticmethod(lambda: True))
+    monkeypatch.setenv("APPDATA", str(appdata))
+    monkeypatch.setattr(
+        probe_module.shutil,
+        "which",
+        lambda command: "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe" if command == "powershell" else None,
+    )
+    captured = {}
+
+    def fake_run(args, **kwargs):
+        captured["args"] = args
+        captured.update(kwargs)
+        return subprocess.CompletedProcess(args, 0, stdout="Claude Code 2.1.0\n", stderr="")
+
+    monkeypatch.setattr(probe_module.subprocess, "run", fake_run)
+    result = LocalCodingAgentProbe().probe_agent("claude_code")
+
+    assert result.status == "available"
+    assert result.version == "Claude Code 2.1.0"
+    assert captured["args"] == [
+        "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe",
+        "-NoLogo", "-NoProfile", "-NonInteractive", "-File", str(shim.resolve()), "--version",
+    ]
+    assert captured["shell"] is False
+
+
+def test_windows_powershell_shim_fails_closed_without_interpreter(monkeypatch, tmp_path):
+    appdata = tmp_path / "Roaming"
+    npm = appdata / "npm"
+    npm.mkdir(parents=True)
+    shim = npm / "codex.ps1"
+    shim.write_text("Write-Output 'Codex CLI'\n", encoding="utf-8")
+    monkeypatch.setattr(LocalCodingAgentProbe, "_is_windows", staticmethod(lambda: True))
+    monkeypatch.setenv("APPDATA", str(appdata))
+    monkeypatch.delenv("COMSPEC", raising=False)
+    monkeypatch.setattr(probe_module.shutil, "which", lambda _command: None)
+    monkeypatch.setattr(
+        probe_module.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail("No interpreter means no process launch"),
+    )
+
+    result = LocalCodingAgentProbe().probe_agent("codex")
+
+    assert result.available is True
+    assert result.status == "version_probe_unavailable"
+    assert result.probe_error == "safe_interpreter_unavailable"
+
+
+def test_windows_cmd_shim_uses_fixed_command_and_no_shell(monkeypatch, tmp_path):
+    appdata = tmp_path / "Roaming"
+    npm = appdata / "npm"
+    npm.mkdir(parents=True)
+    shim = npm / "codex.cmd"
+    shim.write_text("@echo off\necho Codex CLI 1.0.0\n", encoding="utf-8")
+    monkeypatch.setattr(LocalCodingAgentProbe, "_is_windows", staticmethod(lambda: True))
+    monkeypatch.setenv("APPDATA", str(appdata))
+    monkeypatch.setattr(
+        probe_module.shutil,
+        "which",
+        lambda command: "C:/Windows/System32/cmd.exe" if command == "cmd.exe" else None,
+    )
+    captured = {}
+
+    def fake_run(args, **kwargs):
+        captured["args"] = args
+        captured.update(kwargs)
+        return subprocess.CompletedProcess(args, 0, stdout="Codex CLI 1.0.0\n", stderr="")
+
+    monkeypatch.setattr(probe_module.subprocess, "run", fake_run)
+    result = LocalCodingAgentProbe().probe_agent("codex")
+
+    assert result.status == "available"
+    assert result.version == "Codex CLI 1.0.0"
+    assert captured["args"] == [
+        "C:/Windows/System32/cmd.exe", "/d", "/c", str(shim.resolve()), "--version"
+    ]
+    assert captured["shell"] is False
