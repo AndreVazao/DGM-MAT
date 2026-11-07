@@ -180,19 +180,39 @@ def test_windows_powershell_shim_fails_closed_without_interpreter(monkeypatch, t
     assert result.probe_error == "safe_interpreter_unavailable"
 
 
-def test_windows_cmd_shim_uses_fixed_command_and_no_shell(monkeypatch, tmp_path):
-    appdata = tmp_path / "Roaming"
+def test_windows_cmd_shim_is_detected_but_never_executed(monkeypatch, tmp_path):
+    appdata = tmp_path / "Roaming & Tools"
     npm = appdata / "npm"
     npm.mkdir(parents=True)
     shim = npm / "codex.cmd"
     shim.write_text("@echo off\necho Codex CLI 1.0.0\n", encoding="utf-8")
     monkeypatch.setattr(LocalCodingAgentProbe, "_is_windows", staticmethod(lambda: True))
     monkeypatch.setenv("APPDATA", str(appdata))
+    monkeypatch.setattr(probe_module.shutil, "which", lambda _command: str(shim))
     monkeypatch.setattr(
-        probe_module.shutil,
-        "which",
-        lambda command: "C:/Windows/System32/cmd.exe" if command == "cmd.exe" else None,
+        probe_module.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail("cmd.exe wrappers must never be launched"),
     )
+
+    result = LocalCodingAgentProbe().probe_agent("codex")
+
+    assert result.available is True
+    assert result.status == "version_probe_unavailable"
+    assert result.probe_error == "cmd_wrapper_not_executed_for_safety"
+    assert result.executable_path == str(shim.resolve())
+
+
+def test_windows_exe_is_preferred_over_cmd_wrapper(monkeypatch, tmp_path):
+    appdata = tmp_path / "Roaming"
+    npm = appdata / "npm"
+    npm.mkdir(parents=True)
+    exe = npm / "codex.exe"
+    exe.write_bytes(b"fixture")
+    cmd = npm / "codex.cmd"
+    cmd.write_text("@echo off\n", encoding="utf-8")
+    monkeypatch.setattr(LocalCodingAgentProbe, "_is_windows", staticmethod(lambda: True))
+    monkeypatch.setenv("APPDATA", str(appdata))
     captured = {}
 
     def fake_run(args, **kwargs):
@@ -204,8 +224,5 @@ def test_windows_cmd_shim_uses_fixed_command_and_no_shell(monkeypatch, tmp_path)
     result = LocalCodingAgentProbe().probe_agent("codex")
 
     assert result.status == "available"
-    assert result.version == "Codex CLI 1.0.0"
-    assert captured["args"] == [
-        "C:/Windows/System32/cmd.exe", "/d", "/c", str(shim.resolve()), "--version"
-    ]
+    assert captured["args"] == [str(exe.resolve()), "--version"]
     assert captured["shell"] is False

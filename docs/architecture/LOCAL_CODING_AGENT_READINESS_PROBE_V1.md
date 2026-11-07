@@ -16,9 +16,9 @@
 - `codex` → `codex`, `codex.exe`, `codex.ps1`, `codex.cmd`
 - `claude_code` → `claude`, `claude.exe`, `claude.ps1`, `claude.cmd`
 
-On Windows, the probe checks the standard `%APPDATA%\\npm` shims first. PowerShell wrappers run only through `powershell.exe`/`pwsh` with `-NoProfile -NonInteractive`; command wrappers use `cmd.exe /d /c` with the fixed `--version` argument. If a safe interpreter is unavailable, the probe fails closed.
+On Windows, the probe checks the standard `%APPDATA%\\npm` shims first. PowerShell wrappers run only through `powershell.exe`/`pwsh` with `-NoProfile -NonInteractive`. `.cmd`/`.bat` wrappers are detected but deliberately not launched because `cmd.exe` reparses its command tail; the probe prefers a `.ps1` or `.exe` shim and otherwise reports `version_probe_unavailable` without starting a process.
 
-For each installed CLI it runs only `--version`, with:
+For each supported executable shim it runs only `--version`, with:
 - a bounded timeout;
 - `shell=False`;
 - a temporary working directory;
