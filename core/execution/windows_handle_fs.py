@@ -612,8 +612,12 @@ class WindowsDirectoryHandleBackend:
     ) -> Any:
         ctypes = self.ctypes
         wintypes = self.wintypes
-        buffer = ctypes.create_unicode_buffer(name)
         encoded_length = len(name.encode("utf-16-le"))
+        if encoded_length == 0 or encoded_length > 0xFFFD:
+            raise WindowsHandleError(
+                "Windows native file names must fit the UNICODE_STRING 16-bit length fields."
+            )
+        buffer = ctypes.create_unicode_buffer(name)
         unicode_name = self.UNICODE_STRING(
             encoded_length,
             encoded_length + 2,
