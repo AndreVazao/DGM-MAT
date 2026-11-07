@@ -110,6 +110,16 @@ def test_existing_file_requires_matching_expected_hash(tmp_path):
 
 
 @pytest.mark.parametrize("path", ["../outside.txt", "/etc/passwd", ".env", "secrets/key.txt", "secre~1/key.txt", ".git/config", "id_rsa"])
+@pytest.mark.skipif(os.name != "nt", reason="Windows 8.3 alias validation.")
+@pytest.mark.parametrize("path", ["src/CREDE~10.JSO", "src/PROGRA~12.TXT"])
+def test_windows_short_name_aliases_with_multiple_digits_are_rejected(tmp_path, path):
+    root = repository(tmp_path)
+    executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
+
+    with pytest.raises(PatchRejected, match="8.3 short-name"):
+        executor._relative_target(path)
+
+
 def test_protected_and_escaping_paths_are_rejected(tmp_path, path):
     root = repository(tmp_path)
     executor = BackupFirstPatchExecutor(root, backup_root=tmp_path / "backups")
