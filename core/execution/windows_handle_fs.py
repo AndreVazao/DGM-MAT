@@ -568,7 +568,7 @@ class WindowsDirectoryHandleBackend:
         if info.FileAttributes & self.FILE_ATTRIBUTE_REPARSE_POINT:
             raise WindowsHandleError("Reparse-point handles are denied.")
 
-    def open_root(self, root_path: str | Path) -> Any:
+    def open_root(self, root_path: str | Path, *, read_control: bool = False) -> Any:
         raw_path = Path(root_path).expanduser()
         if ".." in raw_path.parts:
             raise WindowsHandleError("Parent traversal is denied in the repository root path.")
@@ -579,7 +579,7 @@ class WindowsDirectoryHandleBackend:
             self.FILE_LIST_DIRECTORY
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
-            | self.READ_CONTROL
+            | (self.READ_CONTROL if read_control else 0)
             | self.SYNCHRONIZE
         )
         # Start at the drive root and resolve each component relative to the
@@ -599,7 +599,7 @@ class WindowsDirectoryHandleBackend:
         try:
             self._assert_supported_volume(current)
             for component in path.parts[1:]:
-                child = self.open_child_directory(current, component)
+                child = self.open_child_directory(current, component, read_control=read_control)
                 self.close(current)
                 current = child
             return current
@@ -607,7 +607,7 @@ class WindowsDirectoryHandleBackend:
             self.close(current)
             raise
 
-    def ensure_directory(self, directory_path: str | Path) -> Any:
+    def ensure_directory(self, directory_path: str | Path, *, read_control: bool = False) -> Any:
         """Create missing local directory components relative to pinned handles."""
         raw_path = Path(directory_path).expanduser()
         if ".." in raw_path.parts:
@@ -619,7 +619,7 @@ class WindowsDirectoryHandleBackend:
             self.FILE_LIST_DIRECTORY
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
-            | self.READ_CONTROL
+            | (self.READ_CONTROL if read_control else 0)
             | self.SYNCHRONIZE
         )
         current = self._nt_open(
@@ -637,17 +637,17 @@ class WindowsDirectoryHandleBackend:
             self._assert_supported_volume(current)
             for component in path.parts[1:]:
                 try:
-                    child = self.open_child_directory(current, component)
+                    child = self.open_child_directory(current, component, read_control=read_control)
                 except WindowsHandleError as exc:
                     if getattr(exc, "ntstatus", None) not in {0xC0000034, 0xC000003A}:
                         raise
                     try:
-                        child = self.create_directory(current, component)
+                        child = self.create_directory(current, component, read_control=read_control)
                     except WindowsHandleError as create_exc:
                         if getattr(create_exc, "ntstatus", None) != 0xC0000035:
                             raise
                         # A concurrent creator won; reopen no-follow and verify.
-                        child = self.open_child_directory(current, component)
+                        child = self.open_child_directory(current, component, read_control=read_control)
                 self.close(current)
                 current = child
             return current
@@ -655,13 +655,13 @@ class WindowsDirectoryHandleBackend:
             self.close(current)
             raise
 
-    def open_child_directory(self, parent_handle: Any, name: str) -> Any:
+    def open_child_directory(self, parent_handle: Any, name: str, *, read_control: bool = False) -> Any:
         name = self._validate_basename(name)
         access = (
             self.FILE_LIST_DIRECTORY
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
-            | self.READ_CONTROL
+            | (self.READ_CONTROL if read_control else 0)
             | self.SYNCHRONIZE
         )
         return self._nt_open(
@@ -733,13 +733,13 @@ class WindowsDirectoryHandleBackend:
             share_mode=self.FILE_SHARE_READ if exclusive else None,
         )
 
-    def create_directory(self, parent_handle: Any, name: str) -> Any:
+    def create_directory(self, parent_handle: Any, name: str, *, read_control: bool = False) -> Any:
         name = self._validate_basename(name)
         access = (
             self.FILE_LIST_DIRECTORY
             | self.FILE_TRAVERSE
             | self.FILE_READ_ATTRIBUTES
-            | self.READ_CONTROL
+            | (self.READ_CONTROL if read_control else 0)
             | self.DELETE
             | self.SYNCHRONIZE
         )
