@@ -250,3 +250,10 @@ def test_backup_root_acl_is_verified_from_the_pinned_directory_handle(tmp_path):
             backend.close(child)
     finally:
         backend.close(handle)
+
+    reopened = backend.open_root(backup_root, read_control=True)
+    try:
+        reopened_result = backend.assert_private_directory_acl(reopened)
+        assert reopened_result["owner_verified"] is True
+    finally:
+        backend.close(reopened)
