@@ -69,6 +69,18 @@ class InternalMessageBus:
         )
         self._conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS organization_tasks (
+                task_id TEXT PRIMARY KEY,
+                schema_version INTEGER NOT NULL,
+                payload_json TEXT NOT NULL,
+                revision INTEGER NOT NULL CHECK(revision > 0),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        self._conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS organization_dispatch_receipts (
                 message_id TEXT PRIMARY KEY,
                 agent_id TEXT NOT NULL,
@@ -238,6 +250,76 @@ class InternalMessageBus:
             "result": json.loads(row["result_json"]),
             "dispatched_at": row["dispatched_at"],
         }
+
+
+    def save_task_record(self, task_id: str, payload: dict[str, Any], *, schema_version: int = 1) -> int:
+        """Insert a canonical task record; identical retries are idempotent."""
+        if not isinstance(task_id, str) or not task_id.strip():
+            raise ValueError("task_id must be a non-empty string")
+        if not isinstance(payload, dict):
+            raise TypeError("task payload must be a dictionary")
+        encoded = json.dumps(payload, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":"))
+        now = datetime.now().astimezone().isoformat()
+        with self._lock, self._conn:
+            row = self._conn.execute(
+                "SELECT schema_version, payload_json FROM organization_tasks WHERE task_id=?",
+                (task_id,),
+            ).fetchone()
+            if row is not None:
+                if row["schema_version"] == schema_version and row["payload_json"] == encoded:
+                    return 1
+                raise ValueError(f"Conflicting task_id: {task_id}")
+            self._conn.execute(
+                """INSERT INTO organization_tasks
+                (task_id, schema_version, payload_json, revision, created_at, updated_at)
+                VALUES (?, ?, ?, 1, ?, ?)""",
+                (task_id, schema_version, encoded, now, now),
+            )
+        return 1
+
+    def update_task_record(
+        self, task_id: str, expected_revision: int, payload: dict[str, Any], *, schema_version: int = 1
+    ) -> int:
+        """Optimistically update a task record and return its next revision."""
+        encoded = json.dumps(payload, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":"))
+        now = datetime.now().astimezone().isoformat()
+        with self._lock, self._conn:
+            cursor = self._conn.execute(
+                """UPDATE organization_tasks
+                SET schema_version=?, payload_json=?, revision=revision+1, updated_at=?
+                WHERE task_id=? AND revision=?""",
+                (schema_version, encoded, now, task_id, expected_revision),
+            )
+            if cursor.rowcount != 1:
+                row = self._conn.execute(
+                    "SELECT revision FROM organization_tasks WHERE task_id=?", (task_id,)
+                ).fetchone()
+                if row is None:
+                    raise KeyError(task_id)
+                raise RuntimeError(
+                    f"Task persistence revision conflict for {task_id}: "
+                    f"expected {expected_revision}, found {row['revision']}"
+                )
+            return expected_revision + 1
+
+    def load_task_records(self) -> list[dict[str, Any]]:
+        """Return versioned raw task records; malformed payloads remain stored for inspection."""
+        with self._lock:
+            rows = self._conn.execute(
+                """SELECT task_id, schema_version, payload_json, revision, created_at, updated_at
+                FROM organization_tasks ORDER BY created_at ASC, task_id ASC"""
+            ).fetchall()
+        return [
+            {
+                "task_id": row["task_id"],
+                "schema_version": row["schema_version"],
+                "payload_json": row["payload_json"],
+                "revision": row["revision"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+            }
+            for row in rows
+        ]
 
     def close(self) -> None:
         with self._lock:
