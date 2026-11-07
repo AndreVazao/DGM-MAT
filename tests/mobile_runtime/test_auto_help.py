@@ -526,7 +526,7 @@ def test_auto_help_falls_back_to_approved_browser_consultation_when_hub_has_no_f
         bridge_factory=EmptyHub,
         engine_factory=FakeEngine,
         enabled=True,
-        providers=["kilo", "llm7"],
+        providers=["chatgpt", "deepseek"],
     )
     queued = worker.enqueue(
         thread_id=thread.id,
