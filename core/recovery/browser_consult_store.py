@@ -315,7 +315,7 @@ class BrowserConsultStore:
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute("""
-                SELECT provider, status, claim_token FROM browser_consultations WHERE consultation_id=?
+                SELECT provider, status, claim_token, task_ref FROM browser_consultations WHERE consultation_id=?
             """, (consultation_id,)).fetchone()
             if row is None:
                 db.rollback()
