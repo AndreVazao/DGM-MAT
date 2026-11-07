@@ -44,8 +44,10 @@ def test_enqueue_claim_complete_and_cooldown(monkeypatch, tmp_path):
         context="The archive is local and provider answers are untrusted.",
         providers=["chatgpt", "gemini", "grok"],
     )
-    assert queued["status"] == "PENDING"
+    assert queued["status"] == "PENDING_APPROVAL"
     assert queued["provider_count"] == 2
+    assert store.claim_next("chatgpt") is None
+    assert store.approve(queued["consultation_ids"][0], operator="test-operator") is True
     chat = store.claim_next("chatgpt")
     assert chat is not None
     assert chat["status"] == "RUNNING"
@@ -67,13 +69,15 @@ def test_duplicate_task_provider_prompt_is_idempotent(monkeypatch, tmp_path):
     first = store.enqueue(task_ref="mission-2", goal="Classify this project request", providers=["chatgpt"])
     second = store.enqueue(task_ref="mission-2", goal="Classify this project request", providers=["chatgpt"])
     assert first["consultation_ids"] == second["consultation_ids"]
-    assert store.status()["counts"]["PENDING"] == 1
+    assert store.status()["counts"]["PENDING_APPROVAL"] == 1
 
 
 def test_rate_limit_and_login_are_blocked_with_no_automatic_retry(monkeypatch, tmp_path):
     _configure(monkeypatch, "grok")
     store = BrowserConsultStore(tmp_path / "consult.sqlite3")
     queued = store.enqueue(task_ref="mission-3", goal="Check one technical assumption", providers=["grok"])
+    assert store.claim_next("grok") is None
+    store.approve(queued["consultation_ids"][0], operator="test-operator")
     item = store.claim_next("grok")
     blocked = store.block(item["consultation_id"], reason="rate_limited")
     assert blocked["status"] == "BLOCKED_RATE_LIMIT"
@@ -86,6 +90,7 @@ def test_response_with_secret_is_never_archived(monkeypatch, tmp_path):
     _configure(monkeypatch, "gemini")
     store = BrowserConsultStore(tmp_path / "consult.sqlite3")
     store.enqueue(task_ref="mission-4", goal="Review the security boundary", providers=["gemini"])
+    store.approve(queued["consultation_ids"][0], operator="test-operator")
     item = store.claim_next("gemini")
     result = store.finish(
         item["consultation_id"],
@@ -101,6 +106,7 @@ def test_restart_marks_inflight_consultation_blocked_and_never_replays(monkeypat
     path = tmp_path / "consult.sqlite3"
     store = BrowserConsultStore(path)
     store.enqueue(task_ref="mission-5", goal="Review the parser", providers=["chatgpt"])
+    store.approve(queued["consultation_ids"][0], operator="test-operator")
     item = store.claim_next("chatgpt")
     reopened = BrowserConsultStore(path)
     assert reopened.status()["counts"]["BLOCKED_RESTART"] == 1
