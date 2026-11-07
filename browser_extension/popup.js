@@ -6,6 +6,8 @@ const retryButton = document.getElementById("retry-button");
 const autoCheckbox = document.getElementById("auto-checkbox");
 const statusNode = document.getElementById("status");
 const browserOperatorCheckbox = document.getElementById("browser-operator-checkbox");
+const consultCheckbox = document.getElementById("consult-checkbox");
+const consultStatus = document.getElementById("consult-status");
 
 function showStatus(value, error = false) {
   statusNode.textContent = value;
@@ -30,12 +32,29 @@ async function refresh() {
     retryButton.disabled = !data.can_retry;
     autoCheckbox.checked = Boolean(data.auto_enabled);
     browserOperatorCheckbox.checked = Boolean(data.browser_operator_auto_enabled);
+    consultCheckbox.checked = Boolean(data.browser_consult_enabled);
+    consultStatus.textContent = data.browser_consult_status || "AI consultation idle.";
     showStatus((data.last_status || (data.paired ? "Paired and ready." : "Pair with the local DGM-MAT PC.")) + "\n" + (data.browser_operator_status || "Browser mission operator idle."));
   } catch (error) {
     startButton.disabled = true;
     showStatus(error.message, true);
   }
 }
+
+consultCheckbox.addEventListener("change", async () => {
+  consultCheckbox.disabled = true;
+  try {
+    const result = await send({ type: "DGM_SET_AUTO_BROWSER_CONSULT", enabled: consultCheckbox.checked });
+    consultStatus.textContent = result.enabled
+      ? "Consulta ativa. Só são enviados pedidos aprovados no DGM-MAT."
+      : "Consulta desativada.";
+  } catch (error) {
+    showStatus(error.message, true);
+    await refresh();
+  } finally {
+    consultCheckbox.disabled = false;
+  }
+});
 
 browserOperatorCheckbox.addEventListener("change", async () => {
   browserOperatorCheckbox.disabled = true;
