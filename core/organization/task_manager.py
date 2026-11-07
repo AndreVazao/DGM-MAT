@@ -179,6 +179,44 @@ class OrganizationTaskManager:
             self._tasks[task_id] = updated
             return deepcopy(updated)
 
+
+    def complete_with_result(
+        self, task_id: str, *, result: dict[str, Any], message_id: str
+    ) -> Task:
+        """Persist a durable worker result and mark its assigned task complete atomically."""
+        if not isinstance(result, dict):
+            raise TypeError("worker result must be a dictionary")
+        if not isinstance(message_id, str) or not message_id.strip():
+            raise ValueError("message_id must be a non-empty string")
+        # Reject non-JSON values before changing the in-memory task snapshot.
+        json.dumps(result, ensure_ascii=False, allow_nan=False)
+        with self._lock:
+            current = self._tasks[task_id]
+            if not isinstance(current.metadata, dict):
+                raise ValueError(f"Task {task_id} metadata is not a dictionary.")
+            existing = current.metadata.get("worker_execution", {})
+            if current.status == TaskStatus.COMPLETED:
+                if (
+                    isinstance(existing, dict)
+                    and existing.get("message_id") == message_id
+                    and existing.get("result") == result
+                ):
+                    return deepcopy(current)
+                raise ValueError(f"Task {task_id} is already completed with a different result.")
+            if current.status not in {TaskStatus.ASSIGNED, TaskStatus.RUNNING}:
+                raise ValueError(f"Task {task_id} cannot complete from {current.status.value}.")
+            updated = deepcopy(current)
+            updated.metadata["worker_execution"] = {
+                "message_id": message_id,
+                "durable_receipt": True,
+                "result": deepcopy(result),
+            }
+            updated.status = TaskStatus.COMPLETED
+            updated.updated_at = utc_now()
+            self._persist_update(updated)
+            self._tasks[task_id] = updated
+            return deepcopy(updated)
+
     def ready_tasks(self) -> list[Task]:
         with self._lock:
             return [

@@ -112,3 +112,18 @@ def test_older_inbox_message_is_not_misreported_as_current_task(tmp_path):
     assert first["reason"] == "older_inbox_message_dispatched_first"
     second = run(orchestrator, "agent:python-source-analyst", "corr:new")
     assert second["status"] == "COMPLETED"
+
+def test_worker_message_is_linked_to_the_originating_task(tmp_path):
+    orchestrator, bus, _ = setup_orchestrator(tmp_path)
+    result = orchestrator.run(
+        agent_id="agent:repository-cartographer",
+        repository_id="demo",
+        mission_id="mission:task-link",
+        correlation_id="task:inventory-42",
+        task_id="task:inventory-42",
+    )
+    assert result["status"] == "COMPLETED"
+    messages = bus.receive("agent:repository-cartographer")
+    assert len(messages) == 1
+    assert messages[0].task_id == "task:inventory-42"
+    assert messages[0].mission_id == "mission:task-link"

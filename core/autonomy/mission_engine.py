@@ -28,6 +28,7 @@ from core.organization.task_manager import OrganizationTaskManager
 from core.organization.models import Task
 from core.organization.configured_readonly_workers import register_configured_readonly_workers
 from core.organization.read_only_worker_orchestrator import ReadOnlyWorkerOrchestrator
+from core.organization.task_dispatcher import OrganizationTaskDispatcher
 from core.organization.office import bootstrap_full_office
 from core.organization.qa_intake_worker import QAIntakeWorker
 from core.organization.qa_review_queue import QAReviewQueue
@@ -86,6 +87,11 @@ class MissionEngine:
         )
         self.readonly_worker_orchestrator = ReadOnlyWorkerOrchestrator(
             self.organization_bus, self.worker_runtime
+        )
+        self.organization_task_dispatcher = OrganizationTaskDispatcher(
+            self.organization_tasks,
+            self.organization_delegation,
+            self.readonly_worker_orchestrator,
         )
         self.human_intervention_queue = HumanInterventionQueue(
             storage_manager.get_path("tasks") / "human_intervention_queue.sqlite3"
@@ -174,6 +180,10 @@ class MissionEngine:
     def delegate_organization_task(self, task_id: str):
         """Assign a task to a registered, capability-compatible local handler."""
         return self.organization_delegation.delegate(task_id)
+
+    def dispatch_organization_task(self, task_id: str) -> Dict[str, Any]:
+        """Dispatch only an explicitly typed task to a fixed read-only worker."""
+        return self.organization_task_dispatcher.dispatch(task_id)
 
     def run_readonly_repository_worker(
         self, *, agent_id: str, repository_id: str, mission_id: str, correlation_id: str
