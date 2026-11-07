@@ -412,7 +412,7 @@ class BackupFirstPatchExecutor:
             backup_dir_handle = backend.open_child_directory(
                 backup_root_handle, backup_id, read_control=True
             )
-            backend.assert_private_directory_acl(backup_dir_handle)
+            backend.assert_private_directory_acl(backup_dir_handle, require_protected=False)
             manifest_handle = backend.open_file(backup_dir_handle, "manifest.json", exclusive=True)
             try:
                 manifest = json.loads(
