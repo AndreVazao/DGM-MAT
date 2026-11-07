@@ -183,3 +183,21 @@ On timeout or interruption, do not blindly replay an agent task that may have co
 | DGM-HUB collaboration | issue #159 and existing Hub bridge | Structured meeting memory and progressive leadership |
 
 This document is an architecture and acceptance contract, not evidence that the listed future capabilities are already operational.
+
+## Follow-up status — 2026-11-07
+
+The implementation advanced after this checkpoint. Treat the following as the newer authoritative status for the affected workstreams:
+
+- **Internal task lifecycle:** PRs #259, #260 and #261 are merged. MissionEngine uses the existing SQLite message bus for durable tasks, capability-aware delegation and a fixed typed dispatcher for the three read-only specialists. Task descriptions are never interpreted as commands. Worker messages carry task IDs and tasks complete only after a durable receipt.
+- **Browser AI consultation:** PR #262 is merged. The supported visible-UI provider set is ChatGPT, Grok, Gemini, DeepSeek and Qwen. Direct task creation always requires explicit per-task approval. Mission-specific automatic send is permitted only while the server-verified parent checkpoint is RUNNING; the queue rechecks before claim. Old PRs #235, #236 and #239 were closed as superseded.
+- **Persistent local Vault:** PR #263 is merged. Raw browser captures and redacted normalized conversations are stored separately; local progress and repository snapshots can be synchronized. Old PR #238 was closed as superseded. Provider oldest-boundary evidence remains deliberately unconfigured, so hash integrity is never treated as proof of complete conversation history.
+- **Resource policy:** Vault startup bootstrap is opt-in and defaults OFF until the Windows host is measured. Manual synchronization is available via `scripts/sync_dgm_vault.py`.
+- **Windows build:** PR #262 produced a validated `DGM-MAT-Windows-3.12-94923b7` artifact in run `42356491067`. PR #263 has a separate mainline Windows build in progress; the PR #262 artifact predates Vault integration and must not be represented as containing the Vault changes.
+- **Local acceptance:** The operator PC remains offline until 2026-11-09. CI is not proof of installation, authenticated provider operation, task recovery on Windows, or performance on the legacy hardware.
+
+Next gates:
+1. Validate the post-PR-263 Windows executable and SHA-256.
+2. Back up the existing installation and runtime before any replacement.
+3. Measure actual CPU/RAM/disk, then test Vault migration and task/receipt recovery on the real host.
+4. Configure the repository allowlist explicitly and validate all three read-only specialists against manual inspection.
+5. Keep code mutation disabled until isolated worktree, approval-bound patch digest, independent QA and rollback are proven.
