@@ -1,5 +1,7 @@
 "use strict";
 
+// Exercise the server-approved DGM_EXECUTE_BROWSER_TASK path; DGM_SEND_MESSAGE is rejected separately.
+
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
