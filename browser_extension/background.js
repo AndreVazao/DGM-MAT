@@ -241,8 +241,8 @@ async function pollBrowserConsultQueue() {
   if (consultPollInProgress) return;
   consultPollInProgress = true;
   try {
-    const settings = await chrome.storage.local.get([CONSULT_ENABLED_KEY, PROVIDER_TABS_KEY, CONSULT_CURRENT_KEY]);
-    if (!settings[CONSULT_ENABLED_KEY] || settings[CONSULT_CURRENT_KEY]) return;
+    const settings = await chrome.storage.local.get([CONSULT_ENABLED_KEY, PROVIDER_TABS_KEY, CONSULT_CURRENT_KEY, BROWSER_TASK_KEY]);
+    if (!settings[CONSULT_ENABLED_KEY] || settings[CONSULT_CURRENT_KEY] || settings[BROWSER_TASK_KEY] || browserPollInProgress) return;
     const state = await readState();
     if (!state.token || state.run?.active) return;
     const tabs = settings[PROVIDER_TABS_KEY] || {};
@@ -383,11 +383,11 @@ async function executePendingBrowserOperatorTask(task, tabId, token) {
 }
 
 async function pollBrowserOperatorQueue() {
-  if (browserPollInProgress) return;
+  if (browserPollInProgress || consultPollInProgress) return;
   browserPollInProgress = true;
   try {
-    const settings = await chrome.storage.local.get([BROWSER_QUEUE_AUTO_KEY, PROVIDER_TABS_KEY, BROWSER_TASK_KEY]);
-    if (!settings[BROWSER_QUEUE_AUTO_KEY] || settings[BROWSER_TASK_KEY]) return;
+    const settings = await chrome.storage.local.get([BROWSER_QUEUE_AUTO_KEY, PROVIDER_TABS_KEY, BROWSER_TASK_KEY, CONSULT_CURRENT_KEY]);
+    if (!settings[BROWSER_QUEUE_AUTO_KEY] || settings[BROWSER_TASK_KEY] || settings[CONSULT_CURRENT_KEY]) return;
     const state = await readState();
     if (!state.token || state.run?.active) return;
     const tabs = settings[PROVIDER_TABS_KEY] || {};
