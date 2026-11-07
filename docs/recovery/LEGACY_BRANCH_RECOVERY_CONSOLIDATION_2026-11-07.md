@@ -21,10 +21,11 @@ No legacy branch was deleted, rewritten, rebased, or modified. No recovered feat
 - `core/recovery/browser_consult_store.py`
 - `core/api/browser_consult_api.py`
 - `tests/test_browser_consult_store.py`
+- `tests/api/test_browser_consult_api.py`
 - `recovery/legacy-branch-snapshots/free-tier-browser-consult/core__api__api_server.py.legacy-snapshot.txt`
 - `recovery/legacy-branch-snapshots/free-tier-browser-consult/core__api__security_policy.py.legacy-snapshot.txt`
 
-The store is SQLite-backed and has explicit enablement and provider allowlisting, bounded prompts/responses, secret-pattern checks, cooldowns, idempotency, no automatic replay after ambiguous restart, and marks provider output as untrusted. The API uses the existing local audit writer.
+The store is SQLite-backed and has explicit enablement and a five-provider allowlist (ChatGPT, Grok, Gemini, DeepSeek and Qwen), bounded/redacted prompts and responses, secret-pattern checks, cooldowns, idempotency while awaiting approval, one-time claim tokens, no automatic replay after ambiguous restart, and marks provider output as untrusted. The API uses the existing local audit writer and local-session authentication.
 
 ## Security finding — legacy direct-send bypass
 
@@ -34,21 +35,31 @@ The old `feat/browser-mission-queue-v1` popup implemented a direct `chrome.tabs.
 
 The legacy branch also modified `core/api/api_server.py` and `core/api/security_policy.py` to register/classify the consultation routes. Their complete source snapshots are retained under `recovery/legacy-branch-snapshots/free-tier-browser-consult/`. They are intentionally not installed over current `main`, because those files have evolved since the legacy branch diverged. Their intended route registration/classification must be reconciled as a focused patch only after the extension workflow and tests exist.
 
-## Required work before activation or merge
+## Implementation progress in this recovery PR
 
-1. Add an extension-side consultation state machine that claims a consultation only for the matching allowlisted provider, previews/authorizes the send, sends through the visible UI only, captures the rendered answer, and reports result/block state. Do not reuse historical recovery capture to send prompts.
-2. Add API integration tests for authentication scope, route classification, audit failure behavior, prompt release, result persistence, and unauthorized requests.
-3. Add extension tests for explicit user approval, provider mismatch, quota/login/challenge stops, UI mismatch, interrupted session, duplicate delivery and no automatic retry.
-4. Reconcile provider scope: this legacy queue supports ChatGPT, Gemini and Grok only. DeepSeek and Qwen remain in the separate five-provider browser operator/recovery lane until a compatible consultation adapter is implemented and tested.
-5. Run focused Python and extension tests, the full relevant test suite, security negative tests, and Windows 10 end-to-end validation before enabling it. No runtime acceptance is claimed by this GitHub-only recovery.
+- Added explicit `PENDING_APPROVAL` state and an operator-only approval endpoint; the extension cannot claim an unapproved consultation.
+- Added local-session authentication and explicit route classifications: enqueue/status/approve require operator scope; claim/result/block require the paired browser-capture scope.
+- Added a cryptographically random one-time claim token; result/block operations must present the matching token, which is cleared on completion or block.
+- Added five-provider support and an opt-in extension polling toggle (disabled by default). The extension uses the already-tested visible-UI browser task executor and existing authenticated provider tabs; it does not use provider APIs or hidden endpoints.
+- Added a popup form to create a consultation, explicitly attest free-tier account status, review pending requests, and approve each send. Each provider request remains separately approved.
+- Serialized consultation polling against mission browser execution so both cannot send concurrently in the same provider tab.
+- Added API tests for route scopes, authentication, explicit approval, free-capacity attestation, claim ownership and untrusted result persistence; expanded store tests for approval, deduplication, secret blocking, restart handling and claim tokens.
+
+## Remaining validation before activation/merge
+
+1. Run focused Python tests for the consultation store/API and the existing five-provider browser extension tests.
+2. Run the full relevant test suite, security negative tests, JavaScript syntax checks and extension packaging/build.
+3. Verify audit-write failure behavior, worker restart during an in-flight browser send, stale claim rejection, popup UX and provider UI mismatch handling.
+4. Perform Windows 10 + Chrome end-to-end acceptance using only free-tier accounts and a single manually approved test request per provider.
+5. Keep `DGM_BROWSER_CONSULT_ENABLED=0` until those checks pass. The extension toggle is also opt-in and defaults off. No runtime acceptance is claimed by this GitHub-only session.
 
 ## Validation status
 
 - GitHub branch creation and file preservation: completed.
 - File-level comparison against current `main`: completed for the candidate modules listed above.
-- Automated tests executed in this recovery session: **none** (GitHub-only environment).
+- Automated tests executed in this recovery session: **none** (GitHub-only environment); test coverage has been added but remains unexecuted.
 - Runtime/Windows/Chrome acceptance: **not performed**.
-- Activation, merge and legacy branch deletion: **not performed**.
+- Activation, merge and legacy branch deletion: **not performed**. The feature remains disabled by default.
 
 ## Cleanup recommendation
 
