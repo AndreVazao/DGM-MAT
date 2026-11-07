@@ -92,6 +92,10 @@ class OrganizationTaskDispatcher:
         }
         if agent_id not in candidates:
             return self._blocked("assigned_agent_not_currently_eligible", task_id)
+        if not self.delegation.worker_runtime.declares_capabilities(
+            agent_id, worker["capabilities"]
+        ):
+            return self._blocked("worker_capabilities_not_registered", task_id)
 
         repository_id = task.metadata.get("repository_id")
         if not isinstance(repository_id, str) or not repository_id.strip():
