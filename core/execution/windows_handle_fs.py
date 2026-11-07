@@ -589,6 +589,30 @@ class WindowsDirectoryHandleBackend:
             if security_descriptor:
                 self.kernel32.LocalFree(security_descriptor)
 
+    def final_path_component(self, handle: Any) -> str:
+        """Return the native long-name component resolved by an already-open handle."""
+        ctypes = self.ctypes
+        wintypes = self.wintypes
+        get_final_path = self.kernel32.GetFinalPathNameByHandleW
+        get_final_path.argtypes = [
+            wintypes.HANDLE,
+            wintypes.LPWSTR,
+            wintypes.DWORD,
+            wintypes.DWORD,
+        ]
+        get_final_path.restype = wintypes.DWORD
+        buffer = ctypes.create_unicode_buffer(32768)
+        length = get_final_path(handle, buffer, len(buffer), 0)
+        if length == 0:
+            self._raise_last_error("GetFinalPathNameByHandleW")
+        if length >= len(buffer):
+            raise WindowsHandleError("Native final path exceeds the supported inspection bound.")
+        native_path = buffer.value.rstrip("\\\\")
+        component = native_path.rsplit("\\\\", 1)[-1]
+        if not component:
+            raise WindowsHandleError("Native handle path has no verifiable final component.")
+        return component
+
     def _validate_basename(self, name: str) -> str:
         if (
             not isinstance(name, str)
