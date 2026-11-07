@@ -445,7 +445,7 @@ async function pair(code) {
   if (typeof current[BROWSER_QUEUE_AUTO_KEY] !== "boolean") defaults[BROWSER_QUEUE_AUTO_KEY] = true;
   if (typeof current[CONSULT_ENABLED_KEY] !== "boolean") defaults[CONSULT_ENABLED_KEY] = false;
   if (Object.keys(defaults).length) await chrome.storage.local.set(defaults);
-  const settings = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY]);
+  const settings = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY, CONSULT_ENABLED_KEY]);
   const tabs = await chrome.tabs.query({});
   const providerTabs = {};
   for (const tab of tabs) {
