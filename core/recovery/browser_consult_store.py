@@ -194,7 +194,7 @@ class BrowserConsultStore:
                 digest = _hash(prompt + "|" + task_ref + "|" + provider)
                 previous = db.execute("""
                     SELECT consultation_id FROM browser_consultations
-                    WHERE prompt_sha256=? AND status IN ('PENDING','RUNNING','COMPLETED')
+                    WHERE prompt_sha256=? AND status IN ('PENDING_APPROVAL','PENDING','RUNNING','COMPLETED')
                     ORDER BY created_at DESC LIMIT 1
                 """, (digest,)).fetchone()
                 if previous:
