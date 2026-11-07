@@ -47,8 +47,8 @@ Estes merges provam integração de código e testes associados; não provam que
 ### Inventário
 - Default branch: main.
 - Head de main: c448bc5a28776b395e0dafc1c1fc5aed009af9df.
-- Branches observadas antes da criação desta branch de relatório: 71.
-- PRs abertas no último inventário: #276 e #277.
+- Branches observadas antes da criação desta branch de relatório: 71; a branch deste relatório elevou o total observado para 72.
+- PRs abertas no inventário inicial: #276 e #277; esta ronda abriu também a PR de relatório #278, ficando três PRs abertas.
 - Releases GitHub: nenhuma publicada.
 - A main recebeu builds Windows bem-sucedidos para os commits recentes, incluindo o head atual.
 
@@ -103,6 +103,7 @@ Focused PR Validation #645 **SUCCESS** no run 42384614731; compilação e os doi
 - [Windows Guard #276](https://github.com/AndreVazao/DGM-MAT/actions/runs/42366157047)
 - [Focused PR Validation #276](https://github.com/AndreVazao/DGM-MAT/actions/runs/42366157033)
 - [Build Windows da main](https://github.com/AndreVazao/DGM-MAT/actions/runs/42359050528)
+- [PR #278 — relatório diário versionado](https://github.com/AndreVazao/DGM-MAT/pull/278)
 
 Não houve merge, alteração direta em main, rebase, force-push ou operação destrutiva.
 
