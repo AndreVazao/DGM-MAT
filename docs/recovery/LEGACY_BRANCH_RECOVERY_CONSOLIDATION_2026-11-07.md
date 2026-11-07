@@ -10,7 +10,7 @@ No legacy branch was deleted, rewritten, rebased, or modified. No recovered feat
 
 | Legacy branch | Decision | Evidence / reason |
 |---|---|---|
-| `feat/free-tier-browser-ai-consult-2026-11-05` | **Preserved in this branch, isolated / not activated** | The SQLite consultation queue, API router and store tests are not present in current `main`. They are copied as separate modules. The API router is deliberately NOT registered in `api_server.py`: the branch does not contain a verified extension-side poll/send/result workflow, and the current browser operator is a different task/approval lane. |
+| `feat/free-tier-browser-ai-consult-2026-11-05` | **Preserved in this branch, isolated / not activated** | The SQLite consultation queue, API router and store tests are not present in current `main`. They are copied as separate modules. The API router is deliberately NOT registered in current `api_server.py`: the branch does not contain a verified extension-side poll/send/result workflow, and the current browser operator is a different task/approval lane. The legacy API-server and security-policy files are preserved as clearly labelled archival snapshots, not as files to restore wholesale. |
 | `feat/browser-recovery-deepseek-qwen-2026-11-06` | **Already superseded / no copy** | Current `main` already recognizes DeepSeek and Qwen routes and provider hosts. Current `browser_extension/content.js` is newer (676 lines vs 493 in the legacy branch), and current capture API tests cover five providers. The legacy branch's content script must not overwrite the newer implementation. |
 | `feat/telescope-metadata-only-2026-11-03` | **Already integrated / no copy** | Current `main` contains `core/recovery/ai_source_inventory.py`, metadata-only `TelescopeAdapter`, the recovery API endpoint, inventory script and tests. The current adapter uses an explicit allowlist and avoids raw session detail payloads. |
 | `feat/external-agent-readiness-probe-2026-11-03` | **Already integrated and evolved / no copy** | Current `main` contains `core/development/external_agent_probe.py` and the associated readiness API/security route. Current implementation includes additional safe-process handling and uses the existing local coding-agent probe for Codex. Replacing it with the older branch version would regress it. |
@@ -21,8 +21,14 @@ No legacy branch was deleted, rewritten, rebased, or modified. No recovered feat
 - `core/recovery/browser_consult_store.py`
 - `core/api/browser_consult_api.py`
 - `tests/test_browser_consult_store.py`
+- `recovery/legacy-branch-snapshots/free-tier-browser-consult/core__api__api_server.py.legacy-snapshot.txt`
+- `recovery/legacy-branch-snapshots/free-tier-browser-consult/core__api__security_policy.py.legacy-snapshot.txt`
 
 The store is SQLite-backed and has explicit enablement and provider allowlisting, bounded prompts/responses, secret-pattern checks, cooldowns, idempotency, no automatic replay after ambiguous restart, and marks provider output as untrusted. The API uses the existing local audit writer.
+
+## Archived integration hooks
+
+The legacy branch also modified `core/api/api_server.py` and `core/api/security_policy.py` to register/classify the consultation routes. Their complete source snapshots are retained under `recovery/legacy-branch-snapshots/free-tier-browser-consult/`. They are intentionally not installed over current `main`, because those files have evolved since the legacy branch diverged. Their intended route registration/classification must be reconciled as a focused patch only after the extension workflow and tests exist.
 
 ## Required work before activation or merge
 
