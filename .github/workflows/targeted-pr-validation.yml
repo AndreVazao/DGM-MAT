@@ -73,7 +73,7 @@ jobs:
           fi
           cat "${RUNNER_TEMP}/changed-files.txt"
           python - <<'PY'
-          import os, pathlib, re
+          import os, pathlib
           changed_file = pathlib.Path(os.environ["RUNNER_TEMP"]) / "changed-files.txt"
           changed = set(changed_file.read_text(encoding="utf-8").splitlines())
           tests = set()
