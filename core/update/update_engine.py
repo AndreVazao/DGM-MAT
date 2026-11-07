@@ -29,7 +29,6 @@ class UpdateEngine:
     def apply_update(self, version: str) -> bool:
         """Refuse to claim success until a verified staged updater is implemented."""
         dgm_logger.warning(
-            "Update Engine: Refusing to apply %s; the staged updater is not implemented.",
-            version,
+            f"Update Engine: Refusing to apply {version}; the staged updater is not implemented."
         )
         return False
