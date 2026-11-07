@@ -127,3 +127,18 @@ The commits above have been pushed to the existing PR branch. The GitHub connect
 - Snyk has not produced a clean result.
 - PR remains draft; no merge, no MissionEngine integration, no real-project mutation and no auto-merge.
 - POSIX mutation remains deliberately disabled.
+
+
+### Additional native-path hardening — 2026-11-07
+
+After the first review follow-up, the Windows backend gained a pinned-handle native long-name query using `GetFinalPathNameByHandleW`. The executor now compares every opened repository directory component and existing target component with its requested long name, and rollback performs the same target check. A mismatch is rejected before mutation. The final-path separator handling was corrected and a Windows test asserts the native component returned for an opened directory.
+
+Additional commits:
+- `7ca94f5`: native final-path component inspection.
+- `7c9c14e`: enforce native long-name identity during traversal and rollback; reject a missing-identity create manifest outside the `prepared` state.
+- `0d8248d`: normalize Windows path separators in final-path parsing.
+- `ce9fa0e`: test native long-name resolution from a pinned handle.
+
+Latest code/test head at this report update: `ce9fa0ebc9266b35fa2ad6c02cef2882e756033e`.
+
+These changes are not yet a substitute for the remaining backup-root scope, staged-file ACL inheritance, durable rollback-intent, adversarial ACL test and docstring findings. Do not merge until those are resolved and the latest Windows Guard and focused validation runs pass on the same reviewed code head.
