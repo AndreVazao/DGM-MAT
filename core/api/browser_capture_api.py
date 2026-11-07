@@ -28,11 +28,15 @@ PROVIDER_HOSTS = {
     "chatgpt": {"chatgpt.com", "chat.openai.com"},
     "gemini": {"gemini.google.com", "bard.google.com"},
     "grok": {"grok.com", "x.com"},
+    "deepseek": {"chat.deepseek.com"},
+    "qwen": {"chat.qwen.ai"},
 }
 MAX_DISCOVERY_ITEMS = 500
 MAX_MESSAGES = 3000
 MAX_MESSAGE_CHARS = 100_000
 MAX_CAPTURE_BYTES = 20 * 1024 * 1024
+# Empty until a provider-specific oldest-history marker is backed by fixtures.
+PROVIDER_OLDEST_BOUNDARY_EVIDENCE: dict[str, set[str]] = {}
 SAFE_ID = re.compile(r"^[A-Za-z0-9._:-]{1,200}$")
 PROPOSAL_MARKERS = re.compile(
     r"\b(i recommend|i suggest|i propose|we should|you should|recommendation|suggested approach|recomendo|sugiro|proponho|devemos|a minha recomendação|a solução proposta)\b",
@@ -101,13 +105,26 @@ def _validate_provider_url(provider: str, value: str, source_id: str | None = No
             match = re.search(r"/c/([A-Za-z0-9_-]+)(?:/|$)", parsed.path)
         elif provider == "gemini":
             match = re.search(r"/app/([A-Za-z0-9_-]+)(?:/|$)", parsed.path)
-        else:
+        elif provider == "grok":
             route_match = re.search(r"/(?:chat|c|i/grok)/([A-Za-z0-9_-]+)(?:/|$)", parsed.path)
             query_values = parse_qs(parsed.query)
             query_id = (query_values.get("conversation") or query_values.get("id") or [None])[0]
             candidate = route_match.group(1) if route_match else query_id
             if candidate != source_id:
                 raise ValueError("source ID does not match the Grok conversation URL")
+            return value
+        else:
+            route_pattern = (r"/(?:a/)?chat/(?:s/)?([A-Za-z0-9_-]+)(?:/|$)"
+                             if provider == "deepseek"
+                             else r"/(?:chat|c|conversation|s)/([A-Za-z0-9_-]+)(?:/|$)")
+            route_match = re.search(route_pattern, parsed.path)
+            query_values = parse_qs(parsed.query)
+            query_id = next((query_values[key][0] for key in
+                             ("conversation", "conversationId", "chatId", "chat_id", "id")
+                             if query_values.get(key)), None)
+            candidate = route_match.group(1) if route_match else query_id
+            if candidate != source_id:
+                raise ValueError(f"source ID does not match the {provider} conversation URL")
             return value
         if not match or match.group(1) != source_id:
             raise ValueError("source ID does not match the provider conversation URL")
@@ -137,7 +154,7 @@ class BrowserConversationItem(BaseModel):
 
 
 class BrowserDiscoveryRequest(BaseModel):
-    provider: Literal["chatgpt", "gemini", "grok"]
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
     items: list[BrowserConversationItem] = Field(min_length=1, max_length=MAX_DISCOVERY_ITEMS)
     truncated: bool = False
 
@@ -155,7 +172,7 @@ class BrowserMessage(BaseModel):
 
 
 class BrowserCaptureRequest(BaseModel):
-    provider: Literal["chatgpt", "gemini", "grok"]
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
     source_id: str = Field(min_length=1, max_length=200)
     title: str = Field(min_length=1, max_length=500)
     url: str = Field(min_length=12, max_length=2048)
@@ -163,11 +180,13 @@ class BrowserCaptureRequest(BaseModel):
     truncated: bool = False
     history_start_reached: bool = False
     oldest_boundary: Literal["confirmed", "unknown", "limit"] = "unknown"
+    oldest_boundary_evidence: str = Field(default="", max_length=120)
     messages_total: int = Field(default=0, ge=0, le=MAX_MESSAGES)
     unknown_role_count: int = Field(default=0, ge=0, le=MAX_MESSAGES)
     scroll_steps: int = Field(default=0, ge=0, le=1000)
     top_load_steps: int = Field(default=0, ge=0, le=20)
     top_load_limit_reached: bool = False
+    sequence_order_conflict: bool = False
     adapter_version: str = Field(default="0.1.0", max_length=40)
     captured_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -260,13 +279,13 @@ def claim_next_browser_conversation(payload: BrowserNextRequest):
 
 
 class BrowserNextRequest(BaseModel):
-    provider: Literal["chatgpt", "gemini", "grok"]
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
 
     model_config = ConfigDict(extra="forbid")
 
 
 class BrowserCaptureBlockRequest(BaseModel):
-    provider: Literal["chatgpt", "gemini", "grok"]
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
     source_id: str = Field(min_length=1, max_length=200)
     status: Literal["blocked", "rate_limited", "failed"] = "blocked"
     reason: str = Field(min_length=1, max_length=300)
@@ -333,17 +352,23 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "truncated": payload.truncated,
         "history_start_reached": payload.history_start_reached,
         "oldest_boundary": payload.oldest_boundary,
+        "oldest_boundary_evidence": payload.oldest_boundary_evidence,
         "messages_total": payload.messages_total or len(ordered),
         "unknown_role_count": payload.unknown_role_count,
         "scroll_steps": payload.scroll_steps,
         "top_load_steps": payload.top_load_steps,
         "top_load_limit_reached": payload.top_load_limit_reached,
+        "sequence_order_conflict": payload.sequence_order_conflict,
         "history_completeness": (
             "oldest_boundary_confirmed"
             if payload.oldest_boundary == "confirmed"
+            and payload.oldest_boundary_evidence
+            in PROVIDER_OLDEST_BOUNDARY_EVIDENCE.get(payload.provider, set())
             and payload.history_start_reached
             and not payload.truncated
             and payload.unknown_role_count == 0
+            and not payload.sequence_order_conflict
+            and payload.messages_total == len(ordered)
             else "partial_or_unknown"
         ),
         # Hash integrity is distinct from proof that every historical message was rendered.
@@ -544,13 +569,15 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "provider": payload.provider,
         "source_id": payload.source_id,
         "message_count": len(ordered),
-        "messages_total": len(ordered),
+        "messages_total": payload.messages_total or len(ordered),
         "unknown_role_count": sum(1 for item in ordered if item.role == "unknown"),
         "scroll_steps": payload.scroll_steps,
         "top_load_steps": payload.top_load_steps,
         "top_load_limit_reached": payload.top_load_limit_reached,
+        "sequence_order_conflict": payload.sequence_order_conflict,
         "history_start_reached": payload.history_start_reached,
         "oldest_boundary": payload.oldest_boundary,
+        "oldest_boundary_evidence": payload.oldest_boundary_evidence,
         "history_completeness": record["history_completeness"],
         "sha256": digest,
         "archive_path": str(destination),
@@ -564,7 +591,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
 
 
 @router.post("/retry")
-def retry_browser_conversation(provider: Literal["chatgpt", "gemini", "grok"], source_id: str):
+def retry_browser_conversation(provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"], source_id: str):
     try:
         _ledger().request_retry(provider, source_id, "operator_or_extension_retry")
     except (ValueError, RecoveryLedgerError) as exc:
