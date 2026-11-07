@@ -682,8 +682,8 @@ def test_windows_create_rejects_backup_root_on_another_volume(tmp_path, monkeypa
     original_ensure = backend.ensure_directory
     backup_handles = []
 
-    def capture_backup_root(directory):
-        handle = original_ensure(directory)
+    def capture_backup_root(directory, **kwargs):
+        handle = original_ensure(directory, **kwargs)
         backup_handles.append(handle)
         return handle
 
