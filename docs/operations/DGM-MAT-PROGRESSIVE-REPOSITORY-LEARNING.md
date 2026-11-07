@@ -20,7 +20,7 @@ Additional roots can be supplied through `DGM_REPO_SCAN_ROOTS`, separated by sem
 
 ## Repository tree artifacts
 
-For every non-protected repository, the worker writes a UTF-8 `.tree.txt` sidecar under `storage/runtime/cognition/repository_learning/trees` by default, or the external directory configured with `DGM_REPOSITORY_TREE_DIR`. Production should use an external directory so generated trees do not dirty the DGM-MAT source checkout. The filename is based on the repository name plus a stable path hash, so same-named repositories do not overwrite one another.
+For every non-protected repository, the worker writes a UTF-8 `.tree.txt` sidecar under `Vault/runtime/cognition/repository_learning/trees` by default, or the external directory configured with `DGM_REPOSITORY_TREE_DIR`. Production should use an external directory so generated trees do not dirty the DGM-MAT source checkout. The filename is based on the repository name plus a stable path hash, so same-named repositories do not overwrite one another.
 
 - The tree contains paths only; it never reads file contents.
 - With the recommended external `DGM_REPOSITORY_TREE_DIR`, tree generation does not dirty the DGM-MAT source checkout or any inventoried project.

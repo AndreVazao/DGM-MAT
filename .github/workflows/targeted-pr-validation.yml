@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "core/**"
+      - "scripts/sync_dgm_vault.py"
       - "shared/**"
       - "cockpit/**"
       - "tests/**"
@@ -78,6 +79,8 @@ jobs:
           tests = set()
           def any_changed(*paths):
               return any(path in changed for path in paths)
+          if any_changed("core/vault/catalog.py", "core/vault/__init__.py", "scripts/sync_dgm_vault.py", "tests/vault/test_catalog.py"):
+              tests.add("tests/vault/test_catalog.py")
           if any_changed("core/runtime/safe_action_queue.py", "tests/runtime/test_safe_action_queue.py"):
               tests.add("tests/runtime/test_safe_action_queue.py")
           if any_changed("core/autonomy/mission_engine.py", "core/execution/approval_manager.py",

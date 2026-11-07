@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import json
-import os
 import threading
 import uuid
 from pathlib import Path
 from typing import Any
 
 from .models import ConversationMessage, ConversationThread, utc_now
+from core.storage.storage_manager import storage_manager
 
 
 class ConversationStore:
@@ -16,8 +16,7 @@ class ConversationStore:
 
     def __init__(self, path: str | Path | None = None) -> None:
         if path is None:
-            base = Path(os.getenv("DGM_STORAGE_PATH", "C:/ProgramasGodMode/DGM-MAT/storage/runtime"))
-            path = base / "sessions" / "mobile_conversations.json"
+            path = storage_manager.get_path("sessions", "mobile_conversations.json")
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
