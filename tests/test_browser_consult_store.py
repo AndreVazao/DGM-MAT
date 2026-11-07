@@ -54,6 +54,7 @@ def test_enqueue_claim_complete_and_cooldown(monkeypatch, tmp_path):
     assert "FREE-TIER" in chat["prompt"]
     completed = store.finish(
         chat["consultation_id"],
+        claim_token=chat["claim_token"],
         response_text="The architecture is sound. Verify it with an end-to-end fixture.",
     )
     assert completed["status"] == "COMPLETED"
@@ -79,7 +80,7 @@ def test_rate_limit_and_login_are_blocked_with_no_automatic_retry(monkeypatch, t
     assert store.claim_next("grok") is None
     store.approve(queued["consultation_ids"][0], operator="test-operator")
     item = store.claim_next("grok")
-    blocked = store.block(item["consultation_id"], reason="rate_limited")
+    blocked = store.block(item["consultation_id"], claim_token=item["claim_token"], reason="rate_limited")
     assert blocked["status"] == "BLOCKED_RATE_LIMIT"
     assert blocked["automatic_retry"] is False
     assert store.claim_next("grok") is None
@@ -89,11 +90,12 @@ def test_rate_limit_and_login_are_blocked_with_no_automatic_retry(monkeypatch, t
 def test_response_with_secret_is_never_archived(monkeypatch, tmp_path):
     _configure(monkeypatch, "gemini")
     store = BrowserConsultStore(tmp_path / "consult.sqlite3")
-    store.enqueue(task_ref="mission-4", goal="Review the security boundary", providers=["gemini"])
+    queued = store.enqueue(task_ref="mission-4", goal="Review the security boundary", providers=["gemini"])
     store.approve(queued["consultation_ids"][0], operator="test-operator")
     item = store.claim_next("gemini")
     result = store.finish(
         item["consultation_id"],
+        claim_token=item["claim_token"],
         response_text="The API key is sk-abcdefghijklmnopqrstuvwxyz123456",
     )
     assert result["status"] == "BLOCKED_SECRET_CONTENT"
@@ -105,7 +107,7 @@ def test_restart_marks_inflight_consultation_blocked_and_never_replays(monkeypat
     _configure(monkeypatch, "chatgpt")
     path = tmp_path / "consult.sqlite3"
     store = BrowserConsultStore(path)
-    store.enqueue(task_ref="mission-5", goal="Review the parser", providers=["chatgpt"])
+    queued = store.enqueue(task_ref="mission-5", goal="Review the parser", providers=["chatgpt"])
     store.approve(queued["consultation_ids"][0], operator="test-operator")
     item = store.claim_next("chatgpt")
     reopened = BrowserConsultStore(path)
