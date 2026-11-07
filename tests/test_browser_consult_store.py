@@ -45,7 +45,7 @@ def test_enqueue_claim_complete_and_cooldown(monkeypatch, tmp_path):
         providers=["chatgpt", "gemini", "grok"],
     )
     assert queued["status"] == "PENDING_APPROVAL"
-    assert queued["provider_count"] == 2
+    assert queued["provider_count"] == 3
     assert store.claim_next("chatgpt") is None
     assert store.approve(queued["consultation_ids"][0], operator="test-operator") is True
     chat = store.claim_next("chatgpt")
