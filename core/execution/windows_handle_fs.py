@@ -568,7 +568,7 @@ class WindowsDirectoryHandleBackend:
         if info.FileAttributes & self.FILE_ATTRIBUTE_REPARSE_POINT:
             raise WindowsHandleError("Reparse-point handles are denied.")
 
-    def open_root(self, root_path: str | Path, *, read_control: bool = False) -> Any:
+    def open_root(self, root_path: str | Path, *, read_control: bool = True) -> Any:
         raw_path = Path(root_path).expanduser()
         if ".." in raw_path.parts:
             raise WindowsHandleError("Parent traversal is denied in the repository root path.")
@@ -607,7 +607,7 @@ class WindowsDirectoryHandleBackend:
             self.close(current)
             raise
 
-    def ensure_directory(self, directory_path: str | Path, *, read_control: bool = False) -> Any:
+    def ensure_directory(self, directory_path: str | Path, *, read_control: bool = True) -> Any:
         """Create missing local directory components relative to pinned handles."""
         raw_path = Path(directory_path).expanduser()
         if ".." in raw_path.parts:
@@ -655,7 +655,7 @@ class WindowsDirectoryHandleBackend:
             self.close(current)
             raise
 
-    def open_child_directory(self, parent_handle: Any, name: str, *, read_control: bool = False) -> Any:
+    def open_child_directory(self, parent_handle: Any, name: str, *, read_control: bool = True) -> Any:
         name = self._validate_basename(name)
         access = (
             self.FILE_LIST_DIRECTORY
@@ -733,7 +733,7 @@ class WindowsDirectoryHandleBackend:
             share_mode=self.FILE_SHARE_READ if exclusive else None,
         )
 
-    def create_directory(self, parent_handle: Any, name: str, *, read_control: bool = False) -> Any:
+    def create_directory(self, parent_handle: Any, name: str, *, read_control: bool = True) -> Any:
         name = self._validate_basename(name)
         access = (
             self.FILE_LIST_DIRECTORY
