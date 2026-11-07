@@ -622,3 +622,14 @@ def test_short_continuation_after_terminal_mission_does_not_restart_it(tmp_path,
     assert second["mission_id"] is None
     assert "mission_1234abcd" in second["message"]
     create_mission.assert_called_once()
+
+
+def test_default_mobile_store_uses_persistent_runtime_sessions_path(tmp_path, monkeypatch):
+    expected = tmp_path / "runtime" / "sessions" / "mobile_conversations.json"
+    monkeypatch.setattr(
+        "core.mobile_runtime.store.storage_manager.get_path",
+        lambda domain, filename=None: expected,
+    )
+    store = ConversationStore()
+    assert store.path == expected
+    assert expected.parent.is_dir()
