@@ -22,7 +22,7 @@ cognition/action-queue loops to be running.
   Python/Uvicorn API process. If identity cannot be verified, it refuses to kill it.
 
 The manager records process metadata atomically in
-`storage/runtime/backend_service.json`. It does not store credentials.
+`Vault/runtime/backend_service.json`. It does not store credentials.
 
 ## Safety boundaries
 
