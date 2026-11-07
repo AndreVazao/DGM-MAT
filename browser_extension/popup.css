@@ -16,6 +16,4 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 label.toggle { display: flex; align-items: flex-start; gap: 8px; font-weight: 500; }
 label.toggle input { width: auto; margin: 2px 0 0; flex: 0 0 auto; }
 
-textarea { box-sizing: border-box; width: 100%; resize: vertical; border: 1px solid #8888; border-radius: 8px; padding: 10px; font: inherit; background: transparent; }
-
 #browser-operator-checkbox { width: auto; margin: 2px 0 0; flex: 0 0 auto; }
