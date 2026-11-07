@@ -60,3 +60,13 @@ On the operator PC:
 - Independent QA/review must be a separate agent/role from the authoring CLI.
 
 The probe is a discovery prerequisite, not permission to execute code.
+
+## Unified operator readiness endpoint
+
+The existing operator-only `GET /governance/agents/readiness` endpoint now reports both lanes without conflating them:
+- `fcc_inference_ready` / `execution_scope=fcc_inference_only` describe only the verified loopback FCC inference route and exact allowlisted free NVIDIA NIM endpoint.
+- `local_coding_agents.codex_cli` reports Codex executable/version presence only.
+- `local_coding_agents.claude_code_cli` reports Claude Code authentication status through its fixed auth-status command.
+- `local_coding_agents.execution_ready` and `local_coding_agents_execution_ready` remain false until host-validated worktree adapters and approvals exist.
+
+No model request is made by the readiness endpoint. A positive FCC inference status is not permission to execute a Codex/Claude coding task.
