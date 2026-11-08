@@ -64,10 +64,11 @@ Só usar `adb reverse` quando o telemóvel está ligado por USB ao PC. Para liga
 Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 http://127.0.0.1:8181/health
 ```
 3. Se responder HTTP 200, não iniciar outra instância nem instalar sobre a execução ativa.
-4. Confirmar que o cockpit está montado em:
+4. Confirmar que o checkout do frontend existe em `C:\\ProgramasGodMode\\DGM-Cockpit-Frontend`. O backend procura por defeito o repositório irmão `DGM-Cockpit-Frontend` nesse layout. Se o checkout estiver noutro local, definir `DGM_PC_COCKPIT_PATH` para o caminho absoluto antes de iniciar o backend; não apontar `DGM_MOBILE_UI_PATH` para o cockpit PC.
+5. Confirmar que o cockpit está montado em:
    - `http://127.0.0.1:8181/cockpit/`
    - `http://localhost:8181/cockpit/`
-5. Confirmar que existe o bootstrap local em `%LOCALAPPDATA%\DGM-MAT\security\bootstrap.token`. Não copiar o conteúdo para logs, mensagens ou screenshots.
+6. Confirmar que existe o bootstrap local em `%LOCALAPPDATA%\DGM-MAT\security\bootstrap.token`. Não copiar o conteúdo para logs, mensagens ou screenshots.
 
 ## 3. Ligação do cockpit PC
 
