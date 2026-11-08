@@ -27,7 +27,7 @@ Usar exclusivamente o artefacto da execução GitHub Actions:
 - Tamanho: 111,239,092 bytes
 - SHA-256 do artefacto GitHub: `8b84cc0a61e36f30d370ca18c285effc7d89dad24cc40293d667003b63b2ca7b`
 - Commit incluído: `a83f3a4148ad7226e42240734fcfba13d844b16b`
-- Expiração indicada pelo GitHub: 2027-02-05 23:14 UTC.
+- Expiração indicada pelo GitHub: 2027-02-06 11:22 UTC.
 
 No GitHub, abrir a execução acima, descer até **Artifacts** e descarregar exatamente o artefacto indicado. Não usar o botão genérico **Source code** nem um ZIP de uma branch.
 
