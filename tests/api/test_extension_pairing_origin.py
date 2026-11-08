@@ -114,3 +114,14 @@ def test_remote_pairing_rejects_unrecognized_client_identity_without_consuming_c
 
     assert exc.value.status_code == 400
     assert local_auth_api._pairing_digest is not None
+
+
+def test_operator_scope_remains_a_superset_of_mobile_routes_but_mobile_is_not_operator():
+    from core.api.auth_middleware import _has_required_scope
+
+    assert _has_required_scope({"operator"}, "mobile-read")
+    assert _has_required_scope({"operator"}, "mobile-chat")
+    assert _has_required_scope({"operator"}, "mobile-maintenance")
+    assert _has_required_scope({"mobile-chat"}, "mobile-chat")
+    assert not _has_required_scope({"mobile-read"}, "operator")
+    assert not _has_required_scope({"mobile-chat"}, "mobile-maintenance")
