@@ -599,11 +599,39 @@
 
   let freshReviewState = null;
 
+  function freshReviewPrivacyMode(provider) {
+    const bodyText = String(document.body?.innerText || "").toLowerCase();
+    const controls = [...document.querySelectorAll("button, [role='button'], [aria-label], [title]")];
+    const labels = controls.map(node => [
+      node.innerText,
+      node.getAttribute("aria-label"),
+      node.getAttribute("title")
+    ].filter(Boolean).join(" ")).join(" ").toLowerCase();
+    const visibleUi = bodyText + " " + labels;
+    if (provider === "chatgpt" &&
+        /temporary(?:\\s+chat)?/.test(visibleUi) &&
+        /unpersonalized|without personalization|sem personaliza/.test(visibleUi)) {
+      return "chatgpt_temporary_unpersonalized";
+    }
+    if (provider === "gemini" && /temporary\\s+chat/.test(visibleUi)) {
+      return "gemini_temporary_chat";
+    }
+    // Grok Private Chat is not enough by itself: its separate X-personalization
+    // setting must also be confirmed off. DeepSeek/Qwen have no verified
+    // provider UI temporary-mode contract in this adapter.
+    return "";
+  }
+
   function freshReviewPreflight() {
     const provider = providerForUrl(location.href);
     if (!provider) return { ok: false, fresh_review_ready: false, reason: "provider_not_allowed" };
     const blocked = detectBlockedPage();
     if (blocked) return { ok: false, fresh_review_ready: false, provider, reason: blocked };
+    const privacyMode = freshReviewPrivacyMode(provider);
+    if (!privacyMode) {
+      freshReviewState = null;
+      return { ok: false, fresh_review_ready: false, provider, reason: "provider_privacy_mode_not_verified" };
+    }
     if (sourceIdForUrl(location.href, provider)) {
       freshReviewState = null;
       return { ok: false, fresh_review_ready: false, provider, reason: "existing_conversation_detected" };
@@ -621,7 +649,7 @@
       return { ok: false, fresh_review_ready: false, provider, reason: "visible_composer_not_found" };
     }
     const nonce = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 14);
-    freshReviewState = { provider, url: location.href, nonce };
+    freshReviewState = { provider, url: location.href, nonce, privacyMode };
     return {
       ok: true,
       fresh_review_ready: true,
@@ -629,7 +657,9 @@
       preflight_nonce: nonce,
       initial_source_id: null,
       initial_visible_message_count: 0,
-      evidence_kind: "visible_blank_provider_page",
+      evidence_kind: "visible_blank_temporary_provider_page",
+      privacy_mode: privacyMode,
+      privacy_mode_verified: true,
       independence_attested: false
     };
   }
@@ -643,6 +673,9 @@
     }
     if (provider !== armed.provider || request.provider !== armed.provider || location.href !== armed.url) {
       throw new Error("Provider tab changed after fresh-review preflight; nothing was sent.");
+    }
+    if (freshReviewPrivacyMode(provider) !== armed.privacyMode) {
+      throw new Error("Provider privacy mode changed or is no longer verifiable; nothing was sent.");
     }
     if (sourceIdForUrl(location.href, provider)) {
       throw new Error("An existing conversation appeared after preflight; nothing was sent.");
@@ -724,6 +757,8 @@
             status: "completed",
             assistant_text: candidate.slice(0, 16000),
             fresh_context_observed: true,
+            privacy_mode: armed.privacyMode,
+            privacy_mode_verified: true,
             initial_source_id: null,
             initial_visible_message_count: 0,
             verification: "blank_page_then_new_conversation_id_and_stable_response",
