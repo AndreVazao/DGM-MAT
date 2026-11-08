@@ -20,6 +20,9 @@ class SecurityScope(str, Enum):
     PROVIDER_OPERATOR = "provider-operator"
     LOCAL_DOCUMENTATION = "local-documentation"
     LOCAL_STATIC_CLIENT = "local-static-client"
+    MOBILE_READ = "mobile-read"
+    MOBILE_CHAT = "mobile-chat"
+    MOBILE_MAINTENANCE = "mobile-maintenance"
 
 @dataclass(frozen=True)
 class RouteClassification:
@@ -53,8 +56,8 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("GET",), "/browser-operator/tasks", SecurityScope.OPERATOR, "Lists bounded browser mission task status and audit evidence."),
     RouteClassification(("GET",), "/recovery/sources", SecurityScope.OPERATOR, "Read-only paginated recovery source inventory."),
     RouteClassification(("GET",), "/recovery/local-ai-sources", SecurityScope.OPERATOR, "Read-only local AI application and browser-history metadata; no transcript or credential access."),
-    RouteClassification(("GET",), "/recovery/search", SecurityScope.OPERATOR, "Bounded search over imported recovery metadata and indexed ChatGPT message text."),
-    RouteClassification(("GET",), "/recovery/sources/{provider}/{source_id}/messages", SecurityScope.OPERATOR, "Paginated read of imported messages after archive integrity verification."),
+    RouteClassification(("GET",), "/recovery/search", SecurityScope.MOBILE_READ, "Bounded search over imported recovery metadata and indexed ChatGPT message text."),
+    RouteClassification(("GET",), "/recovery/sources/{provider}/{source_id}/messages", SecurityScope.MOBILE_READ, "Paginated read of imported messages after archive integrity verification."),
     RouteClassification(("POST",), "/recovery/import/chatgpt", SecurityScope.OPERATOR, "Imports a user-supplied ChatGPT export into the local recovery archive; bounded upload, no provider access or deletion."),
     RouteClassification(("GET",), "/recovery/inbox", SecurityScope.LOCAL_CLIENT, "Lists only local conversation-export filenames and sizes; does not read provider content."),
     RouteClassification(("POST",), "/recovery/import/inbox", SecurityScope.OPERATOR, "Imports bounded local conversation exports; never accesses provider accounts or deletes source files."),
@@ -82,7 +85,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("GET",), "/runtime/auto-help", SecurityScope.LOCAL_CLIENT, "Durable free-only external-help status and bounded request history."),
     RouteClassification(("POST",), "/runtime/auto-help/start", SecurityScope.OPERATOR, "Starts the bounded free-only external help worker."),
     RouteClassification(("POST",), "/runtime/auto-help/stop", SecurityScope.OPERATOR, "Pauses external help without retrying in-flight requests."),
-    RouteClassification(("GET",), "/runtime/workspace/scan", SecurityScope.OPERATOR, "Workspace scan."),
+    RouteClassification(("GET",), "/runtime/workspace/scan", SecurityScope.MOBILE_READ, "Read-only workspace scan for paired mobile cockpit."),
     RouteClassification(("GET",), "/runtime/obsidian/index", SecurityScope.OPERATOR, "Indexes local vault."),
     RouteClassification(("POST",), "/runtime/missions", SecurityScope.OPERATOR, "Creates a mission."),
     RouteClassification(("POST",), "/runtime/missions/{mission_id}/browser-task", SecurityScope.OPERATOR, "Queues one visible-UI task for an existing mission; approval is required by default."),
@@ -91,21 +94,22 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("GET",), "/runtime/missions/{mission_id}", SecurityScope.LOCAL_CLIENT, "One durable mission checkpoint and result; read-only."),
     RouteClassification(("GET",), "/runtime/office/telemetry", SecurityScope.LOCAL_CLIENT, "Content-minimized read-only mission/queue telemetry for the virtual office."),
     RouteClassification(("POST",), "/runtime/approvals/{request_id}", SecurityScope.OPERATOR, "Mission approval decision."),
-    RouteClassification(("GET",), "/runtime/approvals", SecurityScope.OPERATOR, "Pending approvals."),
-    RouteClassification(("GET",), "/runtime/queue", SecurityScope.OPERATOR, "Action queue details."),
+    RouteClassification(("GET",), "/runtime/approvals", SecurityScope.MOBILE_READ, "Read-only pending approval inventory for paired mobile cockpit."),
+    RouteClassification(("GET",), "/runtime/queue", SecurityScope.MOBILE_READ, "Read-only action queue view for paired mobile cockpit."),
     RouteClassification(("POST",), "/runtime/queue/actions/{action_id}/approve", SecurityScope.OPERATOR, "Explicit operator approval of one durable queue action."),
     RouteClassification(("POST",), "/runtime/queue/actions/{action_id}/reject", SecurityScope.OPERATOR, "Explicit operator rejection of one durable queue action."),
     RouteClassification(("GET",), "/mobile/status", SecurityScope.LOCAL_CLIENT, "Mobile service status."),
-    RouteClassification(("GET",), "/mobile/usb-recovery/diagnose", SecurityScope.OPERATOR, "Read-only USB/ADB device diagnostics."),
-    RouteClassification(("GET",), "/mobile/usb-recovery/state", SecurityScope.OPERATOR, "Automatic USB/ADB recovery monitor state."),
-    RouteClassification(("POST",), "/mobile/usb-recovery/repair", SecurityScope.OPERATOR, "Allowlisted USB/ADB recovery; APK reinstall requires explicit confirmation."),
+    RouteClassification(("GET",), "/mobile/usb-recovery/diagnose", SecurityScope.MOBILE_MAINTENANCE, "Read-only USB/ADB diagnostics for paired mobile maintenance client."),
+    RouteClassification(("GET",), "/mobile/usb-recovery/state", SecurityScope.MOBILE_MAINTENANCE, "Automatic USB/ADB recovery monitor state for paired mobile maintenance client."),
+    RouteClassification(("POST",), "/mobile/usb-recovery/repair", SecurityScope.MOBILE_MAINTENANCE, "Allowlisted USB/ADB recovery; APK reinstall requires explicit confirmation."),
     RouteClassification(("GET",), "/mobile/threads", SecurityScope.LOCAL_CLIENT, "Conversation list."),
-    RouteClassification(("POST",), "/mobile/threads", SecurityScope.OPERATOR, "Creates a conversation."),
+    RouteClassification(("GET",), "/mobile/threads/search", SecurityScope.MOBILE_READ, "Bounded search across the paired mobile conversation history."),
+    RouteClassification(("POST",), "/mobile/threads", SecurityScope.MOBILE_CHAT, "Creates a conversation from the paired mobile chat client."),
     RouteClassification(("GET",), "/mobile/threads/{thread_id}", SecurityScope.LOCAL_CLIENT, "Conversation content/history."),
-    RouteClassification(("POST",), "/mobile/threads/{thread_id}/messages", SecurityScope.OPERATOR, "Writes a message; may trigger work."),
-    RouteClassification(("POST",), "/mobile/threads/{thread_id}/rename", SecurityScope.OPERATOR, "Renames a conversation."),
+    RouteClassification(("POST",), "/mobile/threads/{thread_id}/messages", SecurityScope.MOBILE_CHAT, "Writes a message; mission governance still applies."),
+    RouteClassification(("POST",), "/mobile/threads/{thread_id}/rename", SecurityScope.MOBILE_CHAT, "Renames a conversation."),
     RouteClassification(("GET",), "/mobile/capabilities", SecurityScope.LOCAL_CLIENT, "Capability inventory."),
-    RouteClassification(("POST",), "/mobile/capability-scout", SecurityScope.OPERATOR, "Capability discovery action."),
+    RouteClassification(("POST",), "/mobile/capability-scout", SecurityScope.MOBILE_CHAT, "Requests bounded capability discovery; mission governance still applies."),
     RouteClassification(("GET",), "/governance/audit/workspace", SecurityScope.OPERATOR, "Workspace audit."),
     RouteClassification(("GET",), "/governance/audit/self", SecurityScope.OPERATOR, "Self audit."),
     RouteClassification(("GET",), "/governance/repair/self/plan", SecurityScope.OPERATOR, "Self-repair plan."),
