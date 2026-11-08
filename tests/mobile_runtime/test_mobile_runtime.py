@@ -639,14 +639,14 @@ def test_conversation_search_returns_bounded_snippets_without_full_transcripts(t
     store = ConversationStore(tmp_path / "conversations.json")
     first = store.create_thread("Projeto DGM-MAT", project="DGM-MAT", repository="AndreVazao/DGM-MAT")
     second = store.create_thread("Outra conversa")
-    store.append_message(first["id"], "user", "Precisamos reparar a comunicação do cérebro com o cockpit.")
-    store.append_message(first["id"], "assistant", "A ponte deve permanecer autenticada.")
-    store.append_message(second["id"], "user", "A comunicação com o cérebro deve ser validada.")
+    store.append_message(first.id, "user", "Precisamos reparar a comunicação do cérebro com o cockpit.")
+    store.append_message(first.id, "assistant", "A ponte deve permanecer autenticada.")
+    store.append_message(second.id, "user", "A comunicação com o cérebro deve ser validada.")
 
     results = store.search_threads("COMUNICAÇÃO", limit=1)
 
     assert len(results) == 1
-    assert results[0]["thread_id"] in {first["id"], second["id"]}
+    assert results[0]["thread_id"] in {first.id, second.id}
     assert results[0]["match_type"] in {"title", "context", "message"}
     assert "snippet" in results[0]
     assert "messages" not in results[0]
@@ -656,7 +656,7 @@ def test_conversation_search_returns_bounded_snippets_without_full_transcripts(t
 def test_conversation_search_rejects_short_queries_and_bounds_result_limit(tmp_path: Path):
     store = ConversationStore(tmp_path / "conversations.json")
     thread = store.create_thread("Histórico de conversas")
-    store.append_message(thread["id"], "user", "Pesquisa de conversas anteriores.")
+    store.append_message(thread.id, "user", "Pesquisa de conversas anteriores.")
 
     assert store.search_threads(" ") == []
     assert len(store.search_threads("conversas", limit=500)) == 1
