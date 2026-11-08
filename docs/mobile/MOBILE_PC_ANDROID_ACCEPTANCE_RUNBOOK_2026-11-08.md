@@ -19,11 +19,11 @@
 ### Backend Windows
 
 - Repositório: `AndreVazao/DGM-MAT`.
-- Execução Windows Build #325: https://github.com/AndreVazao/DGM-MAT/actions/runs/42510552509
-- Artefacto: `DGM-MAT-Windows-3.12-dca47d0`.
-- Download: https://github.com/AndreVazao/DGM-MAT/actions/runs/42510552509/artifacts/13629805705
-- SHA-256 do ZIP exterior GitHub: `e1db00d4e4e71b7733867be5a28d861d0c133670b0807cef62d2278f2e16a7c3`.
-- Tamanho: 111,221,551 bytes. Expira: 2027-02-06 18:32:55 UTC.
+- Execução Windows Build #329: https://github.com/AndreVazao/DGM-MAT/actions/runs/42511688188
+- Artefacto: `DGM-MAT-Windows-3.12-aeb3a5a`.
+- Download: https://github.com/AndreVazao/DGM-MAT/actions/runs/42511688188/artifacts/13629467310
+- SHA-256 do ZIP exterior GitHub: `e128bb25cb51d5b2e629477f65f6c3d9b571b09bffd826a4009fa5a1e83129ba`.
+- Tamanho: 111,221,888 bytes. Expira: 2027-02-06 18:46:50 UTC.
 - O SHA-256 exterior não é o hash do EXE. Depois de extrair o artefacto exterior, validar o ZIP de distribuição `DGM-MAT-Windows-3.12-dca47d0.zip` pelo respetivo `.sha256`, e validar `package\DGM-MAT.exe` pelo sidecar `publish\DGM-MAT.exe.sha256`.
 
 Comandos de verificação (executar apenas na pasta extraída):
