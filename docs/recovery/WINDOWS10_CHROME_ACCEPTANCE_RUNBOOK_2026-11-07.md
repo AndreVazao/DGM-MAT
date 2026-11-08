@@ -22,26 +22,26 @@
 Usar exclusivamente o artefacto da execução GitHub Actions:
 
 - Repositório: `AndreVazao/DGM-MAT`
-- Execução: https://github.com/AndreVazao/DGM-MAT/actions/runs/42424345706
-- Nome do artefacto: `DGM-MAT-Windows-3.12-145f01e`
+- Execução: https://github.com/AndreVazao/DGM-MAT/actions/runs/42475479161
+- Nome do artefacto: `DGM-MAT-Windows-3.12-5f31bf7`
 - Tamanho: 111,239,092 bytes
-- SHA-256 do artefacto GitHub: `5a66ca634fd5e71a0b825e79a78eb18b1845a0849ad0b9bfd981e74448508ef8`
+- SHA-256 do artefacto GitHub: `8b84cc0a61e36f30d370ca18c285effc7d89dad24cc40293d667003b63b2ca7b`
 - Commit incluído: `a83f3a4148ad7226e42240734fcfba13d844b16b`
 - Expiração indicada pelo GitHub: 2027-02-05 23:14 UTC.
 
 No GitHub, abrir a execução acima, descer até **Artifacts** e descarregar exatamente o artefacto indicado. Não usar o botão genérico **Source code** nem um ZIP de uma branch.
 
-O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-145f01e.zip`, o respetivo ficheiro `.sha256` e a pasta `publish\` com o sidecar `DGM-MAT.exe.sha256`. Extrair esse ZIP de distribuição para uma subpasta `package\`. O executável e a pasta `scripts\` ficam na raiz de `package\`; não existe uma segunda pasta `publish\` dentro dela.
+O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-5f31bf7.zip`, o respetivo ficheiro `.sha256` e a pasta `publish\` com o sidecar `DGM-MAT.exe.sha256`. Extrair esse ZIP de distribuição para uma subpasta `package\`. O executável e a pasta `scripts\` ficam na raiz de `package\`; não existe uma segunda pasta `publish\` dentro dela.
 
-Verificar o SHA-256 do arquivo exterior descarregado contra o digest publicado pelo GitHub. Depois verificar o ZIP de distribuição contra o conteúdo de `DGM-MAT-Windows-3.12-145f01e.zip.sha256`. Não confundir estes dois níveis de arquivo.
+Verificar o SHA-256 do arquivo exterior descarregado contra o digest publicado pelo GitHub. Depois verificar o ZIP de distribuição contra o conteúdo de `DGM-MAT-Windows-3.12-5f31bf7.zip.sha256`. Não confundir estes dois níveis de arquivo.
 
 Depois de extrair o ZIP de distribuição para `package\`, verificar `package\DGM-MAT.exe` contra o sidecar `publish\DGM-MAT.exe.sha256` que veio no arquivo exterior. **O digest do artefacto GitHub não é o digest do executável.** O instalador seguro exige o digest do executável, fornecido explicitamente.
 
 Comandos de verificação (ajustar apenas os caminhos para a pasta onde o download foi extraído):
 
 ```powershell
-Get-FileHash -Algorithm SHA256 -LiteralPath ".\DGM-MAT-Windows-3.12-145f01e.zip"
-Get-Content -LiteralPath ".\DGM-MAT-Windows-3.12-145f01e.zip.sha256"
+Get-FileHash -Algorithm SHA256 -LiteralPath ".\DGM-MAT-Windows-3.12-5f31bf7.zip"
+Get-Content -LiteralPath ".\DGM-MAT-Windows-3.12-5f31bf7.zip.sha256"
 Get-Content -LiteralPath ".\publish\DGM-MAT.exe.sha256"
 Get-FileHash -Algorithm SHA256 -LiteralPath ".\package\DGM-MAT.exe"
 ```
