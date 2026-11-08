@@ -98,6 +98,8 @@ def test_remote_pairing_rejects_unrecognized_client_identity_without_consuming_c
     from fastapi import Response, HTTPException
 
     monkeypatch.setattr(local_auth_api, "_attempts", {})
+    monkeypatch.setattr(local_auth_api, "_pairing_digest", None)
+    monkeypatch.setattr(local_auth_api, "_pairing_expires_at", 0.0)
     request = _request("http://127.0.0.1:8181")
     issued = local_auth_api.create_pairing_code(request, Response())
 
