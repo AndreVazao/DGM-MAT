@@ -315,3 +315,67 @@ def test_operator_can_consult_hub_agents_and_request_is_audited(client, monkeypa
     assert [event["event"] for event in audit] == ["command.requested", "command.completed"]
     assert all(event["session_id"] for event in audit)
     assert audit[0]["command_id"] == "dgm_hub.consult.free_only:llm7"
+
+
+def test_mobile_pairing_and_chat_history_work_without_general_operator_authority(client, tmp_path, monkeypatch):
+    from core.api import local_auth_api, mobile_bridge
+    from core.mobile_runtime.store import ConversationStore
+
+    monkeypatch.setenv("DGM_MOBILE_LOCAL_LLM", "off")
+    monkeypatch.setenv("DGM_MOBILE_GOVERNED_CHAT_ENABLED", "0")
+    monkeypatch.setattr(local_auth_api, "_attempts", {})
+    monkeypatch.setattr(
+        mobile_bridge.service,
+        "store",
+        ConversationStore(tmp_path / "mobile-conversations.json"),
+    )
+    origin = "http://127.0.0.1:8181"
+    headers = {"Origin": origin}
+
+    pairing_code = client.get("/auth/pairing-code", headers=headers)
+    assert pairing_code.status_code == 200
+    code = pairing_code.json()["pairing_code"]
+
+    paired = client.post(
+        "/auth/pair",
+        headers=headers,
+        json={"code": code, "client_id": "dgm-mat-mobile-android"},
+    )
+    assert paired.status_code == 201
+    token = paired.json()["access_token"]
+    assert set(paired.json()["scopes"]) == {
+        "local-client", "mobile-read", "mobile-chat", "mobile-maintenance"
+    }
+    mobile_headers = {"Authorization": f"Bearer {token}"}
+
+    created = client.post(
+        "/mobile/threads",
+        headers=mobile_headers,
+        json={"title": "Histórico de integração"},
+    )
+    assert created.status_code == 200
+    thread_id = created.json()["id"]
+
+    posted = client.post(
+        f"/mobile/threads/{thread_id}/messages",
+        headers=mobile_headers,
+        json={"content": "Pesquisar histórico de conversas anteriores"},
+    )
+    assert posted.status_code == 200
+    assert posted.json()["thread"]["id"] == thread_id
+
+    searched = client.get(
+        "/mobile/threads/search",
+        headers=mobile_headers,
+        params={"q": "histórico", "limit": 10},
+    )
+    assert searched.status_code == 200
+    assert searched.json()["results"][0]["thread_id"] == thread_id
+
+    assert client.get("/mobile/threads", headers=mobile_headers).status_code == 200
+    assert client.get("/runtime/truth", headers=mobile_headers).status_code == 403
+    assert client.post(
+        "/runtime/missions",
+        headers=mobile_headers,
+        json={"goal": "must not be authorized"},
+    ).status_code == 403
