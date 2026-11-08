@@ -64,9 +64,9 @@ Latest CI on the reviewed backend head:
 - Focused PR Validation: success — run 42509402563.
 - Chrome Extension Validation: success — run 42509402174.
 - Windows installer digest gate: success.
-- Windows Executable Build #325: **SUCCESS**, run 42510552509, built from reviewed code/test head `1118660af94a9255786691cf6d51d75c22a046fb`.
-- Artefacto Windows atual: `DGM-MAT-Windows-3.12-dca47d0`, 111,221,551 bytes; SHA-256 do ZIP exterior GitHub `e1db00d4e4e71b7733867be5a28d861d0c133670b0807cef62d2278f2e16a7c3`; expira 2027-02-06 18:32:55 UTC.
-- Download: https://github.com/AndreVazao/DGM-MAT/actions/runs/42510552509/artifacts/13629805705.
+- Windows Executable Build #329: **SUCCESS**, run 42511688188, built from reviewed code/test head `5be6f598d4368a660d0b648f4893f748ba86cbad`.
+- Artefacto Windows atual: `DGM-MAT-Windows-3.12-aeb3a5a`, 111,221,888 bytes; SHA-256 do ZIP exterior GitHub `e128bb25cb51d5b2e629477f65f6c3d9b571b09bffd826a4009fa5a1e83129ba`; expira 2027-02-06 18:46:50 UTC.
+- Download: https://github.com/AndreVazao/DGM-MAT/actions/runs/42511688188/artifacts/13629467310.
 - O digest acima é do ZIP exterior; o EXE deve continuar a ser validado pelo sidecar `publish/DGM-MAT.exe.sha256` no artefacto extraído.
 - Snyk private tests: quota exhausted; no clean Snyk result is claimed.
 
@@ -91,6 +91,6 @@ Latest CI on the reviewed backend head:
 - `governed_chat_status()` agora atualiza observações de saúde ausentes/antigas quando `DGM_MOBILE_GOVERNED_CHAT_ENABLED=1` está explicitamente ativo.
 - A verificação é limitada por janela de 30 s para tentativas e 60 s para observação; executa apenas `check_health()`, nunca uma conclusão/chat completion.
 - Com a flag desligada, não inicializa nem consulta providers. Testes verificam ambos os casos.
-- Focused PR Validation #42510552602: SUCCESS.
-- Chrome Extension Validation #42510552584: SUCCESS.
-- Windows Executable Build #42510552509: SUCCESS; artefacto atual documentado acima.
+- Focused PR Validation #42511688055: SUCCESS.
+- Chrome Extension Validation #42511688120: SUCCESS.
+- Windows Executable Build #42511688188: SUCCESS; artefacto atual documentado acima.
