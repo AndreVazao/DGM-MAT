@@ -6,6 +6,7 @@ import json
 import os
 import re
 import threading
+import time
 import unicodedata
 from uuid import uuid4
 import subprocess
@@ -541,10 +542,37 @@ class MobileConversationService:
             initialize_default_providers()
             provider = provider_registry.get_provider(provider_id)
             result["registered"] = provider is not None
-            result["available"] = bool(provider and provider.is_available())
             if provider is None:
                 result["reason"] = "provider_not_registered"
-            elif not result["available"]:
+                return result
+
+            # Provider health is an observed fact, not a constructor default.
+            # Refresh stale/missing observations only after explicit governed-chat opt-in.
+            metrics = getattr(provider, "health_metrics", {})
+            last_check = metrics.get("last_check", 0) if isinstance(metrics, dict) else 0
+            last_attempt = metrics.get("last_check_attempt", 0) if isinstance(metrics, dict) else 0
+            now = time.time()
+            stale_observation = (
+                isinstance(last_check, (int, float))
+                and not isinstance(last_check, bool)
+                and now - float(last_check) > 60
+            )
+            retry_window_elapsed = (
+                isinstance(last_attempt, (int, float))
+                and not isinstance(last_attempt, bool)
+                and now - float(last_attempt) >= 30
+            )
+            if (not provider.is_available() or stale_observation) and retry_window_elapsed:
+                health_check = getattr(provider, "check_health", None)
+                if callable(health_check):
+                    try:
+                        health_check()
+                    except Exception:
+                        # Readiness stays false; the chat request path remains fail-closed.
+                        pass
+
+            result["available"] = bool(provider.is_available())
+            if not result["available"]:
                 result["reason"] = "provider_not_healthy_or_quota_unavailable"
             else:
                 result["reason"] = "ready"
