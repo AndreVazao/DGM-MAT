@@ -5,8 +5,12 @@ from fastapi.testclient import TestClient
 
 from core.api import browser_consult_api
 from core.api.security_policy import SecurityScope, classify_request_path
-from core.api.auth_middleware import _required_scope
-from core.api.local_auth_api import EXTENSION_SESSION_SCOPES
+from core.api.auth_middleware import LocalSessionAuthMiddleware, _required_scope
+from core.api.local_auth_api import (
+    EXTENSION_SESSION_SCOPES,
+    extension_session_manager,
+    session_manager,
+)
 from core.recovery.browser_consult_store import BrowserConsultStore
 
 
@@ -53,6 +57,56 @@ def test_paired_extension_gets_narrow_consult_control_scope_not_general_operator
     assert _required_scope(SecurityScope.BROWSER_CONSULT_CONTROL) == "browser-consult-control"
     assert _required_scope(SecurityScope.BROWSER_CAPTURE) == "browser-capture"
     assert _required_scope(SecurityScope.OPERATOR) == "operator"
+
+
+
+def test_real_paired_extension_session_can_manage_consults_but_not_operator_routes(monkeypatch, tmp_path):
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_ENABLED", "1")
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_FREE_PROVIDERS", "chatgpt")
+    store = BrowserConsultStore(tmp_path / "paired-extension.sqlite3")
+    monkeypatch.setattr(browser_consult_api, "_store", lambda: store)
+    monkeypatch.setattr(browser_consult_api, "_audit", lambda *args, **kwargs: None)
+
+    app = FastAPI()
+    app.include_router(browser_consult_api.router)
+
+    @app.get("/recovery/status")
+    def operator_only_route():
+        return {"ok": True}
+
+    app.add_middleware(
+        LocalSessionAuthMiddleware,
+        routes=app.router.routes,
+        session_manager=session_manager,
+        additional_session_managers=(extension_session_manager,),
+    )
+    token, _principal = extension_session_manager.create_session(
+        subject="dgm-mat-chrome-extension",
+        scopes=set(EXTENSION_SESSION_SCOPES),
+    )
+    headers = {"Authorization": "Bearer " + token}
+    client = TestClient(app)
+
+    status = client.get("/recovery/browser-consult/status", headers=headers)
+    assert status.status_code == 200
+
+    queued = client.post("/recovery/browser-consult/enqueue", headers=headers, json={
+        "task_ref": "manual_extension_scope_test",
+        "goal": "Review the least-privilege scope wiring",
+        "providers": ["chatgpt"],
+        "free_capacity_confirmed": True,
+    })
+    assert queued.status_code == 200
+    consultation_id = queued.json()["consultation_ids"][0]
+
+    approved = client.post(
+        "/recovery/browser-consult/approve/" + consultation_id,
+        headers=headers,
+    )
+    assert approved.status_code == 200
+
+    general_operator = client.get("/recovery/status", headers=headers)
+    assert general_operator.status_code == 403
 
 
 def test_consultation_requires_operator_approval_and_claim_token(monkeypatch, tmp_path):
