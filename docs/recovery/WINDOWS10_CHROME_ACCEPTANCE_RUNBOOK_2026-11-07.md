@@ -1,6 +1,6 @@
 # DGM-MAT — Plano de aceitação Windows 10 + Chrome
 **Data:** 2026-11-07  
-**Aplicável a:** PR #283, head `43e0befc9fbe493d591f92bcb0c985f9c8f83993` e respetivo artefacto Windows.  
+**Aplicável a:** PR #283, head `a83f3a4148ad7226e42240734fcfba13d844b16b` e respetivo artefacto Windows.  
 **Objetivo:** validar instalação, arranque, persistência e consulta manual aprovada sem ativar autonomia ou introduzir risco nos dados existentes.
 
 ## 0. Regras de segurança
@@ -22,12 +22,12 @@
 Usar exclusivamente o artefacto da execução GitHub Actions:
 
 - Repositório: `AndreVazao/DGM-MAT`
-- Execução: https://github.com/AndreVazao/DGM-MAT/actions/runs/42418598505
-- Nome do artefacto: `DGM-MAT-Windows-3.12-2078d11`
-- Tamanho: 111,235,672 bytes
-- SHA-256 do artefacto GitHub: `8edb2d56d6e6886fc2b8a9d09af41620825dd9217c0d273d7f4c0c3ddd6c3edb`
-- Commit incluído: `43e0befc9fbe493d591f92bcb0c985f9c8f83993`
-- Expiração indicada pelo GitHub: 2027-02-05 22:01 UTC.
+- Execução: https://github.com/AndreVazao/DGM-MAT/actions/runs/42424345706
+- Nome do artefacto: `DGM-MAT-Windows-3.12-145f01e`
+- Tamanho: 111,239,092 bytes
+- SHA-256 do artefacto GitHub: `5a66ca634fd5e71a0b825e79a78eb18b1845a0849ad0b9bfd981e74448508ef8`
+- Commit incluído: `a83f3a4148ad7226e42240734fcfba13d844b16b`
+- Expiração indicada pelo GitHub: 2027-02-05 23:14 UTC.
 
 No GitHub, abrir a execução acima, descer até **Artifacts** e descarregar exatamente o artefacto indicado. Não usar o botão genérico **Source code** nem um ZIP de uma branch.
 
@@ -119,7 +119,7 @@ Registar cada resultado como **PASS**, **FAIL** ou **NOT TESTED**, com hora, ver
 O ZIP contém a pasta `browser_extension` e os scripts de instalação.
 
 1. Confirmar que o Chrome usado é o perfil normal do operador e que os cinco fornecedores estão autenticados manualmente, se aplicável.
-2. Executar `scripts\install_browser_extension.bat` a partir da pasta extraída do pacote. O script preserva a extensão anterior em `%LOCALAPPDATA%\DGM-MAT\BrowserExtension.backups\`.
+2. Executar `scripts\install_browser_extension.bat` a partir da pasta exterior onde existe a subpasta `package\\`. O script preserva a extensão anterior em `%LOCALAPPDATA%\DGM-MAT\BrowserExtension.backups\`.
 3. No Chrome, ativar **Developer mode** em `chrome://extensions`.
 4. Escolher **Load unpacked** e selecionar `%LOCALAPPDATA%\DGM-MAT\BrowserExtension`. Se já estiver carregada a partir dessa pasta, usar **Reload**.
 5. Emparelhar apenas com o código de utilização única emitido pelo DGM-MAT local. Não partilhar nem guardar esse código no relatório.
