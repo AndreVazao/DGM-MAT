@@ -31,6 +31,15 @@ Usar exclusivamente o artefacto da execução GitHub Actions:
 - Commit incluído: `4cbf2d9ec03ad4ddd2fa197a06dc8a6e253ad2af`
 - Expiração indicada pelo GitHub: 2027-02-06 16:42:00 UTC.
 
+Artefacto separado da extensão Chrome (Validation #318):
+- Nome: `DGM-MAT-Chrome-Conversation-Recovery`
+- Tamanho: 22,820 bytes
+- SHA-256 do ZIP GitHub: `8d269c841ed888bc8d2bc0d5e3533ba4d7334a666063db5a70b04c8bb0d1c606`
+- Criado: 2026-11-08 16:42:24 UTC; expira: 2026-11-22 16:42:23 UTC.
+- Execução: https://github.com/AndreVazao/DGM-MAT/actions/runs/42501213530
+
+Este ZIP é o pacote separado da extensão. Para o procedimento de instalação integrado descrito abaixo, usar a pasta `browser_extension` incluída no pacote Windows e o respetivo instalador, salvo se for explicitamente necessário validar o pacote isolado.
+
 No GitHub, abrir a execução acima, descer até **Artifacts** e descarregar exatamente o artefacto indicado. Não usar o botão genérico **Source code** nem um ZIP de uma branch.
 
 O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-70a7fb7.zip`, o respetivo ficheiro `.sha256` e a pasta `publish\` com o sidecar `DGM-MAT.exe.sha256`. Extrair esse ZIP de distribuição para uma subpasta `package\`. O executável e a pasta `scripts\` ficam na raiz de `package\`; não existe uma segunda pasta `publish\` dentro dela.
