@@ -67,7 +67,7 @@ Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 http://127.0.0.1:8181/health
 4. Confirmar os dois checkouts irmãos:
    - PC cockpit: `C:\\ProgramasGodMode\\DGM-Cockpit-Frontend`; o backend procura esta pasta por defeito e serve-a em `/cockpit/`.
    - Mobile web/PWA: `C:\\ProgramasGodMode\\DGM-MAT-Mobile\\web`; o backend procura a pasta `DGM-MAT-Mobile\\web` por defeito e serve-a em `/app/`.
-   Se algum checkout estiver noutro local, definir `DGM_PC_COCKPIT_PATH` (pasta raiz do cockpit) e/ou `DGM_MOBILE_UI_PATH` (pasta `web` da app mobile) para caminhos absolutos antes de iniciar o backend. Nunca apontar `DGM_MOBILE_UI_PATH` para o cockpit PC.
+   O backend resolve agora a raiz dos repositórios irmãos tanto em execução Python como no EXE PyInstaller one-file: no EXE instalado, usa a localização real de `sys.executable` (`...\\DGM-MAT\\installed\\DGM-MAT.exe`) em vez do diretório temporário `_MEIPASS`. Testes cobrem os dois modos e os overrides. Se algum checkout estiver noutro local, definir `DGM_PC_COCKPIT_PATH` (pasta raiz do cockpit) e/ou `DGM_MOBILE_UI_PATH` (pasta `web` da app mobile) para caminhos absolutos antes de iniciar o backend. Nunca apontar `DGM_MOBILE_UI_PATH` para o cockpit PC.
 5. Confirmar que o cockpit está montado em:
    - `http://127.0.0.1:8181/cockpit/`
    - `http://localhost:8181/cockpit/`
