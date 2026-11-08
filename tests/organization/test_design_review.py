@@ -48,12 +48,12 @@ def test_packet_builder_creates_bounded_reviewer_specific_inputs():
         tuple(f"reviewer:{index}" for index in range(6)),
     ],
 )
-def test_packet_builder_rejects_non_independent_reviewer_sets(reviewer_ids):
+def test_packet_builder_rejects_invalid_reviewer_sets(reviewer_ids):
     with pytest.raises(ValueError):
         build_reviewer_packets(brief(), reviewer_ids, "review:bad")
 
 
-def test_independence_requires_distinct_runtime_context_ids():
+def test_independence_requires_distinct_contexts_and_runtime_attestation():
     packets = build_reviewer_packets(
         brief(), ("reviewer:security", "reviewer:architecture"), "review:002"
     )
@@ -62,14 +62,20 @@ def test_independence_requires_distinct_runtime_context_ids():
         ReviewerResult("review:002", "reviewer:architecture", "ctx:architecture"),
     )
 
-    status = validate_independent_results(packets, results)
+    unverified = validate_independent_results(packets, results)
+    assert unverified["independent"] is False
+    assert unverified["structurally_valid"] is True
+    assert unverified["reason"] == "runtime_isolation_unattested"
 
-    assert status["independent"] is True
-    assert status["distinct_runtime_contexts"] == 2
-    assert status["runtime_isolation_attestation_required"] is True
+    verified = validate_independent_results(
+        packets, results, runtime_isolation_attested=True
+    )
+    assert verified["independent"] is True
+    assert verified["distinct_runtime_contexts"] == 2
+    assert verified["runtime_isolation_attested"] is True
 
 
-def test_shared_runtime_context_never_counts_as_independent():
+def test_shared_runtime_context_never_counts_as_independent_even_if_attested():
     packets = build_reviewer_packets(
         brief(), ("reviewer:security", "reviewer:architecture"), "review:003"
     )
@@ -78,7 +84,9 @@ def test_shared_runtime_context_never_counts_as_independent():
         ReviewerResult("review:003", "reviewer:architecture", "ctx:shared"),
     )
 
-    assert validate_independent_results(packets, results) == {
+    assert validate_independent_results(
+        packets, results, runtime_isolation_attested=True
+    ) == {
         "independent": False,
         "reason": "shared_runtime_context",
     }
