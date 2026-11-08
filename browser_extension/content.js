@@ -597,7 +597,162 @@
     };
   }
 
+  let freshReviewState = null;
+
+  function freshReviewPreflight() {
+    const provider = providerForUrl(location.href);
+    if (!provider) return { ok: false, fresh_review_ready: false, reason: "provider_not_allowed" };
+    const blocked = detectBlockedPage();
+    if (blocked) return { ok: false, fresh_review_ready: false, provider, reason: blocked };
+    if (sourceIdForUrl(location.href, provider)) {
+      freshReviewState = null;
+      return { ok: false, fresh_review_ready: false, provider, reason: "existing_conversation_detected" };
+    }
+    const priorMessages = messageNodes(provider).filter(node => {
+      const role = roleFor(node, provider);
+      return ["user", "assistant", "model"].includes(role) && Boolean(visibleText(node));
+    });
+    if (priorMessages.length) {
+      freshReviewState = null;
+      return { ok: false, fresh_review_ready: false, provider, reason: "visible_prior_messages_detected" };
+    }
+    if (!findComposer(provider)) {
+      freshReviewState = null;
+      return { ok: false, fresh_review_ready: false, provider, reason: "visible_composer_not_found" };
+    }
+    const nonce = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 14);
+    freshReviewState = { provider, url: location.href, nonce };
+    return {
+      ok: true,
+      fresh_review_ready: true,
+      provider,
+      preflight_nonce: nonce,
+      initial_source_id: null,
+      initial_visible_message_count: 0,
+      evidence_kind: "visible_blank_provider_page",
+      independence_attested: false
+    };
+  }
+
+  async function executeFreshReviewTask(request) {
+    const armed = freshReviewState;
+    freshReviewState = null; // one-shot: even a failed attempt must be explicitly re-armed.
+    const provider = providerForUrl(location.href);
+    if (!armed || !request || request.preflight_nonce !== armed.nonce) {
+      throw new Error("Fresh-review preflight is missing, expired or mismatched.");
+    }
+    if (provider !== armed.provider || request.provider !== armed.provider || location.href !== armed.url) {
+      throw new Error("Provider tab changed after fresh-review preflight; nothing was sent.");
+    }
+    if (sourceIdForUrl(location.href, provider)) {
+      throw new Error("An existing conversation appeared after preflight; nothing was sent.");
+    }
+    const priorMessages = messageNodes(provider).filter(node => {
+      const role = roleFor(node, provider);
+      return ["user", "assistant", "model"].includes(role) && Boolean(visibleText(node));
+    });
+    if (priorMessages.length) {
+      throw new Error("Prior visible messages appeared after preflight; nothing was sent.");
+    }
+    const text = String(request.message || "");
+    if (!text.trim() || text.length > 8000) {
+      throw new Error("Fresh-review message must contain 1–8000 characters.");
+    }
+    const blocked = detectBlockedPage();
+    if (blocked) return {
+      provider, status: "blocked", reason: blocked, assistant_text: "",
+      fresh_context_observed: false, independence_attested: false
+    };
+    const composer = findComposer(provider);
+    if (!composer) throw new Error("No supported visible composer is available.");
+    setComposerText(composer, text);
+    await sleep(150);
+    const currentText = (composer.value ?? composer.innerText ?? composer.textContent ?? "").trim();
+    if (currentText !== text.trim()) throw new Error("Fresh-review composer verification failed.");
+    const sendButton = findSendButton(provider, composer);
+    if (!sendButton) throw new Error("No enabled provider Send button was found.");
+    sendButton.click();
+
+    const timeoutMs = Math.max(1000, Math.min(Number(request.response_timeout_ms) || 120000, 180000));
+    const deadline = Date.now() + timeoutMs;
+    let newSourceId = null;
+    let userObserved = false;
+    while (Date.now() < deadline) {
+      const pageBlock = detectBlockedPage();
+      if (pageBlock) return {
+        provider, status: "blocked", reason: pageBlock, assistant_text: "",
+        fresh_context_observed: false, independence_attested: false
+      };
+      newSourceId = sourceIdForUrl(location.href, provider);
+      userObserved = messageNodes(provider).some(node =>
+        roleFor(node, provider) === "user" && visibleText(node).trim().includes(text.trim())
+      );
+      if (newSourceId && userObserved) break;
+      await sleep(300);
+    }
+    if (!newSourceId || !userObserved) {
+      return {
+        provider, status: "unverified", reason: "new_conversation_not_observed",
+        assistant_text: "", fresh_context_observed: false, independence_attested: false
+      };
+    }
+
+    let previousText = "";
+    let stableRounds = 0;
+    while (Date.now() < deadline) {
+      const pageBlock = detectBlockedPage();
+      if (pageBlock) return {
+        provider, source_id: newSourceId, status: "blocked", reason: pageBlock,
+        assistant_text: "", fresh_context_observed: true, independence_attested: false
+      };
+      const nodes = messageNodes(provider);
+      const userIndex = nodes.findIndex(node =>
+        roleFor(node, provider) === "user" && visibleText(node).trim().includes(text.trim())
+      );
+      if (userIndex >= 0) {
+        const assistant = nodes.slice(userIndex + 1).filter(node =>
+          ["assistant", "model"].includes(roleFor(node, provider))
+        );
+        const candidate = assistant.length ? visibleText(assistant[assistant.length - 1]) : "";
+        if (candidate && candidate === previousText) stableRounds++;
+        else stableRounds = candidate ? 1 : 0;
+        previousText = candidate;
+        if (candidate && stableRounds >= 5) {
+          return {
+            provider,
+            source_id: newSourceId,
+            status: "completed",
+            assistant_text: candidate.slice(0, 16000),
+            fresh_context_observed: true,
+            initial_source_id: null,
+            initial_visible_message_count: 0,
+            verification: "blank_page_then_new_conversation_id_and_stable_response",
+            independence_attested: false
+          };
+        }
+      }
+      await sleep(1000);
+    }
+    return {
+      provider, source_id: newSourceId, status: "unverified",
+      reason: "assistant_response_timeout",
+      assistant_text: previousText.slice(0, 16000),
+      fresh_context_observed: true,
+      independence_attested: false
+    };
+  }
+
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type === "DGM_FRESH_REVIEW_PING") {
+      sendResponse(freshReviewPreflight());
+      return false;
+    }
+    if (message?.type === "DGM_EXECUTE_FRESH_REVIEW") {
+      executeFreshReviewTask(message)
+        .then(data => sendResponse({ ok: true, data }))
+        .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+      return true;
+    }
     if (message?.type === "DGM_PROVIDER_PING") {
       const provider = providerForUrl(location.href);
       sendResponse({
