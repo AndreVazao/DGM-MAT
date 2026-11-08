@@ -10,7 +10,7 @@ No legacy branch was deleted, rewritten, rebased, or modified. No recovered feat
 
 | Legacy branch | Decision | Evidence / reason |
 |---|---|---|
-| `feat/free-tier-browser-ai-consult-2026-11-05` | **Preserved in this branch, isolated / not activated** | The SQLite consultation queue, API router and store tests are not present in current `main`. They are copied as separate modules. The API router is deliberately NOT registered in current `api_server.py`: the branch does not contain a verified extension-side poll/send/result workflow, and the current browser operator is a different task/approval lane. The legacy API-server and security-policy files are preserved as clearly labelled archival snapshots, not as files to restore wholesale. |
+| `feat/free-tier-browser-ai-consult-2026-11-05` | **Recovered in PR #283; isolated / not activated** | The SQLite consultation queue, API router and store tests were recovered. The router is registered in `api_server.py`, and the new paths are classified in `security_policy.py`. Legacy integration files remain archival snapshots only; they are not restored wholesale. |
 | `feat/browser-recovery-deepseek-qwen-2026-11-06` | **Already superseded / no copy** | Current `main` already recognizes DeepSeek and Qwen routes and provider hosts. Current `browser_extension/content.js` is newer (676 lines vs 493 in the legacy branch), and current capture API tests cover five providers. The legacy branch's content script must not overwrite the newer implementation. |
 | `feat/telescope-metadata-only-2026-11-03` | **Already integrated / no copy** | Current `main` contains `core/recovery/ai_source_inventory.py`, metadata-only `TelescopeAdapter`, the recovery API endpoint, inventory script and tests. The current adapter uses an explicit allowlist and avoids raw session detail payloads. |
 | `feat/external-agent-readiness-probe-2026-11-03` | **Already integrated and evolved / no copy** | Current `main` contains `core/development/external_agent_probe.py` and the associated readiness API/security route. Current implementation includes additional safe-process handling and uses the existing local coding-agent probe for Codex. Replacing it with the older branch version would regress it. |
@@ -31,9 +31,9 @@ The store is SQLite-backed and has explicit enablement and a five-provider allow
 
 The old `feat/browser-mission-queue-v1` popup implemented a direct `chrome.tabs.sendMessage(... DGM_SEND_MESSAGE ...)` path after a local browser confirmation. That path did not use the current server-side approval queue. Current `main` has a negative test asserting that direct content-script sends are rejected, and the browser operator API requires a server-recorded approval. This legacy direct-send path is deliberately excluded and must not be revived.
 
-## Archived integration hooks
+## Historical integration snapshots
 
-The legacy branch also modified `core/api/api_server.py` and `core/api/security_policy.py` to register/classify the consultation routes. Their complete source snapshots are retained under `recovery/legacy-branch-snapshots/free-tier-browser-consult/`. They are intentionally not installed over current `main`, because those files have evolved since the legacy branch diverged. Their intended route registration/classification must be reconciled as a focused patch only after the extension workflow and tests exist.
+The complete legacy versions of `core/api/api_server.py` and `core/api/security_policy.py` remain under `recovery/legacy-branch-snapshots/free-tier-browser-consult/` for provenance. The current branch has already reconciled the required changes as focused patches: `api_server.py` registers `browser_consult_router`, and `security_policy.py` classifies status/enqueue/approve as `OPERATOR` and next/result/block as `BROWSER_CAPTURE`. Do not restore the archived files wholesale.
 
 ## Implementation progress in this recovery PR
 
@@ -62,9 +62,12 @@ The legacy branch also modified `core/api/api_server.py` and `core/api/security_
 - Optional mobile AutoHelp-to-browser-consult handoff: implemented, gated by three explicit environment settings, and covered by a focused regression test.
 - Browser extension worker restart recovery: stale one-shot claims are blocked and never replayed.
 - Local automated tests executed in this recovery session: **none** (GitHub-only environment).
-- GitHub Actions Focused PR Validation #702: **SUCCESS** — Python compilation, affected browser-consult store/API and AutoHelp regressions, audit fail-closed tests, and Windows installer digest gate.
-- GitHub Actions Chrome Extension Validation #294: **SUCCESS** — JavaScript syntax, extension fixtures, approval bypass rejection, provider adapters, manifest, Bandit and package validation.
-- Windows Executable Build #286: **IN PROGRESS**; previous build #283 succeeded on the immediately preceding code revision.
+- GitHub Actions Focused PR Validation #716: **SUCCESS** (run `42475905963`).
+- GitHub Actions Chrome Extension Validation #308: **SUCCESS** (run `42475905965`).
+- Windows Executable Build #300: **SUCCESS** (run `42475905948`), incluindo deep executable check, final assertions e upload do artefacto.
+- Artefacto atual: `DGM-MAT-Windows-3.12-54e344e`, 111,238,946 bytes; digest SHA-256 do arquivo GitHub `f5d5abefe05dd14c40043484f4601eb90cdcad45ae034d31d71fd2eb7eee97d2`; expira em 2027-02-06 11:28:39 UTC. O digest identifica o arquivo de artefacto, não o EXE.
+- Check Snyk: **ERROR por quota esgotada** (“You have used your limit of private tests”); não há aprovação Snyk.
+- Execução Windows: https://github.com/AndreVazao/DGM-MAT/actions/runs/42475905948
 - Runtime/Windows 10/Chrome acceptance with real free-tier accounts: **not performed**.
 - Activation, merge and legacy branch deletion: **not performed**. The feature remains disabled by default.
 
