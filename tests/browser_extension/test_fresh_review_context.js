@@ -20,12 +20,14 @@ const PROVIDERS = {
 
 class FakeTextArea {
   constructor() {
-    this.value = "";
+    this._value = "";
     this.disabled = false;
     this.isConnected = true;
     this.innerText = "";
     this.textContent = "";
   }
+  get value() { return this._value; }
+  set value(value) { this._value = value; }
   getBoundingClientRect() { return { width: 500, height: 80 }; }
   getAttribute() { return null; }
   dispatchEvent() { return true; }
