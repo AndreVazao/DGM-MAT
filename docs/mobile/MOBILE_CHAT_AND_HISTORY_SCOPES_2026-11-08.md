@@ -48,7 +48,7 @@ The existing `GET /recovery/search` remains the bounded imported archive search.
 
 ## AI readiness and credentials
 
-The mobile bridge already reports `governed_chat` and Ollama readiness. A healthy HTTP API is not proof that an LLM provider is registered, configured, within quota or able to answer. Mobile and PC cockpit UIs now display this distinction.
+The mobile bridge reports `api_status` separately from `ai_ready` and `ai_mode`. Its top-level `status` is `degraded` when the API is healthy but neither Ollama nor a governed provider is available; an Ollama endpoint with zero installed models is not counted as AI-ready. A healthy HTTP API is not proof that an LLM provider is registered, configured, within quota or able to answer. Mobile and PC cockpit UIs now display this distinction.
 
 Ordinary mobile LLM chat remains explicit opt-in:
 - `DGM_MOBILE_GOVERNED_CHAT_ENABLED=0` by default.
