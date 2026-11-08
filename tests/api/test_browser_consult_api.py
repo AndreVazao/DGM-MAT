@@ -5,6 +5,8 @@ from fastapi.testclient import TestClient
 
 from core.api import browser_consult_api
 from core.api.security_policy import SecurityScope, classify_request_path
+from core.api.auth_middleware import _required_scope
+from core.api.local_auth_api import EXTENSION_SESSION_SCOPES
 from core.recovery.browser_consult_store import BrowserConsultStore
 
 
@@ -31,9 +33,9 @@ def make_client(monkeypatch, tmp_path):
 
 def test_consult_routes_have_operator_and_extension_scopes():
     expected = (
-        ("/recovery/browser-consult/status", "GET", SecurityScope.OPERATOR),
-        ("/recovery/browser-consult/enqueue", "POST", SecurityScope.OPERATOR),
-        ("/recovery/browser-consult/approve/consultation_123", "POST", SecurityScope.OPERATOR),
+        ("/recovery/browser-consult/status", "GET", SecurityScope.BROWSER_CONSULT_CONTROL),
+        ("/recovery/browser-consult/enqueue", "POST", SecurityScope.BROWSER_CONSULT_CONTROL),
+        ("/recovery/browser-consult/approve/consultation_123", "POST", SecurityScope.BROWSER_CONSULT_CONTROL),
         ("/recovery/browser-consult/next", "POST", SecurityScope.BROWSER_CAPTURE),
         ("/recovery/browser-consult/result", "POST", SecurityScope.BROWSER_CAPTURE),
         ("/recovery/browser-consult/block", "POST", SecurityScope.BROWSER_CAPTURE),
@@ -42,6 +44,15 @@ def test_consult_routes_have_operator_and_extension_scopes():
         route = classify_request_path(path, method)
         assert route is not None
         assert route.scope is scope
+
+
+
+def test_paired_extension_gets_narrow_consult_control_scope_not_general_operator():
+    assert EXTENSION_SESSION_SCOPES == frozenset({"browser-capture", "browser-consult-control"})
+    assert "operator" not in EXTENSION_SESSION_SCOPES
+    assert _required_scope(SecurityScope.BROWSER_CONSULT_CONTROL) == "browser-consult-control"
+    assert _required_scope(SecurityScope.BROWSER_CAPTURE) == "browser-capture"
+    assert _required_scope(SecurityScope.OPERATOR) == "operator"
 
 
 def test_consultation_requires_operator_approval_and_claim_token(monkeypatch, tmp_path):
