@@ -88,7 +88,9 @@ function createHarness(provider, options = {}) {
 
   const document = {
     title: "New chat",
-    body: { innerText: options.blockedText || "" },
+    body: { innerText: options.blockedText || options.bodyText ||
+      (provider === "chatgpt" ? "Temporary Chat Unpersonalized" :
+        provider === "gemini" ? "Temporary Chat" : "") },
     querySelectorAll(selector) {
       if (provider === "chatgpt" && selector === "[data-message-author-role]") return messages;
       if (provider === "gemini" && selector === "user-query, model-response") return messages;
@@ -159,7 +161,7 @@ function createHarness(provider, options = {}) {
 }
 
 async function testFreshBlankPageProtocolAcrossAllProviders() {
-  for (const provider of Object.keys(PROVIDERS)) {
+  for (const provider of ["chatgpt", "gemini"]) {
     const harness = createHarness(provider);
     const preflight = await harness.ping();
     assert.equal(preflight.ok, true, provider + ": " + preflight.reason);
@@ -167,6 +169,7 @@ async function testFreshBlankPageProtocolAcrossAllProviders() {
     assert.equal(preflight.provider, provider);
     assert.equal(preflight.initial_source_id, null);
     assert.equal(preflight.initial_visible_message_count, 0);
+    assert.equal(preflight.privacy_mode_verified, true);
     assert.equal(preflight.independence_attested, false);
 
     const result = await harness.execute({
@@ -179,6 +182,7 @@ async function testFreshBlankPageProtocolAcrossAllProviders() {
     assert.equal(result.data.status, "completed", provider);
     assert.equal(result.data.fresh_context_observed, true, provider);
     assert.equal(result.data.initial_source_id, null, provider);
+    assert.equal(result.data.privacy_mode_verified, true, provider);
     assert.equal(result.data.independence_attested, false, provider);
     assert.equal(result.data.source_id, "new-chat-123", provider);
     assert.equal(harness.sendClicks(), 1, provider);
@@ -202,7 +206,7 @@ async function testVisiblePriorMessagesAreRejectedBeforeSending() {
 }
 
 async function testMissingComposerIsRejectedBeforeSending() {
-  const harness = createHarness("qwen", { noComposer: true });
+  const harness = createHarness("chatgpt", { noComposer: true });
   const preflight = await harness.ping();
   assert.equal(preflight.ok, false);
   assert.equal(preflight.reason, "visible_composer_not_found");
@@ -246,12 +250,15 @@ async function testNoNewConversationIdIsUnverified() {
 
 async function main() {
   await testFreshBlankPageProtocolAcrossAllProviders();
+  await testProvidersWithoutVerifiedTemporaryPrivacyModeFailClosed();
+  await testPersonalizedChatGPTTemporaryModeIsRejected();
+  await testGeminiRegularNewChatIsRejected();
   await testExistingConversationIsRejectedBeforeSending();
   await testVisiblePriorMessagesAreRejectedBeforeSending();
   await testMissingComposerIsRejectedBeforeSending();
   await testPreflightNonceIsOneShotAndRequired();
   await testNoNewConversationIdIsUnverified();
-  process.stdout.write("PASS: fresh browser review preflight fixtures across five providers\\n");
+  process.stdout.write("PASS: fresh browser review preflight fixtures and provider privacy-mode gates\\n");
 }
 
 main().catch(error => {
