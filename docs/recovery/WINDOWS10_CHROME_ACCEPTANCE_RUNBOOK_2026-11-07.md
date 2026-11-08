@@ -1,6 +1,6 @@
 # DGM-MAT — Plano de aceitação Windows 10 + Chrome
 **Data:** 2026-11-07  
-**Aplicável a:** PR #283, head `a83f3a4148ad7226e42240734fcfba13d844b16b` e respetivo artefacto Windows.  
+**Aplicável a:** PR #283, head de código `042be2354a82efc3659661f1e85197c9a917692b` e respetivo artefacto Windows.  
 **Objetivo:** validar instalação, arranque, persistência e consulta manual aprovada sem ativar autonomia ou introduzir risco nos dados existentes.
 
 ## 0. Regras de segurança
@@ -24,9 +24,9 @@ Usar exclusivamente o artefacto da execução GitHub Actions:
 - Repositório: `AndreVazao/DGM-MAT`
 - Execução: https://github.com/AndreVazao/DGM-MAT/actions/runs/42475479161
 - Nome do artefacto: `DGM-MAT-Windows-3.12-5f31bf7`
-- Tamanho: 111,239,092 bytes
+- Tamanho: 111,238,422 bytes
 - SHA-256 do artefacto GitHub: `8b84cc0a61e36f30d370ca18c285effc7d89dad24cc40293d667003b63b2ca7b`
-- Commit incluído: `a83f3a4148ad7226e42240734fcfba13d844b16b`
+- Commit incluído: `042be2354a82efc3659661f1e85197c9a917692b`
 - Expiração indicada pelo GitHub: 2027-02-06 11:22 UTC.
 
 No GitHub, abrir a execução acima, descer até **Artifacts** e descarregar exatamente o artefacto indicado. Não usar o botão genérico **Source code** nem um ZIP de uma branch.
