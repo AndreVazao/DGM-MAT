@@ -373,7 +373,7 @@ def test_mobile_pairing_and_chat_history_work_without_general_operator_authority
     assert searched.json()["results"][0]["thread_id"] == thread_id
 
     assert client.get("/mobile/threads", headers=mobile_headers).status_code == 200
-    assert client.get("/runtime/truth", headers=mobile_headers).status_code == 403
+    assert client.get("/governance/commands/catalog", headers=mobile_headers).status_code == 403
     assert client.post(
         "/runtime/missions",
         headers=mobile_headers,
