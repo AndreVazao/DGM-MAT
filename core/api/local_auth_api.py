@@ -168,7 +168,7 @@ def create_pairing_code(request: Request, response: Response):
 
 @router.post("/pair", status_code=201)
 def pair_mobile_client(payload: PairingRequest, request: Request):
-    """Exchange a short-lived PC-local pairing code for a short-lived operator session."""
+    """Exchange a short-lived PC-local pairing code for an allowlisted scoped client session."""
     global _pairing_digest, _pairing_expires_at
     # A pairing code must not let a remote caller choose a privileged client
     # identity. The desktop cockpit uses the separate loopback-only bootstrap
