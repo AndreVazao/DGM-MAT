@@ -42,7 +42,7 @@ def test_extension_origin_configuration_does_not_enable_wildcard(monkeypatch):
     assert not any(origin.startswith("chrome-extension://") for origin in local_auth_api._allowed_origins())
 
 
-def test_extension_pairing_issues_eight_hour_browser_capture_only_session(monkeypatch):
+def test_extension_pairing_issues_eight_hour_narrow_browser_scoped_session(monkeypatch):
     from fastapi import Response
 
     extension_id = "abcdefghijklmnopabcdefghijklmnop"
@@ -62,6 +62,8 @@ def test_extension_pairing_issues_eight_hour_browser_capture_only_session(monkey
     )
     principal = local_auth_api.extension_session_manager.authenticate(paired["access_token"])
     assert principal is not None
-    assert principal.scopes == frozenset({"browser-capture"})
+    assert principal.scopes == local_auth_api.EXTENSION_SESSION_SCOPES
+    assert principal.scopes == frozenset({"browser-capture", "browser-consult-control"})
+    assert "operator" not in principal.scopes
     assert paired["expires_in"] == 8 * 60 * 60
     assert local_auth_api.session_manager.authenticate(paired["access_token"]) is None
