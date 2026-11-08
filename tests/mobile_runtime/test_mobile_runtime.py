@@ -633,3 +633,30 @@ def test_default_mobile_store_uses_persistent_runtime_sessions_path(tmp_path, mo
     store = ConversationStore()
     assert store.path == expected
     assert expected.parent.is_dir()
+
+
+def test_conversation_search_returns_bounded_snippets_without_full_transcripts(tmp_path: Path):
+    store = ConversationStore(tmp_path / "conversations.json")
+    first = store.create_thread("Projeto DGM-MAT", project="DGM-MAT", repository="AndreVazao/DGM-MAT")
+    second = store.create_thread("Outra conversa")
+    store.append_message(first["id"], "user", "Precisamos reparar a comunicação do cérebro com o cockpit.")
+    store.append_message(first["id"], "assistant", "A ponte deve permanecer autenticada.")
+    store.append_message(second["id"], "user", "A comunicação com o cérebro deve ser validada.")
+
+    results = store.search_threads("COMUNICAÇÃO", limit=1)
+
+    assert len(results) == 1
+    assert results[0]["thread_id"] in {first["id"], second["id"]}
+    assert results[0]["match_type"] in {"title", "context", "message"}
+    assert "snippet" in results[0]
+    assert "messages" not in results[0]
+    assert "access_token" not in results[0]
+
+
+def test_conversation_search_rejects_short_queries_and_bounds_result_limit(tmp_path: Path):
+    store = ConversationStore(tmp_path / "conversations.json")
+    thread = store.create_thread("Histórico de conversas")
+    store.append_message(thread["id"], "user", "Pesquisa de conversas anteriores.")
+
+    assert store.search_threads(" ") == []
+    assert len(store.search_threads("conversas", limit=500)) == 1
