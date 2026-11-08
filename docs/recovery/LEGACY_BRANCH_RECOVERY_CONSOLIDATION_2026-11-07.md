@@ -37,7 +37,7 @@ The complete legacy versions of `core/api/api_server.py` and `core/api/security_
 
 ## Implementation progress in this recovery PR
 
-- Added explicit `PENDING_APPROVAL` state and an operator-only approval endpoint; the extension cannot claim an unapproved consultation.
+- Added explicit `PENDING_APPROVAL` state and per-request popup approval. The paired extension uses the dedicated `browser-consult-control` scope for status/enqueue/approve and `browser-capture` for claim/result/block; it never receives general `operator` scope.
 - Added local-session authentication and explicit route classifications: enqueue/status/approve require the dedicated `browser-consult-control` scope; claim/result/block require `browser-capture`. The paired extension receives only these two narrow scopes, never general `operator`.
 - Added a cryptographically random one-time claim token; result/block operations must present the matching token, which is cleared on completion or block.
 - Added five-provider support and an opt-in extension polling toggle (disabled by default). The extension uses the already-tested visible-UI browser task executor and existing authenticated provider tabs; it does not use provider APIs or hidden endpoints.
@@ -90,3 +90,16 @@ This section supersedes the interim workflow numbers above.
 - GitHub Actions result is green on the exact PR head. This is CI/build evidence only; Windows 10 installation, startup, browser extension pairing and real provider E2E remain untested on the owner's PC.
 - PR #283 remains open and unmerged. All five source branches remain untouched.
 - Activation flags remain off by default; do not enable production use until local acceptance.
+
+
+## Scope correction and validation — 2026-11-08
+
+A security review found that the original paired extension token had only `browser-capture`, while the popup also called status/enqueue/approve routes classified as `operator`; these calls would be rejected with HTTP 403. Corrected with the narrow `browser-consult-control` scope, without granting general operator authority. Both `/auth/session` and `/auth/pair` issue the extension session with exactly `browser-capture` and `browser-consult-control`.
+
+- Integrated regression: paired extension session can read consultation status, enqueue and approve a consultation, while a general operator route still returns HTTP 403.
+- Focused PR Validation #721: SUCCESS (run `42500111864`), 30 tests passed.
+- Chrome Extension Validation #314: SUCCESS (run `42500577041`), 77 browser/API regressions passed; JavaScript fixtures, manifest, Bandit and focused `pip-audit` passed; no known vulnerabilities found in the dependencies audited by that workflow.
+- Focused PR Validation #722: SUCCESS (run `42500577087`), including the updated pairing-scope expectation.
+- Windows Build #305: SUCCESS (run `42500111911`), artefact `DGM-MAT-Windows-3.12-58b8cfc` (111,238,999 bytes; GitHub artefact digest `aa8d06ce803faa54ea01e5672d01726c1803a7b838a43331d86595d11e1f47cc`; expires 2027-02-06 16:29:08 UTC).
+- Snyk remains unavailable because the private-test quota is exhausted; this is not a clean Snyk result.
+- The follow-up Windows Build #306 is still running on the test-only head `c10d2a3`; Build #305 contains the same runtime code from `739edfc`.
