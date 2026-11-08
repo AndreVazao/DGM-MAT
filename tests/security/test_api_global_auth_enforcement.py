@@ -13,7 +13,7 @@ from core.operations.command_executor import CommandExecutor
 @pytest.fixture
 def client():
     session_manager.revoke_all()
-    with TestClient(app, base_url="http://127.0.0.1:8181") as value:
+    with TestClient(app, base_url="http://127.0.0.1:8181", client=("127.0.0.1", 45678)) as value:
         yield value
     session_manager.revoke_all()
 
