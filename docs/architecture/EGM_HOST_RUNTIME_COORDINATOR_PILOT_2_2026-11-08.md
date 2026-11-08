@@ -32,3 +32,16 @@ This PR supplies a typed adapter contract and coordinator, not a concrete ChatGP
 `tests/organization/test_design_review_coordinator.py` covers successful independent fake sessions with task-linked SQLite receipt, non-durable blocking, shared-context rejection, unsafe attestation rejection, task binding, task kind and task state.
 
 CI execution is required before considering this pilot validated.
+
+
+## Browser adapter investigation — 2026-11-08
+
+Inspection of the free-tier browser consultation implementation on PR #283's recovery branch found an incompatibility with independent EGM review:
+
+- The current extension polls already-open provider tabs and requires a recognized existing `source_id`.
+- `sendMessageThroughVisibleUi` rejects a page without an existing conversation identifier.
+- `executeBrowserOperatorTask` verifies that the current page still matches the existing conversation before sending.
+- Therefore the current browser consultation path can send a reviewed prompt into an existing conversation, but it does not create or attest a fresh conversation. It must not be wired directly into this coordinator as an independent reviewer.
+- The browser queue also requires an operator approval for each consultation and completes asynchronously. The current coordinator contract is synchronous. A real adapter therefore needs a durable start/resume workflow rather than blocking a worker while waiting for manual approval.
+- The next implementation must add a distinct fresh-review browser protocol: blank/new conversation preflight, no visible prior messages, one isolated provider tab per reviewer, manual approval, newly created conversation ID after submission, durable completion polling, and host-verifiable evidence. Existing conversation-recovery and browser-operator routes remain unchanged.
+- Until this exists and passes live Windows/Chrome acceptance, no browser result can be marked as an independent EGM review.
