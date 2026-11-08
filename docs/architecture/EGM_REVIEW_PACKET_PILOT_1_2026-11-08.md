@@ -14,14 +14,14 @@
 - `ReviewFinding`: severity, evidence, impact, recommendation and confidence.
 - `ReviewerResult`: result linked to review/reviewer and a runtime context identifier.
 - `build_reviewer_packets`: requires 2–5 unique reviewer IDs.
-- `validate_independent_results`: rejects missing/mismatched reviewers and shared runtime context IDs.
+- `validate_independent_results`: rejects missing/mismatched reviewers and shared runtime context IDs; distinct IDs alone are only structurally valid, not proof of independence.
 - `result_to_dict`: creates a JSON-ready snapshot suitable for a future existing task receipt.
 
 ## Security and authority limits
 
 This is a contract/builder only. It does not instantiate model sessions, call providers, dispatch tasks, read conversations, execute tools, mutate files, approve changes or persist records.
 
-A result is only *structurally independent* when distinct runtime context IDs are supplied. The validator explicitly returns `runtime_isolation_attestation_required=true`: the provider/runtime adapter must attest that IDs represent fresh isolated contexts. Distinct strings alone are not proof of isolation.
+The validator defaults to `independent=false`. It only returns `independent=true` when reviewer identities match, runtime context IDs are distinct, and the caller explicitly supplies a runtime isolation attestation. That attestation must come from a provider/runtime adapter that can prove the contexts are fresh and do not share prior conversation or reviewer outputs. A boolean supplied by an untrusted model response is not acceptable evidence.
 
 Reviewer packets deliberately omit author conversation, chain-of-thought, author recommendation, other reviewers' outputs and all credentials/session secrets. Only the explicit DesignBrief is included.
 
@@ -38,6 +38,6 @@ The module does not create a new queue or database. A future integration must us
 
 ## Tests
 
-`tests/organization/test_design_review.py` covers reviewer-count/identity constraints, bounded packet shape, forbidden context fields, distinct-context enforcement, identity mismatch, finding validation and JSON-ready result snapshots.
+`tests/organization/test_design_review.py` covers reviewer-count/identity constraints, bounded packet shape, forbidden context fields, distinct-context enforcement, explicit runtime-attestation gating, identity mismatch, finding validation and JSON-ready result snapshots.
 
 These tests are authored in this branch; CI execution is required before the pilot can be considered validated.
