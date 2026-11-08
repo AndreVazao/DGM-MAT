@@ -660,3 +660,70 @@ def test_conversation_search_rejects_short_queries_and_bounds_result_limit(tmp_p
 
     assert store.search_threads(" ") == []
     assert len(store.search_threads("conversas", limit=500)) == 1
+
+
+def test_governed_chat_status_refreshes_missing_provider_health_after_explicit_opt_in(tmp_path, monkeypatch):
+    from core.provider_sync import provider_registry as registry_module
+
+    class FakeProvider:
+        def __init__(self):
+            self.health_metrics = {"last_check": 0, "last_check_attempt": 0, "status": "unknown"}
+            self.health_checks = 0
+
+        def is_available(self):
+            return self.health_metrics["status"] == "ok"
+
+        def check_health(self):
+            self.health_checks += 1
+            import time
+            now = time.time()
+            self.health_metrics.update({
+                "last_check": now,
+                "last_check_attempt": now,
+                "status": "ok",
+            })
+            return {"available": True, "status": "ok"}
+
+    provider = FakeProvider()
+    monkeypatch.setenv("DGM_MOBILE_GOVERNED_CHAT_ENABLED", "1")
+    monkeypatch.setenv("DGM_MOBILE_GOVERNED_PROVIDER", "fake-free-provider")
+    monkeypatch.setattr(registry_module, "initialize_default_providers", lambda: None)
+    monkeypatch.setattr(registry_module.provider_registry, "get_provider", lambda provider_id: provider)
+
+    service = MobileConversationService(ConversationStore(tmp_path / "conversations.json"))
+    result = service.governed_chat_status()
+
+    assert result["enabled"] is True
+    assert result["registered"] is True
+    assert result["available"] is True
+    assert result["reason"] == "ready"
+    assert provider.health_checks == 1
+
+
+def test_governed_chat_status_does_not_refresh_provider_health_when_opt_in_is_disabled(tmp_path, monkeypatch):
+    from core.provider_sync import provider_registry as registry_module
+
+    class FakeProvider:
+        def __init__(self):
+            self.health_metrics = {"last_check": 0, "last_check_attempt": 0, "status": "unknown"}
+            self.health_checks = 0
+
+        def is_available(self):
+            return False
+
+        def check_health(self):
+            self.health_checks += 1
+            return {"available": True}
+
+    provider = FakeProvider()
+    monkeypatch.setenv("DGM_MOBILE_GOVERNED_CHAT_ENABLED", "0")
+    monkeypatch.setattr(registry_module, "initialize_default_providers", lambda: None)
+    monkeypatch.setattr(registry_module.provider_registry, "get_provider", lambda provider_id: provider)
+
+    service = MobileConversationService(ConversationStore(tmp_path / "conversations.json"))
+    result = service.governed_chat_status()
+
+    assert result["enabled"] is False
+    assert result["available"] is False
+    assert result["reason"] == "disabled_by_configuration"
+    assert provider.health_checks == 0
