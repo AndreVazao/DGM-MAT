@@ -164,3 +164,33 @@ def test_auto_help_status_is_local_client_and_controls_are_operator_only():
     assert status is not None and status.scope is SecurityScope.LOCAL_CLIENT
     assert start is not None and start.scope is SecurityScope.OPERATOR
     assert stop is not None and stop.scope is SecurityScope.OPERATOR
+
+
+def test_mobile_pairing_routes_use_separate_least_privilege_scopes():
+    from core.api.auth_middleware import _required_scope
+
+    expected = {
+        ("/mobile/threads/search", "GET"): (SecurityScope.MOBILE_READ, "mobile-read"),
+        ("/recovery/search", "GET"): (SecurityScope.MOBILE_READ, "mobile-read"),
+        ("/recovery/sources/{provider}/{source_id}/messages", "GET"): (SecurityScope.MOBILE_READ, "mobile-read"),
+        ("/runtime/workspace/scan", "GET"): (SecurityScope.MOBILE_READ, "mobile-read"),
+        ("/runtime/approvals", "GET"): (SecurityScope.MOBILE_READ, "mobile-read"),
+        ("/runtime/queue", "GET"): (SecurityScope.MOBILE_READ, "mobile-read"),
+        ("/mobile/threads", "POST"): (SecurityScope.MOBILE_CHAT, "mobile-chat"),
+        ("/mobile/threads/{thread_id}/messages", "POST"): (SecurityScope.MOBILE_CHAT, "mobile-chat"),
+        ("/mobile/usb-recovery/repair", "POST"): (SecurityScope.MOBILE_MAINTENANCE, "mobile-maintenance"),
+    }
+    for (path, method), (scope, token_scope) in expected.items():
+        classification = classify_route(path, (method,))
+        assert classification is not None
+        assert classification.scope is scope
+        assert _required_scope(scope) == token_scope
+
+
+def test_mobile_session_scopes_do_not_replace_general_operator_scope():
+    from core.api.auth_middleware import _required_scope
+
+    mobile_scopes = {"local-client", "mobile-read", "mobile-chat", "mobile-maintenance"}
+    assert "operator" not in mobile_scopes
+    assert _required_scope(SecurityScope.OPERATOR) == "operator"
+    assert _required_scope(SecurityScope.MOBILE_CHAT) == "mobile-chat"
