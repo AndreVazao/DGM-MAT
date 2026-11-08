@@ -31,7 +31,7 @@ Usar exclusivamente o artefacto da execução GitHub Actions:
 
 No GitHub, abrir a execução acima, descer até **Artifacts** e descarregar exatamente o artefacto indicado. Não usar o botão genérico **Source code** nem um ZIP de uma branch.
 
-O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-54e344e.zip`, o respetivo ficheiro `.sha256` e a pasta `publish\` com o sidecar `DGM-MAT.exe.sha256`. Extrair esse ZIP de distribuição para uma subpasta `package\`. O executável e a pasta `scripts\` ficam na raiz de `package\`; não existe uma segunda pasta `publish\` dentro dela.
+O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-fa98b61.zip`, o respetivo ficheiro `.sha256` e a pasta `publish\` com o sidecar `DGM-MAT.exe.sha256`. Extrair esse ZIP de distribuição para uma subpasta `package\`. O executável e a pasta `scripts\` ficam na raiz de `package\`; não existe uma segunda pasta `publish\` dentro dela.
 
 Verificar o SHA-256 do arquivo exterior descarregado contra o digest publicado pelo GitHub. Depois verificar o ZIP de distribuição contra o conteúdo de `DGM-MAT-Windows-3.12-fa98b61.zip.sha256`. Não confundir estes dois níveis de arquivo.
 
@@ -40,8 +40,8 @@ Depois de extrair o ZIP de distribuição para `package\`, verificar `package\DG
 Comandos de verificação (ajustar apenas os caminhos para a pasta onde o download foi extraído):
 
 ```powershell
-Get-FileHash -Algorithm SHA256 -LiteralPath ".\DGM-MAT-Windows-3.12-5f31bf7.zip"
-Get-Content -LiteralPath ".\DGM-MAT-Windows-3.12-58b8cfc.zip.sha256"
+Get-FileHash -Algorithm SHA256 -LiteralPath ".\DGM-MAT-Windows-3.12-fa98b61.zip"
+Get-Content -LiteralPath ".\DGM-MAT-Windows-3.12-fa98b61.zip.sha256"
 Get-Content -LiteralPath ".\publish\DGM-MAT.exe.sha256"
 Get-FileHash -Algorithm SHA256 -LiteralPath ".\package\DGM-MAT.exe"
 ```
