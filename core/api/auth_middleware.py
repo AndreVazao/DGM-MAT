@@ -50,6 +50,8 @@ def _required_scope(scope: SecurityScope) -> str | None:
         return None
     if scope is SecurityScope.BROWSER_CAPTURE:
         return "browser-capture"
+    if scope is SecurityScope.BROWSER_CONSULT_CONTROL:
+        return "browser-consult-control"
     if scope in {SecurityScope.LOCAL_CLIENT, SecurityScope.LOCAL_STATIC_CLIENT, SecurityScope.LOCAL_DOCUMENTATION}:
         return "local-client"
     if scope in {SecurityScope.OPERATOR, SecurityScope.PROVIDER_API, SecurityScope.PROVIDER_OPERATOR}:
