@@ -363,6 +363,8 @@ def test_mobile_pairing_and_chat_history_work_without_general_operator_authority
     )
     assert posted.status_code == 200
     assert posted.json()["thread"]["id"] == thread_id
+    assert isinstance(posted.json()["message"], str) and posted.json()["message"].strip()
+    assert any(item["role"] == "assistant" for item in posted.json()["thread"]["messages"])
 
     searched = client.get(
         "/mobile/threads/search",
