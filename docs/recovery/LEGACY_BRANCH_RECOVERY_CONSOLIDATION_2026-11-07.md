@@ -38,7 +38,7 @@ The complete legacy versions of `core/api/api_server.py` and `core/api/security_
 ## Implementation progress in this recovery PR
 
 - Added explicit `PENDING_APPROVAL` state and an operator-only approval endpoint; the extension cannot claim an unapproved consultation.
-- Added local-session authentication and explicit route classifications: enqueue/status/approve require operator scope; claim/result/block require the paired browser-capture scope.
+- Added local-session authentication and explicit route classifications: enqueue/status/approve require the dedicated `browser-consult-control` scope; claim/result/block require `browser-capture`. The paired extension receives only these two narrow scopes, never general `operator`.
 - Added a cryptographically random one-time claim token; result/block operations must present the matching token, which is cleared on completion or block.
 - Added five-provider support and an opt-in extension polling toggle (disabled by default). The extension uses the already-tested visible-UI browser task executor and existing authenticated provider tabs; it does not use provider APIs or hidden endpoints.
 - Added a popup form to create a consultation, explicitly attest free-tier account status, review pending requests, and approve each send. Each provider request remains separately approved.
