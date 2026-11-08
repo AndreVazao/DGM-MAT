@@ -64,7 +64,10 @@ Latest CI on the reviewed backend head:
 - Focused PR Validation: success — run 42509402563.
 - Chrome Extension Validation: success — run 42509402174.
 - Windows installer digest gate: success.
-- Windows Executable Build: run 42509402171; final build/artifact steps still pending at the time of this checkpoint.
+- Windows Executable Build #323: **SUCCESS**, run 42509849909, built from reviewed code head `ff04201b87d8f42b4e8f684e4b4ef6c092eb8acb`.
+- Artefacto Windows: `DGM-MAT-Windows-3.12-5be709b`, 111,221,235 bytes; SHA-256 do ZIP exterior GitHub `1e6f2397a391d93d01af31b45ef6e0cfffff5cfaca4f189103d23a7d15fbd011`; expira 2027-02-06 18:24:24 UTC.
+- Download: https://github.com/AndreVazao/DGM-MAT/actions/runs/42509849909/artifacts/13629225617.
+- O digest acima é do ZIP exterior; o EXE deve continuar a ser validado pelo sidecar `publish/DGM-MAT.exe.sha256` no artefacto extraído.
 - Snyk private tests: quota exhausted; no clean Snyk result is claimed.
 
 - Focused PR Validation covers mobile pairing, scope inheritance, route classification and thread search.
@@ -74,3 +77,11 @@ Latest CI on the reviewed backend head:
 - Still required: install the APK on the Android device, pair against the actual PC backend, verify mobile-read/mobile-chat/mobile-maintenance route behavior, run a real governed free-provider conversation, and confirm no operator access from the phone.
 
 **No runtime flags are enabled by this PR. No secrets are added. No local PC or phone is modified.**
+
+
+### Atualização final de build — 2026-11-08 18:28 UTC
+- Focused PR Validation run 42509849814: SUCCESS.
+- Chrome Extension Validation run 42509849817: SUCCESS.
+- Windows Executable Build run 42509849909: SUCCESS; artefacto e SHA-256 documentados acima.
+- O novo teste integrado confirma pairing mobile real no TestClient loopback, criação de thread, envio de mensagem, pesquisa de histórico e negação de catálogo de comandos/missões para a sessão mobile.
+- Build Windows é evidência de packaging CI, não aceitação local Windows 10.
