@@ -16,6 +16,7 @@ class SecurityScope(str, Enum):
     LOCAL_CLIENT = "local-client"
     OPERATOR = "operator"
     BROWSER_CAPTURE = "browser-capture"
+    BROWSER_CONSULT_CONTROL = "browser-consult-control"
     PROVIDER_API = "provider-api"
     PROVIDER_OPERATOR = "provider-operator"
     LOCAL_DOCUMENTATION = "local-documentation"
@@ -38,9 +39,9 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("WS",), "/runtime/ws", SecurityScope.LOCAL_CLIENT, "Compatibility realtime stream; currently unauthenticated."),
     RouteClassification(("GET",), "/health", SecurityScope.PUBLIC_HEALTH, "Minimal process health check."),
     RouteClassification(("GET",), "/recovery/status", SecurityScope.OPERATOR, "Read-only recovery ledger progress; no provider access or deletion."),
-    RouteClassification(("GET",), "/recovery/browser-consult/status", SecurityScope.OPERATOR, "Read-only status of free-tier browser consultations; no provider content in status output."),
-    RouteClassification(("POST",), "/recovery/browser-consult/enqueue", SecurityScope.OPERATOR, "Queues redacted free-tier consultation prompts pending explicit operator approval."),
-    RouteClassification(("POST",), "/recovery/browser-consult/approve/{consultation_id}", SecurityScope.OPERATOR, "Explicit operator approval before releasing a consultation prompt to the paired visible browser UI."),
+    RouteClassification(("GET",), "/recovery/browser-consult/status", SecurityScope.BROWSER_CONSULT_CONTROL, "Read-only status of free-tier browser consultations for the paired extension control surface."),
+    RouteClassification(("POST",), "/recovery/browser-consult/enqueue", SecurityScope.BROWSER_CONSULT_CONTROL, "Queues redacted free-tier consultation prompts; the paired popup must explicitly approve each provider request."),
+    RouteClassification(("POST",), "/recovery/browser-consult/approve/{consultation_id}", SecurityScope.BROWSER_CONSULT_CONTROL, "Explicit per-request approval from the paired browser consultation control surface; not a general operator session."),
     RouteClassification(("POST",), "/recovery/browser-consult/next", SecurityScope.BROWSER_CAPTURE, "Claims one approved free-tier consultation for the paired extension; prompt release is audited."),
     RouteClassification(("POST",), "/recovery/browser-consult/result", SecurityScope.BROWSER_CAPTURE, "Stores a bounded untrusted provider answer from the paired extension."),
     RouteClassification(("POST",), "/recovery/browser-consult/block", SecurityScope.BROWSER_CAPTURE, "Records provider login, challenge, rate-limit or UI failure without bypass or automatic retry."),
