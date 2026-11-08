@@ -131,7 +131,7 @@ def create_local_session(
     else:
         token, principal = session_manager.create_session(
             subject=payload.client_id,
-            scopes={"local-client", "mobile-read", "mobile-chat", "mobile-maintenance"},
+            scopes={"local-client", "operator"},
         )
     return {
         "access_token": token,
@@ -201,7 +201,7 @@ def pair_mobile_client(payload: PairingRequest, request: Request):
     else:
         token, principal = session_manager.create_session(
             subject=payload.client_id,
-            scopes={"local-client", "operator"},
+            scopes={"local-client", "mobile-read", "mobile-chat", "mobile-maintenance"},
         )
     return {
         "access_token": token,
