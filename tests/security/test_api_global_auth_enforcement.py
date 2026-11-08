@@ -374,6 +374,14 @@ def test_mobile_pairing_and_chat_history_work_without_general_operator_authority
     assert searched.status_code == 200
     assert searched.json()["results"][0]["thread_id"] == thread_id
 
+    recovery_search = client.get(
+        "/recovery/search",
+        headers=mobile_headers,
+        params={"q": "conversa", "limit": 10},
+    )
+    assert recovery_search.status_code == 200
+    assert isinstance(recovery_search.json()["results"], list)
+
     assert client.get("/mobile/threads", headers=mobile_headers).status_code == 200
     assert client.get("/governance/commands/catalog", headers=mobile_headers).status_code == 403
     assert client.post(
