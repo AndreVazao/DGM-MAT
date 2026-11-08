@@ -221,3 +221,29 @@ def test_invalid_task_kind_and_state_are_blocked(tmp_path):
     assert result.status == "BLOCKED"
     assert result.reason == "review_task_not_running"
     bus.close()
+
+
+
+@pytest.mark.parametrize(
+    "reviewer_ids",
+    [
+        ("reviewer:only-one",),
+        ("reviewer:duplicate", "reviewer:duplicate"),
+        ("reviewer:a", " "),
+        ["reviewer:a", "reviewer:b"],
+    ],
+)
+def test_invalid_reviewer_packet_is_blocked_without_creating_sessions(tmp_path, reviewer_ids):
+    bus, manager = setup_task(tmp_path)
+    factory = FakeFactory()
+    result = DesignReviewCoordinator(manager, factory).run(
+        task_id="task:egm-review",
+        brief=make_brief(),
+        reviewer_ids=reviewer_ids,
+        review_id="review:invalid-packet",
+    )
+    assert result.status == "BLOCKED"
+    assert result.reason.startswith("invalid_review_packet:")
+    assert factory.sessions == []
+    assert manager.get("task:egm-review").status is TaskStatus.RUNNING
+    bus.close()
