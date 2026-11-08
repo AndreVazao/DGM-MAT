@@ -119,7 +119,7 @@ Registar cada resultado como **PASS**, **FAIL** ou **NOT TESTED**, com hora, ver
 O ZIP contém a pasta `browser_extension` e os scripts de instalação.
 
 1. Confirmar que o Chrome usado é o perfil normal do operador e que os cinco fornecedores estão autenticados manualmente, se aplicável.
-2. Executar `scripts\install_browser_extension.bat` a partir da pasta exterior onde existe a subpasta `package`. O script preserva a extensão anterior em `%LOCALAPPDATA%\DGM-MAT\BrowserExtension.backups\`.
+2. Executar `package\scripts\install_browser_extension.bat` a partir da pasta exterior do artefacto. O script preserva a extensão anterior em `%LOCALAPPDATA%\DGM-MAT\BrowserExtension.backups\`.
 3. No Chrome, ativar **Developer mode** em `chrome://extensions`.
 4. Escolher **Load unpacked** e selecionar `%LOCALAPPDATA%\DGM-MAT\BrowserExtension`. Se já estiver carregada a partir dessa pasta, usar **Reload**.
 5. Emparelhar apenas com o código de utilização única emitido pelo DGM-MAT local. Não partilhar nem guardar esse código no relatório.
