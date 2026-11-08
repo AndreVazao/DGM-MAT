@@ -6,7 +6,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from core.mobile_runtime import MobileConversationService
@@ -105,6 +105,21 @@ def create_thread(request: ThreadCreateRequest):
         project=request.project,
         repository=request.repository,
     )
+
+
+@router.get("/threads/search")
+def search_threads(
+    q: str = Query(min_length=2, max_length=200),
+    limit: int = Query(default=25, ge=1, le=50),
+):
+    """Search local conversation titles, project context and message snippets."""
+    query = q.strip()
+    if len(query) < 2:
+        raise HTTPException(status_code=422, detail="q must contain at least two non-space characters")
+    return {
+        "query": query,
+        "results": service.store.search_threads(query, limit=limit),
+    }
 
 
 @router.get("/threads/{thread_id}")
