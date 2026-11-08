@@ -64,9 +64,9 @@ Latest CI on the reviewed backend head:
 - Focused PR Validation: success — run 42509402563.
 - Chrome Extension Validation: success — run 42509402174.
 - Windows installer digest gate: success.
-- Windows Executable Build #323: **SUCCESS**, run 42509849909, built from reviewed code head `ff04201b87d8f42b4e8f684e4b4ef6c092eb8acb`.
-- Artefacto Windows: `DGM-MAT-Windows-3.12-5be709b`, 111,221,235 bytes; SHA-256 do ZIP exterior GitHub `1e6f2397a391d93d01af31b45ef6e0cfffff5cfaca4f189103d23a7d15fbd011`; expira 2027-02-06 18:24:24 UTC.
-- Download: https://github.com/AndreVazao/DGM-MAT/actions/runs/42509849909/artifacts/13629225617.
+- Windows Executable Build #325: **SUCCESS**, run 42510552509, built from reviewed code/test head `1118660af94a9255786691cf6d51d75c22a046fb`.
+- Artefacto Windows atual: `DGM-MAT-Windows-3.12-dca47d0`, 111,221,551 bytes; SHA-256 do ZIP exterior GitHub `e1db00d4e4e71b7733867be5a28d861d0c133670b0807cef62d2278f2e16a7c3`; expira 2027-02-06 18:32:55 UTC.
+- Download: https://github.com/AndreVazao/DGM-MAT/actions/runs/42510552509/artifacts/13629805705.
 - O digest acima é do ZIP exterior; o EXE deve continuar a ser validado pelo sidecar `publish/DGM-MAT.exe.sha256` no artefacto extraído.
 - Snyk private tests: quota exhausted; no clean Snyk result is claimed.
 
@@ -85,3 +85,12 @@ Latest CI on the reviewed backend head:
 - Windows Executable Build run 42509849909: SUCCESS; artefacto e SHA-256 documentados acima.
 - O novo teste integrado confirma pairing mobile real no TestClient loopback, criação de thread, envio de mensagem, pesquisa de histórico e negação de catálogo de comandos/missões para a sessão mobile.
 - Build Windows é evidência de packaging CI, não aceitação local Windows 10.
+
+
+### Atualização provider readiness — 2026-11-08 18:33 UTC
+- `governed_chat_status()` agora atualiza observações de saúde ausentes/antigas quando `DGM_MOBILE_GOVERNED_CHAT_ENABLED=1` está explicitamente ativo.
+- A verificação é limitada por janela de 30 s para tentativas e 60 s para observação; executa apenas `check_health()`, nunca uma conclusão/chat completion.
+- Com a flag desligada, não inicializa nem consulta providers. Testes verificam ambos os casos.
+- Focused PR Validation #42510552602: SUCCESS.
+- Chrome Extension Validation #42510552584: SUCCESS.
+- Windows Executable Build #42510552509: SUCCESS; artefacto atual documentado acima.
