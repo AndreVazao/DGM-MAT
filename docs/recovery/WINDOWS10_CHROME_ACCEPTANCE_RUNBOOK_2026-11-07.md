@@ -1,9 +1,9 @@
 # DGM-MAT — Plano de aceitação Windows 10 + Chrome
 **Data:** 2026-11-08  
-**Aplicável a:** PR #283, código validado no head `739edfc16c05b27429639d142fd85d016189f2b1`; head atual `c10d2a3c1e489bb9c6eabe820a9438bd8ff3576d` altera apenas a expectativa de um teste, sem alterar código de runtime; artefacto Windows Build #306.  
+**Aplicável a:** PR #283, código validado no head `739edfc16c05b27429639d142fd85d016189f2b1`; head atual `4cbf2d9ec03ad4ddd2fa197a06dc8a6e253ad2af` altera apenas a expectativa de um teste, sem alterar código de runtime; artefacto Windows Build #310.  
 **Objetivo:** validar instalação, arranque, persistência e consulta manual aprovada sem ativar autonomia ou introduzir risco nos dados existentes.
 
-## 0. Regras de segurança
+**Validação CI atualizada em 2026-11-08 16:46 UTC:** Focused PR Validation #726 (run `42501213531`), Chrome Extension Validation #318 (run `42501213530`) e Windows Executable Build #310 (run `42501213553`) concluíram com sucesso no head documental `4cbf2d9`. O Build #310 validou instalador, executável (deep check), assertions finais e upload. Isto continua a ser evidência CI/build, não aceitação no PC local.\n\n## 0. Regras de segurança
 
 - Não apagar instalações, bases de dados, configurações, credenciais, worktrees, logs ou backups existentes.
 - Não iniciar duas instâncias do DGM-MAT. Se a API já responder em `127.0.0.1:8181`, primeiro identificar a instância; não executar um segundo arranque.
@@ -22,26 +22,26 @@
 Usar exclusivamente o artefacto da execução GitHub Actions:
 
 - Repositório: `AndreVazao/DGM-MAT`
-- Execução: https://github.com/AndreVazao/DGM-MAT/actions/runs/42500577090
-- Nome do artefacto: `DGM-MAT-Windows-3.12-fa98b61`
-- Tamanho: 111,238,942 bytes
-- SHA-256 do artefacto GitHub: `eee9c6a2d890ef23d9aa4dd597914b34b487089dff108b03d95035351fa86a21`
-- Commit incluído: `c10d2a3c1e489bb9c6eabe820a9438bd8ff3576d`
-- Expiração indicada pelo GitHub: 2027-02-06 16:34:25 UTC.
+- Execução: https://github.com/AndreVazao/DGM-MAT/actions/runs/42501213553
+- Nome do artefacto: `DGM-MAT-Windows-3.12-70a7fb7`
+- Tamanho: 111,237,062 bytes
+- SHA-256 do artefacto GitHub: `03d9a6b6c375ecbb49ce38a3fd4bca00f515b21b2e2a18d481ffd03abe9bc601`
+- Commit incluído: `4cbf2d9ec03ad4ddd2fa197a06dc8a6e253ad2af`
+- Expiração indicada pelo GitHub: 2027-02-06 16:42:00 UTC.
 
 No GitHub, abrir a execução acima, descer até **Artifacts** e descarregar exatamente o artefacto indicado. Não usar o botão genérico **Source code** nem um ZIP de uma branch.
 
-O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-fa98b61.zip`, o respetivo ficheiro `.sha256` e a pasta `publish\` com o sidecar `DGM-MAT.exe.sha256`. Extrair esse ZIP de distribuição para uma subpasta `package\`. O executável e a pasta `scripts\` ficam na raiz de `package\`; não existe uma segunda pasta `publish\` dentro dela.
+O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-70a7fb7.zip`, o respetivo ficheiro `.sha256` e a pasta `publish\` com o sidecar `DGM-MAT.exe.sha256`. Extrair esse ZIP de distribuição para uma subpasta `package\`. O executável e a pasta `scripts\` ficam na raiz de `package\`; não existe uma segunda pasta `publish\` dentro dela.
 
-Verificar o SHA-256 do arquivo exterior descarregado contra o digest publicado pelo GitHub. Depois verificar o ZIP de distribuição contra o conteúdo de `DGM-MAT-Windows-3.12-fa98b61.zip.sha256`. Não confundir estes dois níveis de arquivo.
+Verificar o SHA-256 do arquivo exterior descarregado contra o digest publicado pelo GitHub. Depois verificar o ZIP de distribuição contra o conteúdo de `DGM-MAT-Windows-3.12-70a7fb7.zip.sha256`. Não confundir estes dois níveis de arquivo.
 
 Depois de extrair o ZIP de distribuição para `package\`, verificar `package\DGM-MAT.exe` contra o sidecar `publish\DGM-MAT.exe.sha256` que veio no arquivo exterior. **O digest do artefacto GitHub não é o digest do executável.** O instalador seguro exige o digest do executável, fornecido explicitamente.
 
 Comandos de verificação (ajustar apenas os caminhos para a pasta onde o download foi extraído):
 
 ```powershell
-Get-FileHash -Algorithm SHA256 -LiteralPath ".\DGM-MAT-Windows-3.12-fa98b61.zip"
-Get-Content -LiteralPath ".\DGM-MAT-Windows-3.12-fa98b61.zip.sha256"
+Get-FileHash -Algorithm SHA256 -LiteralPath ".\DGM-MAT-Windows-3.12-70a7fb7.zip"
+Get-Content -LiteralPath ".\DGM-MAT-Windows-3.12-70a7fb7.zip.sha256"
 Get-Content -LiteralPath ".\publish\DGM-MAT.exe.sha256"
 Get-FileHash -Algorithm SHA256 -LiteralPath ".\package\DGM-MAT.exe"
 ```
