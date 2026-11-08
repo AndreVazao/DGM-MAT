@@ -105,3 +105,17 @@ A security review found that the original paired extension token had only `brows
 - Artefacto Chrome: `DGM-MAT-Chrome-Conversation-Recovery` (22,816 bytes; digest `6d02ae8686f9352518906d655a0a78141135c602d17365c1947c4fc2e4a7eac9`; run `42500577041`; expira em 2026-11-22 16:34:45 UTC).
 - Snyk remains unavailable because the private-test quota is exhausted; this is not a clean Snyk result. The focused `pip-audit` found no known vulnerabilities in its audited dependency set.
 - Head `c10d2a3` altera a expectativa de teste de emparelhamento, sem alterar o runtime relativamente ao commit `739edfc`. Build #306 foi produzido no head de teste atual.
+
+
+## Latest validation refresh — 2026-11-08 16:46 UTC
+
+The latest PR head at this checkpoint is the documentation head `4cbf2d9ec03ad4ddd2fa197a06dc8a6e253ad2af`. No runtime code changed after the validated code/test head `c10d2a3c1e489bb9c6eabe820a9438bd8ff3576d`; the new commits only refresh acceptance/recovery documentation.
+
+- Focused PR Validation **#726**: SUCCESS (run `42501213531`); affected regressions and Windows installer digest gate passed.
+- Chrome Extension Validation **#318**: SUCCESS (run `42501213530`); JS syntax, deterministic fixtures, rejection of unapproved direct sends, approved operator fixtures, manifest, focused dependency audit, Bandit, browser/API regressions and extension packaging all passed.
+- Windows Executable Build **#310**: SUCCESS (run `42501213553`); all 15 build steps passed, including installer validation, executable deep check, final assertions and artifact upload.
+- Current Windows artifact: `DGM-MAT-Windows-3.12-70a7fb7`, 111,237,062 bytes; GitHub artifact ZIP SHA-256 `03d9a6b6c375ecbb49ce38a3fd4bca00f515b21b2e2a18d481ffd03abe9bc601`; created 2026-11-08 16:46:11 UTC; expires 2027-02-06 16:42:00 UTC. Run: https://github.com/AndreVazao/DGM-MAT/actions/runs/42501213553.
+- The GitHub artifact digest is for the outer artifact ZIP, not the EXE. Validate the EXE against `publish/DGM-MAT.exe.sha256` inside the extracted artifact as described in the runbook.
+- Snyk remains blocked by exhausted private-test quota; no clean Snyk result is claimed. The focused `pip-audit` and Bandit steps passed in Chrome Extension Validation #318, within their configured scope.
+- PR #283 remains OPEN and UNMERGED. No Windows 10 local install, Chrome pairing, or real provider E2E has been performed in this GitHub-only session. No activation flags were enabled. No legacy branch was deleted.
+- Next gate remains operator-side Windows 10 + Chrome acceptance with one confirmed free provider, then security review and explicit owner decision before merge.
