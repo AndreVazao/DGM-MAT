@@ -102,4 +102,4 @@ A security review found that the original paired extension token had only `brows
 - Focused PR Validation #722: SUCCESS (run `42500577087`), including the updated pairing-scope expectation.
 - Windows Build #305: SUCCESS (run `42500111911`), artefact `DGM-MAT-Windows-3.12-58b8cfc` (111,238,999 bytes; GitHub artefact digest `aa8d06ce803faa54ea01e5672d01726c1803a7b838a43331d86595d11e1f47cc`; expires 2027-02-06 16:29:08 UTC).
 - Snyk remains unavailable because the private-test quota is exhausted; this is not a clean Snyk result.
-- The follow-up Windows Build #306 is still running on the test-only head `c10d2a3`; Build #305 contains the same runtime code from `739edfc`.
+- Head `c10d2a3` altera a expectativa de teste de emparelhamento, sem alterar o runtime relativamente ao commit `739edfc`.
