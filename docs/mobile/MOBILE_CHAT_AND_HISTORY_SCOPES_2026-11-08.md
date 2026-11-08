@@ -60,6 +60,13 @@ The existing `CredentialVault` stores its Fernet master-key file beside the encr
 
 ## Validation and acceptance
 
+Latest CI on the reviewed backend head:
+- Focused PR Validation: success — run 42509402563.
+- Chrome Extension Validation: success — run 42509402174.
+- Windows installer digest gate: success.
+- Windows Executable Build: run 42509402171; final build/artifact steps still pending at the time of this checkpoint.
+- Snyk private tests: quota exhausted; no clean Snyk result is claimed.
+
 - Focused PR Validation covers mobile pairing, scope inheritance, route classification and thread search.
 - Chrome Extension Validation also runs the shared auth regressions.
 - Windows executable build validates packaging; it is not local Windows 10 acceptance.
