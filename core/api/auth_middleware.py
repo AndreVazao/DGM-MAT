@@ -63,6 +63,18 @@ def _required_scope(scope: SecurityScope) -> str | None:
     return "operator"
 
 
+def _has_required_scope(scopes: Any, required: str | None) -> bool:
+    """Operator sessions are a superset; remote mobile sessions remain narrowly scoped."""
+    granted = set(scopes or ())
+    if not required:
+        return True
+    if required == "browser-capture":
+        return bool({"browser-capture", "operator"} & granted)
+    if required in {"mobile-read", "mobile-chat", "mobile-maintenance"}:
+        return required in granted or "operator" in granted
+    return required in granted
+
+
 class LocalSessionAuthMiddleware:
     """Require a valid short-lived bearer session on every inventoried private route.
 
@@ -162,10 +174,7 @@ class LocalSessionAuthMiddleware:
             return
 
         required = _required_scope(classification.scope)
-        if required == "browser-capture":
-            sufficient = bool({"browser-capture", "operator"} & set(principal.scopes))
-        else:
-            sufficient = not required or required in principal.scopes
+        sufficient = _has_required_scope(principal.scopes, required)
         if not sufficient:
             if route_type == "websocket":
                 await self._websocket_denied(send, code=1008)
