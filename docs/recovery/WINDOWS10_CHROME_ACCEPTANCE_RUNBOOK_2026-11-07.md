@@ -31,11 +31,11 @@ Usar exclusivamente o artefacto da execução GitHub Actions:
 
 No GitHub, abrir a execução acima, descer até **Artifacts** e descarregar exatamente o artefacto indicado. Não usar o botão genérico **Source code** nem um ZIP de uma branch.
 
-O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-145f01e.zip`, o respetivo ficheiro `.sha256` e a pasta `publish\` com o sidecar `DGM-MAT.exe.sha256`. O ZIP de distribuição, quando extraído para a subpasta \`package\\\`, contém o executável e a pasta `scripts\` na raiz; não contém uma segunda pasta `publish\`.
+O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-145f01e.zip`, o respetivo ficheiro `.sha256` e a pasta `publish\\` com o sidecar `DGM-MAT.exe.sha256`. Extrair esse ZIP de distribuição para uma subpasta `package\\`. O executável e a pasta `scripts\\` ficam na raiz de `package\\`; não existe uma segunda pasta `publish\\` dentro dela.
 
 Verificar o SHA-256 do arquivo exterior descarregado contra o digest publicado pelo GitHub. Depois verificar o ZIP de distribuição contra o conteúdo de `DGM-MAT-Windows-3.12-145f01e.zip.sha256`. Não confundir estes dois níveis de arquivo.
 
-Depois de extrair o ZIP de distribuição para a subpasta \`package\\\`, verificar o executável `DGM-MAT.exe` dessa subpasta contra o sidecar `publish\DGM-MAT.exe.sha256` que veio no arquivo exterior. **O digest do artefacto GitHub não é o digest do executável.** O instalador seguro exige o digest do executável, fornecido explicitamente.
+Depois de extrair o ZIP de distribuição para `package\\`, verificar `package\\DGM-MAT.exe` contra o sidecar `publish\\DGM-MAT.exe.sha256` que veio no arquivo exterior. **O digest do artefacto GitHub não é o digest do executável.** O instalador seguro exige o digest do executável, fornecido explicitamente.
 
 Comandos de verificação (ajustar apenas os caminhos para a pasta onde o download foi extraído):
 
@@ -119,7 +119,7 @@ Registar cada resultado como **PASS**, **FAIL** ou **NOT TESTED**, com hora, ver
 O ZIP contém a pasta `browser_extension` e os scripts de instalação.
 
 1. Confirmar que o Chrome usado é o perfil normal do operador e que os cinco fornecedores estão autenticados manualmente, se aplicável.
-2. Executar `scripts\install_browser_extension.bat` a partir da pasta exterior onde existe a subpasta `package\\`. O script preserva a extensão anterior em `%LOCALAPPDATA%\DGM-MAT\BrowserExtension.backups\`.
+2. Executar `scripts\install_browser_extension.bat` a partir da pasta exterior onde existe a subpasta `package`. O script preserva a extensão anterior em `%LOCALAPPDATA%\DGM-MAT\BrowserExtension.backups\`.
 3. No Chrome, ativar **Developer mode** em `chrome://extensions`.
 4. Escolher **Load unpacked** e selecionar `%LOCALAPPDATA%\DGM-MAT\BrowserExtension`. Se já estiver carregada a partir dessa pasta, usar **Reload**.
 5. Emparelhar apenas com o código de utilização única emitido pelo DGM-MAT local. Não partilhar nem guardar esse código no relatório.
