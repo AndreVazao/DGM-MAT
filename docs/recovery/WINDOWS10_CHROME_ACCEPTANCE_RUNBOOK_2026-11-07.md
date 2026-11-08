@@ -1,9 +1,11 @@
 # DGM-MAT — Plano de aceitação Windows 10 + Chrome
 **Data:** 2026-11-08  
-**Aplicável a:** PR #283, código validado no head de teste `c10d2a3c1e489bb9c6eabe820a9438bd8ff3576d`; head documental atual `22755606d8b35ca398e157680fbbeeaee8d1bd1c` contém apenas atualizações documentais; artefacto Windows Build #310.  
+**Aplicável a:** PR #283, código validado no head de teste `c10d2a3c1e489bb9c6eabe820a9438bd8ff3576d`; os commits posteriores são apenas atualizações documentais, sem alteração do runtime; artefacto Windows Build #310.  
 **Objetivo:** validar instalação, arranque, persistência e consulta manual aprovada sem ativar autonomia ou introduzir risco nos dados existentes.
 
-**Validação CI atualizada em 2026-11-08 16:46 UTC:** Focused PR Validation #726 (run `42501213531`), Chrome Extension Validation #318 (run `42501213530`) e Windows Executable Build #310 (run `42501213553`) concluíram com sucesso no head de PR `4cbf2d9` (a execução CI foi disparada nesse commit; commits documentais posteriores não alteraram código). O Build #310 validou instalador, executável (deep check), assertions finais e upload. Isto continua a ser evidência CI/build, não aceitação no PC local.\n\n## 0. Regras de segurança
+**Validação CI atualizada em 2026-11-08 16:46 UTC:** Focused PR Validation #726 (run `42501213531`), Chrome Extension Validation #318 (run `42501213530`) e Windows Executable Build #310 (run `42501213553`) concluíram com sucesso no head de PR `4cbf2d9` (a execução CI foi disparada nesse commit; commits documentais posteriores não alteraram código). O Build #310 validou instalador, executável (deep check), assertions finais e upload. Isto continua a ser evidência CI/build, não aceitação no PC local.
+
+## 0. Regras de segurança
 
 - Não apagar instalações, bases de dados, configurações, credenciais, worktrees, logs ou backups existentes.
 - Não iniciar duas instâncias do DGM-MAT. Se a API já responder em `127.0.0.1:8181`, primeiro identificar a instância; não executar um segundo arranque.
