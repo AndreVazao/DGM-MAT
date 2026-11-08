@@ -72,23 +72,30 @@ def _ollama_status() -> dict:
         with urlopen("http://127.0.0.1:11434/api/tags", timeout=2) as response:
             payload = json.loads(response.read().decode("utf-8"))
         models = [item.get("name") for item in payload.get("models", [])]
-        return {"available": True, "models": [m for m in models if m]}
-    except (OSError, ValueError):
+        installed = [m for m in models if isinstance(m, str) and m.strip()]
+        return {"available": bool(installed), "models": installed}
+    except (OSError, ValueError, TypeError):
         return {"available": False, "models": []}
 
 
 @router.get("/status")
 def get_mobile_status():
     tailscale = _tailscale_identity()
+    ollama = _ollama_status()
+    governed_chat = service.governed_chat_status()
+    ai_ready = bool(ollama.get("available") or governed_chat.get("available"))
     return {
-        "status": "ready",
+        "status": "ready" if ai_ready else "degraded",
+        "api_status": "ready",
         "bridge": "active",
         "chat": "continuous-thread",
         "intent": "enabled",
         "storage": "local-durable",
+        "ai_ready": ai_ready,
+        "ai_mode": "ollama" if ollama.get("available") else "governed-provider" if governed_chat.get("available") else "not-configured",
         "tailscale": tailscale,
-        "ollama": _ollama_status(),
-        "governed_chat": service.governed_chat_status(),
+        "ollama": ollama,
+        "governed_chat": governed_chat,
         "source_of_truth": "authorized-dgm-mat-pc",
     }
 
