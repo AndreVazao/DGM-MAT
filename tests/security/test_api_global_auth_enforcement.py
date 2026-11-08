@@ -359,7 +359,7 @@ def test_mobile_pairing_and_chat_history_work_without_general_operator_authority
     posted = client.post(
         f"/mobile/threads/{thread_id}/messages",
         headers=mobile_headers,
-        json={"content": "Pesquisar histórico de conversas anteriores"},
+        json={"content": "Olá, esta é uma mensagem de teste guardada no histórico."},
     )
     assert posted.status_code == 200
     assert posted.json()["thread"]["id"] == thread_id
@@ -367,7 +367,7 @@ def test_mobile_pairing_and_chat_history_work_without_general_operator_authority
     searched = client.get(
         "/mobile/threads/search",
         headers=mobile_headers,
-        params={"q": "histórico", "limit": 10},
+        params={"q": "mensagem", "limit": 10},
     )
     assert searched.status_code == 200
     assert searched.json()["results"][0]["thread_id"] == thread_id
