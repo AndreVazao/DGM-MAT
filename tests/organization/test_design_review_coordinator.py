@@ -1,6 +1,4 @@
 """Tests for host-attested, read-only independent design review execution."""
-from dataclasses import asdict
-
 import pytest
 
 from core.organization.design_review import DesignBrief, ReviewFinding
@@ -16,25 +14,23 @@ from core.organization.models import Task, TaskStatus
 from core.organization.task_manager import OrganizationTaskManager
 
 
-def make_attestation(context_id, **overrides):
-    values = {
-        "issuer": ATTESTATION_ISSUER,
-        "runtime_context_id": context_id,
-        "fresh_session": True,
-        "prior_history_excluded": True,
-        "cross_reviewer_context_disabled": True,
-        "tools_disabled": True,
-        "write_access_disabled": True,
-        "credentials_excluded": True,
-    }
-    values.update(overrides)
-    return RuntimeIsolationAttestation(**values)
+def make_attestation(context_id):
+    return RuntimeIsolationAttestation(
+        issuer=ATTESTATION_ISSUER,
+        runtime_context_id=context_id,
+        fresh_session=True,
+        prior_history_excluded=True,
+        cross_reviewer_context_disabled=True,
+        tools_disabled=True,
+        write_access_disabled=True,
+        credentials_excluded=True,
+    )
 
 
 class FakeSession:
-    def __init__(self, context_id, findings=(), attestation=None):
+    def __init__(self, context_id, findings=()):
         self.runtime_context_id = context_id
-        self.isolation_attestation = attestation or make_attestation(context_id)
+        self.isolation_attestation = make_attestation(context_id)
         self.findings = findings
         self.received = []
 
@@ -44,21 +40,20 @@ class FakeSession:
 
 
 class FakeFactory:
-    def __init__(self, *, shared=False, invalid_attestation=None, findings=()):
+    def __init__(self, *, shared=False, findings=()):
         self.shared = shared
-        self.invalid_attestation = invalid_attestation
         self.findings = findings
         self.sessions = []
 
     def create_fresh_session(self, packet):
         context_id = "ctx:shared" if self.shared else f"ctx:{packet.reviewer_id}"
-        attestation = self.invalid_attestation
-        session = FakeSession(context_id, self.findings, attestation)
+        session = FakeSession(context_id, self.findings)
         self.sessions.append(session)
         return session
 
 
 def setup_task(tmp_path, *, durable=True, status=TaskStatus.RUNNING, task_kind=TASK_KIND):
+    tmp_path.mkdir(parents=True, exist_ok=True)
     bus = InternalMessageBus(tmp_path / "organization.sqlite3") if durable else None
     manager = OrganizationTaskManager(bus)
     task = Task(
@@ -156,30 +151,30 @@ def test_shared_context_is_rejected_without_completing_task(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "field,value",
+    "field",
     [
-        ("fresh_session", False),
-        ("prior_history_excluded", False),
-        ("cross_reviewer_context_disabled", False),
-        ("tools_disabled", False),
-        ("write_access_disabled", False),
-        ("credentials_excluded", False),
+        "fresh_session",
+        "prior_history_excluded",
+        "cross_reviewer_context_disabled",
+        "tools_disabled",
+        "write_access_disabled",
+        "credentials_excluded",
     ],
 )
-def test_any_unsafe_runtime_attestation_fails_closed(tmp_path, field, value):
-    bus, manager = setup_task(tmp_path)
-    attestation = make_attestation("ctx:reviewer:a", **{field: value})
-    factory = FakeFactory(invalid_attestation=attestation)
-    result = DesignReviewCoordinator(manager, factory).run(
-        task_id="task:egm-review",
-        brief=make_brief(),
-        reviewer_ids=("reviewer:a", "reviewer:b"),
-        review_id=f"review:unsafe-{field}",
-    )
-    assert result.status == "FAILED"
-    assert "runtime_isolation_policy_not_satisfied" in result.reason
-    assert manager.get("task:egm-review").status is TaskStatus.RUNNING
-    bus.close()
+def test_runtime_attestation_rejects_any_unsafe_policy(field):
+    values = {
+        "issuer": ATTESTATION_ISSUER,
+        "runtime_context_id": "ctx:reviewer",
+        "fresh_session": True,
+        "prior_history_excluded": True,
+        "cross_reviewer_context_disabled": True,
+        "tools_disabled": True,
+        "write_access_disabled": True,
+        "credentials_excluded": True,
+    }
+    values[field] = False
+    with pytest.raises(ValueError, match="runtime_isolation_policy_not_satisfied"):
+        RuntimeIsolationAttestation(**values)
 
 
 def test_task_binding_mismatch_never_creates_sessions(tmp_path):
