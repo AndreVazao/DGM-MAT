@@ -3,7 +3,7 @@ name: DGM-MAT Chrome Extension Validation
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    branches: [main, recovery/legacy-branch-consolidation-2026-11-07]
     paths:
       - "browser_extension/**"
       - "core/api/browser_capture_api.py"
