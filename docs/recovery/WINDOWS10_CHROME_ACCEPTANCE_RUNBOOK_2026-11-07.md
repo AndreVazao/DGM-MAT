@@ -1,6 +1,6 @@
 # DGM-MAT — Plano de aceitação Windows 10 + Chrome
 **Data:** 2026-11-08  
-**Aplicável a:** PR #283, código validado no head `739edfc16c05b27429639d142fd85d016189f2b1`; head atual `c10d2a3c1e489bb9c6eabe820a9438bd8ff3576d` altera apenas a expectativa de um teste, sem alterar código de runtime; artefacto Windows Build #305.  
+**Aplicável a:** PR #283, código validado no head `739edfc16c05b27429639d142fd85d016189f2b1`; head atual `c10d2a3c1e489bb9c6eabe820a9438bd8ff3576d` altera apenas a expectativa de um teste, sem alterar código de runtime; artefacto Windows Build #306.  
 **Objetivo:** validar instalação, arranque, persistência e consulta manual aprovada sem ativar autonomia ou introduzir risco nos dados existentes.
 
 ## 0. Regras de segurança
@@ -22,18 +22,18 @@
 Usar exclusivamente o artefacto da execução GitHub Actions:
 
 - Repositório: `AndreVazao/DGM-MAT`
-- Execução: https://github.com/AndreVazao/DGM-MAT/actions/runs/42500111911
-- Nome do artefacto: `DGM-MAT-Windows-3.12-58b8cfc`
-- Tamanho: 111,238,999 bytes
-- SHA-256 do artefacto GitHub: `aa8d06ce803faa54ea01e5672d01726c1803a7b838a43331d86595d11e1f47cc`
-- Commit incluído: `739edfc16c05b27429639d142fd85d016189f2b1`
-- Expiração indicada pelo GitHub: 2027-02-06 16:29:08 UTC.
+- Execução: https://github.com/AndreVazao/DGM-MAT/actions/runs/42500577090
+- Nome do artefacto: `DGM-MAT-Windows-3.12-fa98b61`
+- Tamanho: 111,238,942 bytes
+- SHA-256 do artefacto GitHub: `eee9c6a2d890ef23d9aa4dd597914b34b487089dff108b03d95035351fa86a21`
+- Commit incluído: `c10d2a3c1e489bb9c6eabe820a9438bd8ff3576d`
+- Expiração indicada pelo GitHub: 2027-02-06 16:34:25 UTC.
 
 No GitHub, abrir a execução acima, descer até **Artifacts** e descarregar exatamente o artefacto indicado. Não usar o botão genérico **Source code** nem um ZIP de uma branch.
 
 O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-54e344e.zip`, o respetivo ficheiro `.sha256` e a pasta `publish\` com o sidecar `DGM-MAT.exe.sha256`. Extrair esse ZIP de distribuição para uma subpasta `package\`. O executável e a pasta `scripts\` ficam na raiz de `package\`; não existe uma segunda pasta `publish\` dentro dela.
 
-Verificar o SHA-256 do arquivo exterior descarregado contra o digest publicado pelo GitHub. Depois verificar o ZIP de distribuição contra o conteúdo de `DGM-MAT-Windows-3.12-58b8cfc.zip.sha256`. Não confundir estes dois níveis de arquivo.
+Verificar o SHA-256 do arquivo exterior descarregado contra o digest publicado pelo GitHub. Depois verificar o ZIP de distribuição contra o conteúdo de `DGM-MAT-Windows-3.12-fa98b61.zip.sha256`. Não confundir estes dois níveis de arquivo.
 
 Depois de extrair o ZIP de distribuição para `package\`, verificar `package\DGM-MAT.exe` contra o sidecar `publish\DGM-MAT.exe.sha256` que veio no arquivo exterior. **O digest do artefacto GitHub não é o digest do executável.** O instalador seguro exige o digest do executável, fornecido explicitamente.
 
