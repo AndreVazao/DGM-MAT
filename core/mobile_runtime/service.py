@@ -524,7 +524,7 @@ class MobileConversationService:
         return "Percebi. Mantive a mensagem e o contexto nesta conversa para que o próximo pedido continue exatamente daqui."
 
     def governed_chat_status(self) -> dict[str, Any]:
-        """Report opt-in governed-chat readiness without sending a provider request."""
+        """Report opt-in governed-chat readiness without sending a chat-completion request."""
         enabled = os.getenv("DGM_MOBILE_GOVERNED_CHAT_ENABLED", "0").strip().casefold() in {"1", "true", "yes", "on"}
         provider_id = os.getenv("DGM_MOBILE_GOVERNED_PROVIDER", "nvidia_nim").strip() or "nvidia_nim"
         result = {
