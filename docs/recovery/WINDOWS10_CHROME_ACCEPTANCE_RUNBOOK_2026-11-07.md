@@ -1,6 +1,6 @@
 # DGM-MAT — Plano de aceitação Windows 10 + Chrome
 **Data:** 2026-11-08  
-**Aplicável a:** PR #283, head documental `75b6fa0a7a09af645aa8ee80e39384a4858550b0` e artefacto Windows Build #300 (código funcional igual ao head `042be2354a82efc3659661f1e85197c9a917692b`).  
+**Aplicável a:** PR #283, código validado no head `739edfc16c05b27429639d142fd85d016189f2b1`; head atual `c10d2a3c1e489bb9c6eabe820a9438bd8ff3576d` altera apenas a expectativa de um teste, sem alterar código de runtime; artefacto Windows Build #305.  
 **Objetivo:** validar instalação, arranque, persistência e consulta manual aprovada sem ativar autonomia ou introduzir risco nos dados existentes.
 
 ## 0. Regras de segurança
@@ -22,18 +22,18 @@
 Usar exclusivamente o artefacto da execução GitHub Actions:
 
 - Repositório: `AndreVazao/DGM-MAT`
-- Execução: https://github.com/AndreVazao/DGM-MAT/actions/runs/42475905948
-- Nome do artefacto: `DGM-MAT-Windows-3.12-54e344e`
-- Tamanho: 111,238,946 bytes
-- SHA-256 do artefacto GitHub: `f5d5abefe05dd14c40043484f4601eb90cdcad45ae034d31d71fd2eb7eee97d2`
-- Commit incluído: `75b6fa0a7a09af645aa8ee80e39384a4858550b0`
-- Expiração indicada pelo GitHub: 2027-02-06 11:28:39 UTC.
+- Execução: https://github.com/AndreVazao/DGM-MAT/actions/runs/42500111911
+- Nome do artefacto: `DGM-MAT-Windows-3.12-58b8cfc`
+- Tamanho: 111,238,999 bytes
+- SHA-256 do artefacto GitHub: `aa8d06ce803faa54ea01e5672d01726c1803a7b838a43331d86595d11e1f47cc`
+- Commit incluído: `739edfc16c05b27429639d142fd85d016189f2b1`
+- Expiração indicada pelo GitHub: 2027-02-06 16:29:08 UTC.
 
 No GitHub, abrir a execução acima, descer até **Artifacts** e descarregar exatamente o artefacto indicado. Não usar o botão genérico **Source code** nem um ZIP de uma branch.
 
 O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-54e344e.zip`, o respetivo ficheiro `.sha256` e a pasta `publish\` com o sidecar `DGM-MAT.exe.sha256`. Extrair esse ZIP de distribuição para uma subpasta `package\`. O executável e a pasta `scripts\` ficam na raiz de `package\`; não existe uma segunda pasta `publish\` dentro dela.
 
-Verificar o SHA-256 do arquivo exterior descarregado contra o digest publicado pelo GitHub. Depois verificar o ZIP de distribuição contra o conteúdo de `DGM-MAT-Windows-3.12-5f31bf7.zip.sha256`. Não confundir estes dois níveis de arquivo.
+Verificar o SHA-256 do arquivo exterior descarregado contra o digest publicado pelo GitHub. Depois verificar o ZIP de distribuição contra o conteúdo de `DGM-MAT-Windows-3.12-58b8cfc.zip.sha256`. Não confundir estes dois níveis de arquivo.
 
 Depois de extrair o ZIP de distribuição para `package\`, verificar `package\DGM-MAT.exe` contra o sidecar `publish\DGM-MAT.exe.sha256` que veio no arquivo exterior. **O digest do artefacto GitHub não é o digest do executável.** O instalador seguro exige o digest do executável, fornecido explicitamente.
 
@@ -41,7 +41,7 @@ Comandos de verificação (ajustar apenas os caminhos para a pasta onde o downlo
 
 ```powershell
 Get-FileHash -Algorithm SHA256 -LiteralPath ".\DGM-MAT-Windows-3.12-5f31bf7.zip"
-Get-Content -LiteralPath ".\DGM-MAT-Windows-3.12-5f31bf7.zip.sha256"
+Get-Content -LiteralPath ".\DGM-MAT-Windows-3.12-58b8cfc.zip.sha256"
 Get-Content -LiteralPath ".\publish\DGM-MAT.exe.sha256"
 Get-FileHash -Algorithm SHA256 -LiteralPath ".\package\DGM-MAT.exe"
 ```
@@ -124,7 +124,8 @@ O ZIP contém a pasta `browser_extension` e os scripts de instalação.
 4. Escolher **Load unpacked** e selecionar `%LOCALAPPDATA%\DGM-MAT\BrowserExtension`. Se já estiver carregada a partir dessa pasta, usar **Reload**.
 5. Emparelhar apenas com o código de utilização única emitido pelo DGM-MAT local. Não partilhar nem guardar esse código no relatório.
 6. Confirmar que a extensão fica ligada ao backend local e que o popup abre sem erros.
-7. Confirmar que o opt-in de consulta permanece desligado e que não há mensagens enviadas automaticamente.
+7. Confirmar no resultado do emparelhamento que os scopes são `browser-capture` e `browser-consult-control`, sem `operator`. O primeiro permite claim/result/block; o segundo permite apenas status/enqueue/approve das consultas.
+8. Confirmar que o opt-in de consulta permanece desligado e que não há mensagens enviadas automaticamente.
 
 Se o emparelhamento falhar, recolher mensagem e logs sem copiar tokens/códigos. Não remover o perfil Chrome nem limpar dados de sessão.
 
@@ -159,6 +160,7 @@ Só depois de o primeiro fornecedor passar é que se considera testar Grok, Gemi
 
 - Pedido sem aprovação não pode ser reclamado/enviado.
 - Sessão não emparelhada não pode reclamar nem devolver resultados.
+- Sessão da extensão não contém `operator`; possui apenas `browser-capture` e `browser-consult-control`.
 - Claim token inválido, expirado ou já usado é rejeitado.
 - Resultado de fornecedor é sempre conteúdo não confiável.
 - Reinício do service worker com pedido em curso não causa replay automático; o pedido fica interrompido/bloqueado.
