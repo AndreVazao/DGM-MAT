@@ -202,3 +202,10 @@ A issue [#159](https://github.com/AndreVazao/DGM-MAT/issues/159) continua aberta
 - **Tentado:** review formal REQUEST_CHANGES na PR #283; GitHub recusou porque a conta é autora da PR.
 - **Concluído:** comentário técnico de bloqueio publicado na PR #283; relatório diário criado em branch isolada.
 - **Não executado:** merge, fecho de PR/issue, eliminação de branch/tag, alteração de credenciais/permissões, ativação de flags, atualização local, missão, chamada a provider ou mudança do modo Hub.
+
+
+---
+
+## Nota de publicação
+
+Este inventário é um snapshot recolhido às 14:54 UTC, antes da criação da própria PR de relatório. O relatório foi posteriormente versionado na [PR #284](https://github.com/AndreVazao/DGM-MAT/pull/284), draft e documental, pelo que a contagem atual de PRs/branches aumenta após o instante de observação. A PR #284 não altera código de execução e não foi integrada.
