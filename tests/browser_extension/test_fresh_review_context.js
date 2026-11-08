@@ -248,6 +248,35 @@ async function testNoNewConversationIdIsUnverified() {
   assert.equal(result.data.independence_attested, false);
 }
 
+
+async function testProvidersWithoutVerifiedTemporaryPrivacyModeFailClosed() {
+  for (const provider of ["grok", "deepseek", "qwen"]) {
+    const harness = createHarness(provider);
+    const preflight = await harness.ping();
+    assert.equal(preflight.ok, false, provider);
+    assert.equal(preflight.reason, "provider_privacy_mode_not_verified", provider);
+    assert.equal(harness.sendClicks(), 0, provider);
+  }
+}
+
+async function testPersonalizedChatGPTTemporaryModeIsRejected() {
+  const harness = createHarness("chatgpt", {
+    bodyText: "Temporary Chat Personalized"
+  });
+  const preflight = await harness.ping();
+  assert.equal(preflight.ok, false);
+  assert.equal(preflight.reason, "provider_privacy_mode_not_verified");
+  assert.equal(harness.sendClicks(), 0);
+}
+
+async function testGeminiRegularNewChatIsRejected() {
+  const harness = createHarness("gemini", { bodyText: "New Chat" });
+  const preflight = await harness.ping();
+  assert.equal(preflight.ok, false);
+  assert.equal(preflight.reason, "provider_privacy_mode_not_verified");
+  assert.equal(harness.sendClicks(), 0);
+}
+
 async function main() {
   await testFreshBlankPageProtocolAcrossAllProviders();
   await testProvidersWithoutVerifiedTemporaryPrivacyModeFailClosed();
