@@ -1,6 +1,6 @@
 # DGM-MAT — Plano de aceitação Windows 10 + Chrome
-**Data:** 2026-11-07  
-**Aplicável a:** PR #283, head de código `042be2354a82efc3659661f1e85197c9a917692b` e respetivo artefacto Windows.  
+**Data:** 2026-11-08  
+**Aplicável a:** PR #283, head documental `75b6fa0a7a09af645aa8ee80e39384a4858550b0` e artefacto Windows Build #300 (código funcional igual ao head `042be2354a82efc3659661f1e85197c9a917692b`).  
 **Objetivo:** validar instalação, arranque, persistência e consulta manual aprovada sem ativar autonomia ou introduzir risco nos dados existentes.
 
 ## 0. Regras de segurança
@@ -22,16 +22,16 @@
 Usar exclusivamente o artefacto da execução GitHub Actions:
 
 - Repositório: `AndreVazao/DGM-MAT`
-- Execução: https://github.com/AndreVazao/DGM-MAT/actions/runs/42475479161
-- Nome do artefacto: `DGM-MAT-Windows-3.12-5f31bf7`
-- Tamanho: 111,238,422 bytes
-- SHA-256 do artefacto GitHub: `8b84cc0a61e36f30d370ca18c285effc7d89dad24cc40293d667003b63b2ca7b`
-- Commit incluído: `042be2354a82efc3659661f1e85197c9a917692b`
-- Expiração indicada pelo GitHub: 2027-02-06 11:22 UTC.
+- Execução: https://github.com/AndreVazao/DGM-MAT/actions/runs/42475905948
+- Nome do artefacto: `DGM-MAT-Windows-3.12-54e344e`
+- Tamanho: 111,238,946 bytes
+- SHA-256 do artefacto GitHub: `f5d5abefe05dd14c40043484f4601eb90cdcad45ae034d31d71fd2eb7eee97d2`
+- Commit incluído: `75b6fa0a7a09af645aa8ee80e39384a4858550b0`
+- Expiração indicada pelo GitHub: 2027-02-06 11:28:39 UTC.
 
 No GitHub, abrir a execução acima, descer até **Artifacts** e descarregar exatamente o artefacto indicado. Não usar o botão genérico **Source code** nem um ZIP de uma branch.
 
-O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-5f31bf7.zip`, o respetivo ficheiro `.sha256` e a pasta `publish\` com o sidecar `DGM-MAT.exe.sha256`. Extrair esse ZIP de distribuição para uma subpasta `package\`. O executável e a pasta `scripts\` ficam na raiz de `package\`; não existe uma segunda pasta `publish\` dentro dela.
+O download de Actions é um arquivo exterior. Depois de o extrair, deverá existir o ZIP de distribuição `DGM-MAT-Windows-3.12-54e344e.zip`, o respetivo ficheiro `.sha256` e a pasta `publish\` com o sidecar `DGM-MAT.exe.sha256`. Extrair esse ZIP de distribuição para uma subpasta `package\`. O executável e a pasta `scripts\` ficam na raiz de `package\`; não existe uma segunda pasta `publish\` dentro dela.
 
 Verificar o SHA-256 do arquivo exterior descarregado contra o digest publicado pelo GitHub. Depois verificar o ZIP de distribuição contra o conteúdo de `DGM-MAT-Windows-3.12-5f31bf7.zip.sha256`. Não confundir estes dois níveis de arquivo.
 
