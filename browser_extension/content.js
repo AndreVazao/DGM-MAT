@@ -609,11 +609,11 @@
     ].filter(Boolean).join(" ")).join(" ").toLowerCase();
     const visibleUi = bodyText + " " + labels;
     if (provider === "chatgpt" &&
-        /temporary(?:\\s+chat)?/.test(visibleUi) &&
+        /temporary(?:\s+chat)?/.test(visibleUi) &&
         /unpersonalized|without personalization|sem personaliza/.test(visibleUi)) {
       return "chatgpt_temporary_unpersonalized";
     }
-    if (provider === "gemini" && /temporary\\s+chat/.test(visibleUi)) {
+    if (provider === "gemini" && /temporary\s+chat/.test(visibleUi)) {
       return "gemini_temporary_chat";
     }
     // Grok Private Chat is not enough by itself: its separate X-personalization
