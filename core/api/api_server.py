@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -205,6 +206,20 @@ def start_vault_bootstrap() -> None:
     thread.start()
 
 
+def _sibling_repository_roots() -> list[Path]:
+    """Resolve sibling checkouts for source runs and frozen Windows executables."""
+    roots: list[Path] = []
+    if getattr(sys, "frozen", False):
+        executable = Path(sys.executable).resolve()
+        if len(executable.parents) >= 3:
+            # Standard install: <repos>\\DGM-MAT\\installed\\DGM-MAT.exe
+            roots.append(executable.parents[2])
+    source_root = Path(__file__).resolve().parents[3]
+    if source_root not in roots:
+        roots.append(source_root)
+    return roots
+
+
 def _pc_cockpit_directory() -> Path | None:
     """Find the optional PC cockpit without making it a backend dependency.
 
@@ -218,7 +233,7 @@ def _pc_cockpit_directory() -> Path | None:
     candidates = (
         [Path(configured)]
         if configured
-        else [Path(__file__).resolve().parents[3] / "DGM-Cockpit-Frontend"]
+        else [root / "DGM-Cockpit-Frontend" for root in _sibling_repository_roots()]
     )
     for candidate in candidates:
         if (
@@ -235,10 +250,11 @@ def _pc_cockpit_directory() -> Path | None:
 def _mobile_ui_directory() -> Path | None:
     configured = os.getenv("DGM_MOBILE_UI_PATH")
     pc_configured = os.getenv("DGM_PC_COCKPIT_PATH")
-    candidates = [
-        Path(configured) if configured else None,
-        Path(__file__).resolve().parents[3] / "DGM-MAT-Mobile" / "web",
-    ]
+    candidates = (
+        [Path(configured)]
+        if configured
+        else [root / "DGM-MAT-Mobile" / "web" for root in _sibling_repository_roots()]
+    )
     pc_path = Path(pc_configured).resolve() if pc_configured else None
     for candidate in candidates:
         if not candidate or not candidate.is_dir() or not (candidate / "index.html").is_file():
