@@ -134,7 +134,18 @@ class DesignReviewCoordinator:
         if reason:
             return DesignReviewExecution("BLOCKED", task_id, review_id, False, 0, reason=reason)
 
-        packets = build_reviewer_packets(brief, reviewer_ids, review_id)
+        try:
+            packets = build_reviewer_packets(brief, reviewer_ids, review_id)
+        except (TypeError, ValueError) as exc:
+            return DesignReviewExecution(
+                "BLOCKED",
+                task_id,
+                review_id,
+                False,
+                0,
+                reason=f"invalid_review_packet:{str(exc)[:180]}",
+            )
+
         sessions: list[ReviewSession] = []
         try:
             # Create every session before sending any review request.
