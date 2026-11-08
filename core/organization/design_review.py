@@ -1,8 +1,8 @@
 """Evidence-bounded, read-only design-review packet contracts.
 
-This module prepares isolated reviewer inputs. It does not create agent sessions,
+This module prepares bounded reviewer inputs. It does not create agent sessions,
 call model providers, execute tools, approve changes, or mutate repositories.
-A review is independent only after distinct runtime context IDs are recorded.
+Distinct context IDs are necessary but not sufficient proof of independence.
 """
 from __future__ import annotations
 
@@ -131,12 +131,15 @@ def build_reviewer_packets(
 
 
 def validate_independent_results(
-    packets: tuple[ReviewerPacket, ...], results: tuple[ReviewerResult, ...]
+    packets: tuple[ReviewerPacket, ...],
+    results: tuple[ReviewerResult, ...],
+    *,
+    runtime_isolation_attested: bool = False,
 ) -> dict[str, Any]:
-    """Verify result-to-packet mapping and distinct runtime contexts.
+    """Validate reviewer mapping and context isolation evidence.
 
-    This verifies recorded context identifiers only; the runtime must guarantee
-    that those identifiers represent genuinely fresh, isolated model sessions.
+    Distinct IDs establish structural separation only. The runtime adapter must
+    explicitly attest that these IDs are fresh sessions with no shared history.
     """
     if len(packets) < 2 or len(results) != len(packets):
         return {"independent": False, "reason": "reviewer_result_count_mismatch"}
@@ -147,12 +150,20 @@ def validate_independent_results(
     context_ids = [r.runtime_context_id for r in results]
     if len(set(context_ids)) != len(context_ids):
         return {"independent": False, "reason": "shared_runtime_context"}
+    if not runtime_isolation_attested:
+        return {
+            "independent": False,
+            "structurally_valid": True,
+            "reason": "runtime_isolation_unattested",
+            "distinct_runtime_contexts": len(set(context_ids)),
+        }
     return {
         "independent": True,
+        "structurally_valid": True,
         "review_id": packets[0].review_id,
         "reviewer_count": len(packets),
         "distinct_runtime_contexts": len(set(context_ids)),
-        "runtime_isolation_attestation_required": True,
+        "runtime_isolation_attested": True,
     }
 
 
