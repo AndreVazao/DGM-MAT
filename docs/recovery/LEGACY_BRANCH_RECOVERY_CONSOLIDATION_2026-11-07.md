@@ -119,3 +119,6 @@ The latest PR head at this checkpoint is the documentation head `4cbf2d9ec03ad4d
 - Snyk remains blocked by exhausted private-test quota; no clean Snyk result is claimed. The focused `pip-audit` and Bandit steps passed in Chrome Extension Validation #318, within their configured scope.
 - PR #283 remains OPEN and UNMERGED. No Windows 10 local install, Chrome pairing, or real provider E2E has been performed in this GitHub-only session. No activation flags were enabled. No legacy branch was deleted.
 - Next gate remains operator-side Windows 10 + Chrome acceptance with one confirmed free provider, then security review and explicit owner decision before merge.
+
+- Separate Chrome extension artifact from Validation #318: `DGM-MAT-Chrome-Conversation-Recovery`, 22,820 bytes; GitHub ZIP SHA-256 `8d269c841ed888bc8d2bc0d5e3533ba4d7334a666063db5a70b04c8bb0d1c606`; created 2026-11-08 16:42:24 UTC; expires 2026-11-22 16:42:23 UTC. Run: https://github.com/AndreVazao/DGM-MAT/actions/runs/42501213530.
+- The Windows acceptance runbook now records both the current Windows Build #310 artifact and this separate extension package. Its PR/code-head wording was corrected; the current PR head may advance for documentation-only changes.
