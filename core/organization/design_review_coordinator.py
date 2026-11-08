@@ -1,17 +1,17 @@
 """Host-runtime coordinator for genuinely isolated, read-only EGM reviews.
 
-The coordinator accepts only a host-owned session factory. It never launches a
-provider itself and never gives reviewers tools, credentials, prior author
-conversation, or other reviewers' findings. Runtime attestations are supplied
-by the trusted host adapter and are persisted with the task-linked receipt.
+A host-owned adapter creates provider sessions with fresh context and tools
+disabled. This coordinator never launches a provider itself, never shares
+reviewer output between sessions, and persists only a task-linked receipt.
 """
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 from .design_review import (
     DesignBrief,
+    ReviewFinding,
     ReviewerPacket,
     ReviewerResult,
     build_reviewer_packets,
@@ -65,7 +65,7 @@ class ReviewSession(Protocol):
     @property
     def isolation_attestation(self) -> RuntimeIsolationAttestation: ...
 
-    def review(self, packet: ReviewerPacket) -> tuple[Any, ...]: ...
+    def review(self, packet: ReviewerPacket) -> tuple[ReviewFinding, ...]: ...
 
 
 class ReviewSessionFactory(Protocol):
@@ -168,7 +168,6 @@ class DesignReviewCoordinator:
                 findings = session.review(packet)
                 if not isinstance(findings, tuple):
                     raise ValueError("review_findings_must_be_tuple")
-                from .design_review import ReviewFinding
                 if any(not isinstance(item, ReviewFinding) for item in findings):
                     raise ValueError("review_finding_schema_invalid")
                 results.append(
