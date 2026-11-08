@@ -65,7 +65,7 @@ The complete legacy versions of `core/api/api_server.py` and `core/api/security_
 - GitHub Actions Focused PR Validation #716: **SUCCESS** (run `42475905963`).
 - GitHub Actions Chrome Extension Validation #308: **SUCCESS** (run `42475905965`).
 - Windows Executable Build #300: **SUCCESS** (run `42475905948`), incluindo deep executable check, final assertions e upload do artefacto.
-- Artefacto atual: `DGM-MAT-Windows-3.12-54e344e`, 111,238,946 bytes; digest SHA-256 do arquivo GitHub `f5d5abefe05dd14c40043484f4601eb90cdcad45ae034d31d71fd2eb7eee97d2`; expira em 2027-02-06 11:28:39 UTC. O digest identifica o arquivo de artefacto, não o EXE.
+- Artefacto intermédio Build #300 (supersedido pelo Build #306): `DGM-MAT-Windows-3.12-54e344e`, 111,238,946 bytes; digest SHA-256 do arquivo GitHub `f5d5abefe05dd14c40043484f4601eb90cdcad45ae034d31d71fd2eb7eee97d2`.
 - Check Snyk: **ERROR por quota esgotada** (“You have used your limit of private tests”); não há aprovação Snyk.
 - Execução Windows: https://github.com/AndreVazao/DGM-MAT/actions/runs/42475905948
 - Runtime/Windows 10/Chrome acceptance with real free-tier accounts: **not performed**.
@@ -76,9 +76,9 @@ The complete legacy versions of `core/api/api_server.py` and `core/api/security_
 All five audited source branch refs can be deleted after the owner verifies that PR #283 contains the recovered consultation modules and archival integration snapshots. Four branches are already superseded/integrated; the free-tier consultation branch's five changed files are represented in PR #283 as active isolated modules or labelled archival snapshots. Keep the new `recovery/legacy-branch-consolidation-2026-11-07` branch and PR #283 open. Deleting old branch refs does not require deleting their PR/commit history; preserve that history.
 
 
-## Final CI and artifact update — 2026-11-07 21:29 UTC
+## Historical CI and artifact snapshot — 2026-11-07 21:29 UTC
 
-This section supersedes the interim workflow numbers above.
+This is a historical snapshot. The current validation state is recorded in the 2026-11-08 scope-correction section below.
 
 - Validated head: `6be93325a8499683c39a360d58332cd367be95f1`.
 - Focused PR Validation **#703: SUCCESS**.
@@ -100,6 +100,8 @@ A security review found that the original paired extension token had only `brows
 - Focused PR Validation #721: SUCCESS (run `42500111864`), 30 tests passed.
 - Chrome Extension Validation #314: SUCCESS (run `42500577041`), 77 browser/API regressions passed; JavaScript fixtures, manifest, Bandit and focused `pip-audit` passed; no known vulnerabilities found in the dependencies audited by that workflow.
 - Focused PR Validation #722: SUCCESS (run `42500577087`), including the updated pairing-scope expectation.
-- Windows Build #305: SUCCESS (run `42500111911`), artefact `DGM-MAT-Windows-3.12-58b8cfc` (111,238,999 bytes; GitHub artefact digest `aa8d06ce803faa54ea01e5672d01726c1803a7b838a43331d86595d11e1f47cc`; expires 2027-02-06 16:29:08 UTC).
-- Snyk remains unavailable because the private-test quota is exhausted; this is not a clean Snyk result.
-- Head `c10d2a3` altera a expectativa de teste de emparelhamento, sem alterar o runtime relativamente ao commit `739edfc`.
+- Windows Build #305: SUCCESS (run `42500111911`), artefact `DGM-MAT-Windows-3.12-58b8cfc` (111,238,999 bytes; GitHub artefact digest `aa8d06ce803faa54ea01e5672d01726c1803a7b838a43331d86595d11e1f47cc`; superseded by Build #306).
+- Windows Build #306: **SUCCESS** (run `42500577090`), artefacto atual `DGM-MAT-Windows-3.12-fa98b61` (111,238,942 bytes; GitHub digest `eee9c6a2d890ef23d9aa4dd597914b34b487089dff108b03d95035351fa86a21`; expira em 2027-02-06 16:34:25 UTC).
+- Artefacto Chrome: `DGM-MAT-Chrome-Conversation-Recovery` (22,816 bytes; digest `6d02ae8686f9352518906d655a0a78141135c602d17365c1947c4fc2e4a7eac9`; run `42500577041`; expira em 2026-11-22 16:34:45 UTC).
+- Snyk remains unavailable because the private-test quota is exhausted; this is not a clean Snyk result. The focused `pip-audit` found no known vulnerabilities in its audited dependency set.
+- Head `c10d2a3` altera a expectativa de teste de emparelhamento, sem alterar o runtime relativamente ao commit `739edfc`. Build #306 foi produzido no head de teste atual.
