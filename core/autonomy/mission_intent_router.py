@@ -113,7 +113,7 @@ def classify_mission_intent(goal: str) -> IntentDecision:
     normalized_goal = unicodedata.normalize("NFKD", goal.casefold())
     normalized_goal = "".join(ch for ch in normalized_goal if not unicodedata.combining(ch))
     normalized_goal = " ".join(normalized_goal.split())
-    if re.search(r"(?:repository|repositorio)\s+(?:\.\.|/|\\\\)", normalized_goal):
+    if re.search(r"(?:repository|repositorio)\s+(?:\.\.|/|\\)", normalized_goal):
         return IntentDecision(
             "unsupported", False, 0.0, True,
             "Repository path syntax is forbidden; provide a host-allowlisted repository ID.",
