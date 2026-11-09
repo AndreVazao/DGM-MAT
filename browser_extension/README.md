@@ -4,7 +4,7 @@
 
 ## Purpose
 
-This Manifest V3 extension lets DGM-MAT read conversations that the operator can already see in authenticated ChatGPT, Gemini and Grok tabs. It discovers visible conversation links in the provider's rendered navigation, queues them locally, opens them one by one in the same tab, reads visible message containers and sends the capture to the loopback DGM-MAT API.
+This Manifest V3 extension lets DGM-MAT read conversations that the operator can already see in authenticated ChatGPT, Gemini, Grok, Claude, DeepSeek and Qwen tabs. It discovers visible conversation links in the provider's rendered navigation, queues them locally, opens them one by one in the same tab, reads visible message containers and sends the capture to the loopback DGM-MAT API.
 
 It does not call provider APIs, inspect browser authentication stores, or send prompts/messages.
 
@@ -13,7 +13,7 @@ It does not call provider APIs, inspect browser authentication stores, or send p
 The manifest requests only:
 - `activeTab`: use the tab when the operator opens the extension popup;
 - `storage`: persist the DGM-MAT local session token and recovery checkpoint in extension-owned storage;
-- host access to ChatGPT, Gemini (including legacy `bard.google.com`), Grok and `http://127.0.0.1:8181` / `http://localhost:8181`.
+- host access to ChatGPT, Gemini (including legacy `bard.google.com`), Grok, Claude, DeepSeek, Qwen and `http://127.0.0.1:8181` / `http://localhost:8181`.
 
 It does not request `cookies`, `history`, `webRequest`, `debugger`, `downloads`, `scripting`, or broad all-sites access. The extension does not read `document.cookie`, localStorage, sessionStorage, IndexedDB or browser profile files.
 
@@ -27,7 +27,7 @@ The bearer token stored by the extension is a dedicated DGM-MAT `browser-capture
 4. Configure the Windows environment variable `DGM_CHROME_EXTENSION_ID` to that exact ID for the DGM-MAT API process. Do not use a wildcard. Restart the DGM-MAT API after changing it.
 5. On the same PC, open `http://127.0.0.1:8181/auth/pairing-code`. The page issues a one-use code with a five-minute expiry.
 6. Open the DGM-MAT extension popup, enter that code and choose **Pair with DGM-MAT**. The code is consumed once; it is not saved.
-7. Open the ChatGPT, Gemini or Grok conversation list while signed in normally. Open the extension popup and choose **Scan and recover this provider**. To let DGM-MAT continue unattended across already-open provider tabs, enable **Enable unattended recovery across open provider tabs** once. The extension remembers the provider tabs as their pages load and rotates through them sequentially; no per-conversation approval is required. The setting is off by default and can be disabled at any time. Reload provider tabs that were already open before the extension was installed so their content scripts register them.
+7. Open the ChatGPT, Gemini, Grok, Claude, DeepSeek or Qwen conversation list while signed in normally. Open the extension popup and choose **Scan and recover this provider**. To let DGM-MAT continue unattended across already-open provider tabs, enable **Enable unattended recovery across open provider tabs** once. The extension remembers the provider tabs as their pages load and rotates through them sequentially; no per-conversation approval is required. The setting is off by default and can be disabled at any time. Reload provider tabs that were already open before the extension was installed so their content scripts register them.
 
 Pairing must happen from the local PC. The API accepts only the exact configured extension origin and loopback network requests. Never expose port 8181 or the Chrome debugging port to the LAN or internet.
 
@@ -49,6 +49,12 @@ The displayed final prompt is read-only in this iteration; edit the goal/context
 - The extension requests the next source and repeats until the queue is empty. When unattended mode is enabled, it then continues to another already-open provider tab; blocked conversations remain queued for deliberate retry.
 - Login, challenge, rate-limit, selector failure, unexpected navigation or archive failure stops the run and checkpoints the blocker. The operator can explicitly retry the blocked conversation from the popup after resolving the cause.
 
+
+
+### Claude capture boundary
+
+Claude is enabled only for historical conversation discovery/capture in this extension. Supported conversation URL shapes are `/chat/{conversation_id}` and `/project/{project_id}/chat/{conversation_id}`. The content script reads only the visible message nodes selected by the Claude DOM adapter. Claude is not added to the fresh-review temporary-privacy workflow and is not added to the separate external consultation send allowlist. A provider-specific live DOM acceptance on the operator's Chrome profile remains required.
+
 ## Archive and truth labels
 
 Raw captures are stored under the configured `DGM_RECOVERY_ARCHIVE_ROOT` (default: `~/.dgm-mat/recovery-archive/browser-ui/<provider>/...`). They contain the visible source content and should be treated as private local data. The normalized copy is redacted before indexing. GitHub receives no conversation bodies or titles.
@@ -60,6 +66,8 @@ A successful SHA-256 check proves that the local capture file was written intact
 - ChatGPT: `data-message-author-role` message containers.
 - Gemini: `user-query` and `model-response` elements.
 - Grok: visible conversation/message test IDs and message metadata; role inference may remain `unknown` where the UI does not expose speaker semantics.
+- Claude: `user-message`, `assistant-message` and `chat-message` test IDs; role extraction is fixture-tested but still requires live DOM acceptance.
+- DeepSeek/Qwen: existing provider-specific message selectors remain unchanged; they are supported for historical capture, not automatically accepted for fresh independent review.
 
 Provider UIs change. Unknown layouts are reported as failures rather than silently archiving the whole page or inventing speaker roles. Attachment bytes are not downloaded; only text visible in message containers is captured.
 
@@ -68,7 +76,7 @@ Provider UIs change. Unknown layouts are reported as failures rather than silent
 - [ ] Install unpacked extension and configure its exact ID in the DGM-MAT API environment.
 - [ ] Pair with a one-time code and confirm the extension receives only the browser-capture scope and expires after eight hours.
 - [ ] Enable unattended recovery and verify the extension rotates across already-open provider tabs without per-conversation prompts.
-- [ ] Capture one conversation from ChatGPT, Gemini and Grok where accessible.
+- [ ] Capture one conversation from ChatGPT, Gemini, Grok and Claude where accessible.
 - [ ] Compare visible UI message order/count against the raw local archive.
 - [ ] Verify SHA-256 and that the normalized archive redacts test secrets.
 - [ ] Verify the conversation intelligence progress/knowledge stores contain the derived audit and code artifacts.
