@@ -80,6 +80,18 @@ def test_inventory_exposes_hash_metadata_not_archive_contents(monkeypatch, tmp_p
 
 
 
+def test_github_reference_routes_are_operator_only():
+    expected = (
+        ("/recovery/github-references", "GET"),
+        ("/recovery/github-references/verify", "POST"),
+        ("/recovery/github-references/reindex", "POST"),
+    )
+    for path, method in expected:
+        route = classify_request_path(path, method)
+        assert route is not None
+        assert route.scope is SecurityScope.OPERATOR
+
+
 def test_chrome_import_route_is_operator_only_and_preserves_source_contract(monkeypatch):
     class FakeImporter:
         def import_inbox(self):
