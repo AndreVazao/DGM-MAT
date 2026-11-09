@@ -129,7 +129,7 @@ def build_browser_consult_mission_context(payload: BrowserConsultMissionContextR
         logs = data.get("logs") if isinstance(data.get("logs"), list) else []
         if logs:
             lines.extend(["", "RECENT EXECUTION LOGS:"])
-            lines.extend("- " + str(item)[:350] for item in logs[-10:])
+            lines.extend("- " + str(item).replace("\\", "/").rsplit("/", 1)[-1][:120] for item in artifacts[-12:] if isinstance(item, str))
         subtasks = data.get("subtasks") if isinstance(data.get("subtasks"), list) else []
         if subtasks:
             lines.extend(["", "SUBTASKS:"])
@@ -160,7 +160,10 @@ def build_browser_consult_mission_context(payload: BrowserConsultMissionContextR
             }
         if safe_metadata:
             lines.extend(["", "BOUNDED MISSION METADATA:", json.dumps(safe_metadata, ensure_ascii=False, sort_keys=True)[:900]])
-        context = _redact("\n".join(lines)[:4000])
+        raw_context = "\n".join(lines)
+        raw_context = re.sub(r"(?i)\b[A-Z]:[\\/][^\s\"']+", "[LOCAL_PATH]", raw_context)
+        raw_context = re.sub(r"(?i)(?<![A-Za-z0-9])/(?:home|Users)/[^\s\"']+", "[LOCAL_PATH]", raw_context)
+        context = _redact(raw_context[:4000])
         safe_goal = _redact(goal[:4000])
         prompt = build_prompt(goal=safe_goal, context=context)
         return {
