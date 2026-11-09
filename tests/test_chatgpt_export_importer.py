@@ -235,7 +235,7 @@ def test_chatgpt_import_indexes_github_repository_links_in_vault(tmp_path, monke
             "user-node": {
                 "message": {
                     "author": {"role": "user"},
-                    "content": {"parts": ["Please inspect https://github.com/AndreVazao/DGM-MAT/tree/main/core"]},
+                    "content": {"parts": ["Please inspect https://github.com/andrevazao/dgm-mat/tree/main/core"]},
                 }
             },
             "assistant-node": {
@@ -256,7 +256,7 @@ def test_chatgpt_import_indexes_github_repository_links_in_vault(tmp_path, monke
     refs = VaultCatalog(tmp_path / "vault").list_github_repository_references()
     assert refs["total"] == 2
     assert {item["canonical_url"] for item in refs["items"]} == {
-        "https://github.com/AndreVazao/DGM-MAT",
+        "https://github.com/andrevazao/dgm-mat",
         "https://github.com/torvalds/linux",
     }
     assert all(item["verification_status"] == "pending_verification" for item in refs["items"])
