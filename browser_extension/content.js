@@ -625,11 +625,11 @@
     // Labels alone are not proof: settings menus can display disabled options.
     // Require the provider UI to expose an explicit active/checked state.
     if (provider === "chatgpt" &&
-        /temporary(?:\\s+chat)?/.test(activeLabels) &&
+        /temporary(?:\s+chat)?/.test(activeLabels) &&
         /unpersonalized|without personalization|sem personaliza/.test(activeLabels)) {
       return "chatgpt_temporary_unpersonalized";
     }
-    if (provider === "gemini" && /temporary\\s+chat/.test(activeLabels)) {
+    if (provider === "gemini" && /temporary\s+chat/.test(activeLabels)) {
       return "gemini_temporary_chat";
     }
     // Grok Private Chat is not enough by itself: its separate X-personalization
