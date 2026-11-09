@@ -71,7 +71,7 @@ function createHarness(provider, options = {}) {
   const privacyControls = provider === "chatgpt"
     ? [
         { innerText: "Temporary Chat", getAttribute(name) { return name === "aria-pressed" ? (options.privacyActive === false ? "false" : "true") : null; } },
-        { innerText: "Unpersonalized", getAttribute(name) { return name === "aria-checked" ? (options.privacyActive === false ? "false" : "true") : null; } }
+        { innerText: "Unpersonalized", getAttribute(name) { return name === "aria-checked" ? (options.unpersonalizedActive === false || options.privacyActive === false ? "false" : "true") : null; } }
       ]
     : provider === "gemini"
       ? [{ innerText: "Temporary Chat", getAttribute(name) { return name === "aria-pressed" ? (options.privacyActive === false ? "false" : "true") : null; } }]
@@ -270,7 +270,8 @@ async function testProvidersWithoutVerifiedTemporaryPrivacyModeFailClosed() {
 
 async function testPersonalizedChatGPTTemporaryModeIsRejected() {
   const harness = createHarness("chatgpt", {
-    bodyText: "Temporary Chat Personalized"
+    bodyText: "Temporary Chat Personalized",
+    unpersonalizedActive: false
   });
   const preflight = await harness.ping();
   assert.equal(preflight.ok, false);
