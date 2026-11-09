@@ -677,6 +677,50 @@ class VaultCatalog:
                 })
         return {"total": total, "limit": limit, "offset": offset, "items": items}
 
+    def reindex_github_repository_references(self, *, limit: int = 100, offset: int = 0) -> dict[str, Any]:
+        """Backfill references from already archived Vault conversations without altering transcripts."""
+        if not 1 <= limit <= 500 or offset < 0:
+            raise ValueError("Invalid reindex pagination")
+        rows = self.list_conversations()
+        selected = rows[offset:offset + limit]
+        indexed = skipped = failed = 0
+        errors: list[dict[str, str]] = []
+        for row in selected:
+            archive_path = Path(row["archive_path"])
+            try:
+                if archive_path.is_symlink() or not archive_path.is_file():
+                    skipped += 1
+                    continue
+                payload = json.loads(archive_path.read_text(encoding="utf-8"))
+                messages = payload.get("messages", []) if isinstance(payload, dict) else []
+                if not isinstance(messages, list):
+                    raise ValueError("archive messages are not a list")
+                indexed += self.record_github_repository_references(
+                    provider=str(row["provider"]),
+                    conversation_id=str(row["conversation_id"]),
+                    title=str(row.get("title") or "Untitled"),
+                    conversation_url=row.get("url"),
+                    messages=messages,
+                )
+            except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+                failed += 1
+                errors.append({
+                    "provider": str(row.get("provider") or "")[:40],
+                    "conversation_id": str(row.get("conversation_id") or "")[:120],
+                    "error": type(exc).__name__,
+                })
+        next_offset = offset + len(selected)
+        return {
+            "status": "completed" if failed == 0 else "partial",
+            "conversations_seen": len(selected),
+            "links_indexed": indexed,
+            "skipped": skipped,
+            "failed": failed,
+            "total_conversations": len(rows),
+            "next_offset": next_offset if next_offset < len(rows) else None,
+            "errors": errors[:50],
+        }
+
     def verify_pending_github_repository_references(self, *, limit: int = 10, timeout: float = 5.0) -> dict[str, Any]:
         """Verify a small batch using only the public GitHub REST endpoint; never sends credentials."""
         if not 1 <= limit <= 25 or not 1 <= timeout <= 10:
