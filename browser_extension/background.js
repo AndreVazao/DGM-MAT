@@ -267,35 +267,97 @@ async function pollBrowserConsultQueue() {
       let tab;
       try { tab = await chrome.tabs.get(tabId); } catch (_) { continue; }
       if (!tab) continue;
-      let readiness;
-      try { readiness = await sendToTab(tabId, { type: "DGM_PROVIDER_PING" }); }
-      catch (_) { continue; }
-      if (!readiness?.ok || readiness.provider !== provider || !readiness.source_id) continue;
-      if (readiness.blocked) {
-        await pauseBrowserProvider(provider, readiness.blocked);
+      let standardReadiness;
+      let freshReadiness;
+      try {
+        standardReadiness = await sendToTab(tabId, { type: "DGM_PROVIDER_PING" });
+        freshReadiness = await sendToTab(tabId, { type: "DGM_FRESH_REVIEW_PING" });
+      } catch (_) { continue; }
+      const standardReady = Boolean(
+        standardReadiness?.ok &&
+        standardReadiness.provider === provider &&
+        standardReadiness.source_id &&
+        !standardReadiness.blocked
+      );
+      const freshReady = Boolean(
+        freshReadiness?.ok &&
+        freshReadiness.fresh_review_ready === true &&
+        freshReadiness.provider === provider &&
+        freshReadiness.preflight_nonce &&
+        freshReadiness.privacy_mode_verified === true
+      );
+      if (!standardReady && !freshReady) {
+        if (standardReadiness?.blocked || freshReadiness?.reason) {
+          await chrome.storage.local.set({
+            dgmBrowserConsultLastStatus: provider + " unavailable for approved consultation: " +
+              String(freshReadiness?.reason || standardReadiness?.blocked || "not_ready")
+          });
+        }
         continue;
       }
       const claimed = await api("/recovery/browser-consult/next?provider=" + encodeURIComponent(provider), {}, state.token);
       if (claimed.status !== "claimed" || !claimed.next) continue;
-      const task = { ...claimed.next, tab_id: tabId, source_id: readiness.source_id };
+      const task = { ...claimed.next, tab_id: tabId };
+      if (task.review_mode === "fresh_review" && !freshReady) {
+        await api("/recovery/browser-consult/block", {
+          consultation_id: task.consultation_id,
+          claim_token: task.claim_token,
+          reason: "ui_mismatch"
+        }, state.token).catch(() => {});
+        await chrome.storage.local.set({
+          dgmBrowserConsultLastStatus: provider + " fresh review blocked: privacy-mode preflight failed; no prompt sent."
+        });
+        return;
+      }
+      if (task.review_mode !== "fresh_review" && !standardReady) {
+        await api("/recovery/browser-consult/block", {
+          consultation_id: task.consultation_id,
+          claim_token: task.claim_token,
+          reason: "ui_mismatch"
+        }, state.token).catch(() => {});
+        return;
+      }
+      task.source_id = task.review_mode === "fresh_review"
+        ? null
+        : standardReadiness.source_id;
       // Persist before touching the provider UI. A worker restart never replays this one-shot claim.
       await chrome.storage.local.set({ [CONSULT_CURRENT_KEY]: task });
       try {
-        const response = await sendToTab(tabId, {
-          type: "DGM_EXECUTE_BROWSER_TASK",
-          provider,
-          source_id: task.source_id,
-          message: task.prompt,
-          response_timeout_ms: 180000
-        });
+        const response = task.review_mode === "fresh_review"
+          ? await sendToTab(tabId, {
+              type: "DGM_EXECUTE_FRESH_REVIEW",
+              provider,
+              preflight_nonce: freshReadiness.preflight_nonce,
+              message: task.prompt,
+              response_timeout_ms: 180000
+            })
+          : await sendToTab(tabId, {
+              type: "DGM_EXECUTE_BROWSER_TASK",
+              provider,
+              source_id: task.source_id,
+              message: task.prompt,
+              response_timeout_ms: 180000
+            });
         if (!response?.ok) throw new Error(response?.error || "Provider UI consultation failed.");
         const outcome = response.data || {};
         if (outcome.status === "completed" && typeof outcome.assistant_text === "string" && outcome.assistant_text.trim()) {
-          await api("/recovery/browser-consult/result", {
+          const resultPayload = {
             consultation_id: task.consultation_id,
             claim_token: task.claim_token,
             response_text: outcome.assistant_text.slice(0, 16000)
-          }, state.token);
+          };
+          if (task.review_mode === "fresh_review") {
+            resultPayload.evidence = {
+              provider,
+              source_id: outcome.source_id,
+              initial_source_id: outcome.initial_source_id,
+              initial_visible_message_count: outcome.initial_visible_message_count,
+              privacy_mode: outcome.privacy_mode,
+              privacy_mode_verified: outcome.privacy_mode_verified,
+              verification: outcome.verification
+            };
+          }
+          await api("/recovery/browser-consult/result", resultPayload, state.token);
           await chrome.storage.local.set({ dgmBrowserConsultLastStatus: provider + " consultation completed; answer stored as untrusted." });
         } else {
           const reason = outcome.reason === "rate_limited" ? "rate_limited"
