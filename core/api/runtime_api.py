@@ -1,10 +1,12 @@
 # Path: C:\ProgramasGodMode\DGM-MAT\core\api\runtime_api.py
 
+import hashlib
 import json
 import os
 import re
 import time
 from datetime import datetime
+from uuid import uuid4
 import psutil
 from fastapi import APIRouter, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -26,6 +28,7 @@ from core.runtime.provider_freshness import (
 )
 from core.realtime.websocket_manager import manager
 from core.organization.office import OFFICE_AGENTS, OFFICE_DEPARTMENTS
+from core.organization.models import Task, TaskStatus
 from core.api.browser_operator_api import _queue as browser_operator_queue
 
 router = APIRouter(prefix="/runtime", tags=["runtime"])
@@ -63,6 +66,77 @@ class ApprovalDecision(BaseModel):
 class QueueRejection(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
 
+class OrganizationTaskCreate(BaseModel):
+    task_kind: Literal["repository_inventory", "python_source_analysis", "python_test_inventory"]
+    repository_id: str = Field(min_length=1, max_length=64)
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("repository_id")
+    @classmethod
+    def validate_repository_id(cls, value: str) -> str:
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", value):
+            raise ValueError("repository_id must be a host-allowlisted identifier")
+        return value
+
+
+class OrganizationTaskApprovalRequest(BaseModel):
+    result_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    model_config = ConfigDict(extra="forbid")
+
+
+class OrganizationTaskDecision(BaseModel):
+    decision: Literal["approve", "reject"]
+    result_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    reason: str = Field(default="", max_length=1000)
+    model_config = ConfigDict(extra="forbid")
+
+
+_ORGANIZATION_TASK_KINDS = {
+    "repository_inventory": {
+        "title": "Inventário read-only de repositório",
+        "description": "Inventariar apenas o repositório identificado pela allowlist configurada no host.",
+        "skills": ["file-inventory", "project-tree"],
+    },
+    "python_source_analysis": {
+        "title": "Análise read-only de código Python",
+        "description": "Analisar sintaxe, imports e estrutura Python do repositório allowlisted.",
+        "skills": ["python-source-analysis", "python-syntax", "python-import-analysis"],
+    },
+    "python_test_inventory": {
+        "title": "Inventário read-only de testes Python",
+        "description": "Inventariar estrutura de testes e lacunas observáveis sem executar código do repositório.",
+        "skills": ["python-test-inventory", "python-test-structure", "python-test-gap-signals"],
+    },
+}
+
+
+def _organization_result_digest(result: dict) -> str:
+    encoded = json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _organization_task_snapshot(task: Task) -> dict:
+    execution = task.metadata.get("worker_execution", {}) if isinstance(task.metadata, dict) else {}
+    result = execution.get("result") if isinstance(execution, dict) else None
+    digest = _organization_result_digest(result) if isinstance(result, dict) else None
+    approval_id = f"orgresult-{task.task_id}-{digest[:16]}" if digest else None
+    approval = ApprovalManager().approvals.get(approval_id) if approval_id else None
+    approval_status = getattr(approval.get("status"), "value", approval.get("status")) if approval else None
+    return {
+        "task_id": task.task_id,
+        "mission_id": task.mission_id,
+        "task_kind": task.metadata.get("task_kind"),
+        "repository_id": task.metadata.get("repository_id"),
+        "assigned_agent": task.assigned_agent,
+        "status": task.status.value,
+        "durable_receipt": execution.get("durable_receipt") is True if isinstance(execution, dict) else False,
+        "message_id": execution.get("message_id") if isinstance(execution, dict) else None,
+        "result": result,
+        "result_sha256": digest,
+        "approval_id": approval_id,
+        "approval_status": approval_status,
+    }
+
 def _active_mission_count(missions: Any) -> int:
     """Count only missions currently executing, not the full historical index."""
     if not isinstance(missions, dict):
@@ -75,6 +149,145 @@ def _active_mission_count(missions: Any) -> int:
         and str(getattr(mission.get("status"), "value", mission.get("status", ""))).upper()
         == running_status
     )
+
+
+@router.post("/organization/tasks", status_code=201)
+def create_and_dispatch_organization_task(payload: OrganizationTaskCreate):
+    """Issue one fixed read-only order; the host allowlist, not the caller, resolves paths."""
+    specification = _ORGANIZATION_TASK_KINDS[payload.task_kind]
+    task_id = "orgtask_" + uuid4().hex
+    task = Task(
+        task_id=task_id,
+        title=specification["title"],
+        mission_id="mission_org_" + uuid4().hex[:12],
+        description=specification["description"],
+        priority=50,
+        metadata={
+            "task_kind": payload.task_kind,
+            "repository_id": payload.repository_id,
+            "required_skills": list(specification["skills"]),
+            "required_permissions": [],
+            "origin": "authenticated_runtime_api",
+        },
+    )
+    try:
+        mission_engine.create_organization_task(task)
+        delegation = mission_engine.delegate_organization_task(task_id)
+        if not getattr(delegation, "agent_id", None):
+            current = mission_engine.get_organization_task(task_id)
+            return {
+                "status": "BLOCKED",
+                "reason": getattr(delegation, "reason", "no_eligible_worker"),
+                "task": _organization_task_snapshot(current or task),
+            }
+        result = mission_engine.dispatch_organization_task(task_id)
+        current = mission_engine.get_organization_task(task_id)
+        return {
+            "status": result.get("status", "UNKNOWN"),
+            "dispatch": result,
+            "task": _organization_task_snapshot(current or task),
+        }
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=409, detail=f"Organization task was not dispatched: {type(exc).__name__}") from exc
+
+
+@router.get("/organization/tasks/{task_id}")
+def get_organization_task_result(task_id: str):
+    """Read task status, correlated receipt and content digest without dispatching again."""
+    if not re.fullmatch(r"orgtask_[0-9a-f]{32}", task_id):
+        raise HTTPException(status_code=404, detail="Organization task not found")
+    task = mission_engine.get_organization_task(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Organization task not found")
+    return _organization_task_snapshot(task)
+
+
+@router.post("/organization/tasks/{task_id}/approval", status_code=201)
+def request_organization_result_approval(task_id: str, payload: OrganizationTaskApprovalRequest):
+    """Create a durable review request bound to the exact stored worker-result digest."""
+    if not re.fullmatch(r"orgtask_[0-9a-f]{32}", task_id):
+        raise HTTPException(status_code=404, detail="Organization task not found")
+    task = mission_engine.get_organization_task(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Organization task not found")
+    snapshot = _organization_task_snapshot(task)
+    if snapshot["status"] != TaskStatus.COMPLETED.value or snapshot["durable_receipt"] is not True:
+        raise HTTPException(status_code=409, detail="Only a completed task with a durable worker receipt can be reviewed")
+    if snapshot["result_sha256"] != payload.result_sha256:
+        raise HTTPException(status_code=409, detail="Result digest changed; refresh the task before requesting approval")
+    approval_id = f"orgresult-{task_id}-{payload.result_sha256[:16]}"
+    manager = ApprovalManager()
+    existing = manager.approvals.get(approval_id)
+    if existing is None:
+        review_envelope = json.dumps({
+            "schema": "dgm.organization-result-approval.v1",
+            "task_id": task_id,
+            "mission_id": task.mission_id,
+            "task_kind": snapshot["task_kind"],
+            "repository_id": snapshot["repository_id"],
+            "agent_id": snapshot["assigned_agent"],
+            "message_id": snapshot["message_id"],
+            "result_sha256": payload.result_sha256,
+            "result": snapshot["result"],
+        }, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        manager.request_approval(approval_id, review_envelope, 0.0, "LOW")
+    current = manager.approvals.get(approval_id)
+    status = getattr(current.get("status"), "value", current.get("status")) if current else "unknown"
+    return {
+        "status": "awaiting_approval" if str(status).casefold() == "awaiting_approval" else str(status),
+        "approval_id": approval_id,
+        "task_id": task_id,
+        "result_sha256": payload.result_sha256,
+        "approval_required": True,
+    }
+
+
+@router.post("/organization/tasks/{task_id}/decision")
+def decide_organization_result(task_id: str, payload: OrganizationTaskDecision):
+    """Approve/reject only the exact result digest previously submitted for operator review."""
+    if not re.fullmatch(r"orgtask_[0-9a-f]{32}", task_id):
+        raise HTTPException(status_code=404, detail="Organization task not found")
+    task = mission_engine.get_organization_task(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Organization task not found")
+    snapshot = _organization_task_snapshot(task)
+    if snapshot["status"] != TaskStatus.COMPLETED.value or snapshot["durable_receipt"] is not True:
+        raise HTTPException(status_code=409, detail="Task has no completed durable result")
+    if snapshot["result_sha256"] != payload.result_sha256:
+        raise HTTPException(status_code=409, detail="Result digest mismatch; decision refused")
+    approval_id = f"orgresult-{task_id}-{payload.result_sha256[:16]}"
+    approval = ApprovalManager().approvals.get(approval_id)
+    if not approval:
+        raise HTTPException(status_code=409, detail="No approval request exists for this exact result")
+    try:
+        reviewed = json.loads(approval.get("diff", ""))
+    except (TypeError, json.JSONDecodeError):
+        raise HTTPException(status_code=409, detail="Stored approval envelope is invalid")
+    if (
+        not isinstance(reviewed, dict)
+        or reviewed.get("task_id") != task_id
+        or reviewed.get("result_sha256") != payload.result_sha256
+        or reviewed.get("message_id") != snapshot["message_id"]
+    ):
+        raise HTTPException(status_code=409, detail="Approval envelope does not match the current durable result")
+    if payload.decision == "reject" and not payload.reason.strip():
+        raise HTTPException(status_code=422, detail="A rejection reason is required")
+    if not mission_engine.handle_approval_decision(approval_id, payload.decision):
+        raise HTTPException(status_code=409, detail="Approval decision was not persisted")
+    updated = ApprovalManager().approvals.get(approval_id)
+    decision_status = getattr(updated.get("status"), "value", updated.get("status")) if updated else "unknown"
+    expected = "approved" if payload.decision == "approve" else "rejected"
+    if str(decision_status).casefold() != expected:
+        raise HTTPException(status_code=503, detail="Durable approval state could not be verified")
+    return {
+        "status": expected,
+        "task_id": task_id,
+        "approval_id": approval_id,
+        "result_sha256": payload.result_sha256,
+        "decided_by": "authenticated_operator",
+        "reason": payload.reason.strip() if payload.decision == "reject" else None,
+    }
+
 
 @router.websocket("/ws")
 async def runtime_websocket_endpoint(websocket: WebSocket):
