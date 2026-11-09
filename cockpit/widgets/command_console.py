@@ -451,9 +451,8 @@ class CommandConsoleWidget(QWidget):
         worker.completed.connect(self._on_request_completed)
         worker.finished.connect(self._on_worker_finished)
         self._worker = worker
-        self.input_field.setEnabled(False)
-        self.send_btn.setEnabled(False)
-        self.input_field.setPlaceholderText("Waiting for runtime...")
+        self._refresh_controls()
+        self.input_field.setPlaceholderText("À espera do backend…")
         worker.start()
 
     def _on_request_completed(self, sender: str, message: str, msg_type: str) -> None:
