@@ -168,7 +168,7 @@ def test_fresh_review_queue_is_durable_and_requires_supported_privacy_provider(m
         "source_id": "new-chat-1",
         "initial_source_id": None,
         "initial_visible_message_count": 0,
-        "privacy_mode": "temporary_unpersonalized",
+        "privacy_mode": "chatgpt_temporary_unpersonalized",
         "privacy_mode_verified": True,
         "verification": "blank_page_then_new_conversation_id",
     }
