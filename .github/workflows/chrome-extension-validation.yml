@@ -15,6 +15,7 @@ on:
       - "core/api/auth_middleware.py"
       - "core/api/api_server.py"
       - "core/api/recovery_api.py"
+      - "core/api/browser_consult_api.py"
       - "core/recovery/**"
       - "core/conversation_intelligence/**"
       - "core/storage/**"
@@ -27,6 +28,8 @@ on:
       - "tests/api/test_extension_session_scope.py"
       - "tests/api/test_recovery_api.py"
       - "tests/test_recovery_ledger.py"
+      - "tests/test_browser_consult_store.py"
+      - "tests/api/test_browser_consult_api.py"
 
 permissions:
   contents: read
@@ -55,6 +58,8 @@ jobs:
         run: node tests/browser_extension/test_message_send.js
       - name: Run approved browser operator task fixtures
         run: node tests/browser_extension/test_browser_operator_task.js
+      - name: Run fresh browser review context fixtures
+        run: node tests/browser_extension/test_fresh_review_context.js
       - name: Validate extension manifest JSON
         run: python -m json.tool browser_extension/manifest.json > /dev/null
       - name: Set up Python
@@ -88,7 +93,9 @@ jobs:
             tests/api/test_extension_pairing_origin.py \
             tests/api/test_extension_session_scope.py \
             tests/api/test_recovery_api.py \
-            tests/test_recovery_ledger.py
+            tests/test_recovery_ledger.py \\
+            tests/test_browser_consult_store.py \\
+            tests/api/test_browser_consult_api.py
       - name: Package unpacked Chrome extension
         run: |
           cd browser_extension
