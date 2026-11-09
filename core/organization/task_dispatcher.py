@@ -116,6 +116,31 @@ class OrganizationTaskDispatcher:
                 "reason": "worker_response_invalid",
             }
         status = response.get("status")
+        if status == "WORKER_BLOCKED":
+            if (
+                response.get("durable_receipt") is not True
+                or not isinstance(response.get("message_id"), str)
+                or not isinstance(response.get("result"), dict)
+                or response["result"].get("status") != "BLOCKED"
+            ):
+                return {
+                    **response,
+                    "status": "RESULT_UNVERIFIED",
+                    "task_id": task_id,
+                    "task_status": task.status.value,
+                    "reason": "durable_blocked_receipt_required",
+                }
+            blocked = self.tasks.block_with_result(
+                task_id,
+                result=response["result"],
+                message_id=response["message_id"],
+            )
+            return {
+                **response,
+                "task_id": task_id,
+                "task_status": blocked.status.value,
+            }
+
         if status in {"COMPLETED", "ALREADY_COMPLETED"}:
             if (
                 response.get("durable_receipt") is not True
