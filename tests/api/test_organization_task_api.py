@@ -171,3 +171,31 @@ def test_organization_task_command_rejects_invalid_repository_identifiers(monkey
     )
     assert response.status_code == 422
     assert engine.tasks == {}
+
+
+def test_organization_task_can_resume_after_a_queued_dispatch(monkeypatch):
+    client, engine = setup_client(monkeypatch)
+    original_dispatch = engine.dispatch_organization_task
+    calls = {"count": 0}
+
+    def delayed_dispatch(task_id):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return {"status": "QUEUED", "task_id": task_id, "reason": "older_message_pending"}
+        return original_dispatch(task_id)
+
+    engine.dispatch_organization_task = delayed_dispatch
+    created = client.post(
+        "/runtime/organization/tasks",
+        json={"task_kind": "repository_inventory", "repository_id": "demo"},
+    )
+    assert created.status_code == 201
+    task_id = created.json()["task"]["task_id"]
+    assert created.json()["status"] == "QUEUED"
+    assert created.json()["task"]["durable_receipt"] is False
+
+    resumed = client.post(f"/runtime/organization/tasks/{task_id}/dispatch")
+    assert resumed.status_code == 200
+    assert resumed.json()["status"] == "COMPLETED"
+    assert resumed.json()["task"]["durable_receipt"] is True
+    assert calls["count"] == 2
