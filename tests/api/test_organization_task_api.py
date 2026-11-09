@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from types import SimpleNamespace
 
 from fastapi import FastAPI
@@ -10,35 +9,30 @@ from core.organization.models import Task, TaskStatus
 import core.api.runtime_api as runtime_api
 
 
-@dataclass
-class FakeApproval:
-    status: str
-    diff: str
-
-
 class FakeApprovalManager:
-    records: dict[str, FakeApproval] = {}
+    records: dict[str, dict] = {}
 
     @property
     def approvals(self):
         return self.records
 
     def request_approval(self, task_id, diff, risk_score=0.0, impact="LOW"):
-        self.records.setdefault(task_id, FakeApproval("awaiting_approval", diff))
+        self.records.setdefault(task_id, {"status": "awaiting_approval", "diff": diff})
         return {"task_id": task_id}
 
     def approve(self, task_id):
         item = self.records.get(task_id)
-        if not item or item.status != "awaiting_approval":
+        if not item or item["status"] != "awaiting_approval":
             return False
-        item.status = "approved"
+        item["status"] = "approved"
         return True
 
     def reject(self, task_id, reason=""):
         item = self.records.get(task_id)
-        if not item or item.status != "awaiting_approval":
+        if not item or item["status"] != "awaiting_approval":
             return False
-        item.status = "rejected"
+        item["status"] = "rejected"
+        item["reason"] = reason
         return True
 
 
@@ -135,7 +129,7 @@ def test_organization_result_approval_is_bound_to_exact_result_digest(monkeypatc
         json={"decision": "approve", "result_sha256": "0" * 64},
     )
     assert stale.status_code == 409
-    assert FakeApprovalManager.records[approval_id].status == "awaiting_approval"
+    assert FakeApprovalManager.records[approval_id]["status"] == "awaiting_approval"
 
     decided = client.post(
         f"/runtime/organization/tasks/{task_id}/decision",
