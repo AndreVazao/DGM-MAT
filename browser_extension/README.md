@@ -31,6 +31,14 @@ The bearer token stored by the extension is a dedicated DGM-MAT `browser-capture
 
 Pairing must happen from the local PC. The API accepts only the exact configured extension origin and loopback network requests. Never expose port 8181 or the Chrome debugging port to the LAN or internet.
 
+## Free-tier AI consultation preview
+
+Before a consultation can enter the approval queue, the popup now requests a server-generated preview from `POST /recovery/browser-consult/preview`. The response contains the exact bounded prompt after the existing redaction pipeline, its SHA-256 digest and whether the secret-pattern redactor inserted a marker. Previewing does not enqueue or send anything.
+
+The operator edits the goal/context fields and previews again whenever they change. The queue action is disabled until a preview exists. The enqueue request carries the preview digest; the API rebuilds the prompt and rejects the request with HTTP 409 if the submitted goal/context no longer produce the exact previewed bytes. Provider selection and free-tier attestation remain separate, and each provider still requires its own explicit approval before the extension can claim/send.
+
+The displayed final prompt is read-only in this iteration; edit the goal/context fields and regenerate the preview rather than editing the generated policy wrapper. The preview route uses the narrow `browser-consult-control` scope, not general operator scope. This does not activate the feature flag or configure any provider automatically.
+
 ## Sequential workflow
 
 - The extension scans the current provider's visible conversation links, including bounded scrolling of visible navigation areas (maximum 500 discovered links).
