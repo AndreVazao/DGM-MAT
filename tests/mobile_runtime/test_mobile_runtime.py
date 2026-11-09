@@ -773,3 +773,39 @@ def test_conversation_search_pagination_is_bounded_and_backward_compatible(tmp_p
     assert len(page["results"]) == 4
     assert isinstance(legacy, list)
     assert len(legacy) == 2
+
+
+
+def test_append_transcript_entry_persists_without_interpreting_or_dispatching(tmp_path: Path, monkeypatch):
+    service = MobileConversationService(ConversationStore(tmp_path / "conversations.json"))
+    thread = service.create_thread("Desktop cockpit")
+
+    def unexpected_interpret(_content):
+        raise AssertionError("Passive transcript persistence must not interpret intent.")
+
+    monkeypatch.setattr(service.intent, "interpret", unexpected_interpret)
+    result = service.append_transcript_entry(
+        thread["id"],
+        "user",
+        "Faz uma auditoria ao repositório.",
+    )
+
+    restored = ConversationStore(tmp_path / "conversations.json").get_thread(thread["id"])
+    assert result["thread_id"] == thread["id"]
+    assert result["message"]["role"] == "user"
+    assert result["message"]["content"] == "Faz uma auditoria ao repositório."
+    assert result["message"]["metadata"]["source"] == "desktop-cockpit-transcript"
+    assert len(restored.messages) == 1
+    assert restored.messages[0].id == result["message"]["id"]
+
+
+def test_append_transcript_entry_rejects_invalid_roles_and_oversized_content(tmp_path: Path):
+    service = MobileConversationService(ConversationStore(tmp_path / "conversations.json"))
+    thread = service.create_thread("Desktop cockpit")
+
+    with pytest.raises(ValueError, match="role"):
+        service.append_transcript_entry(thread["id"], "tool", "Não permitido")
+    with pytest.raises(ValueError, match="20000"):
+        service.append_transcript_entry(thread["id"], "assistant", "x" * 20001)
+    with pytest.raises(KeyError):
+        service.append_transcript_entry("thread-inexistente", "assistant", "Resultado")
