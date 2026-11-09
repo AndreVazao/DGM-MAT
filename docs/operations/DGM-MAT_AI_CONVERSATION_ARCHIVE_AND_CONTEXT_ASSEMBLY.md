@@ -68,6 +68,28 @@ When a provider response returns, the durable mission checkpoint receives a prov
 
 This first mission context package uses durable checkpoint evidence only. File excerpts are not auto-read from a repository in this iteration; the operator can add or remove bounded excerpts in the editable context field. A later repository-aware selector must constrain paths to the mission's verified repository root before it can add source excerpts.
 
+## GitHub repository reference preservation — 9 November 2026
+
+Every conversation archived through the Vault catalogue is scanned for canonical GitHub repository URLs. The scanner:
+- accepts only HTTPS links whose host is exactly `github.com` (or `www.github.com`);
+- reduces repository subpaths such as `/tree/main`, `/blob/`, `/issues/` and `/pull/` to the canonical `https://github.com/owner/repository`;
+- stores the repository URL, provider, conversation ID/title, message ID and source conversation URL, without copying message bodies into the reference index;
+- deduplicates repeated links while retaining distinct source occurrences;
+- marks new references `pending_verification` rather than assuming that a URL-shaped string is a real repository.
+
+Operator API:
+- `POST /recovery/github-references/reindex?limit=100&offset=0&legacy_offset=0` — backfills old Vault captures and legacy ChatGPT RecoveryLedger archives. Advance the independent `offset` and `legacy_offset` cursors from the response until both are null.
+- `GET /recovery/github-references` — paginated inventory and provenance.
+- `POST /recovery/github-references/verify?limit=10` — verifies a bounded batch against the public GitHub REST repository endpoint. It sends no credentials and does not access private GitHub data.
+
+Verification states:
+- `verified_public`: GitHub returned the matching repository identity and public metadata.
+- `not_found_or_private`: GitHub returned 404; this deliberately does not claim that a private/inaccessible repository does not exist.
+- `rate_limited` / `unavailable`: retry can happen later; no blind tight retry loop.
+
+ChatGPT JSON/ZIP exports and browser-visible captures are wired into this index. Chrome archive JSON imports also flow through the same Vault catalogue. Raw transcripts remain in the private local archive; the GitHub reference registry stores only URLs and provenance.
+
+
 ## Required next implementation stages
 
 1. Install and run the extension in the existing Chrome profile; obtain real provider URL counts.
