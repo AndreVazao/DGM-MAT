@@ -10,6 +10,8 @@ const consultCheckbox = document.getElementById("consult-checkbox");
 const consultStatus = document.getElementById("consult-status");
 const consultForm = document.getElementById("consult-request-form");
 const consultGoal = document.getElementById("consult-goal");
+const consultMissionId = document.getElementById("consult-mission-id");
+const consultLoadMissionButton = document.getElementById("consult-load-mission-button");
 const consultContext = document.getElementById("consult-context");
 const consultFreeConfirm = document.getElementById("consult-free-confirm");
 const consultPreviewButton = document.getElementById("consult-preview-button");
@@ -102,11 +104,39 @@ function invalidateConsultPreview() {
 }
 
 function currentConsultDraft() {
-  return { goal: consultGoal.value.trim(), context: consultContext.value.trim() };
+  return {
+    mission_id: consultMissionId.value.trim(),
+    goal: consultGoal.value.trim(),
+    context: consultContext.value.trim()
+  };
 }
 
+consultMissionId.addEventListener("input", invalidateConsultPreview);
 consultGoal.addEventListener("input", invalidateConsultPreview);
 consultContext.addEventListener("input", invalidateConsultPreview);
+
+consultLoadMissionButton.addEventListener("click", async () => {
+  const missionId = consultMissionId.value.trim();
+  if (!/^mission_[0-9a-f]{8}$/.test(missionId)) {
+    return showStatus("Indica um ID de missão válido (mission_ seguido de 8 caracteres hexadecimais).", true);
+  }
+  consultLoadMissionButton.disabled = true;
+  try {
+    const result = await send({
+      type: "DGM_LOAD_MISSION_CONSULT_CONTEXT",
+      payload: { mission_id: missionId }
+    });
+    consultGoal.value = result.goal;
+    consultContext.value = result.context;
+    invalidateConsultPreview();
+    consultPreviewStatus.textContent = "Contexto da missão carregado (" + result.mission_status + "). Revê e edita os campos; depois pré-visualiza o prompt exato.";
+    showStatus("Contexto da missão carregado. Nenhuma IA foi contactada.");
+  } catch (error) {
+    showStatus(error.message, true);
+  } finally {
+    consultLoadMissionButton.disabled = false;
+  }
+});
 
 consultPreviewButton.addEventListener("click", async () => {
   const draft = currentConsultDraft();
@@ -114,7 +144,10 @@ consultPreviewButton.addEventListener("click", async () => {
   consultPreviewButton.disabled = true;
   consultSubmit.disabled = true;
   try {
-    const result = await send({ type: "DGM_PREVIEW_BROWSER_CONSULT", payload: draft });
+    const result = await send({
+      type: "DGM_PREVIEW_BROWSER_CONSULT",
+      payload: { goal: draft.goal, context: draft.context }
+    });
     consultPreview.value = result.prompt;
     consultPreviewDigest = result.prompt_sha256;
     consultPreviewSnapshot = JSON.stringify(draft);
@@ -141,7 +174,9 @@ consultForm.addEventListener("submit", async event => {
     const result = await send({
       type: "DGM_ENQUEUE_BROWSER_CONSULT",
       payload: {
-        task_ref: "manual_" + Date.now(),
+        task_ref: /^mission_[0-9a-f]{8}$/.test(consultMissionId.value.trim())
+          ? consultMissionId.value.trim()
+          : "manual_" + Date.now(),
         goal: consultGoal.value.trim(),
         context: consultContext.value.trim(),
         providers,
@@ -149,6 +184,7 @@ consultForm.addEventListener("submit", async event => {
         preview_sha256: consultPreviewDigest
       }
     });
+    consultMissionId.value = "";
     consultGoal.value = "";
     consultContext.value = "";
     consultFreeConfirm.checked = false;

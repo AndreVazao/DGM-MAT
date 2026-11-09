@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import re
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.operations.operation_audit import AuditWriteError, append_command_audit
-from core.recovery.browser_consult_store import BrowserConsultStore, PROVIDERS, _enabled, build_prompt
+from core.recovery.browser_consult_store import BrowserConsultStore, PROVIDERS, _enabled, _redact, build_prompt
 
 router = APIRouter(prefix="/recovery/browser-consult", tags=["free-tier-browser-consult"])
 _store_instance: BrowserConsultStore | None = None
@@ -19,6 +21,11 @@ def _store() -> BrowserConsultStore:
     if _store_instance is None:
         _store_instance = BrowserConsultStore()
     return _store_instance
+
+
+def _mission_engine():
+    from core.api.runtime_api import mission_engine
+    return mission_engine
 
 
 def _principal(request: Request) -> dict:
@@ -55,6 +62,12 @@ class BrowserConsultEnqueueRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class BrowserConsultMissionContextRequest(BaseModel):
+    mission_id: str = Field(pattern=r"^mission_[0-9a-f]{8}$")
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class BrowserConsultPreviewRequest(BaseModel):
     goal: str = Field(min_length=1, max_length=4000)
     context: str = Field(default="", max_length=4000)
@@ -83,6 +96,96 @@ class BrowserConsultBlockRequest(BaseModel):
 def browser_consult_status(request: Request):
     _principal(request)
     return _store().status()
+
+
+@router.post("/mission-context")
+def build_browser_consult_mission_context(payload: BrowserConsultMissionContextRequest, request: Request):
+    """Build a bounded, redacted consultation context from one durable mission checkpoint."""
+    _principal(request)
+    try:
+        mission_engine = _mission_engine()
+        checkpoint = mission_engine.missions_path / (payload.mission_id + ".json")
+        if not checkpoint.is_file() or checkpoint.is_symlink():
+            raise HTTPException(status_code=404, detail="Mission checkpoint not found.")
+        data = json.loads(checkpoint.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or data.get("mission_id") != payload.mission_id:
+            raise HTTPException(status_code=404, detail="Mission checkpoint identity mismatch.")
+        goal = str(data.get("goal") or "").strip()
+        if not goal:
+            raise HTTPException(status_code=409, detail="Mission checkpoint has no usable goal.")
+        status = data.get("status")
+        if isinstance(status, dict):
+            status = status.get("value")
+        lines = [
+            "MISSION ID: " + payload.mission_id,
+            "STATUS: " + str(status or "unknown"),
+            "PROGRESS: " + str(data.get("progress", 0)),
+            "CREATED: " + str(data.get("created_at") or "unknown"),
+            "UPDATED: " + str(data.get("updated_at") or "unknown"),
+            "MISSION GOAL: " + goal,
+        ]
+        description = str(data.get("description") or "").strip()
+        if description:
+            lines.extend(["", "MISSION DESCRIPTION:", description[:900]])
+        error = str(data.get("error") or "").strip()
+        if error:
+            lines.extend(["", "LATEST ERROR:", error[:700]])
+        logs = data.get("logs") if isinstance(data.get("logs"), list) else []
+        if logs:
+            lines.extend(["", "RECENT EXECUTION LOGS:"])
+            lines.extend("- " + str(item)[:350] for item in logs[-10:])
+        subtasks = data.get("subtasks") if isinstance(data.get("subtasks"), list) else []
+        if subtasks:
+            lines.extend(["", "SUBTASKS:"])
+            for item in subtasks[-12:]:
+                if not isinstance(item, dict):
+                    continue
+                lines.append(
+                    "- " + str(item.get("title") or "Untitled")[:160]
+                    + " | status=" + str(item.get("status") or "unknown")
+                    + " | " + str(item.get("description") or "")[:260]
+                )
+        artifacts = data.get("artifacts") if isinstance(data.get("artifacts"), list) else []
+        if artifacts:
+            lines.extend(["", "RECORDED ARTIFACT REFERENCES:"])
+            lines.extend("- " + str(item).replace("\\", "/").rsplit("/", 1)[-1][:120] for item in artifacts[-12:] if isinstance(item, str))
+        metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+        safe_keys = (
+            "project_id", "repository_id", "repository_name", "branch", "base_sha",
+            "commit_sha", "task_id", "task_kind", "test_summary", "validation_summary",
+            "attempts", "next_actions", "open_questions",
+        )
+        safe_metadata = {key: metadata[key] for key in safe_keys if key in metadata}
+        intent = metadata.get("intent")
+        if isinstance(intent, dict):
+            safe_metadata["intent"] = {
+                key: intent[key] for key in ("intent", "confidence", "reason")
+                if key in intent
+            }
+        if safe_metadata:
+            lines.extend(["", "BOUNDED MISSION METADATA:", json.dumps(safe_metadata, ensure_ascii=False, sort_keys=True)[:900]])
+        raw_context = "\n".join(lines)
+        raw_context = re.sub(r"(?i)\b[A-Z]:[\\/][^\s\"']+", "[LOCAL_PATH]", raw_context)
+        raw_context = re.sub(r"(?i)(?<![A-Za-z0-9])/(?:home|Users)/[^\s\"']+", "[LOCAL_PATH]", raw_context)
+        context = _redact(raw_context[:4000])
+        safe_goal = _redact(goal[:4000])
+        prompt = build_prompt(goal=safe_goal, context=context)
+        return {
+            "mission_id": payload.mission_id,
+            "mission_status": str(status or "unknown"),
+            "goal": safe_goal,
+            "context": context,
+            "context_sha256": hashlib.sha256(context.encode("utf-8")).hexdigest(),
+            "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+            "prompt_redacted": "[REDACTED_SECRET]" in safe_goal or "[REDACTED_SECRET]" in context,
+            "source": "durable_mission_checkpoint",
+            "provider_contacted": False,
+            "requires_operator_preview_and_approval": True,
+        }
+    except HTTPException:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail="Mission context could not be safely assembled.") from exc
 
 
 @router.post("/preview")
@@ -232,6 +335,60 @@ def complete_browser_consultation(payload: BrowserConsultResultRequest, request:
                 result["conversation_updated"] = True
             except Exception:
                 result["conversation_warning"] = "local_conversation_update_failed"
+        elif result.get("status") == "COMPLETED" and re.fullmatch(r"mission_[0-9a-f]{8}", task_ref):
+            try:
+                from datetime import datetime, timezone
+                mission_engine = _mission_engine()
+                mission = mission_engine._reload_mission_checkpoint(task_ref)
+                if mission is not None:
+                    metadata = mission.metadata if isinstance(mission.metadata, dict) else {}
+                    observations = metadata.get("external_consultations")
+                    if not isinstance(observations, list):
+                        observations = []
+                    observations.append({
+                        "consultation_id": payload.consultation_id,
+                        "provider": result.get("provider"),
+                        "status": result.get("status"),
+                        "response_sha256": result.get("response_sha256"),
+                        "result_trusted": False,
+                        "recorded_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                    metadata["external_consultations"] = observations[-20:]
+                    mission.metadata = metadata
+                    if isinstance(mission.logs, list):
+                        mission.logs.append(
+                            "External consultation completed: "
+                            + str(result.get("provider", "AI"))
+                            + "; response stored as unverified proposal "
+                            + str(payload.consultation_id)
+                        )
+                    mission_engine.save_mission(mission)
+                    result["mission_updated"] = True
+                    thread_id = metadata.get("conversation_thread_id") or metadata.get("thread_id")
+                    if isinstance(thread_id, str) and thread_id.strip():
+                        try:
+                            from core.api.mobile_bridge import service as mobile_service
+                            mobile_service.store.append_message(
+                                thread_id,
+                                "assistant",
+                                "### " + str(result.get("provider", "AI")).upper()
+                                + " (resposta externa não verificada)\\n\\n"
+                                + payload.response_text[:12000],
+                                metadata={
+                                    "browser_consultation_id": payload.consultation_id,
+                                    "provider": result.get("provider"),
+                                    "mission_id": task_ref,
+                                    "result_trusted": False,
+                                    "approval_required": True,
+                                    "paid_fallback": False,
+                                    "source": "dgm-browser-consultation",
+                                },
+                            )
+                            result["conversation_updated"] = True
+                        except Exception:
+                            result["conversation_warning"] = "local_conversation_update_failed"
+            except Exception:
+                result["mission_warning"] = "durable_mission_update_failed"
         try:
             _audit("command.completed", result["status"], request, result["provider"])
             result["audit_warning"] = None

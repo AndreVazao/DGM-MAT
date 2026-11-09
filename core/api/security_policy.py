@@ -45,6 +45,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("GET",), "/recovery/browser-consult/status", SecurityScope.BROWSER_CONSULT_CONTROL, "Read-only status of free-tier browser consultations for the paired extension control surface."),
     RouteClassification(("GET",), "/recovery/browser-consult/peek", SecurityScope.BROWSER_CAPTURE, "Read-only peek at the next approved consultation; does not claim or release a prompt."),
     RouteClassification(("GET",), "/recovery/browser-consult/fresh-review/{review_id}", SecurityScope.BROWSER_CAPTURE, "Resumes a durable untrusted fresh-review result for the paired extension session."),
+    RouteClassification(("POST",), "/recovery/browser-consult/mission-context", SecurityScope.BROWSER_CONSULT_CONTROL, "Builds a bounded redacted context from a durable mission checkpoint; does not contact a provider."),
     RouteClassification(("POST",), "/recovery/browser-consult/preview", SecurityScope.BROWSER_CONSULT_CONTROL, "Previews the exact redacted browser consultation prompt without queueing or sending it."),
     RouteClassification(("POST",), "/recovery/browser-consult/enqueue", SecurityScope.BROWSER_CONSULT_CONTROL, "Queues redacted free-tier consultation prompts; the paired popup must explicitly approve each provider request."),
     RouteClassification(("POST",), "/recovery/browser-consult/approve/{consultation_id}", SecurityScope.BROWSER_CONSULT_CONTROL, "Explicit per-request approval from the paired browser consultation control surface; not a general operator session."),

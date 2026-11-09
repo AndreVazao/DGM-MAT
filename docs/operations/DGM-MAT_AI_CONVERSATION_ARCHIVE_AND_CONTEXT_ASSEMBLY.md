@@ -56,6 +56,18 @@ The extension must be installed in the existing Chrome profile by loading the un
 - Script: `scripts/import_chrome_conversation_archive.py`.
 - Operator-only API: `POST /recovery/chrome/import`.
 
+
+
+## Mission-aware external AI consultation — 9 November 2026
+
+The browser consultation popup can now load a context package from a durable DGM-MAT mission checkpoint using `POST /recovery/browser-consult/mission-context`. It includes the mission goal, state, progress, bounded recent logs, subtasks, artifact basenames and an explicit allowlist of metadata. Local filesystem paths and non-allowlisted metadata are excluded; secrets are redacted. Loading context does not contact a provider.
+
+The operator can edit the generated goal/context fields, remove any material, and must regenerate the exact redacted prompt preview before queueing. The mission ID is bound as the consultation task reference. Each provider still requires the existing separate approval and free-tier attestation.
+
+When a provider response returns, the durable mission checkpoint receives a provenance record (consultation ID, provider, status and response hash) and a log entry. The response remains explicitly unverified; if the mission carries a conversation thread ID, the response is also appended to that thread with an untrusted-result marker. No code changes, approvals, merges or deployments follow automatically.
+
+This first mission context package uses durable checkpoint evidence only. File excerpts are not auto-read from a repository in this iteration; the operator can add or remove bounded excerpts in the editable context field. A later repository-aware selector must constrain paths to the mission's verified repository root before it can add source excerpts.
+
 ## Required next implementation stages
 
 1. Install and run the extension in the existing Chrome profile; obtain real provider URL counts.
