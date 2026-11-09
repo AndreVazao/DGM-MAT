@@ -469,6 +469,7 @@ class BrowserConsultStore:
             "task_ref": row["task_ref"],
             "response_sha256": digest,
             "result_trusted": False,
+            "independence_attested": False,
             "accepted": None,
             "review_mode": row["review_mode"],
             "review_id": row["review_id"],
