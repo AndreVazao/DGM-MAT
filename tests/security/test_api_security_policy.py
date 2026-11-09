@@ -210,3 +210,12 @@ def test_organization_task_command_result_and_approval_routes_are_scoped():
         assert classification is not None
         assert classification.scope is scope
         assert _required_scope(scope) == token_scope
+
+
+def test_organization_task_dispatch_resume_is_operator_only():
+    from core.api.auth_middleware import _required_scope
+
+    route = classify_route("/runtime/organization/tasks/{task_id}/dispatch", ("POST",))
+    assert route is not None
+    assert route.scope is SecurityScope.OPERATOR
+    assert _required_scope(route.scope) == "operator"
