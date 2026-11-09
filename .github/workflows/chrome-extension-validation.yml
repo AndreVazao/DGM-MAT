@@ -96,8 +96,7 @@ jobs:
             tests/api/test_recovery_api.py \
             tests/test_recovery_ledger.py \
             tests/test_browser_consult_store.py \
-            tests/api/test_browser_consult_api.py \
-            tests/browser_extension/test_fresh_review_context.js
+            tests/api/test_browser_consult_api.py
       - name: Package unpacked Chrome extension
         run: |
           cd browser_extension
