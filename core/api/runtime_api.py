@@ -293,6 +293,9 @@ def decide_organization_result(task_id: str, payload: OrganizationTaskDecision):
         or reviewed.get("task_id") != task_id
         or reviewed.get("result_sha256") != payload.result_sha256
         or reviewed.get("message_id") != snapshot["message_id"]
+        or reviewed.get("result") != snapshot["result"]
+        or reviewed.get("agent_id") != snapshot["assigned_agent"]
+        or reviewed.get("repository_id") != snapshot["repository_id"]
     ):
         raise HTTPException(status_code=409, detail="Approval envelope does not match the current durable result")
     if payload.decision == "reject" and not payload.reason.strip():
