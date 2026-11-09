@@ -263,3 +263,46 @@ def test_organization_task_api_runs_real_allowlisted_readonly_worker(tmp_path, m
         assert restored.metadata["worker_execution"]["durable_receipt"] is True
     finally:
         bus.close()
+
+
+def test_allowlist_refusal_is_persisted_as_blocked_and_cannot_be_approved(tmp_path, monkeypatch):
+    from core.autonomy.mission_engine import MissionEngine
+    from core.organization.message_bus import InternalMessageBus
+
+    workspace = tmp_path / "workspace"
+    repository = workspace / "demo-repo"
+    repository.mkdir(parents=True)
+    (repository / "README.md").write_text("# Synthetic repository\\n", encoding="utf-8")
+    monkeypatch.setenv("DGM_READ_ONLY_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("DGM_READ_ONLY_REPOSITORIES", '{"demo":"demo-repo"}')
+
+    bus = InternalMessageBus(tmp_path / "organization.sqlite3")
+    engine = MissionEngine(organization_bus=bus)
+    monkeypatch.setattr(runtime_api, "mission_engine", engine)
+    monkeypatch.setattr(runtime_api, "ApprovalManager", FakeApprovalManager)
+    app = FastAPI()
+    app.include_router(runtime_api.router)
+    client = TestClient(app)
+
+    try:
+        response = client.post(
+            "/runtime/organization/tasks",
+            json={"task_kind": "repository_inventory", "repository_id": "not-allowlisted"},
+        )
+        assert response.status_code == 201
+        body = response.json()
+        assert body["status"] == "WORKER_BLOCKED"
+        task = body["task"]
+        assert task["status"] == "BLOCKED"
+        assert task["durable_receipt"] is True
+        assert task["result"]["status"] == "BLOCKED"
+        assert task["result"]["reason"] == "repository_not_allowlisted"
+
+        approval = client.post(
+            f"/runtime/organization/tasks/{task['task_id']}/approval",
+            json={"result_sha256": task["result_sha256"]},
+        )
+        assert approval.status_code == 409
+        assert FakeApprovalManager.records == {}
+    finally:
+        bus.close()
