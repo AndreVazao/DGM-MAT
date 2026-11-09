@@ -175,3 +175,62 @@ def test_cleanup_refuses_protected_branch_worktree_created_outside_manager(tmp_p
 
     assert target.exists()
     assert git(target, "branch", "--show-current") == "develop"
+
+
+def test_create_worktree_at_commit_pins_exact_sha_and_preserves_primary_head(tmp_path):
+    repo = make_repo(tmp_path / "repo")
+    first_sha = git(repo, "rev-parse", "HEAD")
+    (repo / "README.md").write_text("second\n", encoding="utf-8")
+    git(repo, "add", "README.md")
+    git(repo, "commit", "-m", "second")
+    primary_sha = git(repo, "rev-parse", "HEAD")
+    manager = make_manager(repo, tmp_path / "worktrees")
+
+    target = manager.create_worktree_at_commit(
+        "agent/coder/pinned-001", "pinned-001", first_sha
+    )
+
+    assert git(target, "rev-parse", "HEAD") == first_sha
+    assert git(repo, "rev-parse", "HEAD") == primary_sha
+    assert git(target, "status", "--porcelain", "--untracked-files=all") == ""
+    assert (target / "README.md").read_text(encoding="utf-8") == "baseline\n"
+
+
+def test_create_worktree_at_commit_rejects_dirty_primary_checkout(tmp_path):
+    repo = make_repo(tmp_path / "repo")
+    commit_sha = git(repo, "rev-parse", "HEAD")
+    (repo / "operator-data.txt").write_text("preserve\n", encoding="utf-8")
+    manager = make_manager(repo, tmp_path / "worktrees")
+
+    with pytest.raises(WorktreeError, match="Primary checkout is dirty"):
+        manager.create_worktree_at_commit(
+            "agent/coder/pinned-002", "pinned-002", commit_sha
+        )
+
+    assert (repo / "operator-data.txt").read_text(encoding="utf-8") == "preserve\n"
+    assert not (tmp_path / "worktrees" / "pinned-002").exists()
+
+
+@pytest.mark.parametrize("commit_sha", ["HEAD", "abc123", "../outside", "", "g" * 40])
+def test_create_worktree_at_commit_rejects_non_full_object_ids(tmp_path, commit_sha):
+    repo = make_repo(tmp_path / "repo")
+    manager = make_manager(repo, tmp_path / "worktrees")
+
+    with pytest.raises(WorktreeError, match="full 40- or 64-character"):
+        manager.create_worktree_at_commit(
+            "agent/coder/pinned-003", "pinned-003", commit_sha
+        )
+
+
+def test_create_worktree_at_commit_refuses_to_reuse_different_pin(tmp_path):
+    repo = make_repo(tmp_path / "repo")
+    first_sha = git(repo, "rev-parse", "HEAD")
+    (repo / "README.md").write_text("second\n", encoding="utf-8")
+    git(repo, "add", "README.md")
+    git(repo, "commit", "-m", "second")
+    second_sha = git(repo, "rev-parse", "HEAD")
+    manager = make_manager(repo, tmp_path / "worktrees")
+    manager.create_worktree_at_commit("agent/coder/pinned-004", "pinned-004", first_sha)
+
+    with pytest.raises(WorktreeError, match="different commit"):
+        manager.create_worktree_at_commit("agent/coder/pinned-004", "pinned-004", second_sha)
