@@ -136,3 +136,74 @@ def test_claim_token_is_required_and_single_use(monkeypatch, tmp_path):
             claim_token=item["claim_token"],
             response_text="Replay.",
         )
+
+
+def test_fresh_review_queue_is_durable_and_requires_supported_privacy_provider(monkeypatch, tmp_path):
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_ENABLED", "1")
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_FREE_PROVIDERS", "chatgpt,gemini,grok")
+    store = BrowserConsultStore(tmp_path / "fresh-review.sqlite3")
+    with pytest.raises(ValueError, match="only ChatGPT and Gemini"):
+        store.enqueue(
+            task_ref="egm-task:task-1",
+            goal="Review this bounded design.",
+            providers=["grok"],
+            review_mode="fresh_review",
+            review_id="review-1",
+        )
+    queued = store.enqueue(
+        task_ref="egm-task:task-1",
+        goal="Review this bounded design.",
+        providers=["chatgpt"],
+        review_mode="fresh_review",
+        review_id="review-1",
+    )
+    assert queued["status"] == "PENDING_APPROVAL"
+    item_id = queued["consultation_ids"][0]
+    assert store.approve(item_id, operator="operator")
+    claimed = store.claim_next("chatgpt")
+    assert claimed["review_mode"] == "fresh_review"
+    assert claimed["review_id"] == "review-1"
+    evidence = {
+        "provider": "chatgpt",
+        "source_id": "new-chat-1",
+        "initial_source_id": None,
+        "initial_visible_message_count": 0,
+        "privacy_mode": "temporary_unpersonalized",
+        "privacy_mode_verified": True,
+        "verification": "blank_page_then_new_conversation_id",
+    }
+    completed = store.finish(
+        item_id,
+        claim_token=claimed["claim_token"],
+        response_text="Independent-looking review; still untrusted.",
+        evidence=evidence,
+    )
+    assert completed["status"] == "COMPLETED"
+    assert completed["review_mode"] == "fresh_review"
+    assert completed["review_id"] == "review-1"
+    assert completed["evidence"] == evidence
+    reopened = BrowserConsultStore(tmp_path / "fresh-review.sqlite3")
+    assert reopened.status()["counts"]["COMPLETED"] == 1
+
+
+def test_fresh_review_evidence_fails_closed(monkeypatch, tmp_path):
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_ENABLED", "1")
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_FREE_PROVIDERS", "gemini")
+    store = BrowserConsultStore(tmp_path / "fresh-evidence.sqlite3")
+    queued = store.enqueue(
+        task_ref="egm-task:task-2",
+        goal="Review this bounded design.",
+        providers=["gemini"],
+        review_mode="fresh_review",
+        review_id="review-2",
+    )
+    consultation_id = queued["consultation_ids"][0]
+    assert store.approve(consultation_id, operator="operator")
+    claimed = store.claim_next("gemini")
+    with pytest.raises(ValueError, match="privacy mode was not verified"):
+        store.finish(
+            consultation_id,
+            claim_token=claimed["claim_token"],
+            response_text="A response.",
+            evidence={"provider": "gemini", "privacy_mode_verified": False},
+        )
