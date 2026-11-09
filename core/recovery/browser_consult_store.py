@@ -251,6 +251,19 @@ class BrowserConsultStore:
             db.commit()
             return cursor.rowcount == 1
 
+    def peek_next(self, provider: str) -> dict[str, Any] | None:
+        """Read the next approved item without claiming it or consuming a retry."""
+        if not _enabled() or provider not in _free_providers():
+            return None
+        with self._connect() as db:
+            row = db.execute("""
+                SELECT consultation_id, task_ref, provider, review_mode, review_id
+                FROM browser_consultations
+                WHERE provider=? AND status='PENDING'
+                ORDER BY created_at LIMIT 1
+            """, (provider,)).fetchone()
+        return dict(row) if row is not None else None
+
     def claim_next(self, provider: str) -> dict[str, Any] | None:
         if not _enabled() or provider not in _free_providers():
             return None
