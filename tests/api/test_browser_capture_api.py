@@ -50,6 +50,7 @@ def _discovery(provider="chatgpt", source_id="conversation-1", url=None):
             "grok": "https://grok.com/chat/conversation-1",
             "deepseek": "https://chat.deepseek.com/a/chat/s/conversation-1",
             "qwen": "https://chat.qwen.ai/chat/conversation-1",
+            "claude": "https://claude.ai/chat/conversation-1",
         }[provider]
     return {
         "provider": provider,
@@ -98,6 +99,41 @@ def test_browser_capture_routes_use_narrow_extension_scope():
         route = classify_request_path(path, method)
         assert route is not None
         assert route.scope is SecurityScope.BROWSER_CAPTURE
+
+
+def test_claude_chat_and_project_conversation_urls_are_supported(monkeypatch, tmp_path):
+    client, ledger = _client(monkeypatch, tmp_path)
+    chat_url = "https://claude.ai/chat/claude-conversation-1"
+    project_url = "https://claude.ai/project/project-123/chat/claude-project-conversation-2"
+
+    discovered = client.post(
+        "/recovery/browser-capture/discover",
+        json=_discovery("claude", "claude-conversation-1", chat_url),
+    )
+    assert discovered.status_code == 200
+    assert discovered.json()["registered"] == 1
+    claimed = client.post("/recovery/browser-capture/next", json={"provider": "claude"})
+    assert claimed.status_code == 200
+    captured = client.post(
+        "/recovery/browser-capture/capture",
+        json=_capture("claude", "claude-conversation-1", chat_url),
+    )
+    assert captured.status_code == 200
+    assert ledger.get("claude", "claude-conversation-1") is not None
+
+    project_discovery = client.post(
+        "/recovery/browser-capture/discover",
+        json=_discovery("claude", "claude-project-conversation-2", project_url),
+    )
+    assert project_discovery.status_code == 200
+    assert project_discovery.json()["registered"] == 1
+
+    mismatch = client.post(
+        "/recovery/browser-capture/discover",
+        json=_discovery("claude", "wrong-id", project_url),
+    )
+    assert mismatch.status_code == 200
+    assert mismatch.json()["registered"] == 0
 
 
 def test_discover_claim_archive_and_verify_local_capture(monkeypatch, tmp_path):
