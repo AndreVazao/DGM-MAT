@@ -1,0 +1,51 @@
+name: Coding Agent Dry-Run Contract
+
+on:
+  pull_request:
+    paths:
+      - "core/execution/coding_agent_dry_run.py"
+      - "tests/execution/test_coding_agent_dry_run.py"
+      - ".github/workflows/coding-agent-dry-run.yml"
+  push:
+    branches: [main]
+    paths:
+      - "core/execution/coding_agent_dry_run.py"
+      - "tests/execution/test_coding_agent_dry_run.py"
+      - ".github/workflows/coding-agent-dry-run.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coding-agent-dry-run-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dry-run-contract:
+    name: Dry-run contract (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.12"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      DGM_TEST_MODE: "1"
+      PYTHONUTF8: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install project dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+      - name: Compile coding-agent policy
+        run: python -m compileall -q core/execution/coding_agent_dry_run.py
+      - name: Run coding-agent dry-run contract tests
+        run: python -m pytest -q tests/execution/test_coding_agent_dry_run.py
