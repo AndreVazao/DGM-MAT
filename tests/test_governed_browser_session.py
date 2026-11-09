@@ -99,11 +99,12 @@ def test_fill_rejects_sensitive_fields(metadata):
         session.fill("#target", "do not fill")
 
 
-def test_screenshot_filename_cannot_escape_output_directory(tmp_path):
+@pytest.mark.parametrize("filename", ["../outside.png", "..\\\\outside.png"])
+def test_screenshot_filename_cannot_escape_output_directory(tmp_path, filename):
     session = GovernedBrowserSession(allowed_hosts=["example.com"], screenshot_dir=tmp_path)
     _attach_fake_page(session, FakePage())
     with pytest.raises(BrowserPolicyError, match="path traversal"):
-        session.screenshot("..\\outside.png")
+        session.screenshot(filename)
 
 
 def test_ocr_fails_closed_for_invalid_image_without_upload(tmp_path, monkeypatch):
