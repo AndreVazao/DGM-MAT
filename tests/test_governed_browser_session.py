@@ -99,7 +99,7 @@ def test_fill_rejects_sensitive_fields(metadata):
         session.fill("#target", "do not fill")
 
 
-@pytest.mark.parametrize("filename", ["../outside.png", "..\\\\outside.png"])
+@pytest.mark.parametrize("filename", ["../outside.png", r"..\\outside.png"])
 def test_screenshot_filename_cannot_escape_output_directory(tmp_path, filename):
     session = GovernedBrowserSession(allowed_hosts=["example.com"], screenshot_dir=tmp_path)
     _attach_fake_page(session, FakePage())
