@@ -393,6 +393,8 @@ class BrowserConsultStore:
             item["result_trusted"] = False
             item["automatic_retry"] = False
             consultations.append(item)
+        actual_providers = sorted({item["provider"] for item in consultations})
+        missing_providers = [provider for provider in expected_providers if provider not in actual_providers]
         return {
             "review_id": review_id,
             "status": (
@@ -409,6 +411,7 @@ class BrowserConsultStore:
             "provider_count": len(consultations),
             "expected_provider_count": len(expected_providers),
             "expected_providers": expected_providers,
+            "missing_providers": missing_providers,
             "consultations": consultations,
             "independence_attested": False,
         }
