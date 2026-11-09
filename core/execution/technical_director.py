@@ -135,6 +135,14 @@ def assess_code_change(
     if out_of_scope:
         reasons.append("changed_paths_outside_declared_scope")
 
+    if out_of_scope or security_delta["critical"] > 0:
+        decision = QualityDecision.BLOCKED
+    elif reasons:
+        decision = QualityDecision.NEEDS_FIXES
+    else:
+        decision = QualityDecision.ACCEPT_FOR_PEER_REVIEW
+        reasons.append("no_measured_regressions_and_all_declared_gates_passed; this is not proof of correctness")
+
     payload = {
         "baseline": asdict(baseline),
         "candidate": asdict(candidate),
