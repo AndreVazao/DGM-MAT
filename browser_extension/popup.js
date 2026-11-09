@@ -6,6 +6,13 @@ const retryButton = document.getElementById("retry-button");
 const autoCheckbox = document.getElementById("auto-checkbox");
 const statusNode = document.getElementById("status");
 const browserOperatorCheckbox = document.getElementById("browser-operator-checkbox");
+const consultCheckbox = document.getElementById("consult-checkbox");
+const consultStatus = document.getElementById("consult-status");
+const consultForm = document.getElementById("consult-request-form");
+const consultGoal = document.getElementById("consult-goal");
+const consultContext = document.getElementById("consult-context");
+const consultFreeConfirm = document.getElementById("consult-free-confirm");
+const consultQueue = document.getElementById("consult-queue");
 
 function showStatus(value, error = false) {
   statusNode.textContent = value;
@@ -23,6 +30,46 @@ function send(message) {
   });
 }
 
+async function refreshConsultQueue() {
+  try {
+    const data = await send({ type: "DGM_LIST_BROWSER_CONSULTS" });
+    const recent = Array.isArray(data.recent) ? data.recent : [];
+    consultQueue.replaceChildren();
+    if (!recent.length) {
+      consultQueue.textContent = "Ainda não existem consultas.";
+      return;
+    }
+    for (const item of recent) {
+      const row = document.createElement("div");
+      row.className = "consult-item";
+      const label = document.createElement("span");
+      label.textContent = item.provider + " · " + item.status + " · " + item.consultation_id.slice(-8);
+      row.appendChild(label);
+      if (item.status === "PENDING_APPROVAL") {
+        const approve = document.createElement("button");
+        approve.type = "button";
+        approve.className = "secondary";
+        approve.textContent = "Aprovar envio";
+        approve.addEventListener("click", async () => {
+          approve.disabled = true;
+          try {
+            await send({ type: "DGM_APPROVE_BROWSER_CONSULT", consultationId: item.consultation_id });
+            await refreshConsultQueue();
+            consultStatus.textContent = "Consulta aprovada; será enviada quando o separador autenticado estiver pronto.";
+          } catch (error) {
+            approve.disabled = false;
+            showStatus(error.message, true);
+          }
+        });
+        row.appendChild(approve);
+      }
+      consultQueue.appendChild(row);
+    }
+  } catch (error) {
+    consultQueue.textContent = error.message;
+  }
+}
+
 async function refresh() {
   try {
     const data = await send({ type: "DGM_GET_STATUS" });
@@ -30,12 +77,60 @@ async function refresh() {
     retryButton.disabled = !data.can_retry;
     autoCheckbox.checked = Boolean(data.auto_enabled);
     browserOperatorCheckbox.checked = Boolean(data.browser_operator_auto_enabled);
+    consultCheckbox.checked = Boolean(data.browser_consult_enabled);
+    consultStatus.textContent = data.browser_consult_status || "AI consultation idle.";
+    await refreshConsultQueue();
     showStatus((data.last_status || (data.paired ? "Paired and ready." : "Pair with the local DGM-MAT PC.")) + "\n" + (data.browser_operator_status || "Browser mission operator idle."));
   } catch (error) {
     startButton.disabled = true;
     showStatus(error.message, true);
   }
 }
+
+consultForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  const providers = Array.from(consultForm.querySelectorAll('input[name="consult-provider"]:checked')).map(input => input.value);
+  if (!providers.length) return showStatus("Seleciona pelo menos um fornecedor.", true);
+  if (!consultFreeConfirm.checked) return showStatus("Confirma que as contas selecionadas são gratuitas.", true);
+  const submit = document.getElementById("consult-submit");
+  submit.disabled = true;
+  try {
+    const result = await send({
+      type: "DGM_ENQUEUE_BROWSER_CONSULT",
+      payload: {
+        task_ref: "manual_" + Date.now(),
+        goal: consultGoal.value.trim(),
+        context: consultContext.value.trim(),
+        providers,
+        free_capacity_confirmed: true
+      }
+    });
+    consultGoal.value = "";
+    consultContext.value = "";
+    consultFreeConfirm.checked = false;
+    consultStatus.textContent = result.consultation_ids.length + " consulta(s) criada(s), pendente(s) de aprovação.";
+    await refreshConsultQueue();
+  } catch (error) {
+    showStatus(error.message, true);
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+consultCheckbox.addEventListener("change", async () => {
+  consultCheckbox.disabled = true;
+  try {
+    const result = await send({ type: "DGM_SET_AUTO_BROWSER_CONSULT", enabled: consultCheckbox.checked });
+    consultStatus.textContent = result.enabled
+      ? "Consulta ativa. Só são enviados pedidos aprovados no DGM-MAT."
+      : "Consulta desativada.";
+  } catch (error) {
+    showStatus(error.message, true);
+    await refresh();
+  } finally {
+    consultCheckbox.disabled = false;
+  }
+});
 
 browserOperatorCheckbox.addEventListener("change", async () => {
   browserOperatorCheckbox.disabled = true;
