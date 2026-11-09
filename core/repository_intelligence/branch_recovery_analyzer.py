@@ -149,7 +149,7 @@ class BranchRecoveryAnalyzer:
         status = "SYNCED" if ahead == 0 and behind == 0 else (
             "REMOTE_AHEAD" if ahead == 0 else "LOCAL_AHEAD" if behind == 0 else "DIVERGED"
         )
-        files = self._changed_files(root, f"{local_sha}...{remote_sha}") if ahead else []
+        files = self._changed_files(root, f"{local_sha}...{remote_sha}") if ahead or behind else []
         return {
             "status": status,
             "local_branch": label,
