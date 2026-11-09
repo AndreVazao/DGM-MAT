@@ -27,11 +27,11 @@ The request accepts a host-owned repository identifier, not a path, shell comman
 
 ## Result receipt
 
-A successful dispatch must return a worker message ID, structured result and `durable_receipt=true`. The existing OrganizationTaskManager persists the result in the shared SQLite task store. A later GET reads that stored record and computes a canonical JSON SHA-256 digest. A queued task can be resumed; the deterministic message identity in the read-only orchestrator prevents duplicate work after a completed receipt.
+A successful dispatch must return a worker message ID, structured result and `durable_receipt=true`. The existing OrganizationTaskManager persists the result in the shared SQLite task store. A later GET reads that stored record and computes a canonical JSON SHA-256 digest. A queued task can be resumed; the deterministic message identity in the read-only orchestrator prevents duplicate work after a completed receipt. A worker-level refusal is also persisted with its receipt but leaves the task in `BLOCKED`; blocked results cannot enter the approval route.
 
 ## Approval binding
 
-The approval request stores an envelope containing task ID, mission ID, operation kind, repository ID, assigned agent, worker message ID, exact structured result and result digest. The operator decision must repeat the same digest. Before accepting it, the API re-reads the durable task and verifies the digest, message ID and approval envelope. Stale or substituted results are rejected. Approval/rejection is persisted through the existing durable approval queue and can be read back from the task endpoint.
+The approval request stores an envelope containing task ID, mission ID, operation kind, repository ID, assigned agent, worker message ID, exact structured result and result digest. The operator decision must repeat the same digest. The authenticated operator identity and rejection rationale are preserved in the durable approval audit and exposed on subsequent task reads. Before accepting it, the API re-reads the durable task and verifies the digest, message ID and approval envelope. Stale or substituted results are rejected. Approval/rejection is persisted through the existing durable approval queue and can be read back from the task endpoint.
 
 This approval is an explicit review decision for a read-only worker result. It is **not** permission to edit files, approve a coding patch, merge a PR, deploy software, or execute a command.
 
