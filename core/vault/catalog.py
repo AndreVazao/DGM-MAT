@@ -733,7 +733,8 @@ class VaultCatalog:
             pending = db.execute(
                 "SELECT canonical_url,owner,repository FROM github_repository_refs "
                 "WHERE verification_status IN ('pending_verification','rate_limited','unavailable') "
-                "ORDER BY created_at LIMIT ?", (limit,)
+                "ORDER BY CASE verification_status WHEN 'pending_verification' THEN 0 ELSE 1 END, "
+                "updated_at ASC, created_at ASC LIMIT ?", (limit,)
             ).fetchall()
         results: list[dict[str, Any]] = []
         for row in pending:
