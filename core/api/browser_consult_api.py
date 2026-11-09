@@ -84,8 +84,12 @@ def enqueue_browser_consultation(payload: BrowserConsultEnqueueRequest, request:
     if payload.free_capacity_confirmed is not True:
         raise HTTPException(status_code=400, detail="Operator must explicitly attest that the selected provider accounts are free-tier.")
     if payload.review_mode == "fresh_review":
-        if not payload.review_id or any(provider not in {"chatgpt", "gemini"} for provider in payload.providers):
-            raise HTTPException(status_code=400, detail="Fresh EGM review requires a review_id and only supported privacy-mode providers.")
+        if (
+            not payload.review_id
+            or len(payload.providers) != 2
+            or set(payload.providers) != {"chatgpt", "gemini"}
+        ):
+            raise HTTPException(status_code=400, detail="Fresh EGM review requires a review_id and both ChatGPT and Gemini providers.")
     elif payload.review_id is not None:
         raise HTTPException(status_code=400, detail="review_id is only valid for fresh_review mode.")
     try:
