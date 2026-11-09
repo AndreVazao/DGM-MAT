@@ -266,6 +266,7 @@ def test_organization_task_api_runs_real_allowlisted_readonly_worker(tmp_path, m
 
 
 def test_allowlist_refusal_is_persisted_as_blocked_and_cannot_be_approved(tmp_path, monkeypatch):
+    FakeApprovalManager.records = {}
     from core.autonomy.mission_engine import MissionEngine
     from core.organization.message_bus import InternalMessageBus
 
