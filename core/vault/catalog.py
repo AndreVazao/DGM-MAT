@@ -587,11 +587,12 @@ class VaultCatalog:
             candidate = raw.rstrip(".,;:!?)]}\u00bb")
             try:
                 parsed = urlsplit(candidate)
+                port = parsed.port
             except ValueError:
                 continue
             if parsed.scheme.casefold() != "https" or (parsed.hostname or "").casefold() not in {"github.com", "www.github.com"}:
                 continue
-            if parsed.username or parsed.password or parsed.port not in (None, 443):
+            if parsed.username or parsed.password or port not in (None, 443):
                 continue
             parts = [part for part in parsed.path.split("/") if part]
             if len(parts) < 2:
@@ -603,7 +604,7 @@ class VaultCatalog:
                 continue
             if owner in {".", ".."} or repository in {".", ".."}:
                 continue
-            canonical = f"https://github.com/{owner}/{repository}"
+            canonical = f"https://github.com/{owner.casefold()}/{repository.casefold()}"
             found[canonical] = {"canonical_url": canonical, "owner": owner, "repository": repository}
         return list(found.values())
 
