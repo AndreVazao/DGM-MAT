@@ -266,7 +266,7 @@ async function pollBrowserConsultQueue() {
     }
     if (settings[BROWSER_TASK_KEY] || !settings[CONSULT_ENABLED_KEY] || state.run?.active) return;
     const tabs = settings[PROVIDER_TABS_KEY] || {};
-    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen", "claude"]) {
+    for (const provider of ["chatgpt","grok","gemini","deepseek","qwen"]) {
       if (await isBrowserProviderPaused(provider)) continue;
       const tabId = tabs[provider];
       if (!Number.isInteger(tabId)) continue;
@@ -467,7 +467,7 @@ async function pollBrowserOperatorQueue() {
     const state = await readState();
     if (!state.token || state.run?.active) return;
     const tabs = settings[PROVIDER_TABS_KEY] || {};
-    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen", "claude"]) {
+    for (const provider of ["chatgpt","grok","gemini","deepseek","qwen"]) {
       if (await isBrowserProviderPaused(provider)) continue;
       const tabId = tabs[provider];
       if (!Number.isInteger(tabId)) continue;
@@ -564,7 +564,7 @@ async function pair(code) {
     await pollBrowserConsultQueue().catch(() => {});
   }
   if (settings[AUTO_KEY]) {
-    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
+    for (const provider of ["chatgpt","grok","gemini","deepseek","qwen","claude"]) {
       const tabId = providerTabs[provider];
       if (!Number.isInteger(tabId) || await isBrowserProviderPaused(provider)) continue;
       try {
