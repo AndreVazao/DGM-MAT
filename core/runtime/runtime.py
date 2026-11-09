@@ -18,9 +18,15 @@ from core.runtime.health_score import RuntimeHealthScore
 from core.runtime.safe_action_queue import SafeActionQueue
 from core.runtime.runtime_profile import detect_runtime_profile
 
-def repository_learning_autostart_enabled(value: str | None = None) -> bool:
-    """Return whether full-runtime repository learning should start automatically."""
-    configured = os.getenv("DGM_REPOSITORY_LEARNING_ENABLED", "1") if value is None else value
+def repository_learning_autostart_enabled(
+    value: str | None = None,
+    *,
+    low_memory: bool = False,
+) -> bool:
+    """Respect the low-memory profile unless the operator explicitly opts in."""
+    configured = os.getenv("DGM_REPOSITORY_LEARNING_ENABLED") if value is None else value
+    if configured is None:
+        return not low_memory
     return str(configured).strip().casefold() in {"1", "true", "yes", "on"}
 
 
@@ -266,7 +272,7 @@ class Runtime:
         # Repository learning is enabled by default on the full runtime: it is a
         # bounded, read-only inventory worker with a durable SQLite cursor.
         # Operators can explicitly disable it with DGM_REPOSITORY_LEARNING_ENABLED=0.
-        if repository_learning_autostart_enabled():
+        if repository_learning_autostart_enabled(low_memory=self.profile.low_memory):
             try:
                 from core.api.repository_learning_api import repository_learning_service
                 self.repository_learning_service = repository_learning_service
