@@ -229,6 +229,31 @@ class MobileConversationService:
     def rename(self, thread_id: str, title: str) -> dict[str, Any]:
         return self.store.rename(thread_id, title).to_dict()
 
+    def append_transcript_entry(
+        self,
+        thread_id: str,
+        role: str,
+        content: str,
+    ) -> dict[str, Any]:
+        """Persist an already-produced transcript entry without interpreting or dispatching it."""
+        from dataclasses import asdict
+
+        normalized_role = role.strip().casefold() if isinstance(role, str) else ""
+        if normalized_role not in {"user", "assistant", "system"}:
+            raise ValueError("Transcript role must be user, assistant or system.")
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError("A non-empty transcript entry is required.")
+        normalized_content = content.strip()
+        if len(normalized_content) > 20000:
+            raise ValueError("Transcript entry exceeds the 20000-character limit.")
+        message = self.store.append_message(
+            thread_id,
+            normalized_role,
+            normalized_content,
+            metadata={"source": "desktop-cockpit-transcript"},
+        )
+        return {"thread_id": thread_id, "message": asdict(message)}
+
     def append_user_message(self, thread_id: str, content: str) -> dict[str, Any]:
         if not isinstance(content, str) or not content.strip():
             raise ValueError("A non-empty user message is required.")
