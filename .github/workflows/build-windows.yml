@@ -29,6 +29,7 @@ name: Windows Executable Build
   pull_request:
     branches:
       - main
+      - feat/egm-review-packet-contract-2026-11-08
     paths:
       - "**/*.py"
       - "**/*.ps1"
