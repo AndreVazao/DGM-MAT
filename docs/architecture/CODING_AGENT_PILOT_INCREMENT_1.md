@@ -13,13 +13,13 @@ This increment creates a deterministic, approval-fingerprint-bound invocation pl
 - Provider IDs are limited to `codex` and `claude_code`.
 - Goals, CLI version strings and turn budgets are bounded.
 - Provider arguments are constructed internally; callers cannot supply shell commands or arbitrary CLI flags.
-- Both invocation templates are read-only, deny network and disable writes in the plan contract.
+- Both invocation templates are read-only and disable writes in the plan contract. Codex also ignores user config; Claude network isolation is explicitly marked unverified and cannot be launched until a host-level network sandbox is proven.
 - The request fingerprint binds provider, repository, base SHA, goal, CLI version, argv and permissions.
 - The planner always returns `launch_enabled=false`.
 
 ## Provider command policy
 
-Codex uses non-interactive `codex exec` with `--sandbox read-only`, `--ask-for-approval never` and `--ephemeral`. Claude Code uses print mode, plan permission mode and an explicit deny list for Bash, WebSearch and WebFetch. The host remains responsible for verifying that the installed CLI version accepts and enforces these flags.
+Codex uses non-interactive `codex exec` with `--sandbox read-only`, `--ask-for-approval never` and `--ephemeral`. Claude Code uses print mode, plan permission mode and an explicit deny list for Bash, WebSearch and WebFetch. Plan mode is not an OS-level network sandbox; user/project MCP configuration may also exist. Therefore its network isolation is recorded as unknown, not false, and process launch remains disabled until a host-level sandbox and MCP-deny policy are verified.
 
 References:
 - https://learn.chatgpt.com/docs/non-interactive-mode
@@ -33,4 +33,4 @@ References:
 4. Only then implement a separate, per-task approved write-enabled worktree adapter.
 5. Independent QA and operator approval remain mandatory before any patch promotion.
 
-This is not yet a coding executor and must not be reported as one.
+This is not yet a coding executor and must not be reported as one. In particular, Claude Code is not treated as network-isolated merely because it is in plan mode.
