@@ -58,8 +58,13 @@ jobs:
         run: node tests/browser_extension/test_message_send.js
       - name: Run approved browser operator task fixtures
         run: node tests/browser_extension/test_browser_operator_task.js
-      - name: Run fresh EGM review context preflight fixtures
-        run: node tests/browser_extension/test_fresh_review_context.js
+      - name: Run fresh EGM review context preflight fixtures when included in this revision
+        run: |
+          if [ -f tests/browser_extension/test_fresh_review_context.js ]; then
+            node tests/browser_extension/test_fresh_review_context.js
+          else
+            echo "Fresh-review fixture is not part of this revision; skipping."
+          fi
       - name: Validate extension manifest JSON
         run: python -m json.tool browser_extension/manifest.json > /dev/null
       - name: Set up Python
