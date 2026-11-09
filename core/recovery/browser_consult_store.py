@@ -409,7 +409,8 @@ class BrowserConsultStore:
                 or any(not any(item["provider"] == provider for item in consultations) for provider in expected_providers)
                 else "INCOMPLETE"
             ),
-            "provider_count": len(consultations),
+            "provider_count": len(actual_providers),
+            "consultation_count": len(consultations),
             "expected_provider_count": len(expected_providers),
             "expected_providers": expected_providers,
             "missing_providers": missing_providers,
