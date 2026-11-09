@@ -234,3 +234,17 @@ def test_create_worktree_at_commit_refuses_to_reuse_different_pin(tmp_path):
 
     with pytest.raises(WorktreeError, match="different commit"):
         manager.create_worktree_at_commit("agent/coder/pinned-004", "pinned-004", second_sha)
+
+
+def test_pinned_worktree_requires_a_separate_dedicated_root(tmp_path):
+    repo = make_repo(tmp_path / "repo")
+    commit_sha = git(repo, "rev-parse", "HEAD")
+    manager = make_manager(repo, repo / ".runtime" / "worktrees")
+
+    with pytest.raises(WorktreeError, match="must be separate"):
+        manager.create_worktree_at_commit(
+            "agent/coder/pinned-inside-001", "pinned-inside-001", commit_sha
+        )
+
+    assert git(repo, "status", "--porcelain", "--untracked-files=all") == ""
+    assert not (repo / ".runtime" / "worktrees" / "pinned-inside-001").exists()
