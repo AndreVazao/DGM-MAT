@@ -54,8 +54,15 @@ def test_extension_never_reads_auth_stores_or_calls_provider_private_apis():
     assert "pauseBrowserProvider" in background
     assert 'for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen", "claude"])' in background
     assert "quota exceeded" in content or "usage limit" in content
-    assert 'defaults[AUTO_KEY] = true' in background
-    assert 'defaults[BROWSER_QUEUE_AUTO_KEY] = true' in background
+    assert 'defaults[AUTO_KEY] = false' in background
+    assert 'defaults[BROWSER_QUEUE_AUTO_KEY] = false' in background
+    assert 'defaults[CONSULT_ENABLED_KEY] = false' in background
+    assert 'chrome.runtime.onInstalled.addListener(details => {' in background
+    assert '[AUTO_KEY]: false' in background
+    assert '[BROWSER_QUEUE_AUTO_KEY]: false' in background
+    assert '[CONSULT_ENABLED_KEY]: false' in background
+    assert 'chrome.alarms.clear(BROWSER_ALARM)' in background
+    assert 'chrome.alarms.clear(CONSULT_ALARM)' in background
     assert "providerForTabUrl" in background
     assert "startRecovery(tabId)" in background
     assert "DGM_PROVIDER_PING" in content

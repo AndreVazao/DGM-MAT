@@ -544,8 +544,8 @@ async function pair(code) {
   });
   const current = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY, CONSULT_ENABLED_KEY]);
   const defaults = {};
-  if (typeof current[AUTO_KEY] !== "boolean") defaults[AUTO_KEY] = true;
-  if (typeof current[BROWSER_QUEUE_AUTO_KEY] !== "boolean") defaults[BROWSER_QUEUE_AUTO_KEY] = true;
+  if (typeof current[AUTO_KEY] !== "boolean") defaults[AUTO_KEY] = false;
+  if (typeof current[BROWSER_QUEUE_AUTO_KEY] !== "boolean") defaults[BROWSER_QUEUE_AUTO_KEY] = false;
   if (typeof current[CONSULT_ENABLED_KEY] !== "boolean") defaults[CONSULT_ENABLED_KEY] = false;
   if (Object.keys(defaults).length) await chrome.storage.local.set(defaults);
   const settings = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY, CONSULT_ENABLED_KEY]);
@@ -559,7 +559,7 @@ async function pair(code) {
     await rememberProviderTab(provider, tab.id);
   }
   await chrome.storage.local.set({
-    dgmRecoveryLastStatus: "Paired to local DGM-MAT; automatic recovery and approved mission queue are enabled by default."
+    dgmRecoveryLastStatus: "Paired to local DGM-MAT; unattended recovery and mission queue remain disabled until explicitly enabled by the operator."
   });
   if (settings[BROWSER_QUEUE_AUTO_KEY]) {
     chrome.alarms.create(BROWSER_ALARM, { periodInMinutes: 0.5 });
@@ -831,11 +831,21 @@ chrome.runtime.onStartup.addListener(() => {
     }
   });
 });
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.get([BROWSER_QUEUE_AUTO_KEY, CONSULT_ENABLED_KEY]).then(settings => {
-    if (settings[BROWSER_QUEUE_AUTO_KEY]) chrome.alarms.create(BROWSER_ALARM, { periodInMinutes: 0.5 });
-    if (settings[CONSULT_ENABLED_KEY]) chrome.alarms.create(CONSULT_ALARM, { periodInMinutes: 1 });
-  });
+chrome.runtime.onInstalled.addListener(details => {
+  // Pairing and extension installation/update must never silently enable background work.
+  // Existing installations are reset once on upgrade because older builds defaulted
+  // unattended recovery and the approved mission queue to enabled.
+  chrome.storage.local.set({
+    [AUTO_KEY]: false,
+    [BROWSER_QUEUE_AUTO_KEY]: false,
+    [CONSULT_ENABLED_KEY]: false,
+    dgmRecoveryLastStatus: details?.reason === "update"
+      ? "Extension updated; unattended recovery, mission queue and external consultation were reset to OFF. Re-enable each explicitly."
+      : "Extension installed; unattended recovery, mission queue and external consultation are OFF until explicitly enabled."
+  }).then(() => Promise.all([
+    chrome.alarms.clear(BROWSER_ALARM),
+    chrome.alarms.clear(CONSULT_ALARM)
+  ])).catch(() => {});
 });
 
 chrome.tabs.onRemoved.addListener(tabId => {
