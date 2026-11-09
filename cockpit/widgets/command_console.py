@@ -362,13 +362,14 @@ class CommandConsoleWidget(QWidget):
 
     def _refresh_controls(self) -> None:
         busy = self._worker is not None and self._worker.isRunning()
-        available = self._runtime_available and not busy
+        conversation_busy = self._transcript_write_active or bool(self._pending_directive)
+        available = self._runtime_available and not busy and not conversation_busy
         self.input_field.setEnabled(available)
         self.send_btn.setEnabled(available)
-        self.new_thread_btn.setEnabled(not busy)
-        self.search_field.setEnabled(not busy)
-        self.search_btn.setEnabled(not busy)
-        self.thread_list.setEnabled(not busy)
+        self.new_thread_btn.setEnabled(not busy and not conversation_busy)
+        self.search_field.setEnabled(not busy and not conversation_busy)
+        self.search_btn.setEnabled(not busy and not conversation_busy)
+        self.thread_list.setEnabled(not busy and not conversation_busy)
         if not self._runtime_available:
             self.input_field.setPlaceholderText("Runtime offline — envio desativado")
         elif busy:
@@ -391,19 +392,27 @@ class CommandConsoleWidget(QWidget):
             self._create_thread(for_pending_send=True)
 
     def _process_directive(self, directive: str) -> None:
-        """Compatibility entry point; dispatches work asynchronously."""
+        """Compatibility entry point; persists the user entry before dispatch."""
         if self._worker is not None and self._worker.isRunning():
             self._append_message("Sistema", "Já existe um pedido em curso.", "error")
             return
-        self._start_request(
-            directive,
-            status_only=directive.casefold().strip() == "runtime status",
-        )
+        normalized = directive.strip()
+        if not normalized:
+            return
+        self._pending_directive = normalized
+        if self._active_thread_id:
+            self._persist_pending_user_message()
+        else:
+            self._create_thread(for_pending_send=True)
 
     def _handle_runtime_status(self) -> None:
         """Compatibility entry point for the runtime status command."""
         if self._worker is None or not self._worker.isRunning():
-            self._start_request("", status_only=True)
+            self._pending_directive = "runtime status"
+            if self._active_thread_id:
+                self._persist_pending_user_message()
+            else:
+                self._create_thread(for_pending_send=True)
 
     def _start_request(self, directive: str, *, status_only: bool) -> None:
         self._append_message("Sistema", "Pedido enviado ao runtime…", "system")
@@ -497,6 +506,7 @@ class CommandConsoleWidget(QWidget):
             return
         action, thread_id, role, content = self._transcript_queue.pop(0)
         self._transcript_write_active = True
+        self._refresh_controls()
         self._conversation_request(
             action, "POST", f"/mobile/threads/{thread_id}/entries",
             payload={"role": role, "content": content},
@@ -526,6 +536,7 @@ class CommandConsoleWidget(QWidget):
                 self._append_message("Histórico", error, "error")
             if is_transcript_write:
                 self._flush_transcript_queue()
+            self._refresh_controls()
             return
 
         data = payload if isinstance(payload, dict) else {}
@@ -573,6 +584,7 @@ class CommandConsoleWidget(QWidget):
 
         if action == "transcript-entry":
             self._flush_transcript_queue()
+            self._refresh_controls()
             return
 
         if action == "thread-open":
