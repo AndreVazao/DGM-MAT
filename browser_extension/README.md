@@ -91,3 +91,19 @@ The preflight is one-shot and bound to the same tab URL. It now also requires pr
 - Qwen: the available stateless API documentation is not evidence about the consumer browser UI. No official browser temporary-mode control has been verified in this implementation, so Qwen remains blocked.
 
 These are provider product controls, not cryptographic isolation. The adapter therefore continues to report `independence_attested=false` until a trusted host workflow validates and records the evidence. Provider UI labels can change; missing or ambiguous labels must fail closed.
+
+
+## EGM fresh-review queue bridge (experimental)
+
+The extension can now consume an explicitly approved consultation marked `review_mode: "fresh_review"`. This is separate from the existing conversation-recovery mode.
+
+1. The authenticated local DGM-MAT API queues one consultation per selected provider in the existing SQLite browser-consultation store. Fresh mode currently accepts only ChatGPT and Gemini.
+2. Every consultation remains `PENDING_APPROVAL`; each provider request must be approved individually in the existing popup.
+3. The extension checks both the standard provider readiness and the fresh-review preflight. For fresh mode it requires the provider's explicit active privacy controls, a blank page, no recognized conversation ID, no visible prior messages and a visible composer.
+4. Before sending, the content script repeats the checks and consumes a one-shot nonce bound to the exact provider tab URL. It then waits for a new conversation ID and a stable response.
+5. The result API requires the host-observed privacy-mode and new-conversation evidence. Evidence and response are persisted with the consultation; a restart never replays a claimed consultation.
+6. The authenticated endpoint `GET /recovery/browser-consult/fresh-review/{review_id}` resumes the durable review and returns each provider's status, response and evidence.
+
+Enqueue uses the existing `POST /recovery/browser-consult/enqueue` contract with `review_mode: "fresh_review"` and a unique `review_id`; it still requires `free_capacity_confirmed: true`, explicit individual approval and the existing opt-in flag. Do not enable the flags merely to test the code.
+
+**Important:** this bridge records provider UI evidence, not a trusted runtime isolation attestation. The stored result remains untrusted and `independence_attested=false`; it cannot yet be passed as a successful `RuntimeIsolationAttestation` to `DesignReviewCoordinator`. A later host-side verifier must reconcile the durable result with the EGM task/mission, verify reviewer mapping and policy, then persist the final task receipt through the existing OrganizationTaskManager. No synchronous worker waits for operator approval.
