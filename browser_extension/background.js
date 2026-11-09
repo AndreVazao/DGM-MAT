@@ -210,6 +210,12 @@ async function listBrowserConsultations() {
   return apiGet("/recovery/browser-consult/status", state.token);
 }
 
+async function previewBrowserConsultation(payload) {
+  const state = await readState();
+  if (!state.token) throw new Error("Pair the extension with DGM-MAT first.");
+  return api("/recovery/browser-consult/preview", payload, state.token);
+}
+
 async function enqueueBrowserConsultation(payload) {
   const state = await readState();
   if (!state.token) throw new Error("Pair the extension with DGM-MAT first.");
@@ -858,6 +864,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message.type === "DGM_LIST_BROWSER_CONSULTS") {
     listBrowserConsultations()
+      .then(data => sendResponse({ ok: true, data }))
+      .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+    return true;
+  }
+  if (message.type === "DGM_PREVIEW_BROWSER_CONSULT") {
+    previewBrowserConsultation(message.payload || {})
       .then(data => sendResponse({ ok: true, data }))
       .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
     return true;
