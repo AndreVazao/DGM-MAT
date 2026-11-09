@@ -295,6 +295,43 @@ def test_consultation_requires_operator_approval_and_claim_token(monkeypatch, tm
     assert store.status()["counts"]["COMPLETED"] == 1
 
 
+def test_mission_consultation_result_is_attached_as_unverified_checkpoint_evidence(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    from core.api import runtime_api
+
+    mission = SimpleNamespace(metadata={}, logs=[])
+    saved = []
+    fake_engine = SimpleNamespace(
+        _reload_mission_checkpoint=lambda mission_id: mission if mission_id == "mission_1234abcd" else None,
+        save_mission=lambda value: saved.append(value),
+    )
+    monkeypatch.setattr(runtime_api, "mission_engine", fake_engine)
+    client, store = make_client(monkeypatch, tmp_path)
+
+    queued = client.post("/recovery/browser-consult/enqueue", json={
+        "task_ref": "mission_1234abcd",
+        "goal": "Review the mission plan",
+        "providers": ["chatgpt"],
+        "free_capacity_confirmed": True,
+    })
+    consultation_id = queued.json()["consultation_ids"][0]
+    assert client.post("/recovery/browser-consult/approve/" + consultation_id).status_code == 200
+    claimed = client.post("/recovery/browser-consult/next?provider=chatgpt", json={}).json()["next"]
+
+    result = client.post("/recovery/browser-consult/result", json={
+        "consultation_id": consultation_id,
+        "claim_token": claimed["claim_token"],
+        "response_text": "Proposal: add a regression test before changing the dispatch contract.",
+    })
+
+    assert result.status_code == 200
+    assert result.json()["mission_updated"] is True
+    assert mission.metadata["external_consultations"][0]["result_trusted"] is False
+    assert mission.metadata["external_consultations"][0]["consultation_id"] == consultation_id
+    assert mission.logs and "unverified proposal" in mission.logs[0]
+    assert saved == [mission]
+
+
 def test_consultation_requires_free_capacity_attestation(monkeypatch, tmp_path):
     client, store = make_client(monkeypatch, tmp_path)
     response = client.post("/recovery/browser-consult/enqueue", json={
