@@ -124,6 +124,7 @@ class BrowserConsultStore:
                     attempts INTEGER NOT NULL DEFAULT 0,
                     review_mode TEXT NOT NULL DEFAULT 'standard',
                     review_id TEXT,
+                    review_expected_providers_json TEXT,
                     evidence_json TEXT
                 );
                 CREATE INDEX IF NOT EXISTS ix_browser_consult_status
@@ -144,6 +145,8 @@ class BrowserConsultStore:
                 db.execute("ALTER TABLE browser_consultations ADD COLUMN review_mode TEXT NOT NULL DEFAULT 'standard'")
             if "review_id" not in columns:
                 db.execute("ALTER TABLE browser_consultations ADD COLUMN review_id TEXT")
+            if "review_expected_providers_json" not in columns:
+                db.execute("ALTER TABLE browser_consultations ADD COLUMN review_expected_providers_json TEXT")
             if "evidence_json" not in columns:
                 db.execute("ALTER TABLE browser_consultations ADD COLUMN evidence_json TEXT")
             db.execute("""
@@ -185,11 +188,17 @@ class BrowserConsultStore:
             return {"status": "DISABLED", "consultation_ids": []}
         if review_mode not in {"standard", "fresh_review"}:
             raise ValueError("unsupported browser consultation review mode")
+        expected_providers: list[str] = []
         if review_mode == "fresh_review":
             if not isinstance(review_id, str) or not review_id.strip() or len(review_id) > 120:
                 raise ValueError("fresh review requires a bounded review_id")
-            if not providers or any(provider not in {"chatgpt", "gemini"} for provider in providers):
-                raise ValueError("fresh review currently supports only ChatGPT and Gemini privacy modes")
+            if (
+                not isinstance(providers, list)
+                or len(providers) != 2
+                or set(providers) != {"chatgpt", "gemini"}
+            ):
+                raise ValueError("fresh EGM review requires both ChatGPT and Gemini providers")
+            expected_providers = ["chatgpt", "gemini"]
         elif review_id is not None:
             raise ValueError("review_id is only valid for fresh_review mode")
         if not isinstance(task_ref, str) or not task_ref.strip() or len(task_ref) > 160:
@@ -203,6 +212,22 @@ class BrowserConsultStore:
         ids: list[str] = []
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
+            if review_mode == "fresh_review":
+                existing_review = db.execute("""
+                    SELECT task_ref, prompt_sha256, review_expected_providers_json
+                    FROM browser_consultations
+                    WHERE review_mode='fresh_review' AND review_id=?
+                    ORDER BY created_at LIMIT 1
+                """, (review_id,)).fetchone()
+                if existing_review:
+                    expected_json = json.dumps(expected_providers, separators=(",", ":"))
+                    if (
+                        existing_review["task_ref"] != task_ref.strip()
+                        or existing_review["prompt_sha256"] != _hash(prompt)
+                        or existing_review["review_expected_providers_json"] != expected_json
+                    ):
+                        db.rollback()
+                        raise ValueError("review_id is already bound to a different task, brief or provider set")
             for provider in selected[:5]:
                 cooldown = db.execute(
                     "SELECT cooldown_until FROM browser_consult_provider_state WHERE provider=?",
@@ -210,7 +235,6 @@ class BrowserConsultStore:
                 ).fetchone()
                 if cooldown and cooldown["cooldown_until"] and cooldown["cooldown_until"] > now:
                     continue
-                digest = _hash(prompt + "|" + task_ref + "|" + provider)
                 previous = db.execute("""
                     SELECT consultation_id FROM browser_consultations
                     WHERE prompt_sha256=? AND task_ref=? AND provider=?
@@ -225,15 +249,22 @@ class BrowserConsultStore:
                 db.execute("""
                     INSERT INTO browser_consultations(
                         consultation_id, task_ref, provider, prompt, prompt_sha256,
-                        status, created_at, review_mode, review_id
-                    ) VALUES (?, ?, ?, ?, ?, 'PENDING_APPROVAL', ?, ?, ?)
-                """, (consultation_id, task_ref.strip(), provider, prompt, _hash(prompt), now, review_mode, review_id))
+                        status, created_at, review_mode, review_id,
+                        review_expected_providers_json
+                    ) VALUES (?, ?, ?, ?, ?, 'PENDING_APPROVAL', ?, ?, ?, ?)
+                """, (
+                    consultation_id, task_ref.strip(), provider, prompt, _hash(prompt),
+                    now, review_mode, review_id,
+                    json.dumps(expected_providers, separators=(",", ":")) if expected_providers else None,
+                ))
                 ids.append(consultation_id)
             db.commit()
         return {
             "status": "PENDING_APPROVAL" if ids else "BLOCKED_COOLDOWN_OR_DUPLICATE",
             "consultation_ids": ids,
             "provider_count": len(ids),
+            "expected_provider_count": len(expected_providers) if expected_providers else len(ids),
+            "expected_providers": expected_providers,
             "review_mode": review_mode,
             "review_id": review_id,
             "prompt_sha256": _hash(prompt),
@@ -345,13 +376,15 @@ class BrowserConsultStore:
             rows = db.execute("""
                 SELECT consultation_id, task_ref, provider, status, created_at,
                        completed_at, error_type, response_text, response_sha256,
-                       evidence_json, attempts
+                       evidence_json, review_expected_providers_json, attempts
                 FROM browser_consultations
                 WHERE review_mode='fresh_review' AND review_id=?
                 ORDER BY created_at, provider
             """, (review_id,)).fetchall()
         if not rows:
             raise KeyError("fresh review not found")
+        raw_expected = rows[0]["review_expected_providers_json"]
+        expected_providers = json.loads(raw_expected) if raw_expected else sorted({row["provider"] for row in rows})
         consultations = []
         for row in rows:
             item = dict(row)
@@ -363,11 +396,19 @@ class BrowserConsultStore:
         return {
             "review_id": review_id,
             "status": (
-                "COMPLETED" if all(item["status"] == "COMPLETED" for item in consultations)
-                else "PENDING" if any(item["status"] in {"PENDING_APPROVAL", "PENDING", "RUNNING"} for item in consultations)
+                "COMPLETED"
+                if all(
+                    any(item["provider"] == provider and item["status"] == "COMPLETED" for item in consultations)
+                    for provider in expected_providers
+                )
+                else "PENDING"
+                if any(item["status"] in {"PENDING_APPROVAL", "PENDING", "RUNNING"} for item in consultations)
+                or any(not any(item["provider"] == provider for item in consultations) for provider in expected_providers)
                 else "INCOMPLETE"
             ),
             "provider_count": len(consultations),
+            "expected_provider_count": len(expected_providers),
+            "expected_providers": expected_providers,
             "consultations": consultations,
             "independence_attested": False,
         }
