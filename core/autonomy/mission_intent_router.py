@@ -110,7 +110,9 @@ def classify_mission_intent(goal: str) -> IntentDecision:
         ("organization_repository_inventory",
          r"^(?:inventory|inventaria|inventariar|lista|listar) (?:the )?repository ([a-z0-9][a-z0-9._-]{0,63})$"),
     )
-    normalized_goal = " ".join(words)
+    normalized_goal = unicodedata.normalize("NFKD", goal.casefold())
+    normalized_goal = "".join(ch for ch in normalized_goal if not unicodedata.combining(ch))
+    normalized_goal = " ".join(normalized_goal.split())
     for typed_intent, pattern in typed_patterns:
         if re.fullmatch(pattern, normalized_goal):
             return IntentDecision(
