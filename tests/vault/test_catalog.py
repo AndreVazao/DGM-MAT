@@ -495,3 +495,66 @@ def test_github_reference_reindex_backfills_existing_archived_conversations(tmp_
     assert result["failed"] == 0
     refs = vault.list_github_repository_references()
     assert refs["items"][0]["canonical_url"] == "https://github.com/psf/requests"
+
+
+def test_github_reference_verifier_prioritizes_pending_over_retries(tmp_path, monkeypatch):
+    import json
+    from urllib.parse import urlparse
+    from core.vault import catalog as catalog_module
+
+    class Response:
+        status = 200
+
+        def __init__(self, full_name):
+            self.full_name = full_name
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self, size):
+            return json.dumps({
+                "full_name": self.full_name,
+                "html_url": "https://github.com/" + self.full_name,
+                "description": "",
+                "default_branch": "main",
+                "archived": False,
+            }).encode()
+
+    requested = []
+
+    def fake_urlopen(request, timeout):
+        path = urlparse(request.full_url).path
+        full_name = path.removeprefix("/repos/")
+        requested.append(full_name)
+        return Response(full_name)
+
+    monkeypatch.setattr(catalog_module, "urlopen", fake_urlopen)
+    vault = VaultCatalog(tmp_path / "vault")
+    for owner, repository, conversation_id in (
+        ("old", "retry", "conversation-old"),
+        ("new", "pending", "conversation-new"),
+    ):
+        vault.record_github_repository_references(
+            provider="chatgpt",
+            conversation_id=conversation_id,
+            title="Reference",
+            conversation_url=None,
+            messages=[{
+                "message_id": "m1",
+                "content": f"https://github.com/{owner}/{repository}",
+            }],
+        )
+
+    with vault._connect() as db:
+        db.execute(
+            "UPDATE github_repository_refs SET verification_status='rate_limited' "
+            "WHERE canonical_url='https://github.com/old/retry'"
+        )
+
+    result = vault.verify_pending_github_repository_references(limit=1)
+
+    assert result["checked"] == 1
+    assert requested == ["new/pending"]
