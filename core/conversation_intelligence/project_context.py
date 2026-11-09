@@ -252,12 +252,12 @@ class ProjectContextDossierGenerator:
         fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
         try:
             with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
-                stream.write(json.dumps({
+                header = {
                     "schema_version": 2, "project_key": project_key, "sha256": digest,
                     "conversation_count": count, "mapping_mode": "explicit_only",
-                    "source_ids": []
-                }, ensure_ascii=False, sort_keys=True)[:-2])
-                stream.write('"source_ids":[')
+                }
+                stream.write(json.dumps(header, ensure_ascii=False, sort_keys=True)[:-1])
+                stream.write(',"source_ids":[')
                 first = True
                 for row in self._project_rows(project_key, mapping):
                     key = self._mapping_key(row["provider"], row["conversation_id"])
