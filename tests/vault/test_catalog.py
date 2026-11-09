@@ -468,3 +468,30 @@ def test_github_reference_404_is_not_claimed_as_nonexistent(tmp_path, monkeypatc
     result = vault.verify_pending_github_repository_references(limit=1)
     assert result["results"][0]["verification_status"] == "not_found_or_private"
     assert "nonexistent" not in result["results"][0]["verification_status"]
+
+
+def test_github_reference_reindex_backfills_existing_archived_conversations(tmp_path):
+    vault = VaultCatalog(tmp_path / "vault")
+    vault.archive_conversation(
+        provider="claude",
+        conversation_id="old-claude-chat",
+        title="Historical repository review",
+        messages=[{
+            "message_id": "old-message",
+            "role": "assistant",
+            "content": "The old discussion linked https://github.com/psf/requests/tree/main/src",
+        }],
+    )
+
+    # Simulate a Vault created before the reference index existed: clear the derived
+    # index and replay the archive scan. The immutable conversation archive is untouched.
+    with vault._connect() as db:
+        db.execute("DELETE FROM github_repository_ref_sources")
+        db.execute("DELETE FROM github_repository_refs")
+    result = vault.reindex_github_repository_references(limit=10)
+
+    assert result["conversations_seen"] == 1
+    assert result["links_indexed"] == 1
+    assert result["failed"] == 0
+    refs = vault.list_github_repository_references()
+    assert refs["items"][0]["canonical_url"] == "https://github.com/psf/requests"
