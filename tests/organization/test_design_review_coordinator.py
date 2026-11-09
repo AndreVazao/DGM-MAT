@@ -247,3 +247,7 @@ def test_invalid_reviewer_packet_is_blocked_without_creating_sessions(tmp_path, 
     assert factory.sessions == []
     assert manager.get("task:egm-review").status is TaskStatus.RUNNING
     bus.close()
+
+
+# Regression gate: malformed reviewer packets must be blocked before any fresh
+# provider session is created. See the invalid-input parametrization above.
