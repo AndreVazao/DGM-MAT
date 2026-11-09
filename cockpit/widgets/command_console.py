@@ -393,7 +393,12 @@ class CommandConsoleWidget(QWidget):
             self.input_field.setPlaceholderText("Escreve uma missão…")
 
     def _handle_command(self) -> None:
-        if self._worker is not None and self._worker.isRunning():
+        if (
+            (self._worker is not None and self._worker.isRunning())
+            or self._pending_directive
+            or self._transcript_write_active
+            or self._thread_create_active
+        ):
             return
         directive = self.input_field.text().strip()
         if not directive:
@@ -408,7 +413,12 @@ class CommandConsoleWidget(QWidget):
 
     def _process_directive(self, directive: str) -> None:
         """Compatibility entry point; persists the user entry before dispatch."""
-        if self._worker is not None and self._worker.isRunning():
+        if (
+            (self._worker is not None and self._worker.isRunning())
+            or self._pending_directive
+            or self._transcript_write_active
+            or self._thread_create_active
+        ):
             self._append_message("Sistema", "Já existe um pedido em curso.", "error")
             return
         normalized = directive.strip()
@@ -422,7 +432,12 @@ class CommandConsoleWidget(QWidget):
 
     def _handle_runtime_status(self) -> None:
         """Compatibility entry point for the runtime status command."""
-        if self._worker is None or not self._worker.isRunning():
+        if (
+            (self._worker is None or not self._worker.isRunning())
+            and not self._pending_directive
+            and not self._transcript_write_active
+            and not self._thread_create_active
+        ):
             self._pending_directive = "runtime status"
             if self._active_thread_id:
                 self._persist_pending_user_message()
