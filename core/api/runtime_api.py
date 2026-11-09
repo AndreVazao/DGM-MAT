@@ -136,6 +136,8 @@ def _organization_task_snapshot(task: Task) -> dict:
         "result_sha256": digest,
         "approval_id": approval_id,
         "approval_status": approval_status,
+        "approval_by": approval.get("approved_by") if approval else None,
+        "approval_at": approval.get("decision_at") if approval else None,
     }
 
 def _active_mission_count(missions: Any) -> int:
@@ -267,7 +269,7 @@ def request_organization_result_approval(task_id: str, payload: OrganizationTask
 
 
 @router.post("/organization/tasks/{task_id}/decision")
-def decide_organization_result(task_id: str, payload: OrganizationTaskDecision):
+def decide_organization_result(task_id: str, payload: OrganizationTaskDecision, request: Request):
     """Approve/reject only the exact result digest previously submitted for operator review."""
     if not re.fullmatch(r"orgtask_[0-9a-f]{32}", task_id):
         raise HTTPException(status_code=404, detail="Organization task not found")
@@ -300,10 +302,14 @@ def decide_organization_result(task_id: str, payload: OrganizationTaskDecision):
         raise HTTPException(status_code=409, detail="Approval envelope does not match the current durable result")
     if payload.decision == "reject" and not payload.reason.strip():
         raise HTTPException(status_code=422, detail="A rejection reason is required")
+    principal = getattr(request.state, "dgm_principal", {}) or {}
+    operator = str(principal.get("subject") or "local-operator")
+    if not operator or len(operator) > 255:
+        raise HTTPException(status_code=503, detail="Authenticated operator identity is invalid")
     changed = (
-        manager.approve(approval_id)
+        manager.approve(approval_id, operator=operator)
         if payload.decision == "approve"
-        else manager.reject(approval_id, reason=payload.reason.strip())
+        else manager.reject(approval_id, reason=payload.reason.strip(), operator=operator)
     )
     if not changed:
         raise HTTPException(status_code=409, detail="Approval decision was not persisted")
@@ -317,7 +323,7 @@ def decide_organization_result(task_id: str, payload: OrganizationTaskDecision):
         "task_id": task_id,
         "approval_id": approval_id,
         "result_sha256": payload.result_sha256,
-        "decided_by": "authenticated_operator",
+        "decided_by": operator,
         "reason": payload.reason.strip() if payload.decision == "reject" else None,
     }
 
