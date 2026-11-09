@@ -31,6 +31,11 @@ class MessageRequest(BaseModel):
     content: str
 
 
+class TranscriptEntryRequest(BaseModel):
+    role: str
+    content: str
+
+
 class RenameRequest(BaseModel):
     title: str
 
@@ -134,6 +139,17 @@ def get_thread(thread_id: str):
     if thread is None:
         raise HTTPException(status_code=404, detail="Conversation thread not found")
     return thread
+
+
+@router.post("/threads/{thread_id}/entries")
+def append_transcript_entry(thread_id: str, request: TranscriptEntryRequest):
+    """Persist a transcript entry that was already produced by the desktop mission flow."""
+    try:
+        return service.append_transcript_entry(thread_id, request.role, request.content)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Conversation thread not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/threads/{thread_id}/messages")
