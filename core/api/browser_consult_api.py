@@ -144,12 +144,12 @@ def build_browser_consult_mission_context(payload: BrowserConsultMissionContextR
         artifacts = data.get("artifacts") if isinstance(data.get("artifacts"), list) else []
         if artifacts:
             lines.extend(["", "RECORDED ARTIFACT REFERENCES:"])
-            lines.extend("- " + str(item)[:180] for item in artifacts[-12:])
+            lines.extend("- " + str(item).replace("\\", "/").rsplit("/", 1)[-1][:120] for item in artifacts[-12:] if isinstance(item, str))
         metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
         safe_keys = (
             "project_id", "repository_id", "repository_name", "branch", "base_sha",
             "commit_sha", "task_id", "task_kind", "test_summary", "validation_summary",
-            "attempts", "next_actions", "open_questions", "selected_files",
+            "attempts", "next_actions", "open_questions",
         )
         safe_metadata = {key: metadata[key] for key in safe_keys if key in metadata}
         intent = metadata.get("intent")
