@@ -258,3 +258,34 @@ class ConversationProgressStore:
             **{f"conversations_{row['status']}": row["count"] for row in rows},
             **{f"sources_{row['status']}": row["count"] for row in source_rows},
         }
+
+
+    def iter_conversations(
+        self,
+        provider: str | None = None,
+        batch_size: int = 25,
+    ):
+        """Yield decoded records in bounded SQLite batches.
+
+        At most batch_size result_json values are fetched at once. A single
+        conversation snapshot is still decoded as one unit; callers must stream
+        its messages/artifacts rather than retain multiple snapshots.
+        """
+        if not isinstance(batch_size, int) or isinstance(batch_size, bool) or not 1 <= batch_size <= 500:
+            raise ValueError("batch_size must be an integer between 1 and 500")
+        query = "SELECT * FROM conversation_progress"
+        params: tuple = ()
+        if provider is not None:
+            query += " WHERE provider=?"
+            params = (provider,)
+        query += " ORDER BY provider, conversation_id"
+        with self._connect() as db:
+            cursor = db.execute(query, params)
+            while True:
+                rows = cursor.fetchmany(batch_size)
+                if not rows:
+                    break
+                for raw in rows:
+                    row = dict(raw)
+                    row["result"] = json.loads(row["result_json"]) if row.get("result_json") else None
+                    yield row
