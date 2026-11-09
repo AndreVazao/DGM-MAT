@@ -727,3 +727,49 @@ def test_governed_chat_status_does_not_refresh_provider_health_when_opt_in_is_di
     assert result["available"] is False
     assert result["reason"] == "disabled_by_configuration"
     assert provider.health_checks == 0
+
+
+
+def test_conversation_search_paginates_without_duplicates_and_reports_provenance(tmp_path: Path):
+    store = ConversationStore(tmp_path / "conversations.json")
+    threads = [
+        store.create_thread(f"Arquivo de diagnóstico {index}")
+        for index in range(5)
+    ]
+    for index, thread in enumerate(threads):
+        store.append_message(thread.id, "user", f"Diagnóstico partilhado número {index}.")
+
+    first = store.search_threads_page("diagnóstico", limit=2, offset=0)
+    second = store.search_threads_page("diagnóstico", limit=2, offset=2)
+    third = store.search_threads_page("diagnóstico", limit=2, offset=4)
+
+    first_ids = [item["thread_id"] for item in first["results"]]
+    second_ids = [item["thread_id"] for item in second["results"]]
+    third_ids = [item["thread_id"] for item in third["results"]]
+
+    assert first["total_count"] == second["total_count"] == third["total_count"] == 5
+    assert first["has_more"] is True
+    assert second["has_more"] is True
+    assert third["has_more"] is False
+    assert first["next_offset"] == 2
+    assert second["next_offset"] == 4
+    assert third["next_offset"] is None
+    assert len(set(first_ids + second_ids + third_ids)) == 5
+    assert first["results"][0]["provenance"]["source"] == "dgm-mat-local-conversation-store"
+    assert first["results"][0]["provenance"]["capture_completeness"] == "complete"
+
+
+def test_conversation_search_pagination_is_bounded_and_backward_compatible(tmp_path: Path):
+    store = ConversationStore(tmp_path / "conversations.json")
+    for index in range(4):
+        thread = store.create_thread(f"Pesquisa arquivo {index}")
+        store.append_message(thread.id, "user", "Pesquisa persistente")
+
+    page = store.search_threads_page("persistente", limit=500, offset=-10)
+    legacy = store.search_threads("persistente", limit=2)
+
+    assert page["limit"] == 50
+    assert page["offset"] == 0
+    assert len(page["results"]) == 4
+    assert isinstance(legacy, list)
+    assert len(legacy) == 2
