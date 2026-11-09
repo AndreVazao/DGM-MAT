@@ -564,7 +564,7 @@ async function pair(code) {
     await pollBrowserConsultQueue().catch(() => {});
   }
   if (settings[AUTO_KEY]) {
-    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen", "claude"]) {
+    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
       const tabId = providerTabs[provider];
       if (!Number.isInteger(tabId) || await isBrowserProviderPaused(provider)) continue;
       try {
