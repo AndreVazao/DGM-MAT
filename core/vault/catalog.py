@@ -579,12 +579,12 @@ class VaultCatalog:
     def _extract_github_repository_links(text: str) -> list[dict[str, str]]:
         """Extract only canonical github.com owner/repository URLs; ignore other hosts."""
         pattern = re.compile(
-            r"https?://(?:www\\.)?github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:/[^\\s<>\\\"']*)?",
+            r"https?://(?:www\.)?github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:/[^\s<>\"']*)?",
             re.IGNORECASE,
         )
         found: dict[str, dict[str, str]] = {}
         for raw in pattern.findall(str(text or "")):
-            candidate = raw.rstrip(".,;:!?)]}\\u00bb")
+            candidate = raw.rstrip(".,;:!?)]}\u00bb")
             try:
                 parsed = urlsplit(candidate)
             except ValueError:
