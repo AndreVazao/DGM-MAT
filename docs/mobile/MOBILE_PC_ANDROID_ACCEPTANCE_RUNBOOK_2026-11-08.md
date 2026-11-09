@@ -40,13 +40,13 @@ O pacote inclui `package\scripts\install_windows_update.ps1` e `package\scripts\
 
 ### APK Android
 
-- Mobile PR #5 / Build #3: https://github.com/AndreVazao/DGM-MAT-Mobile/actions/runs/42511127144
-- Artefacto: `DGM-MAT-Mobile-Android-APK-f5d81a157f585ab88a0cce8cb7511a60778f599c`.
-- Download: https://github.com/AndreVazao/DGM-MAT-Mobile/actions/runs/42511127144/artifacts/13629676802
-- ZIP exterior: 3,710,225 bytes; SHA-256 `056540c75ba52b0fe1f9411091c9052e3482dfef9019c2ccab4b15cc8b62fe8e`.
-- APK: SHA-256 `da1917ad66c9392e92f6ee56f5ed3582c3e868b65ae449a8afcdf196ac6c87d3`.
+- Mobile PR #5 / Build #head-8673fc5: https://github.com/AndreVazao/DGM-MAT-Mobile/actions/runs/42572168661
+- Artefacto: `DGM-MAT-Mobile-Android-APK-24bfd750dbcd2f6b68b55b9b99b43ec4ebfc62a2`.
+- Download: https://github.com/AndreVazao/DGM-MAT-Mobile/actions/runs/42572168661/artifacts/13653746640
+- ZIP exterior: 3,710,207 bytes; SHA-256 `794c69bfe3bfe3711b72fb2136c75bef05397f90ef30ac74a4055b4be34253ee`.
+- APK: SHA-256 `4c65ceadbf6d8da8a08325025d6c9c0d8eea78cd740a72ebe5f2c3c703dc944f`.
 - Package ID confirmado: `com.andrevazao.dgmmatmobile`.
-- Expira: 2026-12-08 18:41:42 UTC.
+- Expira: 2026-12-09 06:19:25 UTC.
 
 Depois de verificar o ZIP exterior e o sidecar incluído:
 ```powershell
