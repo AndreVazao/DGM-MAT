@@ -616,6 +616,7 @@ class CommandConsoleWidget(QWidget):
             self._load_threads()
             if self._pending_directive:
                 self._persist_pending_user_message()
+            self._refresh_controls()
             return
 
         if action == "send-user-entry":
