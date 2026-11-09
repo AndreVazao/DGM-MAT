@@ -229,3 +229,43 @@ def test_desktop_history_search_uses_next_offset(qt_app, monkeypatch):
     chat._search_more_threads()
     assert calls[1][1]["params"] == {"q": "DGM", "limit": 25, "offset": 25}
     chat.close()
+
+
+
+def test_history_navigation_is_disabled_during_mission(qt_app):
+    chat = CommandConsoleWidget()
+
+    class RunningWorker:
+        @staticmethod
+        def isRunning():
+            return True
+
+    chat._worker = RunningWorker()
+    chat._refresh_controls()
+
+    assert not chat.new_thread_btn.isEnabled()
+    assert not chat.search_field.isEnabled()
+    assert not chat.search_btn.isEnabled()
+    assert not chat.thread_list.isEnabled()
+    assert not chat.send_btn.isEnabled()
+    chat._worker = None
+    chat.close()
+
+
+def test_failed_transcript_persistence_never_dispatches_mission(qt_app, monkeypatch):
+    chat = CommandConsoleWidget()
+    submitted = []
+    monkeypatch.setattr(
+        chat,
+        "_start_request",
+        lambda *args, **kwargs: submitted.append((args, kwargs)),
+    )
+    chat._pending_directive = "executa a tarefa"
+    chat._on_conversation_request_completed(
+        "send-user-entry", None, "erro de persistência"
+    )
+
+    assert submitted == []
+    assert chat._pending_directive is None
+    assert "missão não foi enviada" in chat.history[-1]["text"]
+    chat.close()
