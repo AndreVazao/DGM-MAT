@@ -3,7 +3,7 @@ name: Focused PR Validation
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    branches: [main, feat/egm-review-packet-contract-2026-11-08]
     paths:
       - "core/**"
       - "scripts/sync_dgm_vault.py"
