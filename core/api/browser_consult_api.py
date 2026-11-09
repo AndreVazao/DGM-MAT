@@ -1,13 +1,14 @@
 """Local queue API for explicit free-tier browser UI consultations."""
 from __future__ import annotations
 
+import hashlib
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.operations.operation_audit import AuditWriteError, append_command_audit
-from core.recovery.browser_consult_store import BrowserConsultStore, PROVIDERS, _enabled
+from core.recovery.browser_consult_store import BrowserConsultStore, PROVIDERS, _enabled, build_prompt
 
 router = APIRouter(prefix="/recovery/browser-consult", tags=["free-tier-browser-consult"])
 _store_instance: BrowserConsultStore | None = None
@@ -47,8 +48,16 @@ class BrowserConsultEnqueueRequest(BaseModel):
     context: str = Field(default="", max_length=4000)
     providers: list[Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]] = Field(min_length=1, max_length=5)
     free_capacity_confirmed: bool = False
+    preview_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     review_mode: Literal["standard", "fresh_review"] = "standard"
     review_id: str | None = Field(default=None, min_length=1, max_length=120)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class BrowserConsultPreviewRequest(BaseModel):
+    goal: str = Field(min_length=1, max_length=4000)
+    context: str = Field(default="", max_length=4000)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -76,6 +85,26 @@ def browser_consult_status(request: Request):
     return _store().status()
 
 
+@router.post("/preview")
+def preview_browser_consultation(payload: BrowserConsultPreviewRequest, request: Request):
+    """Return the exact redacted prompt without creating or releasing a consultation."""
+    _principal(request)
+    try:
+        prompt = build_prompt(goal=payload.goal, context=payload.context)
+        digest = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+        _audit("command.previewed", "previewed", request)
+        return {
+            "prompt": prompt,
+            "prompt_sha256": digest,
+            "prompt_redacted": "[REDACTED_SECRET]" in prompt,
+            "max_prompt_chars": 8000,
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (AuditWriteError, OSError) as exc:
+        raise HTTPException(status_code=503, detail="Preview audit unavailable; no consultation was queued.") from exc
+
+
 @router.post("/enqueue")
 def enqueue_browser_consultation(payload: BrowserConsultEnqueueRequest, request: Request):
     principal = _principal(request)
@@ -83,6 +112,11 @@ def enqueue_browser_consultation(payload: BrowserConsultEnqueueRequest, request:
         raise HTTPException(status_code=409, detail="Free-tier browser consultation is disabled until explicitly enabled on this PC.")
     if payload.free_capacity_confirmed is not True:
         raise HTTPException(status_code=400, detail="Operator must explicitly attest that the selected provider accounts are free-tier.")
+    if payload.preview_sha256 is not None:
+        preview_prompt = build_prompt(goal=payload.goal, context=payload.context)
+        actual_digest = hashlib.sha256(preview_prompt.encode("utf-8")).hexdigest()
+        if actual_digest != payload.preview_sha256:
+            raise HTTPException(status_code=409, detail="The request changed after preview. Generate a new preview before queueing.")
     if payload.review_mode == "fresh_review":
         if (
             not payload.review_id
