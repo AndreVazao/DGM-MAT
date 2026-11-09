@@ -47,6 +47,8 @@ class BrowserConsultEnqueueRequest(BaseModel):
     context: str = Field(default="", max_length=4000)
     providers: list[Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]] = Field(min_length=1, max_length=5)
     free_capacity_confirmed: bool = False
+    review_mode: Literal["standard", "fresh_review"] = "standard"
+    review_id: str | None = Field(default=None, min_length=1, max_length=120)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -55,6 +57,7 @@ class BrowserConsultResultRequest(BaseModel):
     consultation_id: str = Field(min_length=1, max_length=80)
     claim_token: str = Field(min_length=32, max_length=128)
     response_text: str = Field(min_length=1, max_length=16000)
+    evidence: dict | None = None
 
     model_config = ConfigDict(extra="forbid")
 
@@ -87,6 +90,8 @@ def enqueue_browser_consultation(payload: BrowserConsultEnqueueRequest, request:
             goal=payload.goal,
             context=payload.context,
             providers=list(payload.providers),
+            review_mode=payload.review_mode,
+            review_id=payload.review_id,
         )
     except (AuditWriteError, ValueError, OSError) as exc:
         raise HTTPException(status_code=503, detail="Consultation could not be safely queued or audited.") from exc
@@ -128,6 +133,8 @@ def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "d
                 "prompt": item["prompt"],
                 "prompt_sha256": item["prompt_sha256"],
                 "claim_token": item["claim_token"],
+                "review_mode": item.get("review_mode", "standard"),
+                "review_id": item.get("review_id"),
             },
         }
     except (AuditWriteError, OSError) as exc:
@@ -138,7 +145,7 @@ def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "d
 def complete_browser_consultation(payload: BrowserConsultResultRequest, request: Request):
     _principal(request)
     try:
-        result = _store().finish(payload.consultation_id, claim_token=payload.claim_token, response_text=payload.response_text)
+        result = _store().finish(payload.consultation_id, claim_token=payload.claim_token, response_text=payload.response_text, evidence=payload.evidence)
         task_ref = str(result.get("task_ref") or "")
         if result.get("status") == "COMPLETED" and task_ref.startswith("mobile-thread:"):
             thread_id = task_ref[len("mobile-thread:"):]
