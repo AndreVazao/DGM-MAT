@@ -150,3 +150,32 @@ def test_request_guard_blocks_cross_domain_redirects_and_allows_authorized_hosts
     assert allowed.action == "continue"
     assert blocked.action == "abort"
     assert non_https.action == "abort"
+
+
+class FakeLinksLocator:
+    def evaluate_all(self, script):
+        return [
+            {"url": "https://example.org/docs", "text": "Docs"},
+            {"url": "http://insecure.example.org", "text": "Insecure"},
+            {"url": "https://user:pass@example.org/private", "text": "Credentials"},
+            {"url": "https://127.0.0.1/admin", "text": "Local"},
+            {"url": "https://example.org/docs", "text": "Duplicate"},
+            {"url": "javascript:alert(1)", "text": "Script"},
+        ]
+
+
+def test_read_links_returns_only_unique_public_https_references():
+    session = GovernedBrowserSession(allowed_hosts=["example.com"])
+    page = FakePage()
+    page.locator = lambda selector: FakeLinksLocator()
+    _attach_fake_page(session, page)
+    links = session.read_links(max_links=10)
+    assert links == [{"url": "https://example.org/docs", "text": "Docs"}]
+
+
+@pytest.mark.parametrize("limit", [0, -1, 51, True, 1.5])
+def test_read_links_rejects_invalid_limits(limit):
+    session = GovernedBrowserSession(allowed_hosts=["example.com"])
+    _attach_fake_page(session, FakePage())
+    with pytest.raises(ValueError, match="max_links"):
+        session.read_links(max_links=limit)
