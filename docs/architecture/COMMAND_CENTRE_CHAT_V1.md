@@ -210,3 +210,24 @@ Do not add buttons that only manipulate the current widget's RAM buffer. First i
 6. Only then begin provider consultation/context packaging.
 
 This audit is a source-code inspection, not a live-PC/runtime test. No claim is made that any of the requested UI features is available yet.
+
+
+### Audit correction — existing mobile conversation service discovered
+
+A broader route/source inspection found an existing durable thread implementation that was outside the initially inspected desktop/archive path:
+
+- core/mobile_runtime/store.py defines ConversationStore, with atomic JSON persistence, thread creation/list/get, message append, rename, project/repository context and bounded search_threads() results.
+- core/mobile_runtime/service.py defines MobileConversationService, which wraps that store and connects messages to the existing mission-intent flow.
+- core/api/mobile_bridge.py exposes /mobile/threads, /mobile/threads/search, /mobile/threads/{thread_id}, message append and rename endpoints.
+- Search currently has a maximum result limit but no offset/cursor pagination. It searches title, project/repository and message text, returning snippets rather than complete transcripts.
+- The store loads all threads into memory and rewrites the JSON document on updates. This is simple and durable for the current mobile use case, but its suitability for a large multi-provider archive and desktop shared use must be measured before broadening it.
+- The desktop entry point still uses CommandConsoleWidget and does not currently use this mobile thread service/store.
+
+**Revised architectural decision:** do not create a second thread store. First assess whether the existing ConversationStore can safely become the shared conversation service, or whether its persistence should be abstracted/migrated behind a compatible interface. Preserve mobile API behavior and existing local data. Any migration must be backup-first, idempotent and reversible.
+
+**Next Phase A tasks:**
+1. Inspect ConversationStore schema, models, service behavior, authentication scopes and existing mobile tests.
+2. Add cursor/offset pagination and provider/capture provenance without returning full transcript bodies in search results.
+3. Add desktop API/client integration against the shared thread service, keeping mission IDs separate from thread IDs.
+4. Add tests proving desktop and mobile share threads, restart persistence, search pagination, thread isolation and backward compatibility.
+5. Benchmark bounded read/write behavior against a representative large fixture before deciding whether JSON storage remains acceptable or requires a SQLite-backed implementation.
