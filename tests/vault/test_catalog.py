@@ -444,7 +444,7 @@ def test_github_reference_verification_uses_public_metadata_without_credentials(
     result = vault.verify_pending_github_repository_references(limit=1)
     assert result["checked"] == 1
     assert result["results"][0]["verification_status"] == "verified_public"
-    assert seen["url"] == "https://api.github.com/repos/AndreVazao/DGM-MAT"
+    assert seen["url"] == "https://api.github.com/repos/andrevazao/dgm-mat"
     assert "Authorization" not in seen["headers"]
     listed = vault.list_github_repository_references()["items"][0]
     assert listed["default_branch"] == "main"
