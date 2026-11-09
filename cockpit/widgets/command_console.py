@@ -277,6 +277,8 @@ class CommandConsoleWidget(QWidget):
         self._active_thread_id: str | None = None
         self._pending_directive: str | None = None
         self._conversation_workers: set[_ConversationRequestWorker] = set()
+        self._transcript_queue: list[tuple[str, str, str, str]] = []
+        self._transcript_write_active = False
         self._setup_ui()
         self._load_threads()
 
@@ -483,20 +485,29 @@ class CommandConsoleWidget(QWidget):
         thread_id = self._active_thread_id
         if not directive or not thread_id:
             return
-        self._conversation_request(
-            "send-user-entry", "POST", f"/mobile/threads/{thread_id}/entries",
-            payload={"role": "user", "content": directive},
-        )
+        self._transcript_queue.append(("send-user-entry", thread_id, "user", directive))
+        self._flush_transcript_queue()
 
     def _persist_transcript_entry(self, thread_id: str, role: str, content: str) -> None:
+        self._transcript_queue.append(("transcript-entry", thread_id, role, content))
+        self._flush_transcript_queue()
+
+    def _flush_transcript_queue(self) -> None:
+        if self._transcript_write_active or not self._transcript_queue:
+            return
+        action, thread_id, role, content = self._transcript_queue.pop(0)
+        self._transcript_write_active = True
         self._conversation_request(
-            "transcript-entry", "POST", f"/mobile/threads/{thread_id}/entries",
+            action, "POST", f"/mobile/threads/{thread_id}/entries",
             payload={"role": role, "content": content},
         )
 
     def _on_conversation_request_completed(
         self, action: str, payload: object, error: str
     ) -> None:
+        is_transcript_write = action in {"send-user-entry", "transcript-entry"}
+        if is_transcript_write:
+            self._transcript_write_active = False
         if error:
             if action == "send-user-entry":
                 self._pending_directive = None
@@ -513,6 +524,8 @@ class CommandConsoleWidget(QWidget):
                 )
             else:
                 self._append_message("Histórico", error, "error")
+            if is_transcript_write:
+                self._flush_transcript_queue()
             return
 
         data = payload if isinstance(payload, dict) else {}
@@ -555,6 +568,11 @@ class CommandConsoleWidget(QWidget):
             self._start_request(
                 directive, status_only=directive.casefold() == "runtime status"
             )
+            self._flush_transcript_queue()
+            return
+
+        if action == "transcript-entry":
+            self._flush_transcript_queue()
             return
 
         if action == "thread-open":
