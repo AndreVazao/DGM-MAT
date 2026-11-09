@@ -44,7 +44,11 @@
           <label><input type="checkbox" name="consult-provider" value="qwen"> Qwen</label>
         </div>
         <label class="toggle"><input id="consult-free-confirm" type="checkbox" required> Confirmo que as contas selecionadas estão no plano gratuito.</label>
-        <button id="consult-submit" type="submit">Criar consulta para aprovação</button>
+        <button id="consult-preview-button" type="button">Pré-visualizar pedido redigido</button>
+        <label for="consult-preview">Prompt exato que será enviado (apenas leitura)</label>
+        <textarea id="consult-preview" rows="8" readonly placeholder="Pré-visualiza o pedido para ver o texto final. Para o alterar, edita os campos acima e pré-visualiza novamente."></textarea>
+        <small id="consult-preview-status">Ainda não existe pré-visualização. Nada será enviado nesta etapa.</small>
+        <button id="consult-submit" type="submit" disabled>Colocar na fila para aprovação</button>
       </form>
       <strong>Consultas pendentes de aprovação</strong>
       <div id="consult-queue" aria-live="polite">A carregar…</div>
