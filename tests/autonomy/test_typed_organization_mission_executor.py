@@ -153,6 +153,8 @@ def test_mission_engine_routes_typed_inventory_through_registered_executor(tmp_p
         "execute",
         lambda mission, intent: {
             "handler": intent,
+            "output": "Read-only inventory completed for DGM-MAT.",
+            "summary": "Inventory completed",
             "task_id": "mission_task_test",
             "repository_id": "DGM-MAT",
             "agent_id": "agent:repository-cartographer",
