@@ -68,7 +68,7 @@ Every conversation archived through the Vault catalogue is scanned for canonical
 - marks new references `pending_verification` rather than assuming that a URL-shaped string is a real repository.
 
 Operator API:
-- `POST /recovery/github-references/reindex?limit=100&offset=0` — backfills old Vault captures and legacy ChatGPT RecoveryLedger archives; repeat with `next_offset` until it returns null.
+- `POST /recovery/github-references/reindex?limit=100&offset=0&legacy_offset=0` — backfills old Vault captures and legacy ChatGPT RecoveryLedger archives. Advance the independent `offset` and `legacy_offset` cursors from the response until both are null.
 - `GET /recovery/github-references` — paginated inventory and provenance.
 - `POST /recovery/github-references/verify?limit=10` — verifies a bounded batch against the public GitHub REST repository endpoint. It sends no credentials and does not access private GitHub data.
 
