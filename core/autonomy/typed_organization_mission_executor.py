@@ -99,12 +99,13 @@ class TypedOrganizationMissionExecutor:
         import re
         import unicodedata
 
-        normalized = unicodedata.normalize("NFKD", goal.casefold())
+        normalized = unicodedata.normalize("NFKD", goal)
         normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
         normalized = " ".join(normalized.split())
         match = re.search(
             r"(?:repository|repositorio) ([a-z0-9][a-z0-9._-]{0,63})$",
             normalized,
+            flags=re.IGNORECASE,
         )
         if match is None:
             raise ValueError(
