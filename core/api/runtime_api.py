@@ -116,13 +116,24 @@ def _organization_result_digest(result: dict) -> str:
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
+def _normalize_organization_approval_status(value: Any) -> str | None:
+    if value is None:
+        return None
+    normalized = str(getattr(value, "value", value)).strip().casefold()
+    if normalized in {"queued", "awaiting_approval", "pending"}:
+        return "awaiting_approval"
+    if normalized in {"approved", "rejected", "expired", "cancelled"}:
+        return normalized
+    return normalized or None
+
+
 def _organization_task_snapshot(task: Task) -> dict:
     execution = task.metadata.get("worker_execution", {}) if isinstance(task.metadata, dict) else {}
     result = execution.get("result") if isinstance(execution, dict) else None
     digest = _organization_result_digest(result) if isinstance(result, dict) else None
     approval_id = f"orgresult-{task.task_id}-{digest[:16]}" if digest else None
     approval = ApprovalManager().approvals.get(approval_id) if approval_id else None
-    approval_status = getattr(approval.get("status"), "value", approval.get("status")) if approval else None
+    approval_status = _normalize_organization_approval_status(approval.get("status")) if approval else None
     return {
         "task_id": task.task_id,
         "mission_id": task.mission_id,
@@ -258,9 +269,9 @@ def request_organization_result_approval(task_id: str, payload: OrganizationTask
         }, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
         manager.request_approval(approval_id, review_envelope, 0.0, "LOW")
     current = manager.approvals.get(approval_id)
-    status = getattr(current.get("status"), "value", current.get("status")) if current else "unknown"
+    status = _normalize_organization_approval_status(current.get("status")) if current else "unknown"
     return {
-        "status": "awaiting_approval" if str(status).casefold() == "awaiting_approval" else str(status),
+        "status": status or "unknown",
         "approval_id": approval_id,
         "task_id": task_id,
         "result_sha256": payload.result_sha256,
