@@ -152,3 +152,16 @@ def test_research_escalation_does_not_grant_approval():
     )
     assert result.next_action == ReviewNextAction.WEB_RESEARCH_REQUIRED
     assert "upstream API" in result.research_question
+
+
+
+def test_peer_review_rechecks_author_revision_with_same_independent_reviewer():
+    result = TechnicalDirectorReviewPolicy().decide(
+        author="claude_code",
+        reviewers=("codex",),
+        rounds=(PeerReviewRound(1, "claude_code", "codex", ReviewOutcome.REQUEST_CHANGES, ("add regression test",)),),
+        quality=passing_assessment(),
+        author_revision_ready=True,
+    )
+    assert result.next_action == ReviewNextAction.REVIEW_REVISED_RESULT
+    assert result.next_reviewer == "codex"
