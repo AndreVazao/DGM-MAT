@@ -155,13 +155,6 @@ def assess_code_change(
         "reasons": reasons,
     }
     digest = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-    if out_of_scope or security_delta["critical"] > 0:
-        decision = QualityDecision.BLOCKED
-    elif reasons:
-        decision = QualityDecision.NEEDS_FIXES
-    else:
-        decision = QualityDecision.ACCEPT_FOR_PEER_REVIEW
-        reasons.append("no_measured_regressions_and_all_declared_gates_passed; this is not proof of correctness")
     return QualityAssessment(
         decision=decision,
         baseline_sha=baseline.commit_sha,
