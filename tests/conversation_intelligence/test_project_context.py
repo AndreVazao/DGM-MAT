@@ -171,3 +171,31 @@ def test_progress_store_iterator_rejects_unsafe_batch_sizes(tmp_path):
             pass
         else:
             raise AssertionError(f"invalid batch size accepted: {invalid!r}")
+
+
+
+def test_large_project_is_processed_across_multiple_sqlite_batches(tmp_path):
+    store = ConversationProgressStore(tmp_path / "large-progress.sqlite")
+    mapping = {}
+    for index in range(37):
+        cid = f"conversation-{index:03d}"
+        snapshot = _snapshot(cid=cid)
+        snapshot["conversation"]["messages"][0]["timestamp"] = f"2026-11-09T00:{index % 60:02d}:00Z"
+        store.record_conversation(
+            "chatgpt", cid, f"source-{index}", "Large project conversation",
+            status="complete", result=snapshot,
+        )
+        mapping[f"chatgpt:{cid}"] = "DGM-MAT"
+    before = hashlib.sha256((tmp_path / "large-progress.sqlite").read_bytes()).hexdigest()
+    result = ProjectContextDossierGenerator(
+        store, tmp_path / "out", batch_size=3
+    ).build(mapping)
+    after = hashlib.sha256((tmp_path / "large-progress.sqlite").read_bytes()).hexdigest()
+    dossier = (tmp_path / "out" / "DGM-MAT" / "PROJECT_CONTEXT.md").read_text(encoding="utf-8")
+    manifest = json.loads((tmp_path / "out" / "DGM-MAT" / "manifest.json").read_text(encoding="utf-8"))
+    assert result["conversations_assigned"] == 37
+    assert result["outputs"][0]["conversation_count"] == 37
+    assert result["outputs"][0]["message_count"] == 74
+    assert len(manifest["source_ids"]) == 37
+    assert "conversation-036" in dossier
+    assert before == after
