@@ -15,7 +15,7 @@ from cockpit.mission_status_client import (
     submit_mission_once,
     wait_for_mission_checkpoint,
 )
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import QThread, Signal, Qt
 from PySide6.QtGui import QFont, QTextCursor
 from PySide6.QtWidgets import (
     QFrame,
@@ -23,6 +23,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QListWidget,
+    QListWidgetItem,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -209,6 +211,60 @@ class _RuntimeRequestWorker(QThread):
             self.completed.emit("Erro", str(exc) or "O runtime devolveu uma resposta inválida.", "error")
 
 
+class _ConversationRequestWorker(QThread):
+    """Run one authenticated conversation API request away from the GUI thread."""
+
+    completed = Signal(str, object, str)
+
+    def __init__(
+        self,
+        api_url: str,
+        action: str,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        payload: dict[str, Any] | None = None,
+    ):
+        super().__init__()
+        self.api_url = api_url.rstrip("/")
+        self.action = action
+        self.method = method
+        self.path = path
+        self.params = params
+        self.payload = payload
+
+    def run(self) -> None:
+        try:
+            origin = self.api_url.rsplit("/runtime", 1)[0]
+            if origin == self.api_url:
+                raise ValueError("URL base do runtime não é válida para o serviço de conversas.")
+            response = authenticated_request(
+                self.method,
+                f"{origin}{self.path}",
+                params=self.params,
+                json=self.payload,
+                timeout=(2, 8),
+            )
+            if response.status_code not in (200, 201):
+                self.completed.emit(
+                    self.action,
+                    None,
+                    f"Serviço de conversas recusou o pedido (HTTP {response.status_code}).",
+                )
+                return
+            data = response.json()
+            if not isinstance(data, dict):
+                raise ValueError("O serviço de conversas devolveu uma resposta inválida.")
+            self.completed.emit(self.action, data, "")
+        except LocalApiAuthenticationError:
+            self.completed.emit(self.action, None, "Não foi possível autenticar no serviço local.")
+        except requests.RequestException:
+            self.completed.emit(self.action, None, "Não foi possível comunicar com o histórico local.")
+        except (ValueError, TypeError, KeyError) as exc:
+            self.completed.emit(self.action, None, str(exc) or "Resposta inválida do histórico local.")
+
+
 class CommandConsoleWidget(QWidget):
     """Chat-like command console whose network requests never block the GUI."""
 
@@ -218,7 +274,11 @@ class CommandConsoleWidget(QWidget):
         self.api_url = "http://127.0.0.1:8181/runtime"
         self._worker: _RuntimeRequestWorker | None = None
         self._runtime_available = True
+        self._active_thread_id: str | None = None
+        self._pending_directive: str | None = None
+        self._conversation_workers: set[_ConversationRequestWorker] = set()
         self._setup_ui()
+        self._load_threads()
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -229,6 +289,28 @@ class CommandConsoleWidget(QWidget):
             "font-weight: bold; color: #4ec9b0; font-size: 12px;"
         )
         layout.addWidget(header)
+
+        history_bar = QHBoxLayout()
+        self.new_thread_btn = QPushButton("＋ Nova conversa")
+        self.new_thread_btn.clicked.connect(self._create_thread)
+        self.search_field = QLineEdit()
+        self.search_field.setPlaceholderText("Pesquisar conversas…")
+        self.search_field.returnPressed.connect(self._search_threads)
+        self.search_btn = QPushButton("Pesquisar")
+        self.search_btn.clicked.connect(self._search_threads)
+        history_bar.addWidget(self.new_thread_btn)
+        history_bar.addWidget(self.search_field, 1)
+        history_bar.addWidget(self.search_btn)
+        layout.addLayout(history_bar)
+
+        self.thread_list = QListWidget()
+        self.thread_list.setMaximumHeight(112)
+        self.thread_list.setStyleSheet(
+            "background-color: #202328; color: #d4d4d4; "
+            "border: 1px solid #3e3e3e;"
+        )
+        self.thread_list.itemClicked.connect(self._open_selected_thread)
+        layout.addWidget(self.thread_list)
 
         self.output = QTextEdit()
         self.output.setReadOnly(True)
@@ -281,6 +363,10 @@ class CommandConsoleWidget(QWidget):
         available = self._runtime_available and not busy
         self.input_field.setEnabled(available)
         self.send_btn.setEnabled(available)
+        self.new_thread_btn.setEnabled(not busy)
+        self.search_field.setEnabled(not busy)
+        self.search_btn.setEnabled(not busy)
+        self.thread_list.setEnabled(not busy)
         if not self._runtime_available:
             self.input_field.setPlaceholderText("Runtime offline — envio desativado")
         elif busy:
@@ -296,9 +382,11 @@ class CommandConsoleWidget(QWidget):
             return
 
         self.input_field.clear()
-        self._append_message("Tu", directive, "user")
-        # Deliberately do not log the directive: it may contain private information.
-        self._start_request(directive, status_only=directive.casefold() == "runtime status")
+        self._pending_directive = directive
+        if self._active_thread_id:
+            self._persist_pending_user_message()
+        else:
+            self._create_thread(for_pending_send=True)
 
     def _process_directive(self, directive: str) -> None:
         """Compatibility entry point; dispatches work asynchronously."""
@@ -318,6 +406,7 @@ class CommandConsoleWidget(QWidget):
     def _start_request(self, directive: str, *, status_only: bool) -> None:
         self._append_message("Sistema", "Pedido enviado ao runtime…", "system")
         worker = _RuntimeRequestWorker(self.api_url, directive, status_only=status_only)
+        worker.thread_id = self._active_thread_id
         worker.completed.connect(self._on_request_completed)
         worker.finished.connect(self._on_worker_finished)
         self._worker = worker
@@ -327,13 +416,166 @@ class CommandConsoleWidget(QWidget):
         worker.start()
 
     def _on_request_completed(self, sender: str, message: str, msg_type: str) -> None:
+        worker = self.sender()
+        thread_id = getattr(worker, "thread_id", None)
         self._append_message(sender, message, msg_type)
+        if isinstance(thread_id, str) and thread_id:
+            role = "assistant" if sender == "DGM-MAT" else "system"
+            self._persist_transcript_entry(thread_id, role, message)
 
     def _on_worker_finished(self) -> None:
         worker = self.sender()
         if worker is self._worker:
             self._worker = None
         self._refresh_controls()
+
+
+    def _conversation_request(
+        self,
+        action: str,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        worker = _ConversationRequestWorker(
+            self.api_url, action, method, path, params=params, payload=payload
+        )
+        self._conversation_workers.add(worker)
+        worker.completed.connect(self._on_conversation_request_completed)
+        worker.finished.connect(lambda current=worker: self._conversation_workers.discard(current))
+        worker.start()
+
+    def _load_threads(self) -> None:
+        self._conversation_request("threads-list", "GET", "/mobile/threads")
+
+    def _create_thread(self, *, for_pending_send: bool = False) -> None:
+        if self._worker is not None and self._worker.isRunning():
+            return
+        title = "Nova conversa"
+        if for_pending_send and self._pending_directive:
+            title = self._pending_directive[:72].strip() or title
+        self._conversation_request(
+            "thread-create", "POST", "/mobile/threads",
+            payload={"title": title},
+        )
+
+    def _search_threads(self) -> None:
+        query = self.search_field.text().strip()
+        if len(query) < 2:
+            self._append_message("Sistema", "A pesquisa precisa de pelo menos dois caracteres.", "system")
+            return
+        self._conversation_request(
+            "thread-search", "GET", "/mobile/threads/search",
+            params={"q": query, "limit": 25, "offset": 0},
+        )
+
+    def _open_selected_thread(self, item: QListWidgetItem) -> None:
+        thread_id = item.data(Qt.ItemDataRole.UserRole)
+        if isinstance(thread_id, str) and thread_id:
+            self._conversation_request(
+                "thread-open", "GET", f"/mobile/threads/{thread_id}"
+            )
+
+    def _persist_pending_user_message(self) -> None:
+        directive = self._pending_directive
+        thread_id = self._active_thread_id
+        if not directive or not thread_id:
+            return
+        self._conversation_request(
+            "send-user-entry", "POST", f"/mobile/threads/{thread_id}/entries",
+            payload={"role": "user", "content": directive},
+        )
+
+    def _persist_transcript_entry(self, thread_id: str, role: str, content: str) -> None:
+        self._conversation_request(
+            "transcript-entry", "POST", f"/mobile/threads/{thread_id}/entries",
+            payload={"role": role, "content": content},
+        )
+
+    def _on_conversation_request_completed(
+        self, action: str, payload: object, error: str
+    ) -> None:
+        if error:
+            if action == "send-user-entry":
+                self._pending_directive = None
+                self._append_message(
+                    "Erro",
+                    f"A mensagem não foi guardada no histórico; por segurança, a missão não foi enviada. {error}",
+                    "error",
+                )
+            elif action == "transcript-entry":
+                self._append_message(
+                    "Aviso",
+                    "Uma atualização da conversa não pôde ser guardada no histórico local.",
+                    "error",
+                )
+            else:
+                self._append_message("Histórico", error, "error")
+            return
+
+        data = payload if isinstance(payload, dict) else {}
+        if action in {"threads-list", "thread-search"}:
+            threads = data.get("threads") if action == "threads-list" else data.get("results")
+            self.thread_list.clear()
+            for thread in threads or []:
+                if not isinstance(thread, dict):
+                    continue
+                thread_id = thread.get("id") or thread.get("thread_id")
+                title = thread.get("title") or "Nova conversa"
+                if not isinstance(thread_id, str):
+                    continue
+                item = QListWidgetItem(str(title))
+                item.setData(Qt.ItemDataRole.UserRole, thread_id)
+                self.thread_list.addItem(item)
+            return
+
+        if action == "thread-create":
+            thread_id = data.get("id")
+            if not isinstance(thread_id, str) or not thread_id:
+                self._append_message("Erro", "O backend não devolveu o ID da nova conversa.", "error")
+                self._pending_directive = None
+                return
+            self._active_thread_id = thread_id
+            self.output.clear()
+            self.history.clear()
+            self._append_message("Sistema", "Nova conversa criada. O histórico é independente.", "system")
+            self._load_threads()
+            if self._pending_directive:
+                self._persist_pending_user_message()
+            return
+
+        if action == "send-user-entry":
+            directive = self._pending_directive
+            self._pending_directive = None
+            if not directive:
+                return
+            self._append_message("Tu", directive, "user")
+            self._start_request(
+                directive, status_only=directive.casefold() == "runtime status"
+            )
+            return
+
+        if action == "thread-open":
+            thread_id = data.get("id")
+            messages = data.get("messages")
+            if not isinstance(thread_id, str) or not isinstance(messages, list):
+                self._append_message("Erro", "O backend devolveu uma conversa inválida.", "error")
+                return
+            self._active_thread_id = thread_id
+            self.output.clear()
+            self.history.clear()
+            for message in messages:
+                if not isinstance(message, dict):
+                    continue
+                role = message.get("role")
+                sender = "Tu" if role == "user" else "DGM-MAT" if role == "assistant" else "Sistema"
+                msg_type = "user" if role == "user" else "info" if role == "assistant" else "system"
+                self._append_message(sender, message.get("content", ""), msg_type)
+            self._append_message("Sistema", "Conversa carregada do histórico local.", "system")
+            return
+
 
     def _append_message(self, sender: str, text: str, msg_type: str = "info") -> None:
         timestamp = datetime.now().strftime("%H:%M:%S")
