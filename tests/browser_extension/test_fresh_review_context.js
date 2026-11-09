@@ -280,7 +280,7 @@ async function testPersonalizedChatGPTTemporaryModeIsRejected() {
 }
 
 async function testGeminiRegularNewChatIsRejected() {
-  const harness = createHarness("gemini", { bodyText: "New Chat" });
+  const harness = createHarness("gemini", { bodyText: "New Chat", privacyActive: false });
   const preflight = await harness.ping();
   assert.equal(preflight.ok, false);
   assert.equal(preflight.reason, "provider_privacy_mode_not_verified");
