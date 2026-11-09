@@ -191,7 +191,7 @@ class BranchRecoveryAnalyzer:
     def _valid_ref(value: str) -> bool:
         if not isinstance(value, str) or not value or value.startswith("-") or value.startswith("/") or value.endswith("/"):
             return False
-        if ".." in value or "@{" in value or any(ch in value for ch in " ~^:?*[\\"):
+        if ".." in value or "@{" in value or any(ch in value for ch in (" ", "~", "^", ":", "?", "*", "[", chr(92))):
             return False
         return all(part not in {"", ".", ".."} for part in value.split("/"))
 
