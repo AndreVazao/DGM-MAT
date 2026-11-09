@@ -42,7 +42,7 @@ function makeMessage(
   };
 }
 
-function createHarness(mode, provider = "chatgpt", bodyText = "") {
+function createHarness(mode, provider = "chatgpt", bodyText = "", urlOverride = null) {
   const all = Array.from({ length: 12 }, (_, index) => makeMessage(index, undefined, {}, provider));
   const ambiguousFirst = makeMessage(50, "user", {
     text: "Repeated identical text-only turn",
@@ -141,7 +141,7 @@ function createHarness(mode, provider = "chatgpt", bodyText = "") {
     JSON,
     document,
     location: {
-      href: {
+      href: urlOverride || {
         chatgpt: "https://chatgpt.com/c/fixture-conversation",
         gemini: "https://gemini.google.com/app/fixture-conversation",
         grok: "https://grok.com/chat/fixture-conversation",
@@ -149,14 +149,14 @@ function createHarness(mode, provider = "chatgpt", bodyText = "") {
         qwen: "https://chat.qwen.ai/chat/fixture-conversation",
         claude: "https://claude.ai/chat/fixture-conversation"
       }[provider],
-      pathname: {
-        chatgpt: "/c/fixture-conversation",
-        gemini: "/app/fixture-conversation",
-        grok: "/chat/fixture-conversation",
-        deepseek: "/a/chat/s/fixture-conversation",
-        qwen: "/chat/fixture-conversation",
-        claude: "/chat/fixture-conversation"
-      }[provider],
+      pathname: new URL(urlOverride || ({
+        chatgpt: "https://chatgpt.com/c/fixture-conversation",
+        gemini: "https://gemini.google.com/app/fixture-conversation",
+        grok: "https://grok.com/chat/fixture-conversation",
+        deepseek: "https://chat.deepseek.com/a/chat/s/fixture-conversation",
+        qwen: "https://chat.qwen.ai/chat/fixture-conversation",
+        claude: "https://claude.ai/chat/fixture-conversation"
+      }[provider])).pathname,
       assign() {
         throw new Error("Navigation is not expected during capture tests.");
       }
@@ -264,6 +264,33 @@ async function testProviderScopedSelectorsRemainSupported() {
   }
 }
 
+async function testClaudeProjectConversationRouteUsesConversationId() {
+  const harness = createHarness(
+    "no-oldest-marker",
+    "claude",
+    "",
+    "https://claude.ai/project/project-12345678/chat/conversation-87654321"
+  );
+  const response = await harness.capture();
+  assert.equal(response.ok, true, response.error);
+  assert.equal(response.data.provider, "claude");
+  assert.equal(response.data.source_id, "conversation-87654321",
+    "project route must use the chat ID, not the project ID");
+}
+
+async function testClaudeNonConversationRoutesFailClosed() {
+  for (const url of [
+    "https://claude.ai/new",
+    "https://claude.ai/project/project-12345678",
+    "https://claude.ai/chat"
+  ]) {
+    const harness = createHarness("no-oldest-marker", "claude", "", url);
+    const response = await harness.capture();
+    assert.equal(response.ok, false, url + " must not be treated as a conversation");
+    assert.match(response.error, /recognized conversation ID/);
+  }
+}
+
 async function testMissingOldestMarkerRemainsPartialOrUnknown() {
   const harness = createHarness("no-oldest-marker");
   const response = await harness.capture();
@@ -327,13 +354,15 @@ async function testScrollHardLimitIsExplicitlyTruncated() {
 async function main() {
   await testVirtualizedHistoryWindowsAndDuplicates();
   await testProviderScopedSelectorsRemainSupported();
+  await testClaudeProjectConversationRouteUsesConversationId();
+  await testClaudeNonConversationRoutesFailClosed();
   await testMissingOldestMarkerRemainsPartialOrUnknown();
   await testTopLoadingHardLimitIsExplicitlyTruncated();
   await testProviderDomMismatchFailsClosed();
   await testIdenticalTextOnlyTurnsAreMarkedAmbiguous();
   await testScrollHardLimitIsExplicitlyTruncated();
   await testProviderUsageLimitsTriggerSafeProviderRotationSignal();
-  process.stdout.write("PASS: 8 deterministic virtualized-history and provider-limit fixtures\n");
+  process.stdout.write("PASS: 10 deterministic virtualized-history, Claude route and provider-limit fixtures\n");
 }
 
 main().catch(error => {
