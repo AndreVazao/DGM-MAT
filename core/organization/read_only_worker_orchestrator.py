@@ -97,13 +97,14 @@ class ReadOnlyWorkerOrchestrator:
 
         receipt = self.bus.get_dispatch_result(message_id)
         if receipt is not None:
+            stored_result = receipt["result"]
             return {
-                "status": "ALREADY_COMPLETED",
+                "status": "WORKER_BLOCKED" if isinstance(stored_result, dict) and stored_result.get("status") == "BLOCKED" else "ALREADY_COMPLETED",
                 "agent_id": agent_id,
                 "message_id": message_id,
                 "mission_id": mission_id,
                 "correlation_id": correlation_id,
-                "result": receipt["result"],
+                "result": stored_result,
                 "durable_receipt": True,
             }
 
@@ -137,8 +138,9 @@ class ReadOnlyWorkerOrchestrator:
                 "error_type": dispatch.error_type,
                 "durable_receipt": False,
             }
+        worker_blocked = isinstance(dispatch.result, dict) and dispatch.result.get("status") == "BLOCKED"
         return {
-            "status": "COMPLETED",
+            "status": "WORKER_BLOCKED" if worker_blocked else "COMPLETED",
             "agent_id": agent_id,
             "message_id": message_id,
             "mission_id": mission_id,
