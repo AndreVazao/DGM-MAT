@@ -133,7 +133,7 @@ def build_browser_consult_mission_context(payload: BrowserConsultMissionContextR
         logs = data.get("logs") if isinstance(data.get("logs"), list) else []
         if logs:
             lines.extend(["", "RECENT EXECUTION LOGS:"])
-            lines.extend("- " + str(item).replace("\\", "/").rsplit("/", 1)[-1][:120] for item in artifacts[-12:] if isinstance(item, str))
+            lines.extend("- " + str(item)[:350] for item in logs[-10:])
         subtasks = data.get("subtasks") if isinstance(data.get("subtasks"), list) else []
         if subtasks:
             lines.extend(["", "SUBTASKS:"])
