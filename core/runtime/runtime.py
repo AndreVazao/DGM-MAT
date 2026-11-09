@@ -257,9 +257,10 @@ class Runtime:
 
         self.state.runtime_status = "running"
 
-        # Repository learning is an opt-in, low-memory, read-only background worker.
-        # Its SQLite cursor is durable, so restarts resume instead of rescanning completed work.
-        learning_enabled = os.getenv("DGM_REPOSITORY_LEARNING_ENABLED", "0").strip().casefold()
+        # Repository learning is enabled by default on the full runtime: it is a
+        # bounded, read-only inventory worker with a durable SQLite cursor.
+        # Operators can explicitly disable it with DGM_REPOSITORY_LEARNING_ENABLED=0.
+        learning_enabled = os.getenv("DGM_REPOSITORY_LEARNING_ENABLED", "1").strip().casefold()
         if learning_enabled in {"1", "true", "yes", "on"}:
             try:
                 from core.api.repository_learning_api import repository_learning_service
