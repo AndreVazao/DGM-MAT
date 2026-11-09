@@ -83,6 +83,11 @@ def enqueue_browser_consultation(payload: BrowserConsultEnqueueRequest, request:
         raise HTTPException(status_code=409, detail="Free-tier browser consultation is disabled until explicitly enabled on this PC.")
     if payload.free_capacity_confirmed is not True:
         raise HTTPException(status_code=400, detail="Operator must explicitly attest that the selected provider accounts are free-tier.")
+    if payload.review_mode == "fresh_review":
+        if not payload.review_id or any(provider not in {"chatgpt", "gemini"} for provider in payload.providers):
+            raise HTTPException(status_code=400, detail="Fresh EGM review requires a review_id and only supported privacy-mode providers.")
+    elif payload.review_id is not None:
+        raise HTTPException(status_code=400, detail="review_id is only valid for fresh_review mode.")
     try:
         _audit("command.requested", "queued", request, ",".join(payload.providers))
         result = _store().enqueue(
@@ -124,6 +129,13 @@ def approve_browser_consultation(consultation_id: str, request: Request):
     if not _store().approve(consultation_id, operator=str(principal.get("subject") or "local-operator")):
         raise HTTPException(status_code=409, detail="Consultation is missing or no longer awaiting approval.")
     return {"status": "PENDING", "consultation_id": consultation_id}
+
+
+@router.get("/peek")
+def peek_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"], request: Request):
+    _principal(request)
+    item = _store().peek_next(provider)
+    return {"status": "pending" if item else "queue_empty", "next": item}
 
 
 @router.post("/next")
