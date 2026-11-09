@@ -29,6 +29,7 @@ name: Windows Executable Build
   pull_request:
     branches:
       - main
+      - recovery/legacy-branch-consolidation-2026-11-07
     paths:
       - "**/*.py"
       - "**/*.ps1"
