@@ -93,6 +93,13 @@ def test_real_paired_extension_session_can_manage_consults_but_not_operator_rout
     status = client.get("/recovery/browser-consult/status", headers=headers)
     assert status.status_code == 200
 
+    preview = client.post("/recovery/browser-consult/preview", headers=headers, json={
+        "goal": "Review a bounded consultation preview",
+        "context": "No provider send should occur during preview.",
+    })
+    assert preview.status_code == 200
+    assert preview.json()["prompt_sha256"]
+
     queued = client.post("/recovery/browser-consult/enqueue", headers=headers, json={
         "task_ref": "manual_extension_scope_test",
         "goal": "Review the least-privilege scope wiring",
