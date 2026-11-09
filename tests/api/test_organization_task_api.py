@@ -259,7 +259,7 @@ def test_organization_task_api_runs_real_allowlisted_readonly_worker(tmp_path, m
         assert task["durable_receipt"] is True
         assert task["message_id"].startswith("msg:readonly:")
         assert task["result_sha256"] and len(task["result_sha256"]) == 64
-        assert task["result"]["status"] == "completed"
+        assert task["result"]["status"] == "COMPLETED_READ_ONLY"
         restored = engine.get_organization_task(task["task_id"])
         assert restored is not None
         assert restored.metadata["worker_execution"]["durable_receipt"] is True
