@@ -40,6 +40,7 @@ def test_consult_routes_have_operator_and_extension_scopes():
         ("/recovery/browser-consult/status", "GET", SecurityScope.BROWSER_CONSULT_CONTROL),
         ("/recovery/browser-consult/peek", "GET", SecurityScope.BROWSER_CAPTURE),
         ("/recovery/browser-consult/fresh-review/review_123", "GET", SecurityScope.BROWSER_CAPTURE),
+        ("/recovery/browser-consult/preview", "POST", SecurityScope.BROWSER_CONSULT_CONTROL),
         ("/recovery/browser-consult/enqueue", "POST", SecurityScope.BROWSER_CONSULT_CONTROL),
         ("/recovery/browser-consult/approve/consultation_123", "POST", SecurityScope.BROWSER_CONSULT_CONTROL),
         ("/recovery/browser-consult/next", "POST", SecurityScope.BROWSER_CAPTURE),
@@ -109,6 +110,66 @@ def test_real_paired_extension_session_can_manage_consults_but_not_operator_rout
 
     general_operator = client.get("/recovery/status", headers=headers)
     assert general_operator.status_code == 403
+
+
+def test_preview_returns_exact_redacted_prompt_without_queueing(monkeypatch, tmp_path):
+    client, store = make_client(monkeypatch, tmp_path)
+    response = client.post("/recovery/browser-consult/preview", json={
+        "goal": "Review the authentication boundary",
+        "context": "api_key=secret-value-123456",
+    })
+
+    assert response.status_code == 200
+    body = response.json()
+    assert "TASK:" in body["prompt"]
+    assert "[REDACTED_SECRET]" in body["prompt"]
+    assert body["prompt_redacted"] is True
+    assert len(body["prompt_sha256"]) == 64
+    assert store.status()["counts"] == {}
+
+
+def test_enqueue_rejects_content_changed_after_preview(monkeypatch, tmp_path):
+    client, store = make_client(monkeypatch, tmp_path)
+    draft = {
+        "goal": "Review the authentication boundary",
+        "context": "Only the API contract is relevant.",
+    }
+    preview = client.post("/recovery/browser-consult/preview", json=draft)
+    assert preview.status_code == 200
+
+    changed = client.post("/recovery/browser-consult/enqueue", json={
+        "task_ref": "mission_preview_binding",
+        "goal": draft["goal"],
+        "context": "A different context was substituted.",
+        "providers": ["chatgpt"],
+        "free_capacity_confirmed": True,
+        "preview_sha256": preview.json()["prompt_sha256"],
+    })
+
+    assert changed.status_code == 409
+    assert store.status()["counts"] == {}
+
+
+def test_enqueue_accepts_exact_preview_digest(monkeypatch, tmp_path):
+    client, store = make_client(monkeypatch, tmp_path)
+    draft = {
+        "goal": "Review the authentication boundary",
+        "context": "Only the API contract is relevant.",
+    }
+    preview = client.post("/recovery/browser-consult/preview", json=draft)
+    assert preview.status_code == 200
+
+    queued = client.post("/recovery/browser-consult/enqueue", json={
+        "task_ref": "mission_preview_bound",
+        **draft,
+        "providers": ["chatgpt"],
+        "free_capacity_confirmed": True,
+        "preview_sha256": preview.json()["prompt_sha256"],
+    })
+
+    assert queued.status_code == 200
+    assert queued.json()["status"] == "PENDING_APPROVAL"
+    assert store.status()["counts"] == {"PENDING_APPROVAL": 1}
 
 
 def test_consultation_requires_operator_approval_and_claim_token(monkeypatch, tmp_path):
