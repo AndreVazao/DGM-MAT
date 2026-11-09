@@ -73,19 +73,25 @@ class ConversationStore:
                 reverse=True,
             )
 
-    def search_threads(self, query: str, limit: int = 25) -> list[dict[str, Any]]:
-        """Search local durable thread metadata and message text without returning full transcripts."""
+    def search_threads_page(
+        self,
+        query: str,
+        limit: int = 25,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """Return a deterministic, bounded page of local threads matching metadata or message text."""
         needle = query.strip().casefold()
         if len(needle) < 2:
-            return []
+            return {"results": [], "total_count": 0, "limit": max(1, min(int(limit), 50)), "offset": max(0, int(offset)), "has_more": False}
         bounded_limit = max(1, min(int(limit), 50))
+        bounded_offset = max(0, int(offset))
         with self._lock:
             ordered = sorted(
                 self._threads.values(),
-                key=lambda item: item.updated_at,
+                key=lambda item: (item.updated_at, item.id),
                 reverse=True,
             )
-            results: list[dict[str, Any]] = []
+            matches: list[dict[str, Any]] = []
             for thread in ordered:
                 title_match = needle in (thread.title or "").casefold()
                 context_match = needle in " ".join(
@@ -117,15 +123,33 @@ class ConversationStore:
                     "project": thread.project,
                     "repository": thread.repository,
                     "match_type": "title" if title_match else "context" if context_match else "message",
+                    "provenance": {
+                        "source": "dgm-mat-local-conversation-store",
+                        "thread_id": thread.id,
+                        "capture_completeness": "complete",
+                    },
                 }
                 if matched_message:
                     result.update(matched_message)
                 else:
                     result["snippet"] = (thread.title or "Nova conversa")[:240]
-                results.append(result)
-                if len(results) >= bounded_limit:
-                    break
-            return results
+                matches.append(result)
+
+            total_count = len(matches)
+            results = matches[bounded_offset:bounded_offset + bounded_limit]
+            next_offset = bounded_offset + len(results)
+            return {
+                "results": results,
+                "total_count": total_count,
+                "limit": bounded_limit,
+                "offset": bounded_offset,
+                "next_offset": next_offset if next_offset < total_count else None,
+                "has_more": next_offset < total_count,
+            }
+
+    def search_threads(self, query: str, limit: int = 25, offset: int = 0) -> list[dict[str, Any]]:
+        """Backward-compatible list interface for existing callers."""
+        return self.search_threads_page(query, limit=limit, offset=offset)["results"]
 
     def create_thread(
         self,
