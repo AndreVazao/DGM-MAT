@@ -250,3 +250,24 @@ def test_fresh_review_result_requires_evidence_and_can_be_resumed(monkeypatch, t
     assert resumed["consultations"][0]["response_text"] == "A bounded independent review."
     assert resumed["consultations"][0]["evidence"] == evidence
     assert resumed["independence_attested"] is False
+
+
+def test_peek_does_not_claim_or_consume_approved_fresh_review(monkeypatch, tmp_path):
+    _configure(monkeypatch, "chatgpt")
+    store = BrowserConsultStore(tmp_path / "fresh-peek.sqlite3")
+    queued = store.enqueue(
+        task_ref="egm-task:peek",
+        goal="Review the design.",
+        providers=["chatgpt"],
+        review_mode="fresh_review",
+        review_id="review-peek",
+    )
+    consultation_id = queued["consultation_ids"][0]
+    assert store.approve(consultation_id, operator="operator")
+    peeked = store.peek_next("chatgpt")
+    assert peeked["consultation_id"] == consultation_id
+    assert peeked["review_mode"] == "fresh_review"
+    assert store.status()["counts"]["PENDING"] == 1
+    claimed = store.claim_next("chatgpt")
+    assert claimed["consultation_id"] == consultation_id
+    assert claimed["status"] == "RUNNING"
