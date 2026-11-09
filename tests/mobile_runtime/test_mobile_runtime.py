@@ -1,5 +1,7 @@
 # Path: C:\ProgramasGodMode\DGM-MAT\tests\mobile_runtime\test_mobile_runtime.py
 from pathlib import Path
+
+import pytest
 from unittest.mock import patch
 
 from core.mobile_runtime.intent import IntentInterpreter
