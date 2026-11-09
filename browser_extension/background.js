@@ -544,8 +544,8 @@ async function pair(code) {
   });
   const current = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY, CONSULT_ENABLED_KEY]);
   const defaults = {};
-  if (typeof current[AUTO_KEY] !== "boolean") defaults[AUTO_KEY] = true;
-  if (typeof current[BROWSER_QUEUE_AUTO_KEY] !== "boolean") defaults[BROWSER_QUEUE_AUTO_KEY] = true;
+  if (typeof current[AUTO_KEY] !== "boolean") defaults[AUTO_KEY] = false;
+  if (typeof current[BROWSER_QUEUE_AUTO_KEY] !== "boolean") defaults[BROWSER_QUEUE_AUTO_KEY] = false;
   if (typeof current[CONSULT_ENABLED_KEY] !== "boolean") defaults[CONSULT_ENABLED_KEY] = false;
   if (Object.keys(defaults).length) await chrome.storage.local.set(defaults);
   const settings = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY, CONSULT_ENABLED_KEY]);
@@ -559,7 +559,7 @@ async function pair(code) {
     await rememberProviderTab(provider, tab.id);
   }
   await chrome.storage.local.set({
-    dgmRecoveryLastStatus: "Paired to local DGM-MAT; automatic recovery and approved mission queue are enabled by default."
+    dgmRecoveryLastStatus: "Paired to local DGM-MAT; unattended recovery and mission queue remain disabled until explicitly enabled by the operator."
   });
   if (settings[BROWSER_QUEUE_AUTO_KEY]) {
     chrome.alarms.create(BROWSER_ALARM, { periodInMinutes: 0.5 });
