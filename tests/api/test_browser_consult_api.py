@@ -282,11 +282,12 @@ def test_fresh_review_api_requires_supported_provider_and_persists_resume(monkey
 
     peek = client.get("/recovery/browser-consult/peek?provider=chatgpt")
     assert peek.status_code == 200
-    assert peek.json()["next"]["review_mode"] == "fresh_review"
+    assert peek.json()["status"] == "queue_empty"
     assert store.status()["counts"]["PENDING_APPROVAL"] == 1
 
     assert client.post("/recovery/browser-consult/approve/" + consultation_id).status_code == 200
     peek = client.get("/recovery/browser-consult/peek?provider=chatgpt")
+    assert peek.json()["next"]["review_mode"] == "fresh_review"
     assert peek.json()["status"] == "pending"
     assert store.status()["counts"]["PENDING"] == 1
 
