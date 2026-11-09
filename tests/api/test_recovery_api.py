@@ -84,6 +84,7 @@ def test_github_reference_routes_are_operator_only():
     expected = (
         ("/recovery/github-references", "GET"),
         ("/recovery/github-references/verify", "POST"),
+        ("/recovery/github-references/reindex", "POST"),
     )
     for path, method in expected:
         route = classify_request_path(path, method)
