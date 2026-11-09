@@ -222,6 +222,42 @@ class OrganizationTaskManager:
             self._tasks[task_id] = updated
             return deepcopy(updated)
 
+    def block_with_result(
+        self, task_id: str, *, result: dict[str, Any], message_id: str
+    ) -> Task:
+        """Persist a durable worker refusal and keep the task non-approvable."""
+        if not isinstance(result, dict) or result.get("status") != "BLOCKED":
+            raise ValueError("blocked worker result must have status BLOCKED")
+        if not isinstance(message_id, str) or not message_id.strip():
+            raise ValueError("message_id must be a non-empty string")
+        json.dumps(result, ensure_ascii=False, allow_nan=False)
+        with self._lock:
+            current = self._tasks[task_id]
+            if not isinstance(current.metadata, dict):
+                raise ValueError(f"Task {task_id} metadata is not a dictionary.")
+            existing = current.metadata.get("worker_execution", {})
+            if current.status == TaskStatus.BLOCKED:
+                if (
+                    isinstance(existing, dict)
+                    and existing.get("message_id") == message_id
+                    and existing.get("result") == result
+                ):
+                    return deepcopy(current)
+                raise ValueError(f"Task {task_id} is already blocked with a different result.")
+            if current.status not in {TaskStatus.ASSIGNED, TaskStatus.RUNNING}:
+                raise ValueError(f"Task {task_id} cannot be blocked from {current.status.value}.")
+            updated = deepcopy(current)
+            updated.metadata["worker_execution"] = {
+                "message_id": message_id,
+                "durable_receipt": True,
+                "result": deepcopy(result),
+            }
+            updated.status = TaskStatus.BLOCKED
+            updated.updated_at = utc_now()
+            self._persist_update(updated)
+            self._tasks[task_id] = updated
+            return deepcopy(updated)
+
     def ready_tasks(self) -> list[Task]:
         with self._lock:
             return [
