@@ -184,7 +184,12 @@
       return [...document.querySelectorAll("user-query, model-response")];
     }
     if (provider === "claude") {
-      return [...document.querySelectorAll('[data-testid="user-message"], [data-testid="assistant-message"], [data-testid="chat-message"]')];
+      const nodes = [...document.querySelectorAll(
+        '[data-testid="user-message"], [data-testid="assistant-message"], [data-testid="chat-message"]'
+      )];
+      // Claude may expose both a message wrapper and a nested role-specific
+      // node. Keep the deepest recognized node so one turn is not archived twice.
+      return nodes.filter(node => !nodes.some(other => other !== node && node.contains(other)));
     }
     const selectors = provider === "deepseek"
       ? ['[data-message-id]', '[data-testid*="message"]', 'div[class*="ds-message"]', 'div[class*="message"]']
