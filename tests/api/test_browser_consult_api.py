@@ -40,6 +40,7 @@ def test_consult_routes_have_operator_and_extension_scopes():
         ("/recovery/browser-consult/status", "GET", SecurityScope.BROWSER_CONSULT_CONTROL),
         ("/recovery/browser-consult/peek", "GET", SecurityScope.BROWSER_CAPTURE),
         ("/recovery/browser-consult/fresh-review/review_123", "GET", SecurityScope.BROWSER_CAPTURE),
+        ("/recovery/browser-consult/mission-context", "POST", SecurityScope.BROWSER_CONSULT_CONTROL),
         ("/recovery/browser-consult/preview", "POST", SecurityScope.BROWSER_CONSULT_CONTROL),
         ("/recovery/browser-consult/enqueue", "POST", SecurityScope.BROWSER_CONSULT_CONTROL),
         ("/recovery/browser-consult/approve/consultation_123", "POST", SecurityScope.BROWSER_CONSULT_CONTROL),
@@ -117,6 +118,77 @@ def test_real_paired_extension_session_can_manage_consults_but_not_operator_rout
 
     general_operator = client.get("/recovery/status", headers=headers)
     assert general_operator.status_code == 403
+
+
+def test_mission_context_preview_reads_durable_checkpoint_and_redacts_secrets(monkeypatch, tmp_path):
+    import json
+    from core.api import runtime_api
+
+    monkeypatch.setattr(runtime_api.mission_engine, "missions_path", tmp_path)
+    checkpoint = {
+        "mission_id": "mission_1234abcd",
+        "goal": "Review the DGM-MAT authentication boundary",
+        "description": "Inspect the browser consultation API",
+        "status": "RUNNING",
+        "progress": 42,
+        "created_at": "2026-11-09T18:00:00+00:00",
+        "updated_at": "2026-11-09T18:10:00+00:00",
+        "logs": ["Focused test failed: api_key=secret-value-123456"],
+        "subtasks": [{
+            "title": "Review API",
+            "description": "Check route scopes and validation",
+            "status": "completed",
+        }],
+        "artifacts": ["tests/api/test_browser_consult_api.py"],
+        "metadata": {
+            "branch": "feat/example",
+            "repository_id": "DGM-MAT",
+            "repository_path": "C:/Users/private/DGM-MAT",
+            "api_key": "must-not-leak",
+        },
+    }
+    (tmp_path / "mission_1234abcd.json").write_text(
+        json.dumps(checkpoint), encoding="utf-8"
+    )
+    client, store = make_client(monkeypatch, tmp_path / "consult")
+    response = client.post(
+        "/recovery/browser-consult/mission-context",
+        json={"mission_id": "mission_1234abcd"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["mission_status"] == "RUNNING"
+    assert "Review the DGM-MAT authentication boundary" == body["goal"]
+    assert "Focused test failed" in body["context"]
+    assert "feat/example" in body["context"]
+    assert "secret-value-123456" not in body["context"]
+    assert "must-not-leak" not in body["context"]
+    assert "C:/Users/private" not in body["context"]
+    assert body["prompt_redacted"] is True
+    assert len(body["context_sha256"]) == 64
+    assert body["provider_contacted"] is False
+    assert body["requires_operator_preview_and_approval"] is True
+    assert store.status()["counts"] == {}
+
+
+def test_mission_context_preview_rejects_missing_or_malformed_checkpoint(monkeypatch, tmp_path):
+    from core.api import runtime_api
+
+    monkeypatch.setattr(runtime_api.mission_engine, "missions_path", tmp_path)
+    client, store = make_client(monkeypatch, tmp_path / "consult")
+    missing = client.post(
+        "/recovery/browser-consult/mission-context",
+        json={"mission_id": "mission_1234abcd"},
+    )
+    malformed = client.post(
+        "/recovery/browser-consult/mission-context",
+        json={"mission_id": "not-a-mission"},
+    )
+
+    assert missing.status_code == 404
+    assert malformed.status_code == 422
+    assert store.status()["counts"] == {}
 
 
 def test_preview_returns_exact_redacted_prompt_without_queueing(monkeypatch, tmp_path):
