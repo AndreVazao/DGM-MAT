@@ -207,3 +207,46 @@ def test_fresh_review_evidence_fails_closed(monkeypatch, tmp_path):
             response_text="A response.",
             evidence={"provider": "gemini", "privacy_mode_verified": False},
         )
+
+
+def test_fresh_review_result_requires_evidence_and_can_be_resumed(monkeypatch, tmp_path):
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_ENABLED", "1")
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_FREE_PROVIDERS", "chatgpt")
+    store = BrowserConsultStore(tmp_path / "fresh-resume.sqlite3")
+    queued = store.enqueue(
+        task_ref="egm-task:task-3",
+        goal="Review this bounded design.",
+        providers=["chatgpt"],
+        review_mode="fresh_review",
+        review_id="review-resume",
+    )
+    consultation_id = queued["consultation_ids"][0]
+    assert store.approve(consultation_id, operator="operator")
+    claimed = store.claim_next("chatgpt")
+    with pytest.raises(ValueError, match="requires host-observed"):
+        store.finish(
+            consultation_id,
+            claim_token=claimed["claim_token"],
+            response_text="A response without evidence.",
+        )
+    evidence = {
+        "provider": "chatgpt",
+        "source_id": "fresh-conversation-3",
+        "initial_source_id": None,
+        "initial_visible_message_count": 0,
+        "privacy_mode": "chatgpt_temporary_unpersonalized",
+        "privacy_mode_verified": True,
+        "verification": "blank_page_then_new_conversation_id_and_stable_response",
+    }
+    store.finish(
+        consultation_id,
+        claim_token=claimed["claim_token"],
+        response_text="A bounded independent review.",
+        evidence=evidence,
+    )
+    resumed = store.get_review("review-resume")
+    assert resumed["status"] == "COMPLETED"
+    assert resumed["reviewer_count"] == 1
+    assert resumed["consultations"][0]["response_text"] == "A bounded independent review."
+    assert resumed["consultations"][0]["evidence"] == evidence
+    assert resumed["independence_attested"] is False
