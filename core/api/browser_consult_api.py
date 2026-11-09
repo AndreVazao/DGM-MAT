@@ -331,6 +331,61 @@ def complete_browser_consultation(payload: BrowserConsultResultRequest, request:
                 result["conversation_updated"] = True
             except Exception:
                 result["conversation_warning"] = "local_conversation_update_failed"
+        elif result.get("status") == "COMPLETED" and re.fullmatch(r"mission_[0-9a-f]{8}", task_ref):
+            try:
+                from datetime import datetime, timezone
+                from core.api.runtime_api import mission_engine
+
+                mission = mission_engine._reload_mission_checkpoint(task_ref)
+                if mission is not None:
+                    metadata = mission.metadata if isinstance(mission.metadata, dict) else {}
+                    observations = metadata.get("external_consultations")
+                    if not isinstance(observations, list):
+                        observations = []
+                    observations.append({
+                        "consultation_id": payload.consultation_id,
+                        "provider": result.get("provider"),
+                        "status": result.get("status"),
+                        "response_sha256": result.get("response_sha256"),
+                        "result_trusted": False,
+                        "recorded_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                    metadata["external_consultations"] = observations[-20:]
+                    mission.metadata = metadata
+                    if isinstance(mission.logs, list):
+                        mission.logs.append(
+                            "External consultation completed: "
+                            + str(result.get("provider", "AI"))
+                            + "; response stored as unverified proposal "
+                            + str(payload.consultation_id)
+                        )
+                    mission_engine.save_mission(mission)
+                    result["mission_updated"] = True
+                    thread_id = metadata.get("conversation_thread_id") or metadata.get("thread_id")
+                    if isinstance(thread_id, str) and thread_id.strip():
+                        try:
+                            from core.api.mobile_bridge import service as mobile_service
+                            mobile_service.store.append_message(
+                                thread_id,
+                                "assistant",
+                                "### " + str(result.get("provider", "AI")).upper()
+                                + " (resposta externa não verificada)\\n\\n"
+                                + payload.response_text[:12000],
+                                metadata={
+                                    "browser_consultation_id": payload.consultation_id,
+                                    "provider": result.get("provider"),
+                                    "mission_id": task_ref,
+                                    "result_trusted": False,
+                                    "approval_required": True,
+                                    "paid_fallback": False,
+                                    "source": "dgm-browser-consultation",
+                                },
+                            )
+                            result["conversation_updated"] = True
+                        except Exception:
+                            result["conversation_warning"] = "local_conversation_update_failed"
+            except Exception:
+                result["mission_warning"] = "durable_mission_update_failed"
         try:
             _audit("command.completed", result["status"], request, result["provider"])
             result["audit_warning"] = None
