@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DGM-MAT Conversation Archive</title>
+  <style>
+    body { font: 13px/1.45 Segoe UI, Arial, sans-serif; width: 330px; margin: 0; padding: 16px; color: #17202a; }
+    h1 { font-size: 16px; margin: 0 0 6px; }
+    p { color: #52606d; margin: 0 0 12px; }
+    button { width: 100%; padding: 10px; margin: 5px 0; border: 0; border-radius: 7px; background: #163b65; color: white; font-weight: 600; cursor: pointer; }
+    button.secondary { background: #e7edf4; color: #163b65; }
+    button:disabled { opacity: .55; cursor: wait; }
+    #status { margin-top: 10px; white-space: pre-wrap; color: #263746; }
+    #coverage { margin-top: 10px; padding: 9px; background: #f1f5f9; border-radius: 7px; color: #52606d; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>DGM-MAT — Arquivo de Conversas</h1>
+  <p>Inventário local e captura controlada das conversas das IAs.</p>
+  <button id="inventory">Inventariar histórico das IAs</button>
+  <button id="capture" class="secondary">Capturar conversa aberta</button>
+  <div id="status" role="status">Pronto. Os ficheiros são guardados na pasta de transferências.</div>
+  <div id="coverage">A recolha do histórico é parcial: inclui URLs visitados no Chrome. A captura de conteúdo atua apenas na conversa aberta.</div>
+  <script src="popup.js"></script>
+</body>
+</html>

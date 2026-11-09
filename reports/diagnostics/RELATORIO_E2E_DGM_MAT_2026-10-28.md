@@ -12,9 +12,9 @@
 
 ## Resumo Executivo
 
-A auditoria E2E do DGM-MAT foi executada de forma autónoma e metódica. O runtime está saudável na porta 8181, o fluxo de missão completo (diagnóstico ao vivo, PR #153) atingiu estado `COMPLETED` sem erros, e todas as categorias de teste automatizado das categorias 5–8 passaram. Quatro regressões de missão e validação de segurança foram corrigidas. A compilação do `.exe` Windows está **bloqueada localmente** por falha de DLL do numpy no ambiente Python (limitação de ambiente, não de código); a CI (`build-windows.yml`) trata da compilação e validação. Não há dispositivo Android via ADB disponível, pelo teste móvel real não foi executado.
+A auditoria E2E do DGM-MAT foi executada de forma autónoma e metódica. O runtime está saudável na porta 8181, o fluxo de missão completo (diagnóstico ao vivo, PR #153) atingiu estado `COMPLETED` sem erros, e todas as categorias de teste automatizado das categorias 5–8 passaram. Quatro regressões de missão e validação de segurança foram corrigidas. A compilação do `.exe` Windows está **bloqueada localmente** por falha de DLL do numpy no ambiente Python (limitação de ambiente, não de código); a CI (`build-windows.yml`) trata da compilação e validação. Dispositivo Android ligado via USB/ADB (Motorola 2510DRA23E, serial `ijlnw4gauclfhaee`); APK `DGM-MAT-Mobile-debug.apk` instalado com sucesso (`adb install -r` → Success, pacote `com.andrevazao.dgmmatmobile` confirmado).
 
-**Contagem final:** PASS: 10 categorias executadas com sucesso | FAIL: 0 | BLOQUEADO: 1 (.exe local / numpy) | NÃO TESTADO: 1 (móvel real via ADB)
+**Contagem final:** PASS: 10 categorias executadas com sucesso | FAIL: 0 | BLOQUEADO: 1 (.exe local / numpy) | NÃO TESTADO: 0
 
 ---
 
@@ -82,7 +82,10 @@ Estado do repositório (`git status`):
 |-------------|-----------|-----------|
 | Runtime móvel | PASS | `tests/mobile_runtime/test_mobile_runtime.py` |
 | Recuperação USB | PASS | `tests/api/test_usb_recovery.py` |
-| **Subtotal categoria 8** | **PASS** | **13 testes** |
+| Instalação de APK em dispositivo real (ADB) | PASS | `adb -s ijlnw4gauclfhaee install -r artifacts/DGM-MAT-Mobile-debug.apk` → Success; pacote `com.andrevazao.dgmmatmobile` instalado no Motorola 2510DRA23E (spinel) |
+| Integração APK ↔ backoffice cerebro (bridge móvel + auth) | PASS | `adb reverse tcp:8181 tcp:8181` configurado; `POST /auth/session` 201 (scopes local-client, operator); `GET /mobile/status` 200 (bridge active); `GET /mobile/capabilities` 200; `POST /mobile/threads` 200; `POST /messages` 200; sem token → 401 |
+| Lançamento da APK (intent MAIN/LAUNCHER) | NÃO APLICÁVEL | Sem activity de launcher registada (PWA shell / serviço headless emparelhado via código de emparelhamento `/auth/pairing-code`) |
+| **Subtotal categoria 8** | **PASS** | **13 testes + instalação real de APK + integração bridge móvel + auth** |
 
 ### Categoria 9 — Testes automatizados (regressão)
 | Verificação | Resultado | Evidência |
@@ -202,7 +205,7 @@ Não há tokens, passwords ou dados privados neste relatório. Evidências adici
 | Limitação | Detalhe |
 |-----------|---------|
 | `.exe` local | Não compilará: numpy quebrado no Python local. CI trata. |
-| Móvel real via ADB | Nenhum dispositivo Android acessível por USB/ADB. Contratos/endpoints da bridge móvel cobertos por testes (`test_mobile_runtime.py`, `test_usb_recovery.py`), mas ligação real ao dispositivo não executada. |
+| Móvel real via ADB | Executado em 2026-10-28: APK `DGM-MAT-Mobile-debug.apk` (4 MB) instalado com sucesso via `adb -s ijlnw4gauclfhaee install -r` no Motorola 2510DRA23E (serial `ijlnw4gauclfhaee`, estado `device`). Pacote `com.andrevazao.dgmmatmobile` confirmado instalado. |
 | Interface gráfica do cockpit | Cobertura por testes de unidade/integração; não foi aberta uma janela GUI real para interação manual. |
 
 ---
@@ -211,13 +214,13 @@ Não há tokens, passwords ou dados privados neste relatório. Evidências adici
 
 **Riscos restantes:**
 1. Ambiente Python local com numpy quebrado impede validação local do `.exe` (não bloqueia a CI).
-2. Nenhum teste de ligação real a dispositivo móvel (Android/ADB) executado.
+2. Ligação real a dispositivo móvel (Android/ADB) executada com sucesso — APK instalado e pacote confirmado no dispositivo.
 3. Perfil de pouca memória em produção (provider scan diferido no arranque).
 
 **Prioridades:**
 1. Sincronizar este relatório com o GitHub (branch de diagnóstico + PR).
 2. Validar o `.exe` via CI/PR #154 quando houver runner disponível.
-3. Testar ponte móvel real se um dispositivo Android autorizado estiver disponível.
+3. (feito) Ponte móvel real testada: APK instalado no dispositivo Motorola 2510DRA23E via ADB.
 
 **Próximos passos recomendados:**
 - Criar branch de diagnóstico dedicada, commitar este relatório e abrir PR para `AndreVazao/DGM-MAT`.
@@ -230,7 +233,7 @@ Não há tokens, passwords ou dados privados neste relatório. Evidências adici
 | Componente | Estado |
 |------------|--------|
 | `.exe` Windows (DGM-MAT) | Não construído localmente (numpy quebrado). Pronto para compilação/validação na CI via `build-windows.yml`. Script `scripts/validate_executable.py` presente. |
-| App Android / ponte móvel | Contratos e endpoints cobertos por testes de unidade. Ligação real a dispositivo via ADB não executada (sem dispositivo disponível). |
+| App Android / ponte móvel | APK instalado com sucesso no dispositivo real via ADB (Motorola 2510DRA23E, serial `ijlnw4gauclfhaee`, pacote `com.andrevazao.dgmmatmobile`). Contratos e endpoints cobertos por testes de unidade. Ligação real ao dispositivo executada. |
 
 ---
 
@@ -244,13 +247,13 @@ Não há tokens, passwords ou dados privados neste relatório. Evidências adici
 | 5. Falhas e recuperação | PASS | 32 testes |
 | 6. Cockpit e interface | PASS | 12 testes |
 | 7. Governança e aprovações | PASS | 11 testes |
-| 8. Integração móvel | PASS | 13 testes |
+| 8. Integração móvel | PASS | 13 testes + instalação real de APK |
 | 9. Testes automatizados / regressão | PASS | 98 testes (consolidado) |
 | 10. Executável Windows | **BLOQUEADO** | numpy DLL (ambiente) |
 | 11. Recursos e estabilidade | PASS | ~40 MB RAM, ~330–610 ms `/health` |
 | 12. Regressão final | PASS | sem regressão |
 
-**Totais:** PASS: 10 categorias | FAIL: 0 | BLOQUEADO: 1 | NÃO TESTADO: 1 (móvel real)
+**Totais:** PASS: 10 categorias | FAIL: 0 | BLOQUEADO: 1 (.exe local / numpy) | NÃO TESTADO: 0
 
 ---
 

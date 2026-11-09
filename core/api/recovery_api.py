@@ -1,4 +1,4 @@
-"""Read-only operator API for recovery progress and source inventory."""
+"""Operator API for recovery progress, source inventory, and safe local imports."""
 from __future__ import annotations
 
 import os
@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, Query
 
 from core.recovery.recovery_ledger import RecoveryLedger
+from core.conversation_intelligence.chrome_archive_importer import ChromeConversationArchiveImporter
 
 router = APIRouter(prefix="/recovery", tags=["recovery"])
 
@@ -17,6 +18,12 @@ def get_recovery_ledger() -> RecoveryLedger:
     configured = os.getenv("DGM_RECOVERY_LEDGER_PATH", "").strip()
     path = Path(configured).expanduser() if configured else Path.home() / ".dgm-mat" / "recovery-ledger.sqlite3"
     return RecoveryLedger(path)
+
+
+@router.post("/chrome/import")
+def import_chrome_conversation_archive():
+    """Archive and index supported Chrome extension JSON files; never alters the source downloads."""
+    return ChromeConversationArchiveImporter().import_inbox()
 
 
 @router.get("/status")

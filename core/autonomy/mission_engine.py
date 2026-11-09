@@ -29,13 +29,20 @@ from core.organization.validated_learning import ValidatedLessonStore
 from core.providers.browser.governed_browser_session import GovernedBrowserSession
 from core.learning.learning_engine import LearningEngine
 from core.operations.command_executor import CommandExecutor
+from core.repository_intelligence.github_portfolio_inventory import GitHubRepositoryPortfolio
 
 class MissionEngine:
-    REPO_SCAN_ROOTS = [Path("C:/ProgramasGodMode"), Path("C:/DevopGodMode")]
-    REPO_SCAN_LIMIT = 20
+    REPO_SCAN_ROOTS = [
+        Path("C:/AI"),
+        Path("C:/ProgramasGodMode"),
+        Path("C:/DevopsGodMode"),
+        Path("C:/DevopGodMode"),
+        Path("C:/AndreOS-Memory"),
+    ]
+    REPO_SCAN_LIMIT = 250
     BRANCH_SCAN_LIMIT = 20
     REPO_TIMEOUT_SECONDS = 5.0
-    MISSION_EXECUTION_TIMEOUT_SECONDS = 60.0
+    MISSION_EXECUTION_TIMEOUT_SECONDS = 300.0
     AUTO_RUN_READ_ONLY_INTENTS = frozenset({
         "list_repositories", "architecture_summary", "repository_status", "local_research",
         "system_summary", "engines_inventory", "ollama_status", "claude_status",
@@ -1169,22 +1176,76 @@ class MissionEngine:
         dgm_logger.info(f"MISSION_HANDLER_SELECTED: {mission.mission_id} - list_repositories")
         started = time.monotonic()
         repositories, scan_meta = self._discover_workspace_repositories(started)
+        portfolio = GitHubRepositoryPortfolio(
+            roots=tuple(self.REPO_SCAN_ROOTS),
+            timeout=20,
+        ).build_inventory(repositories)
         output = self._render_repository_output(repositories)
+        summary = portfolio.get("summary", {})
+        output += (
+            "\n\nGitHub portfolio comparison: "
+            f"local={summary.get('local_repositories', len(repositories))}, "
+            f"github={summary.get('github_repositories', 'unavailable')}, "
+            f"matched={summary.get('matched_repositories', 0)}, "
+            f"local_only={summary.get('local_only', 'unverified')}, "
+            f"github_only={summary.get('github_only', 'unverified')}, "
+            f"synced={summary.get('default_branch_synced', 0)}, "
+            f"behind={summary.get('default_branch_behind', 0)}, "
+            f"ahead={summary.get('default_branch_ahead', 0)}, "
+            f"diverged={summary.get('default_branch_diverged', 0)}, "
+            f"origin_mismatch={summary.get('origin_mismatch', 0)}, "
+            f"credential_warnings={summary.get('origin_credentials_present', 0)}, "
+            f"branches_synced={summary.get('branches_synced', 0)}, "
+            f"branch_mismatches={summary.get('branches_commit_mismatch_review', 0)}, "
+            f"local_only_branches={summary.get('local_only_branches', 0)}, "
+            f"github_only_branches={summary.get('github_only_branches', 0)}."
+        )
+        if not portfolio.get("github_api_available"):
+            output += f" GitHub inventory unavailable: {portfolio.get('github_error', 'unknown error')}"
+        else:
+            for repo in portfolio.get("local_only", []):
+                output += f"\n- LOCAL ONLY: {repo['name']} | {repo['path']}"
+            for repo in portfolio.get("github_only", []):
+                output += f"\n- GITHUB ONLY: {repo['full_name']} | {repo['url']}"
+            for repo in portfolio.get("matched", []):
+                comparison = repo.get("default_branch_comparison", {})
+                if comparison.get("status") != "SYNCED":
+                    output += (
+                        f"\n- SYNC REVIEW: {repo['name']} | "
+                        f"{comparison.get('status')} | branch={comparison.get('branch')}"
+                    )
+                if not repo.get("origin_matches_github", False):
+                    output += f"\n- ORIGIN MISMATCH: {repo['name']} | origin={repo.get('origin')}"
+            for repo in portfolio.get("matched", []) + portfolio.get("local_only", []):
+                if repo.get("origin_credentials_present"):
+                    output += (
+                        f"\n- ORIGIN CREDENTIAL WARNING: {repo['name']} | "
+                        "credential embedded in remote URL; value redacted"
+                    )
         execution_duration = round(time.monotonic() - started, 3)
         result = {
             "mission_id": mission.mission_id,
             "handler": "list_repositories",
             "repositories": repositories,
+            "portfolio_inventory": portfolio,
             "count": len(repositories),
+            "github_count": summary.get("github_repositories"),
+            "comparison": summary,
             "repos_scanned": scan_meta["repos_scanned"],
             "repos_skipped": scan_meta["repos_skipped"],
             "branches_truncated": scan_meta["branches_truncated"],
             "execution_duration": execution_duration,
-            "summary": f"Found {len(repositories)} repositories.",
+            "summary": (
+                f"Inventoried {len(repositories)} local repositories and "
+                f"{summary.get('github_repositories', 'an unavailable number of')} GitHub repositories."
+            ),
             "output": output,
             "generated_at": datetime.now().isoformat()
         }
-        dgm_logger.info(f"MISSION_RESULT_GENERATED: {mission.mission_id} - {len(repositories)} repositories")
+        dgm_logger.info(
+            f"MISSION_RESULT_GENERATED: {mission.mission_id} - "
+            f"local={len(repositories)} github={summary.get('github_repositories')}"
+        )
         return result
 
     def _discover_workspace_repositories(self, mission_started: float) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
@@ -1197,7 +1258,8 @@ class MissionEngine:
                 continue
 
             try:
-                candidates = [p for p in root.iterdir() if p.is_dir()]
+                candidates = ([root] if (root / ".git").exists() else [])
+                candidates.extend(p for p in root.iterdir() if p.is_dir())
             except PermissionError:
                 continue
 

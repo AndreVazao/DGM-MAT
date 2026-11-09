@@ -37,6 +37,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("WS",), "/runtime/ws", SecurityScope.LOCAL_CLIENT, "Compatibility realtime stream; currently unauthenticated."),
     RouteClassification(("GET",), "/health", SecurityScope.PUBLIC_HEALTH, "Minimal process health check."),
     RouteClassification(("GET",), "/recovery/status", SecurityScope.OPERATOR, "Read-only recovery ledger progress; no provider access or deletion."),
+    RouteClassification(("POST",), "/recovery/chrome/import", SecurityScope.OPERATOR, "Archives and indexes local Chrome extension exports; source files remain untouched."),
     RouteClassification(("GET",), "/recovery/sources", SecurityScope.OPERATOR, "Read-only paginated recovery source inventory."),
     RouteClassification(("POST",), "/auth/session", SecurityScope.OPERATOR, "Loopback-only bootstrap exchange; issues short-lived local session."),
     RouteClassification(("GET",), "/auth/pairing-code", SecurityScope.OPERATOR, "Issues one-time mobile pairing code to loopback PC clients only."),

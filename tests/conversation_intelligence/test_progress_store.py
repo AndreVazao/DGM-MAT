@@ -178,7 +178,8 @@ def test_saved_audits_can_be_loaded_without_source_export(tmp_path):
     restored = pipeline.load_saved_audits()
     assert len(restored) == 1
     assert restored[0].conversation.conversation_id == "history-saved"
-    assert restored[0].conversation.content == ""
+    assert restored[0].conversation.content == "DGM-MAT project"
+    assert restored[0].conversation.messages == []
     assert pipeline.summarize()["projects"] == ["DGM-MAT"]
 
 
