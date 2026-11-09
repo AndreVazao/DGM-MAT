@@ -107,6 +107,7 @@ def enqueue_browser_consultation(payload: BrowserConsultEnqueueRequest, request:
 
 @router.get("/fresh-review/{review_id}")
 def get_fresh_browser_review(review_id: str, request: Request):
+    """Resume persisted provider observations; never promote them to trusted EGM attestations."""
     _principal(request)
     try:
         result = _store().get_review(review_id)
