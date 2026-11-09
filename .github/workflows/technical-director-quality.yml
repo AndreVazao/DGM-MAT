@@ -1,0 +1,51 @@
+name: Technical Director Quality Gate
+
+on:
+  pull_request:
+    paths:
+      - "core/execution/technical_director.py"
+      - "tests/execution/test_technical_director.py"
+      - ".github/workflows/technical-director-quality.yml"
+  push:
+    branches: [main]
+    paths:
+      - "core/execution/technical_director.py"
+      - "tests/execution/test_technical_director.py"
+      - ".github/workflows/technical-director-quality.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: technical-director-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-policy:
+    name: Quality policy (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.12"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      DGM_TEST_MODE: "1"
+      PYTHONUTF8: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install project dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+      - name: Compile technical director policy
+        run: python -m compileall -q core/execution/technical_director.py
+      - name: Run technical director contract tests
+        run: python -m pytest -q tests/execution/test_technical_director.py
