@@ -18,8 +18,9 @@ from core.api.local_sessions import LocalSessionManager
 
 router = APIRouter(prefix="/auth", tags=["local-auth"])
 session_manager = LocalSessionManager(ttl_seconds=1800)
-# The Chrome extension receives only the browser-capture route scope and an 8-hour
-# local session so an explicitly enabled recovery run can finish unattended.
+# The Chrome extension receives only the two narrow browser scopes and an 8-hour
+# local session. It never receives the operator scope.
+EXTENSION_SESSION_SCOPES = frozenset({"browser-capture", "browser-consult-control"})
 extension_session_manager = LocalSessionManager(ttl_seconds=8 * 60 * 60)
 MOBILE_PAIR_CLIENT_IDS = frozenset({"dgm-mat-mobile-android", "dgm-mat-mobile-web"})
 _lock = threading.Lock()
@@ -126,7 +127,7 @@ def create_local_session(
     if payload.client_id == "dgm-mat-chrome-extension":
         token, principal = extension_session_manager.create_session(
             subject=payload.client_id,
-            scopes={"browser-capture"},
+            scopes=set(EXTENSION_SESSION_SCOPES),
         )
     else:
         token, principal = session_manager.create_session(
@@ -196,7 +197,7 @@ def pair_mobile_client(payload: PairingRequest, request: Request):
     if payload.client_id == "dgm-mat-chrome-extension":
         token, principal = extension_session_manager.create_session(
             subject=payload.client_id,
-            scopes={"browser-capture"},
+            scopes=set(EXTENSION_SESSION_SCOPES),
         )
     else:
         token, principal = session_manager.create_session(
