@@ -16,7 +16,7 @@ Connect the EGM fresh-review protocol to the existing free-tier browser consulta
 5. `POST /recovery/browser-consult/next` atomically claims the approved item with the existing one-shot claim token. The extension persists the claim locally before interacting with the provider.
 6. Fresh mode requires an explicit active/checked privacy UI state, a blank page, no recognized conversation ID, no visible prior messages, and a visible composer. The content script repeats checks and consumes a one-shot nonce bound to the provider and exact tab URL.
 7. Completion requires a newly observed conversation ID, a stable assistant response, and evidence containing provider, privacy mode, empty initial source ID, zero visible initial messages, and verification method. Evidence is validated against the claimed provider and provider-specific privacy-mode contract before it is persisted.
-8. The authenticated `GET /recovery/browser-consult/fresh-review/{review_id}` endpoint resumes the durable review. It returns per-provider statuses, untrusted response text, evidence, and hashes. Interrupted claims are marked blocked on restart and are never replayed.
+8. The authenticated `GET /recovery/browser-consult/fresh-review/{review_id}` endpoint resumes the durable review. It returns expected providers, actual provider count, per-provider statuses, untrusted response text, evidence, and hashes. A missing or cooldown-blocked provider keeps the aggregate review pending/incomplete. Interrupted claims are marked blocked on restart and are never replayed.
 
 ## Security boundaries
 
