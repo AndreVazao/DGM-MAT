@@ -49,7 +49,9 @@ class CodingAgentInvocationPlan:
     request_sha256: str
     launch_enabled: bool = False
     access_mode: str = "read_only"
-    network_allowed: bool = False
+    network_allowed: bool | None = False
+    network_isolation_verified: bool = False
+    provider_controls_verified: bool = False
     write_allowed: bool = False
 
     def to_dict(self) -> dict:
@@ -121,7 +123,7 @@ class CodingAgentDryRunPlanner:
         if request.provider == "codex":
             argv = (
                 "codex", "exec", "--sandbox", "read-only",
-                "--ask-for-approval", "never", "--ephemeral", "--json",
+                "--ask-for-approval", "never", "--ephemeral", "--ignore-user-config", "--json",
                 "--cd", str(canonical), prompt,
             )
         else:
@@ -143,7 +145,9 @@ class CodingAgentDryRunPlanner:
             "cli_version": request.cli_version.strip(),
             "argv": list(argv),
             "access_mode": "read_only",
-            "network_allowed": False,
+            "network_allowed": False if request.provider == "codex" else None,
+            "network_isolation_verified": False,
+            "provider_controls_verified": False,
             "write_allowed": False,
         }
         fingerprint = hashlib.sha256(
@@ -160,4 +164,5 @@ class CodingAgentDryRunPlanner:
             argv=argv,
             cwd=str(canonical),
             request_sha256=fingerprint,
+            network_allowed=False if request.provider == "codex" else None,
         )
