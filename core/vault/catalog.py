@@ -686,7 +686,15 @@ class VaultCatalog:
         indexed = skipped = failed = 0
         errors: list[dict[str, str]] = []
         for row in selected:
-            archive_path = Path(row["archive_path"])
+            archive_candidate = Path(row["archive_path"])
+            try:
+                if archive_candidate.is_symlink():
+                    skipped += 1
+                    continue
+                archive_path = archive_candidate.resolve(strict=True)
+                if not archive_path.is_relative_to(self.root) or not archive_path.is_file():
+                    skipped += 1
+                    continue
             try:
                 if archive_path.is_symlink() or not archive_path.is_file():
                     skipped += 1
