@@ -68,6 +68,14 @@ function createHarness(provider, options = {}) {
     assign() { throw new Error("Unexpected navigation."); }
   };
 
+  const privacyControls = provider === "chatgpt"
+    ? [
+        { innerText: "Temporary Chat", getAttribute(name) { return name === "aria-pressed" ? (options.privacyActive === false ? "false" : "true") : null; } },
+        { innerText: "Unpersonalized", getAttribute(name) { return name === "aria-checked" ? (options.privacyActive === false ? "false" : "true") : null; } }
+      ]
+    : provider === "gemini"
+      ? [{ innerText: "Temporary Chat", getAttribute(name) { return name === "aria-pressed" ? (options.privacyActive === false ? "false" : "true") : null; } }]
+      : [];
   const sendButton = {
     disabled: false,
     getAttribute() { return null; },
@@ -92,6 +100,7 @@ function createHarness(provider, options = {}) {
       (provider === "chatgpt" ? "Temporary Chat Unpersonalized" :
         provider === "gemini" ? "Temporary Chat" : "") },
     querySelectorAll(selector) {
+      if (selector === "button, [role='button'], [aria-label], [title]") return privacyControls;
       if (provider === "chatgpt" && selector === "[data-message-author-role]") return messages;
       if (provider === "gemini" && selector === "user-query, model-response") return messages;
       if (provider === "grok" && [
@@ -279,6 +288,7 @@ async function testGeminiRegularNewChatIsRejected() {
 
 async function main() {
   await testFreshBlankPageProtocolAcrossAllProviders();
+  await testPrivacyModeLabelsWithoutActiveToggleAreRejected();
   await testProvidersWithoutVerifiedTemporaryPrivacyModeFailClosed();
   await testPersonalizedChatGPTTemporaryModeIsRejected();
   await testGeminiRegularNewChatIsRejected();
@@ -288,6 +298,18 @@ async function main() {
   await testPreflightNonceIsOneShotAndRequired();
   await testNoNewConversationIdIsUnverified();
   process.stdout.write("PASS: fresh browser review preflight fixtures and provider privacy-mode gates\\n");
+}
+
+
+
+async function testPrivacyModeLabelsWithoutActiveToggleAreRejected() {
+  for (const provider of ["chatgpt", "gemini"]) {
+    const harness = createHarness(provider, { privacyActive: false });
+    const preflight = await harness.ping();
+    assert.equal(preflight.ok, false);
+    assert.equal(preflight.reason, "provider_privacy_mode_not_verified");
+    assert.equal(harness.sendClicks(), 0);
+  }
 }
 
 main().catch(error => {
