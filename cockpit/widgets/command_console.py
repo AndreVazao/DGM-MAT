@@ -276,6 +276,10 @@ class CommandConsoleWidget(QWidget):
         self._runtime_available = True
         self._active_thread_id: str | None = None
         self._pending_directive: str | None = None
+        self._thread_create_active = False
+        self._search_query = ""
+        self._search_offset = 0
+        self._search_has_more = False
         self._conversation_workers: set[_ConversationRequestWorker] = set()
         self._transcript_queue: list[tuple[str, str, str, str]] = []
         self._transcript_write_active = False
@@ -300,9 +304,13 @@ class CommandConsoleWidget(QWidget):
         self.search_field.returnPressed.connect(self._search_threads)
         self.search_btn = QPushButton("Pesquisar")
         self.search_btn.clicked.connect(self._search_threads)
+        self.search_more_btn = QPushButton("Mais resultados")
+        self.search_more_btn.setEnabled(False)
+        self.search_more_btn.clicked.connect(self._search_more_threads)
         history_bar.addWidget(self.new_thread_btn)
         history_bar.addWidget(self.search_field, 1)
         history_bar.addWidget(self.search_btn)
+        history_bar.addWidget(self.search_more_btn)
         layout.addLayout(history_bar)
 
         self.thread_list = QListWidget()
@@ -362,13 +370,20 @@ class CommandConsoleWidget(QWidget):
 
     def _refresh_controls(self) -> None:
         busy = self._worker is not None and self._worker.isRunning()
-        conversation_busy = self._transcript_write_active or bool(self._pending_directive)
+        conversation_busy = (
+            self._transcript_write_active
+            or bool(self._pending_directive)
+            or self._thread_create_active
+        )
         available = self._runtime_available and not busy and not conversation_busy
         self.input_field.setEnabled(available)
         self.send_btn.setEnabled(available)
         self.new_thread_btn.setEnabled(not busy and not conversation_busy)
         self.search_field.setEnabled(not busy and not conversation_busy)
         self.search_btn.setEnabled(not busy and not conversation_busy)
+        self.search_more_btn.setEnabled(
+            not busy and not conversation_busy and self._search_has_more
+        )
         self.thread_list.setEnabled(not busy and not conversation_busy)
         if not self._runtime_available:
             self.input_field.setPlaceholderText("Runtime offline — envio desativado")
@@ -470,6 +485,10 @@ class CommandConsoleWidget(QWidget):
     def _create_thread(self, *, for_pending_send: bool = False) -> None:
         if self._worker is not None and self._worker.isRunning():
             return
+        if self._thread_create_active:
+            return
+        self._thread_create_active = True
+        self._refresh_controls()
         title = "Nova conversa"
         if for_pending_send and self._pending_directive:
             title = self._pending_directive[:72].strip() or title
@@ -483,9 +502,21 @@ class CommandConsoleWidget(QWidget):
         if len(query) < 2:
             self._append_message("Sistema", "A pesquisa precisa de pelo menos dois caracteres.", "system")
             return
+        self._search_query = query
+        self._search_offset = 0
+        self._search_has_more = False
+        self._refresh_controls()
         self._conversation_request(
             "thread-search", "GET", "/mobile/threads/search",
             params={"q": query, "limit": 25, "offset": 0},
+        )
+
+    def _search_more_threads(self) -> None:
+        if not self._search_has_more or len(self._search_query) < 2:
+            return
+        self._conversation_request(
+            "thread-search-more", "GET", "/mobile/threads/search",
+            params={"q": self._search_query, "limit": 25, "offset": self._search_offset},
         )
 
     def _open_selected_thread(self, item: QListWidgetItem) -> None:
@@ -524,6 +555,8 @@ class CommandConsoleWidget(QWidget):
         is_transcript_write = action in {"send-user-entry", "transcript-entry"}
         if is_transcript_write:
             self._transcript_write_active = False
+        if action == "thread-create":
+            self._thread_create_active = False
         if error:
             if action in {"send-user-entry", "thread-create"}:
                 self._pending_directive = None
@@ -546,9 +579,15 @@ class CommandConsoleWidget(QWidget):
             return
 
         data = payload if isinstance(payload, dict) else {}
-        if action in {"threads-list", "thread-search"}:
+        if action in {"threads-list", "thread-search", "thread-search-more"}:
             threads = data.get("threads") if action == "threads-list" else data.get("results")
-            self.thread_list.clear()
+            if action != "thread-search-more":
+                self.thread_list.clear()
+            if action in {"thread-search", "thread-search-more"}:
+                self._search_offset = int(data.get("next_offset") or 0)
+                self._search_has_more = bool(data.get("has_more"))
+            else:
+                self._search_has_more = False
             for thread in threads or []:
                 if not isinstance(thread, dict):
                     continue
@@ -559,6 +598,7 @@ class CommandConsoleWidget(QWidget):
                 item = QListWidgetItem(str(title))
                 item.setData(Qt.ItemDataRole.UserRole, thread_id)
                 self.thread_list.addItem(item)
+            self._refresh_controls()
             return
 
         if action == "thread-create":
@@ -569,6 +609,7 @@ class CommandConsoleWidget(QWidget):
                 self._refresh_controls()
                 return
             self._active_thread_id = thread_id
+            self._search_has_more = False
             self.output.clear()
             self.history.clear()
             self._append_message("Sistema", "Nova conversa criada. O histórico é independente.", "system")
