@@ -519,7 +519,7 @@ class CommandConsoleWidget(QWidget):
         if is_transcript_write:
             self._transcript_write_active = False
         if error:
-            if action == "send-user-entry":
+            if action in {"send-user-entry", "thread-create"}:
                 self._pending_directive = None
                 self._append_message(
                     "Erro",
@@ -560,6 +560,7 @@ class CommandConsoleWidget(QWidget):
             if not isinstance(thread_id, str) or not thread_id:
                 self._append_message("Erro", "O backend não devolveu o ID da nova conversa.", "error")
                 self._pending_directive = None
+                self._refresh_controls()
                 return
             self._active_thread_id = thread_id
             self.output.clear()
