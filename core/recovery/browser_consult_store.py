@@ -301,7 +301,7 @@ class BrowserConsultStore:
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute(
-                "SELECT provider, status, claim_token, task_ref FROM browser_consultations WHERE consultation_id=?",
+                "SELECT provider, status, claim_token, task_ref, review_mode, review_id FROM browser_consultations WHERE consultation_id=?",
                 (consultation_id,),
             ).fetchone()
             if row is None or row["status"] != "RUNNING" or not claim_token or not hmac.compare_digest(str(row["claim_token"] or ""), claim_token):
@@ -405,7 +405,7 @@ class BrowserConsultStore:
             "response_sha256": digest,
             "result_trusted": False,
             "accepted": None,
-            "review_mode": "fresh_review" if evidence is not None else "standard",
-            "review_id": None,
+            "review_mode": row["review_mode"],
+            "review_id": row["review_id"],
             "evidence": evidence,
         }
