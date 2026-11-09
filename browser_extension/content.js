@@ -40,9 +40,13 @@
       return index >= 0 ? segments[index + 1] || null : null;
     }
     if (provider === "claude") {
-      const nodes = [...document.querySelectorAll('[data-testid="user-message"], [data-testid="assistant-message"], [data-testid="chat-message"]')];
-      return [...new Set(nodes)].filter(node => !nodes.some(other => other !== node && node.contains(other)));
-      return candidate && /^[A-Za-z0-9_-]+$/.test(candidate) ? candidate : null;
+      // Claude conversations use /chat/{conversation_id}; project conversations
+      // use /project/{project_id}/chat/{conversation_id}. Never infer an ID
+      // from DOM message nodes or accept a project ID as the conversation ID.
+      const chatIndex = segments.lastIndexOf("chat");
+      if (chatIndex < 0 || chatIndex !== segments.length - 2) return null;
+      const candidate = segments[chatIndex + 1];
+      return candidate && /^[A-Za-z0-9_-]{8,200}$/.test(candidate) ? candidate : null;
     }
     const queryKeys = provider === "deepseek" || provider === "qwen"
       ? ["conversation", "conversationId", "chatId", "chat_id", "id"]
@@ -180,7 +184,12 @@
       return [...document.querySelectorAll("user-query, model-response")];
     }
     if (provider === "claude") {
-      return [...document.querySelectorAll('[data-testid="user-message"], [data-testid="assistant-message"], [data-testid="chat-message"]')];
+      const nodes = [...document.querySelectorAll(
+        '[data-testid="user-message"], [data-testid="assistant-message"], [data-testid="chat-message"]'
+      )];
+      // Claude may expose both a message wrapper and a nested role-specific
+      // node. Keep the deepest recognized node so one turn is not archived twice.
+      return nodes.filter(node => !nodes.some(other => other !== node && node.contains(other)));
     }
     const selectors = provider === "deepseek"
       ? ['[data-message-id]', '[data-testid*="message"]', 'div[class*="ds-message"]', 'div[class*="message"]']
