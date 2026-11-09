@@ -183,3 +183,30 @@ Before implementation, inspect the existing cockpit chat, task-centre frontend, 
 This document and issue #313 define the required behavior and delivery sequence. They do **not** claim that searchable history, the new-conversation control, or provider consultation is already implemented.
 
 Provider history capture remains subject to the separate capture work and per-provider completeness evidence. A provider may only be shown as available for consultation after a real supported end-to-end send/response test succeeds.
+
+
+## 7. Baseline audit — 2026-11-09
+
+Repository inspection identified the actual desktop chat entry point and several similarly named components that must not be confused:
+
+- `cockpit/minimal_chat_window.py` instantiates `CommandConsoleWidget` as the central desktop chat.
+- `cockpit/widgets/command_console.py` is currently a mission command console: it submits one directive to the runtime, polls the resulting mission and renders the response. Its `history` is an in-memory Python list only; no durable conversation/thread ID, history search, thread switcher or new-conversation operation is present in this widget.
+- `cockpit/workspace/chat_widget.py` is a separate generic widget with a message signal and display buffer. The inspected minimal window does not instantiate it; it is not evidence that the production chat already has conversation persistence.
+- `core/api/conversation_archive_api.py` currently exposes Telescope archive status/import routes only. The inspected router does not expose a searchable conversation/message catalogue or create/open/resume chat-thread endpoints.
+- `ConversationProgressStore` persists provider/source ingestion progress and can list processing records. It is not, by itself, the operator chat's thread/message store or a full-text search API.
+- `ConversationKnowledgeStore` persists evidence-linked intents, proposals, decisions and relations. It should remain a knowledge/evidence layer, not be repurposed as raw chat transcript storage.
+
+### Consequence for Phase A
+
+Do not add buttons that only manipulate the current widget's RAM buffer. First identify the durable mission/task APIs and the canonical message/archive sources, then implement a single persistent conversation index/search service over those sources. New operator threads need their own durable model or a proven existing thread model; do not infer one from ingestion progress records.
+
+### Immediate implementation order
+
+1. Trace the runtime's existing mission list/detail APIs and identify whether any canonical user-chat thread model already exists outside the inspected archive router.
+2. Define the thread/conversation persistence contract and migration strategy only after that audit.
+3. Add a read-only paginated search endpoint backed by indexed transcript records, returning provenance and completeness.
+4. Add thread creation/open/resume APIs and tests for isolation and restart persistence.
+5. Wire the three controls into `CommandConsoleWidget` (the actual desktop entry point), with asynchronous requests and visible active-thread/active-mission identity.
+6. Only then begin provider consultation/context packaging.
+
+This audit is a source-code inspection, not a live-PC/runtime test. No claim is made that any of the requested UI features is available yet.
