@@ -38,6 +38,8 @@ def make_client(monkeypatch, tmp_path):
 def test_consult_routes_have_operator_and_extension_scopes():
     expected = (
         ("/recovery/browser-consult/status", "GET", SecurityScope.BROWSER_CONSULT_CONTROL),
+        ("/recovery/browser-consult/peek", "GET", SecurityScope.BROWSER_CAPTURE),
+        ("/recovery/browser-consult/fresh-review/review_123", "GET", SecurityScope.BROWSER_CAPTURE),
         ("/recovery/browser-consult/enqueue", "POST", SecurityScope.BROWSER_CONSULT_CONTROL),
         ("/recovery/browser-consult/approve/consultation_123", "POST", SecurityScope.BROWSER_CONSULT_CONTROL),
         ("/recovery/browser-consult/next", "POST", SecurityScope.BROWSER_CAPTURE),
@@ -253,3 +255,101 @@ def test_prompt_is_blocked_when_release_audit_fails(monkeypatch, tmp_path):
     assert response.status_code == 503
     assert store.status()["counts"] == {"BLOCKED_INTERRUPTED": 1}
     assert store.claim_next("qwen") is None
+
+
+def test_fresh_review_api_requires_both_providers_and_persists_resume(monkeypatch, tmp_path):
+    client, store = make_client(monkeypatch, tmp_path)
+    unsupported = client.post("/recovery/browser-consult/enqueue", json={
+        "task_ref": "egm-task:api-1",
+        "goal": "Review the architecture.",
+        "providers": ["grok"],
+        "free_capacity_confirmed": True,
+        "review_mode": "fresh_review",
+        "review_id": "egm-review-api-1",
+    })
+    assert unsupported.status_code == 400
+    incomplete = client.post("/recovery/browser-consult/enqueue", json={
+        "task_ref": "egm-task:api-1",
+        "goal": "Review the architecture.",
+        "providers": ["chatgpt"],
+        "free_capacity_confirmed": True,
+        "review_mode": "fresh_review",
+        "review_id": "egm-review-api-1",
+    })
+    assert incomplete.status_code == 400
+
+    queued = client.post("/recovery/browser-consult/enqueue", json={
+        "task_ref": "egm-task:api-1",
+        "goal": "Review the architecture.",
+        "providers": ["chatgpt", "gemini"],
+        "free_capacity_confirmed": True,
+        "review_mode": "fresh_review",
+        "review_id": "egm-review-api-1",
+    })
+    assert queued.status_code == 200
+    ids = dict(zip(["chatgpt", "gemini"], queued.json()["consultation_ids"]))
+
+    peek = client.get("/recovery/browser-consult/peek?provider=chatgpt")
+    assert peek.status_code == 200
+    assert peek.json()["status"] == "queue_empty"
+    assert store.status()["counts"]["PENDING_APPROVAL"] == 2
+
+    for consultation_id in ids.values():
+        assert client.post("/recovery/browser-consult/approve/" + consultation_id).status_code == 200
+    for provider in ("chatgpt", "gemini"):
+        peek = client.get("/recovery/browser-consult/peek?provider=" + provider)
+        assert peek.json()["next"]["review_mode"] == "fresh_review"
+        assert peek.json()["status"] == "pending"
+    assert store.status()["counts"]["PENDING"] == 2
+
+    evidence_by_provider = {
+        "chatgpt": {
+            "provider": "chatgpt",
+            "source_id": "chatgpt-new-conversation",
+            "initial_source_id": None,
+            "initial_visible_message_count": 0,
+            "privacy_mode": "chatgpt_temporary_unpersonalized",
+            "privacy_mode_verified": True,
+            "verification": "blank_page_then_new_conversation_id_and_stable_response",
+        },
+        "gemini": {
+            "provider": "gemini",
+            "source_id": "gemini-new-conversation",
+            "initial_source_id": None,
+            "initial_visible_message_count": 0,
+            "privacy_mode": "gemini_temporary_chat",
+            "privacy_mode_verified": True,
+            "verification": "blank_page_then_new_conversation_id_and_stable_response",
+        },
+    }
+    for provider in ("chatgpt", "gemini"):
+        claimed = client.post("/recovery/browser-consult/next?provider=" + provider, json={}).json()["next"]
+        result = client.post("/recovery/browser-consult/result", json={
+            "consultation_id": ids[provider],
+            "claim_token": claimed["claim_token"],
+            "response_text": "Review findings from " + provider + ": add an explicit recovery test.",
+            "evidence": evidence_by_provider[provider],
+        })
+        assert result.status_code == 200
+        assert result.json()["independence_attested"] is False
+
+    resumed = client.get("/recovery/browser-consult/fresh-review/egm-review-api-1")
+    assert resumed.status_code == 200
+    assert resumed.json()["status"] == "COMPLETED"
+    assert resumed.json()["provider_count"] == 2
+    assert resumed.json()["expected_provider_count"] == 2
+    assert {item["provider"] for item in resumed.json()["consultations"]} == {"chatgpt", "gemini"}
+    assert all(item["result_trusted"] is False for item in resumed.json()["consultations"])
+
+
+def test_fresh_review_enqueue_rejects_missing_review_id(monkeypatch, tmp_path):
+    client, store = make_client(monkeypatch, tmp_path)
+    response = client.post("/recovery/browser-consult/enqueue", json={
+        "task_ref": "egm-task:api-2",
+        "goal": "Review the architecture.",
+        "providers": ["chatgpt", "gemini"],
+        "free_capacity_confirmed": True,
+        "review_mode": "fresh_review",
+    })
+    assert response.status_code == 400
+    assert store.status()["counts"] == {}

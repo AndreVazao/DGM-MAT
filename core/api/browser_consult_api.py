@@ -47,6 +47,8 @@ class BrowserConsultEnqueueRequest(BaseModel):
     context: str = Field(default="", max_length=4000)
     providers: list[Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]] = Field(min_length=1, max_length=5)
     free_capacity_confirmed: bool = False
+    review_mode: Literal["standard", "fresh_review"] = "standard"
+    review_id: str | None = Field(default=None, min_length=1, max_length=120)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -55,6 +57,7 @@ class BrowserConsultResultRequest(BaseModel):
     consultation_id: str = Field(min_length=1, max_length=80)
     claim_token: str = Field(min_length=32, max_length=128)
     response_text: str = Field(min_length=1, max_length=16000)
+    evidence: dict | None = None
 
     model_config = ConfigDict(extra="forbid")
 
@@ -80,6 +83,15 @@ def enqueue_browser_consultation(payload: BrowserConsultEnqueueRequest, request:
         raise HTTPException(status_code=409, detail="Free-tier browser consultation is disabled until explicitly enabled on this PC.")
     if payload.free_capacity_confirmed is not True:
         raise HTTPException(status_code=400, detail="Operator must explicitly attest that the selected provider accounts are free-tier.")
+    if payload.review_mode == "fresh_review":
+        if (
+            not payload.review_id
+            or len(payload.providers) != 2
+            or set(payload.providers) != {"chatgpt", "gemini"}
+        ):
+            raise HTTPException(status_code=400, detail="Fresh EGM review requires a review_id and both ChatGPT and Gemini providers.")
+    elif payload.review_id is not None:
+        raise HTTPException(status_code=400, detail="review_id is only valid for fresh_review mode.")
     try:
         _audit("command.requested", "queued", request, ",".join(payload.providers))
         result = _store().enqueue(
@@ -87,12 +99,29 @@ def enqueue_browser_consultation(payload: BrowserConsultEnqueueRequest, request:
             goal=payload.goal,
             context=payload.context,
             providers=list(payload.providers),
+            review_mode=payload.review_mode,
+            review_id=payload.review_id,
         )
     except (AuditWriteError, ValueError, OSError) as exc:
         raise HTTPException(status_code=503, detail="Consultation could not be safely queued or audited.") from exc
     result["approval_required"] = bool(result.get("consultation_ids"))
     result["created_by"] = principal.get("subject", "local-operator")
     return result
+
+
+@router.get("/fresh-review/{review_id}")
+def get_fresh_browser_review(review_id: str, request: Request):
+    """Resume persisted provider observations; never promote them to trusted EGM attestations."""
+    _principal(request)
+    try:
+        result = _store().get_review(review_id)
+        result["result_trusted"] = False
+        result["independence_attested"] = False
+        return result
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Fresh review not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Fresh review identifier is invalid.") from exc
 
 
 @router.post("/approve/{consultation_id}")
@@ -105,6 +134,13 @@ def approve_browser_consultation(consultation_id: str, request: Request):
     if not _store().approve(consultation_id, operator=str(principal.get("subject") or "local-operator")):
         raise HTTPException(status_code=409, detail="Consultation is missing or no longer awaiting approval.")
     return {"status": "PENDING", "consultation_id": consultation_id}
+
+
+@router.get("/peek")
+def peek_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"], request: Request):
+    _principal(request)
+    item = _store().peek_next(provider)
+    return {"status": "pending" if item else "queue_empty", "next": item}
 
 
 @router.post("/next")
@@ -128,6 +164,8 @@ def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "d
                 "prompt": item["prompt"],
                 "prompt_sha256": item["prompt_sha256"],
                 "claim_token": item["claim_token"],
+                "review_mode": item.get("review_mode", "standard"),
+                "review_id": item.get("review_id"),
             },
         }
     except (AuditWriteError, OSError) as exc:
@@ -138,7 +176,7 @@ def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "d
 def complete_browser_consultation(payload: BrowserConsultResultRequest, request: Request):
     _principal(request)
     try:
-        result = _store().finish(payload.consultation_id, claim_token=payload.claim_token, response_text=payload.response_text)
+        result = _store().finish(payload.consultation_id, claim_token=payload.claim_token, response_text=payload.response_text, evidence=payload.evidence)
         task_ref = str(result.get("task_ref") or "")
         if result.get("status") == "COMPLETED" and task_ref.startswith("mobile-thread:"):
             thread_id = task_ref[len("mobile-thread:"):]

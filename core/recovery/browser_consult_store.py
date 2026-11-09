@@ -121,7 +121,11 @@ class BrowserConsultStore:
                     response_text TEXT,
                     response_sha256 TEXT,
                     error_type TEXT,
-                    attempts INTEGER NOT NULL DEFAULT 0
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    review_mode TEXT NOT NULL DEFAULT 'standard',
+                    review_id TEXT,
+                    review_expected_providers_json TEXT,
+                    evidence_json TEXT
                 );
                 CREATE INDEX IF NOT EXISTS ix_browser_consult_status
                     ON browser_consultations(status, provider, created_at);
@@ -137,6 +141,14 @@ class BrowserConsultStore:
             columns = {row[1] for row in db.execute("PRAGMA table_info(browser_consultations)")}
             if "claim_token" not in columns:
                 db.execute("ALTER TABLE browser_consultations ADD COLUMN claim_token TEXT")
+            if "review_mode" not in columns:
+                db.execute("ALTER TABLE browser_consultations ADD COLUMN review_mode TEXT NOT NULL DEFAULT 'standard'")
+            if "review_id" not in columns:
+                db.execute("ALTER TABLE browser_consultations ADD COLUMN review_id TEXT")
+            if "review_expected_providers_json" not in columns:
+                db.execute("ALTER TABLE browser_consultations ADD COLUMN review_expected_providers_json TEXT")
+            if "evidence_json" not in columns:
+                db.execute("ALTER TABLE browser_consultations ADD COLUMN evidence_json TEXT")
             db.execute("""
                 UPDATE browser_consultations
                 SET status='BLOCKED_RESTART', error_type='ambiguous_process_restart', claim_token=NULL
@@ -155,7 +167,8 @@ class BrowserConsultStore:
             }
             rows = db.execute("""
                 SELECT consultation_id, task_ref, provider, status, created_at,
-                       completed_at, error_type, attempts, prompt_sha256, response_sha256
+                       completed_at, error_type, attempts, prompt_sha256, response_sha256,
+                       review_mode, review_id
                 FROM browser_consultations ORDER BY created_at DESC LIMIT ?
             """, (limit,)).fetchall()
             provider_rows = db.execute("""
@@ -170,9 +183,24 @@ class BrowserConsultStore:
             "recent": [dict(row) for row in rows],
         }
 
-    def enqueue(self, *, task_ref: str, goal: str, context: str = "", providers: list[str] | None = None) -> dict[str, Any]:
+    def enqueue(self, *, task_ref: str, goal: str, context: str = "", providers: list[str] | None = None, review_mode: str = "standard", review_id: str | None = None) -> dict[str, Any]:
         if not _enabled():
             return {"status": "DISABLED", "consultation_ids": []}
+        if review_mode not in {"standard", "fresh_review"}:
+            raise ValueError("unsupported browser consultation review mode")
+        expected_providers: list[str] = []
+        if review_mode == "fresh_review":
+            if not isinstance(review_id, str) or not review_id.strip() or len(review_id) > 120:
+                raise ValueError("fresh review requires a bounded review_id")
+            if (
+                not isinstance(providers, list)
+                or len(providers) != 2
+                or set(providers) != {"chatgpt", "gemini"}
+            ):
+                raise ValueError("fresh EGM review requires both ChatGPT and Gemini providers")
+            expected_providers = ["chatgpt", "gemini"]
+        elif review_id is not None:
+            raise ValueError("review_id is only valid for fresh_review mode")
         if not isinstance(task_ref, str) or not task_ref.strip() or len(task_ref) > 160:
             raise ValueError("task_ref must contain 1-160 characters")
         prompt = build_prompt(goal=goal, context=context)
@@ -184,6 +212,22 @@ class BrowserConsultStore:
         ids: list[str] = []
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
+            if review_mode == "fresh_review":
+                existing_review = db.execute("""
+                    SELECT task_ref, prompt_sha256, review_expected_providers_json
+                    FROM browser_consultations
+                    WHERE review_mode='fresh_review' AND review_id=?
+                    ORDER BY created_at LIMIT 1
+                """, (review_id,)).fetchone()
+                if existing_review:
+                    expected_json = json.dumps(expected_providers, separators=(",", ":"))
+                    if (
+                        existing_review["task_ref"] != task_ref.strip()
+                        or existing_review["prompt_sha256"] != _hash(prompt)
+                        or existing_review["review_expected_providers_json"] != expected_json
+                    ):
+                        db.rollback()
+                        raise ValueError("review_id is already bound to a different task, brief or provider set")
             for provider in selected[:5]:
                 cooldown = db.execute(
                     "SELECT cooldown_until FROM browser_consult_provider_state WHERE provider=?",
@@ -191,13 +235,13 @@ class BrowserConsultStore:
                 ).fetchone()
                 if cooldown and cooldown["cooldown_until"] and cooldown["cooldown_until"] > now:
                     continue
-                digest = _hash(prompt + "|" + task_ref + "|" + provider)
                 previous = db.execute("""
                     SELECT consultation_id FROM browser_consultations
                     WHERE prompt_sha256=? AND task_ref=? AND provider=?
+                      AND review_mode=? AND COALESCE(review_id, '')=COALESCE(?, '')
                       AND status IN ('PENDING_APPROVAL','PENDING','RUNNING','COMPLETED')
                     ORDER BY created_at DESC LIMIT 1
-                """, (_hash(prompt), task_ref.strip(), provider)).fetchone()
+                """, (_hash(prompt), task_ref.strip(), provider, review_mode, review_id)).fetchone()
                 if previous:
                     ids.append(previous["consultation_id"])
                     continue
@@ -205,15 +249,24 @@ class BrowserConsultStore:
                 db.execute("""
                     INSERT INTO browser_consultations(
                         consultation_id, task_ref, provider, prompt, prompt_sha256,
-                        status, created_at
-                    ) VALUES (?, ?, ?, ?, ?, 'PENDING_APPROVAL', ?)
-                """, (consultation_id, task_ref.strip(), provider, prompt, _hash(prompt), now))
+                        status, created_at, review_mode, review_id,
+                        review_expected_providers_json
+                    ) VALUES (?, ?, ?, ?, ?, 'PENDING_APPROVAL', ?, ?, ?, ?)
+                """, (
+                    consultation_id, task_ref.strip(), provider, prompt, _hash(prompt),
+                    now, review_mode, review_id,
+                    json.dumps(expected_providers, separators=(",", ":")) if expected_providers else None,
+                ))
                 ids.append(consultation_id)
             db.commit()
         return {
             "status": "PENDING_APPROVAL" if ids else "BLOCKED_COOLDOWN_OR_DUPLICATE",
             "consultation_ids": ids,
             "provider_count": len(ids),
+            "expected_provider_count": len(expected_providers) if expected_providers else len(ids),
+            "expected_providers": expected_providers,
+            "review_mode": review_mode,
+            "review_id": review_id,
             "prompt_sha256": _hash(prompt),
             "prompt_redacted": "[REDACTED_SECRET]" in prompt,
         }
@@ -228,6 +281,19 @@ class BrowserConsultStore:
             """, (consultation_id,))
             db.commit()
             return cursor.rowcount == 1
+
+    def peek_next(self, provider: str) -> dict[str, Any] | None:
+        """Read the next approved item without claiming it or consuming a retry."""
+        if not _enabled() or provider not in _free_providers():
+            return None
+        with self._connect() as db:
+            row = db.execute("""
+                SELECT consultation_id, task_ref, provider, review_mode, review_id
+                FROM browser_consultations
+                WHERE provider=? AND status='PENDING'
+                ORDER BY created_at LIMIT 1
+            """, (provider,)).fetchone()
+        return dict(row) if row is not None else None
 
     def claim_next(self, provider: str) -> dict[str, Any] | None:
         if not _enabled() or provider not in _free_providers():
@@ -261,6 +327,8 @@ class BrowserConsultStore:
         result["status"] = "RUNNING"
         result["claim_token"] = claim_token
         result["attempts"] = int(row["attempts"]) + 1
+        result["review_mode"] = row["review_mode"] if "review_mode" in row.keys() else "standard"
+        result["review_id"] = row["review_id"] if "review_id" in row.keys() else None
         return result
 
     def block(self, consultation_id: str, *, claim_token: str, reason: str) -> dict[str, Any]:
@@ -279,7 +347,7 @@ class BrowserConsultStore:
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute(
-                "SELECT provider, status, claim_token, task_ref FROM browser_consultations WHERE consultation_id=?",
+                "SELECT provider, status, claim_token, task_ref, review_mode, review_id FROM browser_consultations WHERE consultation_id=?",
                 (consultation_id,),
             ).fetchone()
             if row is None or row["status"] != "RUNNING" or not claim_token or not hmac.compare_digest(str(row["claim_token"] or ""), claim_token):
@@ -301,11 +369,80 @@ class BrowserConsultStore:
             db.commit()
         return {"consultation_id": consultation_id, "provider": row["provider"], "status": status, "automatic_retry": False, "accepted": None, "result_trusted": False}
 
-    def finish(self, consultation_id: str, *, claim_token: str, response_text: str, provider_status: str = "ok") -> dict[str, Any]:
+    def get_review(self, review_id: str) -> dict[str, Any]:
+        if not isinstance(review_id, str) or not review_id.strip() or len(review_id) > 120:
+            raise ValueError("review_id must contain 1-120 characters")
+        with self._connect() as db:
+            rows = db.execute("""
+                SELECT consultation_id, task_ref, provider, status, created_at,
+                       completed_at, error_type, response_text, response_sha256,
+                       evidence_json, review_expected_providers_json, attempts
+                FROM browser_consultations
+                WHERE review_mode='fresh_review' AND review_id=?
+                ORDER BY created_at, provider
+            """, (review_id,)).fetchall()
+        if not rows:
+            raise KeyError("fresh review not found")
+        raw_expected = rows[0]["review_expected_providers_json"]
+        expected_providers = json.loads(raw_expected) if raw_expected else sorted({row["provider"] for row in rows})
+        consultations = []
+        for row in rows:
+            item = dict(row)
+            raw_evidence = item.pop("evidence_json", None)
+            item.pop("review_expected_providers_json", None)
+            item["evidence"] = json.loads(raw_evidence) if raw_evidence else None
+            item["result_trusted"] = False
+            item["automatic_retry"] = False
+            consultations.append(item)
+        actual_providers = sorted({item["provider"] for item in consultations})
+        missing_providers = [provider for provider in expected_providers if provider not in actual_providers]
+        return {
+            "review_id": review_id,
+            "status": (
+                "COMPLETED"
+                if all(
+                    any(item["provider"] == provider and item["status"] == "COMPLETED" for item in consultations)
+                    for provider in expected_providers
+                )
+                else "PENDING"
+                if any(item["status"] in {"PENDING_APPROVAL", "PENDING", "RUNNING"} for item in consultations)
+                or any(not any(item["provider"] == provider for item in consultations) for provider in expected_providers)
+                else "INCOMPLETE"
+            ),
+            "provider_count": len(actual_providers),
+            "consultation_count": len(consultations),
+            "expected_provider_count": len(expected_providers),
+            "expected_providers": expected_providers,
+            "missing_providers": missing_providers,
+            "consultations": consultations,
+            "independence_attested": False,
+        }
+
+    def finish(self, consultation_id: str, *, claim_token: str, response_text: str, provider_status: str = "ok", evidence: dict[str, Any] | None = None) -> dict[str, Any]:
         if not isinstance(response_text, str) or not response_text.strip():
             raise ValueError("response_text is required")
         if len(response_text) > MAX_RESPONSE_CHARS:
             raise ValueError("response exceeds the 16000-character limit")
+        if evidence is not None:
+            if not isinstance(evidence, dict):
+                raise ValueError("fresh review evidence must be an object")
+            allowed_evidence = {
+                "provider", "source_id", "initial_source_id",
+                "initial_visible_message_count", "privacy_mode",
+                "privacy_mode_verified", "verification",
+            }
+            if set(evidence) - allowed_evidence:
+                raise ValueError("fresh review evidence contains unsupported fields")
+            if evidence.get("provider") not in {"chatgpt", "gemini"}:
+                raise ValueError("fresh review evidence provider is not supported")
+            if evidence.get("privacy_mode_verified") is not True:
+                raise ValueError("fresh review privacy mode was not verified")
+            if not isinstance(evidence.get("source_id"), str) or not evidence["source_id"].strip():
+                raise ValueError("fresh review new conversation id is required")
+            if evidence.get("initial_source_id") is not None:
+                raise ValueError("fresh review initial conversation id must be empty")
+            if evidence.get("initial_visible_message_count") != 0:
+                raise ValueError("fresh review initial visible message count must be zero")
         if any(pattern.search(response_text) for pattern in _SECRET_PATTERNS):
             return self.block(consultation_id, claim_token=claim_token, reason="secret_content")
         if provider_status not in {"ok", "rate_limited", "blocked_login", "blocked_challenge", "ui_mismatch", "interrupted"}:
@@ -315,7 +452,7 @@ class BrowserConsultStore:
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute("""
-                SELECT provider, status, claim_token, task_ref FROM browser_consultations WHERE consultation_id=?
+                SELECT provider, status, claim_token, task_ref, review_mode, review_id FROM browser_consultations WHERE consultation_id=?
             """, (consultation_id,)).fetchone()
             if row is None:
                 db.rollback()
@@ -323,6 +460,22 @@ class BrowserConsultStore:
             if row["status"] != "RUNNING" or not claim_token or not hmac.compare_digest(str(row["claim_token"] or ""), claim_token):
                 db.rollback()
                 raise ValueError("consultation claim is missing, stale or owned by another extension session")
+            if row["review_mode"] == "fresh_review" and evidence is None:
+                db.rollback()
+                raise ValueError("fresh review completion requires host-observed privacy and new-context evidence")
+            if row["review_mode"] != "fresh_review" and evidence is not None:
+                db.rollback()
+                raise ValueError("fresh review evidence cannot be attached to a standard consultation")
+            if evidence is not None and evidence.get("provider") != row["provider"]:
+                db.rollback()
+                raise ValueError("fresh review evidence provider does not match claimed provider")
+            expected_privacy = {
+                "chatgpt": "chatgpt_temporary_unpersonalized",
+                "gemini": "gemini_temporary_chat",
+            }.get(row["provider"])
+            if evidence is not None and evidence.get("privacy_mode") != expected_privacy:
+                db.rollback()
+                raise ValueError("fresh review privacy mode does not match provider contract")
             if provider_status == "ok":
                 status = "COMPLETED"
                 cooldown_until = (now + timedelta(seconds=self.cooldown_seconds)).isoformat()
@@ -338,11 +491,13 @@ class BrowserConsultStore:
             db.execute("""
                 UPDATE browser_consultations
                 SET status=?, completed_at=?, response_text=?, response_sha256=?,
-                    error_type=?, claim_token=NULL
+                    error_type=?, claim_token=NULL, evidence_json=?
                 WHERE consultation_id=? AND status='RUNNING'
             """, (
                 status, now.isoformat(), response_text[:MAX_RESPONSE_CHARS], digest,
-                None if provider_status == "ok" else provider_status, consultation_id,
+                None if provider_status == "ok" else provider_status,
+                json.dumps(evidence, ensure_ascii=False, sort_keys=True) if evidence is not None else None,
+                consultation_id,
             ))
             db.execute("""
                 INSERT INTO browser_consult_provider_state(provider, cooldown_until, last_status, last_consultation_id)
@@ -360,5 +515,9 @@ class BrowserConsultStore:
             "task_ref": row["task_ref"],
             "response_sha256": digest,
             "result_trusted": False,
+            "independence_attested": False,
             "accepted": None,
+            "review_mode": row["review_mode"],
+            "review_id": row["review_id"],
+            "evidence": evidence,
         }
