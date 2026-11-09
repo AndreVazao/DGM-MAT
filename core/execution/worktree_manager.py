@@ -156,6 +156,14 @@ class WorktreeManager:
         """
         branch = self._validate_branch(branch)
         target = self._target_path(task_id)
+        if (
+            self.base_path == self.repo_root
+            or self.base_path.is_relative_to(self.repo_root)
+            or self.repo_root.is_relative_to(self.base_path)
+        ):
+            raise WorktreeError(
+                "Pinned execution worktree root must be separate from and not contain the canonical checkout."
+            )
         if not isinstance(commit_sha, str) or not re.fullmatch(r"(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})", commit_sha):
             raise WorktreeError("base commit must be a full 40- or 64-character Git object ID.")
 
