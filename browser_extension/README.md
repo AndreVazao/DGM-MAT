@@ -68,3 +68,45 @@ Provider UIs change. Unknown layouts are reported as failures rather than silent
 - [ ] Confirm source conversations remain unchanged and no provider message was sent.
 
 Do not mark the feature production-ready until all three real-provider acceptance checks pass on the operator's PC.
+
+
+## Fresh EGM review context protocol (experimental, not wired to the queue)
+
+The content script exposes two additional extension-only messages:
+
+- `DGM_FRESH_REVIEW_PING`: checks that the current provider tab is on an allowlisted provider origin, is not blocked, has no recognized conversation ID, exposes a visible composer and has no visible user/assistant messages. It returns a one-shot preflight nonce.
+- `DGM_EXECUTE_FRESH_REVIEW`: requires the exact nonce and unchanged tab URL/provider, rechecks the blank-page conditions, sends only the supplied bounded review prompt through the visible composer, and waits for a newly assigned conversation ID plus a stable assistant response.
+
+The response deliberately reports `independence_attested=false`. It is UI-observed evidence that a blank page became a new conversation, not cryptographic proof that the provider has no hidden account-side context. The message handlers are not yet connected to the durable consultation queue or EGM task coordinator. This PR is intentionally stacked on the browser-recovery branch so its extension validation runs against the exact combined base. The current browser-consultation path continues to operate on existing conversations and must not be used as an EGM independent reviewer.
+
+The preflight is one-shot and bound to the same tab URL. It now also requires provider-specific temporary privacy mode: ChatGPT Temporary Chat must be explicitly Unpersonalized, and Gemini Temporary Chat must be visibly active. Grok is not accepted yet because Private Chat alone does not verify its separate X-personalization setting is off; DeepSeek and Qwen are not accepted because this adapter has no verified temporary-mode contract for them. Existing conversation IDs, visible prior messages, missing composer, blocked provider, stale nonce, URL/provider changes, or failure to observe a new conversation ID all fail closed. Provider DOM behavior still requires live Windows/Chrome acceptance; deterministic fixtures do not replace it.
+
+
+### Privacy-mode evidence basis checked 2026-11-08
+
+- ChatGPT: OpenAI documents that an **Unpersonalized Temporary Chat** does not use Memory, custom instructions or plugins. Safety-relevant context may still be used in rare high-risk cases. See https://help.openai.com/en/articles/8914046-temporary-chat-in-chatgpt
+- Gemini: Google documents Temporary Chat as not appearing in recent chats/Activity and not being used to personalize Gemini or train its models. See https://blog.google/products-and-platforms/products/gemini/temporary-chats-privacy-controls/ and https://gemini.google/release-notes/
+- Grok: xAI documents Private Chat as hidden from history and deleted from its systems within 30 days, and separately exposes the “Personalize Grok using X” control. The current adapter cannot verify that the separate personalization control is disabled in the active browser context, so Grok remains blocked. See https://x.ai/legal/faq
+- DeepSeek: its current privacy policy documents collection of prompts and chat history but does not define a temporary/isolated chat mode. See https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html
+- Qwen: the available stateless API documentation is not evidence about the consumer browser UI. No official browser temporary-mode control has been verified in this implementation, so Qwen remains blocked.
+
+These are provider product controls, not cryptographic isolation. The adapter therefore continues to report `independence_attested=false` until a trusted host workflow validates and records the evidence. Provider UI labels can change; missing or ambiguous labels must fail closed.
+
+
+## EGM fresh-review queue bridge (experimental)
+
+The extension can now consume an explicitly approved consultation marked `review_mode: "fresh_review"`. This is separate from the existing conversation-recovery mode.
+
+1. The authenticated local DGM-MAT API queues one consultation per selected provider in the existing SQLite browser-consultation store. Fresh mode requires both ChatGPT and Gemini; one provider alone cannot complete an EGM review.
+2. Every consultation remains `PENDING_APPROVAL`; each provider request must be approved individually in the existing popup.
+3. The extension peeks at the next approved queue item without claiming it, then checks only the matching readiness mode. For fresh mode it requires the provider's explicit active privacy controls, a blank page, no recognized conversation ID, no visible prior messages and a visible composer. A failed preflight leaves the approved item pending; it does not consume a claim or trigger a cooldown.
+4. Before sending, the content script repeats the checks and consumes a one-shot nonce bound to the exact provider tab URL. It then waits for a new conversation ID and a stable response.
+5. The result API requires the host-observed privacy-mode and new-conversation evidence. Evidence and response are persisted with the consultation; a restart never replays a claimed consultation.
+6. The authenticated endpoint `GET /recovery/browser-consult/fresh-review/{review_id}` resumes the durable review and returns the expected provider set, missing providers, each provider's status, response and evidence.
+
+The read-only `GET /recovery/browser-consult/peek?provider={provider}` endpoint lets the extension choose the correct preflight before consuming the one-shot claim. Enqueue uses the existing `POST /recovery/browser-consult/enqueue` contract with `review_mode: "fresh_review"` and a unique `review_id`; it still requires `free_capacity_confirmed: true`, explicit individual approval and the existing opt-in flag. Do not enable the flags merely to test the code.
+
+**Important:** this bridge records provider UI evidence, not a trusted runtime isolation attestation. The stored result remains untrusted and `independence_attested=false`; it cannot yet be passed as a successful `RuntimeIsolationAttestation` to `DesignReviewCoordinator`. A later host-side verifier must reconcile the durable result with the EGM task/mission, verify reviewer mapping and policy, then persist the final task receipt through the existing OrganizationTaskManager. No synchronous worker waits for operator approval.
+
+
+Architecture and implementation gates: [EGM Browser Fresh-Review Durable Bridge](../docs/architecture/EGM_BROWSER_FRESH_REVIEW_DURABLE_BRIDGE_2026-11-09.md).
