@@ -77,6 +77,7 @@ jobs:
           bandit -q -lll \
             core/api/browser_capture_api.py \
             core/api/browser_operator_api.py \
+            core/api/browser_consult_api.py \
             core/providers/browser/browser_operator_queue.py \
             core/api/local_auth_api.py \
             core/api/auth_middleware.py \
@@ -93,9 +94,10 @@ jobs:
             tests/api/test_extension_pairing_origin.py \
             tests/api/test_extension_session_scope.py \
             tests/api/test_recovery_api.py \
-            tests/test_recovery_ledger.py \\
-            tests/test_browser_consult_store.py \\
-            tests/api/test_browser_consult_api.py
+            tests/test_recovery_ledger.py \
+            tests/test_browser_consult_store.py \
+            tests/api/test_browser_consult_api.py \
+            tests/browser_extension/test_fresh_review_context.js
       - name: Package unpacked Chrome extension
         run: |
           cd browser_extension
