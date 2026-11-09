@@ -33,6 +33,10 @@
       <small>Claude ainda não está disponível neste canal; só será ativado após adapter visível e validação real da interface.</small>
       <small id="consult-status">Consulta externa desativada.</small>
       <form id="consult-request-form">
+        <label for="consult-mission-id">ID da missão DGM-MAT (opcional)</label>
+        <input id="consult-mission-id" type="text" maxlength="16" spellcheck="false" placeholder="mission_1234abcd">
+        <button id="consult-load-mission-button" type="button" class="secondary">Carregar contexto da missão</button>
+        <small>Carrega objetivo, estado, progresso, logs recentes, subtarefas e referências seguras do checkpoint. Não contacta nenhuma IA.</small>
         <label for="consult-goal">Pedido de segunda opinião</label>
         <textarea id="consult-goal" rows="3" maxlength="4000" required placeholder="Descreve a questão técnica a consultar…"></textarea>
         <label for="consult-context">Contexto mínimo (opcional)</label>
