@@ -246,7 +246,7 @@ def test_fresh_review_result_requires_evidence_and_can_be_resumed(monkeypatch, t
     )
     resumed = store.get_review("review-resume")
     assert resumed["status"] == "COMPLETED"
-    assert resumed["reviewer_count"] == 1
+    assert resumed["provider_count"] == 1
     assert resumed["consultations"][0]["response_text"] == "A bounded independent review."
     assert resumed["consultations"][0]["evidence"] == evidence
     assert resumed["independence_attested"] is False
