@@ -348,3 +348,213 @@ def test_bootstrap_imports_old_completed_conversations_and_snapshots_project_ide
     assert second["repository_tree"]["reused"] is True
     assert second["summary"]["conversations"] == 1
     assert second["summary"]["tree_snapshots"] == 1
+
+
+def test_github_repository_links_are_indexed_with_message_provenance(tmp_path):
+    vault = VaultCatalog(tmp_path / "vault")
+    count = vault.record_github_repository_references(
+        provider="chatgpt",
+        conversation_id="conversation-123",
+        title="Project discussion",
+        conversation_url="https://chatgpt.com/c/conversation-123",
+        messages=[
+            {"message_id": "m1", "content": "See https://github.com/andrevazao/dgm-mat/tree/main/core and https://github.com/andrevazao/dgm-mat"},
+            {"message_id": "m2", "content": "Also inspect https://github.com/torvalds/linux.git."},
+            {"message_id": "m3", "content": "Ignore https://github.com/login and https://evil.example/AndreVazao/DGM-MAT"},
+        ],
+    )
+
+    assert count == 2
+    result = vault.list_github_repository_references()
+    assert result["total"] == 2
+    by_url = {item["canonical_url"]: item for item in result["items"]}
+    dgm = by_url["https://github.com/andrevazao/dgm-mat"]
+    assert dgm["verification_status"] == "pending_verification"
+    assert dgm["occurrence_count"] == 1
+    assert dgm["sources"][0]["provider"] == "chatgpt"
+    assert dgm["sources"][0]["conversation_id"] == "conversation-123"
+    assert dgm["sources"][0]["message_id"] == "m1"
+    assert by_url["https://github.com/torvalds/linux"]["owner"] == "torvalds"
+
+
+def test_github_repository_reference_occurrences_are_idempotent(tmp_path):
+    vault = VaultCatalog(tmp_path / "vault")
+    payload = {
+        "provider": "gemini",
+        "conversation_id": "gem-1",
+        "title": "Gemini discussion",
+        "conversation_url": "https://gemini.google.com/app/gem-1",
+        "messages": [{"message_id": "m1", "content": "https://github.com/andrevazao/dgm-mat"}],
+    }
+    vault.record_github_repository_references(**payload)
+    vault.record_github_repository_references(**payload)
+    result = vault.list_github_repository_references()
+    assert result["total"] == 1
+    assert result["items"][0]["occurrence_count"] == 1
+
+
+def test_archive_conversation_automatically_extracts_github_links(tmp_path):
+    vault = VaultCatalog(tmp_path / "vault")
+    vault.archive_conversation(
+        provider="grok",
+        conversation_id="grok-1",
+        title="Review this repo",
+        url="https://grok.com/chat/grok-1",
+        messages=[{"message_id": "msg-1", "role": "user", "content": "Please inspect https://github.com/andrevazao/dgm-mat/pull/319"}],
+    )
+    refs = vault.list_github_repository_references()
+    assert refs["total"] == 1
+    assert refs["items"][0]["canonical_url"] == "https://github.com/andrevazao/dgm-mat"
+
+
+def test_github_reference_verification_uses_public_metadata_without_credentials(tmp_path, monkeypatch):
+    import io
+    import json
+    from core.vault import catalog as catalog_module
+
+    class Response:
+        status = 200
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self, size):
+            return json.dumps({
+                "full_name": "AndreVazao/DGM-MAT",
+                "html_url": "https://github.com/andrevazao/dgm-mat",
+                "description": "DevOps God Mode",
+                "default_branch": "main",
+                "archived": False,
+            }).encode()
+
+    seen = {}
+    def fake_urlopen(request, timeout):
+        seen["url"] = request.full_url
+        seen["headers"] = dict(request.header_items())
+        seen["timeout"] = timeout
+        return Response()
+
+    monkeypatch.setattr(catalog_module, "urlopen", fake_urlopen)
+    vault = VaultCatalog(tmp_path / "vault")
+    vault.record_github_repository_references(
+        provider="claude", conversation_id="claude-1", title="Repo",
+        conversation_url=None,
+        messages=[{"message_id": "m1", "content": "https://github.com/andrevazao/dgm-mat"}],
+    )
+    result = vault.verify_pending_github_repository_references(limit=1)
+    assert result["checked"] == 1
+    assert result["results"][0]["verification_status"] == "verified_public"
+    assert seen["url"] == "https://api.github.com/repos/andrevazao/dgm-mat"
+    assert "Authorization" not in seen["headers"]
+    listed = vault.list_github_repository_references()["items"][0]
+    assert listed["default_branch"] == "main"
+    assert listed["description"] == "DevOps God Mode"
+
+
+def test_github_reference_404_is_not_claimed_as_nonexistent(tmp_path, monkeypatch):
+    from urllib.error import HTTPError
+    from core.vault import catalog as catalog_module
+
+    def fake_urlopen(request, timeout):
+        raise HTTPError(request.full_url, 404, "Not Found", {}, None)
+
+    monkeypatch.setattr(catalog_module, "urlopen", fake_urlopen)
+    vault = VaultCatalog(tmp_path / "vault")
+    vault.record_github_repository_references(
+        provider="chatgpt", conversation_id="private-1", title="Private",
+        conversation_url=None,
+        messages=[{"message_id": "m1", "content": "https://github.com/example/private-repo"}],
+    )
+    result = vault.verify_pending_github_repository_references(limit=1)
+    assert result["results"][0]["verification_status"] == "not_found_or_private"
+    assert "nonexistent" not in result["results"][0]["verification_status"]
+
+
+def test_github_reference_reindex_backfills_existing_archived_conversations(tmp_path):
+    vault = VaultCatalog(tmp_path / "vault")
+    vault.archive_conversation(
+        provider="claude",
+        conversation_id="old-claude-chat",
+        title="Historical repository review",
+        messages=[{
+            "message_id": "old-message",
+            "role": "assistant",
+            "content": "The old discussion linked https://github.com/psf/requests/tree/main/src",
+        }],
+    )
+
+    # Simulate a Vault created before the reference index existed: clear the derived
+    # index and replay the archive scan. The immutable conversation archive is untouched.
+    with vault._connect() as db:
+        db.execute("DELETE FROM github_repository_ref_sources")
+        db.execute("DELETE FROM github_repository_refs")
+    result = vault.reindex_github_repository_references(limit=10)
+
+    assert result["conversations_seen"] == 1
+    assert result["links_indexed"] == 1
+    assert result["failed"] == 0
+    refs = vault.list_github_repository_references()
+    assert refs["items"][0]["canonical_url"] == "https://github.com/psf/requests"
+
+
+def test_github_reference_verifier_prioritizes_pending_over_retries(tmp_path, monkeypatch):
+    import json
+    from urllib.parse import urlparse
+    from core.vault import catalog as catalog_module
+
+    class Response:
+        status = 200
+
+        def __init__(self, full_name):
+            self.full_name = full_name
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self, size):
+            return json.dumps({
+                "full_name": self.full_name,
+                "html_url": "https://github.com/" + self.full_name,
+                "description": "",
+                "default_branch": "main",
+                "archived": False,
+            }).encode()
+
+    requested = []
+
+    def fake_urlopen(request, timeout):
+        path = urlparse(request.full_url).path
+        full_name = path.removeprefix("/repos/")
+        requested.append(full_name)
+        return Response(full_name)
+
+    monkeypatch.setattr(catalog_module, "urlopen", fake_urlopen)
+    vault = VaultCatalog(tmp_path / "vault")
+    for owner, repository, conversation_id in (
+        ("old", "retry", "conversation-old"),
+        ("new", "pending", "conversation-new"),
+    ):
+        vault.record_github_repository_references(
+            provider="chatgpt",
+            conversation_id=conversation_id,
+            title="Reference",
+            conversation_url=None,
+            messages=[{
+                "message_id": "m1",
+                "content": f"https://github.com/{owner}/{repository}",
+            }],
+        )
+
+    with vault._connect() as db:
+        db.execute(
+            "UPDATE github_repository_refs SET verification_status='rate_limited' "
+            "WHERE canonical_url='https://github.com/old/retry'"
+        )
+
+    result = vault.verify_pending_github_repository_references(limit=1)
+
+    assert result["checked"] == 1
+    assert requested == ["new/pending"]

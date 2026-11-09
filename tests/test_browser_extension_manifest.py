@@ -21,7 +21,7 @@ def test_extension_uses_manifest_v3_and_minimal_permissions():
     )
 
 
-def test_extension_only_matches_the_five_primary_provider_origins():
+def test_extension_only_matches_the_six_primary_provider_origins():
     manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
     matches = manifest["content_scripts"][0]["matches"]
     assert any("chatgpt.com" in item for item in matches)
@@ -32,7 +32,8 @@ def test_extension_only_matches_the_five_primary_provider_origins():
     assert any("x.com/i/grok" in item for item in matches)
     assert any("chat.deepseek.com" in item for item in matches)
     assert any("chat.qwen.ai" in item for item in matches)
-    assert len(matches) == 8
+    assert any("claude.ai" in item for item in matches)
+    assert len(matches) == 9
 
 
 def test_extension_never_reads_auth_stores_or_calls_provider_private_apis():
@@ -51,10 +52,17 @@ def test_extension_never_reads_auth_stores_or_calls_provider_private_apis():
     assert "/browser-operator/tasks/" in background
     assert "dgmBrowserProviderPauses" in background
     assert "pauseBrowserProvider" in background
-    assert 'for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"])' in background
+    assert 'for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen", "claude"])' in background
     assert "quota exceeded" in content or "usage limit" in content
-    assert 'defaults[AUTO_KEY] = true' in background
-    assert 'defaults[BROWSER_QUEUE_AUTO_KEY] = true' in background
+    assert 'defaults[AUTO_KEY] = false' in background
+    assert 'defaults[BROWSER_QUEUE_AUTO_KEY] = false' in background
+    assert 'defaults[CONSULT_ENABLED_KEY] = false' in background
+    assert 'chrome.runtime.onInstalled.addListener(details => {' in background
+    assert '[AUTO_KEY]: false' in background
+    assert '[BROWSER_QUEUE_AUTO_KEY]: false' in background
+    assert '[CONSULT_ENABLED_KEY]: false' in background
+    assert 'chrome.alarms.clear(BROWSER_ALARM)' in background
+    assert 'chrome.alarms.clear(CONSULT_ALARM)' in background
     assert "providerForTabUrl" in background
     assert "startRecovery(tabId)" in background
     assert "DGM_PROVIDER_PING" in content

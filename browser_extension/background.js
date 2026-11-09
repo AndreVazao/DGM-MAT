@@ -19,7 +19,7 @@ let browserPollInProgress = false;
 let startInProgress = false;
 
 async function pauseBrowserProvider(provider, reason) {
-  if (!["chatgpt", "grok", "gemini", "deepseek", "qwen"].includes(provider)) return;
+  if (!["chatgpt", "grok", "gemini", "deepseek", "qwen", "claude"].includes(provider)) return;
   const stored = await chrome.storage.local.get(PROVIDER_PAUSE_KEY);
   const pauses = stored[PROVIDER_PAUSE_KEY] || {};
   const cooldownMs = reason === "rate_limited" ? 60 * 60 * 1000 : 15 * 60 * 1000;
@@ -134,7 +134,7 @@ async function startNextAutoProvider(excludeProvider) {
   const stored = await chrome.storage.local.get([AUTO_KEY, PROVIDER_TABS_KEY]);
   if (!stored[AUTO_KEY]) return { started: false };
   const tabs = stored[PROVIDER_TABS_KEY] || {};
-  for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
+  for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen", "claude"]) {
     if (provider === excludeProvider || !Number.isInteger(tabs[provider])) continue;
     if (await isBrowserProviderPaused(provider)) continue;
     try {
@@ -210,6 +210,18 @@ async function listBrowserConsultations() {
   return apiGet("/recovery/browser-consult/status", state.token);
 }
 
+async function loadMissionConsultationContext(payload) {
+  const state = await readState();
+  if (!state.token) throw new Error("Pair the extension with DGM-MAT first.");
+  return api("/recovery/browser-consult/mission-context", payload, state.token);
+}
+
+async function previewBrowserConsultation(payload) {
+  const state = await readState();
+  if (!state.token) throw new Error("Pair the extension with DGM-MAT first.");
+  return api("/recovery/browser-consult/preview", payload, state.token);
+}
+
 async function enqueueBrowserConsultation(payload) {
   const state = await readState();
   if (!state.token) throw new Error("Pair the extension with DGM-MAT first.");
@@ -260,7 +272,7 @@ async function pollBrowserConsultQueue() {
     }
     if (settings[BROWSER_TASK_KEY] || !settings[CONSULT_ENABLED_KEY] || state.run?.active) return;
     const tabs = settings[PROVIDER_TABS_KEY] || {};
-    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
+    for (const provider of ["chatgpt","grok","gemini","deepseek","qwen"]) {
       if (await isBrowserProviderPaused(provider)) continue;
       const tabId = tabs[provider];
       if (!Number.isInteger(tabId)) continue;
@@ -461,7 +473,7 @@ async function pollBrowserOperatorQueue() {
     const state = await readState();
     if (!state.token || state.run?.active) return;
     const tabs = settings[PROVIDER_TABS_KEY] || {};
-    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
+    for (const provider of ["chatgpt","grok","gemini","deepseek","qwen"]) {
       if (await isBrowserProviderPaused(provider)) continue;
       const tabId = tabs[provider];
       if (!Number.isInteger(tabId)) continue;
@@ -518,6 +530,7 @@ function providerForTabUrl(value) {
     if (host === "grok.com" || (host === "x.com" && url.pathname.startsWith("/i/grok"))) return "grok";
     if (host === "chat.deepseek.com") return "deepseek";
     if (host === "chat.qwen.ai") return "qwen";
+    if (host === "claude.ai") return "claude";
   } catch (_) {}
   return null;
 }
@@ -531,8 +544,8 @@ async function pair(code) {
   });
   const current = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY, CONSULT_ENABLED_KEY]);
   const defaults = {};
-  if (typeof current[AUTO_KEY] !== "boolean") defaults[AUTO_KEY] = true;
-  if (typeof current[BROWSER_QUEUE_AUTO_KEY] !== "boolean") defaults[BROWSER_QUEUE_AUTO_KEY] = true;
+  if (typeof current[AUTO_KEY] !== "boolean") defaults[AUTO_KEY] = false;
+  if (typeof current[BROWSER_QUEUE_AUTO_KEY] !== "boolean") defaults[BROWSER_QUEUE_AUTO_KEY] = false;
   if (typeof current[CONSULT_ENABLED_KEY] !== "boolean") defaults[CONSULT_ENABLED_KEY] = false;
   if (Object.keys(defaults).length) await chrome.storage.local.set(defaults);
   const settings = await chrome.storage.local.get([AUTO_KEY, BROWSER_QUEUE_AUTO_KEY, CONSULT_ENABLED_KEY]);
@@ -546,7 +559,7 @@ async function pair(code) {
     await rememberProviderTab(provider, tab.id);
   }
   await chrome.storage.local.set({
-    dgmRecoveryLastStatus: "Paired to local DGM-MAT; automatic recovery and approved mission queue are enabled by default."
+    dgmRecoveryLastStatus: "Paired to local DGM-MAT; unattended recovery and mission queue remain disabled until explicitly enabled by the operator."
   });
   if (settings[BROWSER_QUEUE_AUTO_KEY]) {
     chrome.alarms.create(BROWSER_ALARM, { periodInMinutes: 0.5 });
@@ -557,7 +570,7 @@ async function pair(code) {
     await pollBrowserConsultQueue().catch(() => {});
   }
   if (settings[AUTO_KEY]) {
-    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
+    for (const provider of ["chatgpt","grok","gemini","deepseek","qwen","claude"]) {
       const tabId = providerTabs[provider];
       if (!Number.isInteger(tabId) || await isBrowserProviderPaused(provider)) continue;
       try {
@@ -818,11 +831,21 @@ chrome.runtime.onStartup.addListener(() => {
     }
   });
 });
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.get([BROWSER_QUEUE_AUTO_KEY, CONSULT_ENABLED_KEY]).then(settings => {
-    if (settings[BROWSER_QUEUE_AUTO_KEY]) chrome.alarms.create(BROWSER_ALARM, { periodInMinutes: 0.5 });
-    if (settings[CONSULT_ENABLED_KEY]) chrome.alarms.create(CONSULT_ALARM, { periodInMinutes: 1 });
-  });
+chrome.runtime.onInstalled.addListener(details => {
+  // Pairing and extension installation/update must never silently enable background work.
+  // Existing installations are reset once on upgrade because older builds defaulted
+  // unattended recovery and the approved mission queue to enabled.
+  chrome.storage.local.set({
+    [AUTO_KEY]: false,
+    [BROWSER_QUEUE_AUTO_KEY]: false,
+    [CONSULT_ENABLED_KEY]: false,
+    dgmRecoveryLastStatus: details?.reason === "update"
+      ? "Extension updated; unattended recovery, mission queue and external consultation were reset to OFF. Re-enable each explicitly."
+      : "Extension installed; unattended recovery, mission queue and external consultation are OFF until explicitly enabled."
+  }).then(() => Promise.all([
+    chrome.alarms.clear(BROWSER_ALARM),
+    chrome.alarms.clear(CONSULT_ALARM)
+  ])).catch(() => {});
 });
 
 chrome.tabs.onRemoved.addListener(tabId => {
@@ -858,6 +881,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message.type === "DGM_LIST_BROWSER_CONSULTS") {
     listBrowserConsultations()
+      .then(data => sendResponse({ ok: true, data }))
+      .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+    return true;
+  }
+  if (message.type === "DGM_LOAD_MISSION_CONSULT_CONTEXT") {
+    loadMissionConsultationContext(message.payload || {})
+      .then(data => sendResponse({ ok: true, data }))
+      .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
+    return true;
+  }
+  if (message.type === "DGM_PREVIEW_BROWSER_CONSULT") {
+    previewBrowserConsultation(message.payload || {})
       .then(data => sendResponse({ ok: true, data }))
       .catch(error => sendResponse({ ok: false, error: String(error.message || error) }));
     return true;

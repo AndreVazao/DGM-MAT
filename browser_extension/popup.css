@@ -26,3 +26,6 @@ textarea { box-sizing: border-box; width: 100%; resize: vertical; border: 1px so
 #consult-queue { display: grid; gap: 7px; }
 .consult-item { display: grid; gap: 5px; padding: 8px; border: 1px solid #8885; border-radius: 8px; overflow-wrap: anywhere; }
 .consult-item button { padding: 7px; }
+
+#consult-preview { min-height: 140px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
+#consult-preview-status { overflow-wrap: anywhere; }

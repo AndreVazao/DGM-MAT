@@ -169,6 +169,63 @@ class GovernedBrowserSession:
             text = page.locator("body").inner_text(timeout=self.timeout_ms)
             return {"url": page.url, "title": page.title(), "text": text[:max_chars], "truncated": len(text) > max_chars}
 
+
+    @staticmethod
+    def _validate_public_reference(url: str) -> str | None:
+        """Validate an extracted external link without navigating to it."""
+        from urllib.parse import urlparse
+
+        if not isinstance(url, str) or len(url) > 2048:
+            return None
+        parsed = urlparse(url)
+        if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+            return None
+        host = parsed.hostname.casefold().rstrip(".")
+        try:
+            address = ipaddress.ip_address(host.strip("[]"))
+        except ValueError:
+            address = None
+        if address is not None and (
+            address.is_private or address.is_loopback or address.is_link_local
+            or address.is_reserved or address.is_multicast or address.is_unspecified
+        ):
+            return None
+        if host in {"localhost", "localhost.localdomain"}:
+            return None
+        return url
+
+    def read_links(self, *, max_links: int = 20) -> list[dict[str, str]]:
+        """Extract bounded HTTPS references from the current page without opening them."""
+        if isinstance(max_links, bool) or not isinstance(max_links, int) or not 1 <= max_links <= 50:
+            raise ValueError("max_links must be an integer between 1 and 50")
+        with self._lock:
+            page = self._require_page()
+            try:
+                raw_links = page.locator("a[href]").evaluate_all(
+                    """elements => elements.map(el => ({
+                        url: el.href || el.getAttribute('href') || '',
+                        text: (el.innerText || el.getAttribute('aria-label') || el.title || '').trim()
+                    }))"""
+                )
+            except Exception as exc:
+                raise RuntimeError("Could not extract page links safely.") from exc
+            results: list[dict[str, str]] = []
+            seen: set[str] = set()
+            for item in raw_links if isinstance(raw_links, list) else []:
+                if not isinstance(item, dict):
+                    continue
+                url = self._validate_public_reference(item.get("url", ""))
+                if not url or url in seen:
+                    continue
+                seen.add(url)
+                results.append({
+                    "url": url,
+                    "text": " ".join(str(item.get("text") or "").split())[:240],
+                })
+                if len(results) >= max_links:
+                    break
+            return results
+
     def click(self, selector: str) -> dict[str, Any]:
         with self._lock:
             page = self._require_page()
@@ -219,7 +276,13 @@ class GovernedBrowserSession:
             page = self._require_page()
             if self.screenshot_dir is None:
                 raise RuntimeError("Screenshot output directory was not configured")
-            if not isinstance(filename, str) or Path(filename).name != filename:
+            if (
+                not isinstance(filename, str)
+                or not filename
+                or "/" in filename
+                or "\\" in filename
+                or Path(filename).name != filename
+            ):
                 raise BrowserPolicyError("Screenshot path traversal denied")
             name = Path(filename).name
             if not name or name in {".", ".."}:

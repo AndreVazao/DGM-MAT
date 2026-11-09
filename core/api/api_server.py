@@ -39,9 +39,11 @@ from core.api.auth_middleware import LocalSessionAuthMiddleware
 from core.federation.node_identity import local_node
 from core.federation.rendezvous_client import RendezvousClient
 from core.organization.dgm_hub_meeting_observer import get_hub_meeting_observer
+from core.vault.github_reference_verifier import GitHubReferenceVerifierWorker
 
 
 app = FastAPI(title="DGM-MAT API")
+_github_reference_verifier_worker: GitHubReferenceVerifierWorker | None = None
 
 def _cors_allowed_origins() -> list[str]:
     origins = ["http://127.0.0.1:8181", "http://localhost:8181", "https://localhost"]
@@ -169,6 +171,26 @@ def start_rendezvous_heartbeat() -> None:
         daemon=True,
     )
     thread.start()
+
+
+@app.on_event("startup")
+def start_github_reference_verifier() -> None:
+    """Verify newly indexed public repository references in bounded background batches."""
+    global _github_reference_verifier_worker
+    try:
+        _github_reference_verifier_worker = GitHubReferenceVerifierWorker()
+        _github_reference_verifier_worker.start()
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "GitHub reference verifier could not start; API startup continues safely."
+        )
+
+
+@app.on_event("shutdown")
+def stop_github_reference_verifier() -> None:
+    worker = _github_reference_verifier_worker
+    if worker is not None:
+        worker.stop()
 
 
 @app.on_event("startup")

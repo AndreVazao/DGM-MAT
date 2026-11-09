@@ -26,11 +26,11 @@ function makeMessage(
     parentElement: null,
     isConnected: true,
     innerText: text,
-    contains() { return false; },
+    contains(other) { return Array.isArray(options.children) && options.children.includes(other); },
     getAttribute(name) {
       if (name === "data-message-id") return options.explicitId === false ? null : "message-" + index;
       if (name === "data-message-author-role") return role;
-      if (name === "data-testid") return "conversation-turn";
+      if (name === "data-testid") return options.testId || (provider === "claude" ? role + "-message" : "conversation-turn");
       return null;
     },
     getBoundingClientRect() {
@@ -42,8 +42,12 @@ function makeMessage(
   };
 }
 
-function createHarness(mode, provider = "chatgpt", bodyText = "") {
+function createHarness(mode, provider = "chatgpt", bodyText = "", urlOverride = null) {
   const all = Array.from({ length: 12 }, (_, index) => makeMessage(index, undefined, {}, provider));
+  const nestedClaudeMessage = provider === "claude" ? makeMessage(99, "user", { text: "Nested Claude turn" }, provider) : null;
+  const nestedClaudeWrapper = provider === "claude" ? makeMessage(100, "assistant", {
+    text: "Wrapper text", testId: "chat-message", children: [nestedClaudeMessage]
+  }, provider) : null;
   const ambiguousFirst = makeMessage(50, "user", {
     text: "Repeated identical text-only turn",
     explicitId: false
@@ -52,7 +56,8 @@ function createHarness(mode, provider = "chatgpt", bodyText = "") {
     text: "Repeated identical text-only turn",
     explicitId: false
   }, provider);
-  let visible = mode === "dom-mismatch" ? [] : mode === "ambiguous-duplicate" ? [ambiguousFirst] : all.slice(6, 10);
+  let visible = mode === "dom-mismatch" ? [] : mode === "ambiguous-duplicate" ? [ambiguousFirst]
+    : mode === "claude-nested" ? [nestedClaudeWrapper, nestedClaudeMessage] : all.slice(6, 10);
   let olderLoaded = false;
   let topWaits = 0;
   let listener = null;
@@ -60,6 +65,10 @@ function createHarness(mode, provider = "chatgpt", bodyText = "") {
   let scrollCalls = 0;
 
   function updateVisible(top) {
+    if (mode === "claude-nested") {
+      visible = [nestedClaudeWrapper, nestedClaudeMessage];
+      return;
+    }
     if (mode === "dom-mismatch") {
       visible = [];
       return;
@@ -111,6 +120,7 @@ function createHarness(mode, provider = "chatgpt", bodyText = "") {
     querySelectorAll(selector) {
       if (provider === "chatgpt" && selector === "[data-message-author-role]") return visible;
       if (provider === "gemini" && selector === "user-query, model-response") return visible;
+      if (provider === "claude" && selector === '[data-testid="user-message"], [data-testid="assistant-message"], [data-testid="chat-message"]') return visible;
       if (provider === "grok" && [
         '[data-testid="conversation-turn"]',
         '[data-testid*="message"]',
@@ -140,20 +150,22 @@ function createHarness(mode, provider = "chatgpt", bodyText = "") {
     JSON,
     document,
     location: {
-      href: {
+      href: urlOverride || {
         chatgpt: "https://chatgpt.com/c/fixture-conversation",
         gemini: "https://gemini.google.com/app/fixture-conversation",
         grok: "https://grok.com/chat/fixture-conversation",
         deepseek: "https://chat.deepseek.com/a/chat/s/fixture-conversation",
-        qwen: "https://chat.qwen.ai/chat/fixture-conversation"
+        qwen: "https://chat.qwen.ai/chat/fixture-conversation",
+        claude: "https://claude.ai/chat/fixture-conversation"
       }[provider],
-      pathname: {
-        chatgpt: "/c/fixture-conversation",
-        gemini: "/app/fixture-conversation",
-        grok: "/chat/fixture-conversation",
-        deepseek: "/a/chat/s/fixture-conversation",
-        qwen: "/chat/fixture-conversation"
-      }[provider],
+      pathname: new URL(urlOverride || ({
+        chatgpt: "https://chatgpt.com/c/fixture-conversation",
+        gemini: "https://gemini.google.com/app/fixture-conversation",
+        grok: "https://grok.com/chat/fixture-conversation",
+        deepseek: "https://chat.deepseek.com/a/chat/s/fixture-conversation",
+        qwen: "https://chat.qwen.ai/chat/fixture-conversation",
+        claude: "https://claude.ai/chat/fixture-conversation"
+      }[provider])).pathname,
       assign() {
         throw new Error("Navigation is not expected during capture tests.");
       }
@@ -245,7 +257,7 @@ async function testVirtualizedHistoryWindowsAndDuplicates() {
 }
 
 async function testProviderScopedSelectorsRemainSupported() {
-  for (const provider of ["chatgpt", "gemini", "grok", "deepseek", "qwen"]) {
+  for (const provider of ["chatgpt", "gemini", "grok", "deepseek", "qwen", "claude"]) {
     const harness = createHarness("no-oldest-marker", provider);
     const response = await harness.capture();
     assert.equal(response.ok, true, provider + ": " + response.error);
@@ -258,6 +270,43 @@ async function testProviderScopedSelectorsRemainSupported() {
     }
     assert.equal(response.data.history_start_reached, false);
     assert.equal(response.data.oldest_boundary, "unknown");
+  }
+}
+
+async function testClaudeProjectConversationRouteUsesConversationId() {
+  const harness = createHarness(
+    "no-oldest-marker",
+    "claude",
+    "",
+    "https://claude.ai/project/project-12345678/chat/conversation-87654321"
+  );
+  const response = await harness.capture();
+  assert.equal(response.ok, true, response.error);
+  assert.equal(response.data.provider, "claude");
+  assert.equal(response.data.source_id, "conversation-87654321",
+    "project route must use the chat ID, not the project ID");
+}
+
+async function testClaudeNestedMessageWrappersAreNotDuplicated() {
+  const harness = createHarness("claude-nested", "claude");
+  const response = await harness.capture();
+  assert.equal(response.ok, true, response.error);
+  assert.equal(response.data.messages_total, 1,
+    "nested chat-message wrapper and user-message child must produce one archived turn");
+  assert.equal(response.data.messages[0].content, "Nested Claude turn");
+  assert.equal(response.data.messages[0].role, "user");
+}
+
+async function testClaudeNonConversationRoutesFailClosed() {
+  for (const url of [
+    "https://claude.ai/new",
+    "https://claude.ai/project/project-12345678",
+    "https://claude.ai/chat"
+  ]) {
+    const harness = createHarness("no-oldest-marker", "claude", "", url);
+    const response = await harness.capture();
+    assert.equal(response.ok, false, url + " must not be treated as a conversation");
+    assert.match(response.error, /recognized conversation ID/);
   }
 }
 
@@ -324,13 +373,16 @@ async function testScrollHardLimitIsExplicitlyTruncated() {
 async function main() {
   await testVirtualizedHistoryWindowsAndDuplicates();
   await testProviderScopedSelectorsRemainSupported();
+  await testClaudeProjectConversationRouteUsesConversationId();
+  await testClaudeNestedMessageWrappersAreNotDuplicated();
+  await testClaudeNonConversationRoutesFailClosed();
   await testMissingOldestMarkerRemainsPartialOrUnknown();
   await testTopLoadingHardLimitIsExplicitlyTruncated();
   await testProviderDomMismatchFailsClosed();
   await testIdenticalTextOnlyTurnsAreMarkedAmbiguous();
   await testScrollHardLimitIsExplicitlyTruncated();
   await testProviderUsageLimitsTriggerSafeProviderRotationSignal();
-  process.stdout.write("PASS: 8 deterministic virtualized-history and provider-limit fixtures\n");
+  process.stdout.write("PASS: 11 deterministic virtualized-history, Claude route and provider-limit fixtures\n");
 }
 
 main().catch(error => {

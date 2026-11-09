@@ -1,13 +1,14 @@
 (() => {
   "use strict";
 
-  const VERSION = "0.1.3";
+  const VERSION = "0.1.4";
   const PROVIDER_HOSTS = {
     chatgpt: new Set(["chatgpt.com", "chat.openai.com"]),
     gemini: new Set(["gemini.google.com", "bard.google.com"]),
     grok: new Set(["grok.com", "x.com"]),
     deepseek: new Set(["chat.deepseek.com"]),
-    qwen: new Set(["chat.qwen.ai"])
+    qwen: new Set(["chat.qwen.ai"]),
+    claude: new Set(["claude.ai"])
   };
 
   function providerForUrl(value) {
@@ -22,6 +23,7 @@
       }
       if (PROVIDER_HOSTS.deepseek.has(host)) return "deepseek";
       if (PROVIDER_HOSTS.qwen.has(host)) return "qwen";
+      if (PROVIDER_HOSTS.claude.has(host)) return "claude";
     } catch (_) {}
     return null;
   }
@@ -36,6 +38,15 @@
     if (provider === "gemini") {
       const index = segments.indexOf("app");
       return index >= 0 ? segments[index + 1] || null : null;
+    }
+    if (provider === "claude") {
+      // Claude conversations use /chat/{conversation_id}; project conversations
+      // use /project/{project_id}/chat/{conversation_id}. Never infer an ID
+      // from DOM message nodes or accept a project ID as the conversation ID.
+      const chatIndex = segments.lastIndexOf("chat");
+      if (chatIndex < 0 || chatIndex !== segments.length - 2) return null;
+      const candidate = segments[chatIndex + 1];
+      return candidate && /^[A-Za-z0-9_-]{8,200}$/.test(candidate) ? candidate : null;
     }
     const queryKeys = provider === "deepseek" || provider === "qwen"
       ? ["conversation", "conversationId", "chatId", "chat_id", "id"]
@@ -74,7 +85,7 @@
   function conversationTitle(anchor, url) {
     const text = (anchor?.innerText || anchor?.getAttribute("aria-label") || "").trim();
     if (text) return text.slice(0, 500);
-    const title = (document.title || "").replace(/\s*[|—-]\s*(ChatGPT|Gemini|Grok|DeepSeek|Qwen).*$/i, "").trim();
+    const title = (document.title || "").replace(/\s*[|—-]\s*(ChatGPT|Gemini|Grok|DeepSeek|Qwen|Claude).*$/i, "").trim();
     return title.slice(0, 500) || "Conversation " + url.pathname.split("/").filter(Boolean).pop();
   }
 
@@ -171,6 +182,14 @@
     }
     if (provider === "gemini") {
       return [...document.querySelectorAll("user-query, model-response")];
+    }
+    if (provider === "claude") {
+      const nodes = [...document.querySelectorAll(
+        '[data-testid="user-message"], [data-testid="assistant-message"], [data-testid="chat-message"]'
+      )];
+      // Claude may expose both a message wrapper and a nested role-specific
+      // node. Keep the deepest recognized node so one turn is not archived twice.
+      return nodes.filter(node => !nodes.some(other => other !== node && node.contains(other)));
     }
     const selectors = provider === "deepseek"
       ? ['[data-message-id]', '[data-testid*="message"]', 'div[class*="ds-message"]', 'div[class*="message"]']

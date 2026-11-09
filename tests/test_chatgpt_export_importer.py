@@ -224,3 +224,39 @@ def test_malformed_array_delimiters_are_rejected_before_archive_writes(tmp_path,
     assert ledger.source_count() == 0
     assert not (tmp_path / "archive").exists()
 
+
+
+def test_chatgpt_import_indexes_github_repository_links_in_vault(tmp_path, monkeypatch):
+    source = tmp_path / "conversations.json"
+    write_export(source, [{
+        "id": "chatgpt-github-links",
+        "title": "DGM-MAT repository review",
+        "mapping": {
+            "user-node": {
+                "message": {
+                    "author": {"role": "user"},
+                    "content": {"parts": ["Please inspect https://github.com/andrevazao/dgm-mat/tree/main/core"]},
+                }
+            },
+            "assistant-node": {
+                "message": {
+                    "author": {"role": "assistant"},
+                    "content": {"parts": ["Also see https://github.com/torvalds/linux"]},
+                }
+            },
+        },
+    }])
+    monkeypatch.setenv("DGM_VAULT_PATH", str(tmp_path / "vault"))
+    ledger = RecoveryLedger(tmp_path / "ledger.sqlite3")
+
+    report = import_chatgpt_conversations_json(source, tmp_path / "archive", ledger)
+
+    assert report.archived == 1
+    from core.vault import VaultCatalog
+    refs = VaultCatalog(tmp_path / "vault").list_github_repository_references()
+    assert refs["total"] == 2
+    assert {item["canonical_url"] for item in refs["items"]} == {
+        "https://github.com/andrevazao/dgm-mat",
+        "https://github.com/torvalds/linux",
+    }
+    assert all(item["verification_status"] == "pending_verification" for item in refs["items"])

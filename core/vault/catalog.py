@@ -5,6 +5,9 @@ import json
 import os
 import re
 import sqlite3
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit
+from urllib.request import Request, urlopen
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -114,7 +117,7 @@ class VaultCatalog:
     Set DGM_VAULT_PATH or pass an explicit path; never place private transcripts in Git.
     """
 
-    SCHEMA_VERSION = 2
+    SCHEMA_VERSION = 3
 
     @staticmethod
     def default_root() -> Path:
@@ -231,6 +234,37 @@ class VaultCatalog:
                     UNIQUE(source_provider, source_conversation_id, source_fingerprint,
                            canonical_provider, canonical_conversation_id)
                 );
+                CREATE TABLE IF NOT EXISTS github_repository_refs (
+                    canonical_url TEXT PRIMARY KEY,
+                    owner TEXT NOT NULL,
+                    repository TEXT NOT NULL,
+                    verification_status TEXT NOT NULL CHECK(verification_status IN (
+                        'pending_verification','verified_public','not_found_or_private',
+                        'rate_limited','unavailable'
+                    )),
+                    html_url TEXT,
+                    description TEXT,
+                    default_branch TEXT,
+                    is_archived INTEGER,
+                    verified_at TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS ix_github_refs_status
+                    ON github_repository_refs(verification_status, updated_at);
+                CREATE TABLE IF NOT EXISTS github_repository_ref_sources (
+                    canonical_url TEXT NOT NULL,
+                    provider TEXT NOT NULL,
+                    conversation_id TEXT NOT NULL,
+                    message_id TEXT NOT NULL,
+                    conversation_url TEXT,
+                    conversation_title TEXT NOT NULL,
+                    first_seen_at TEXT NOT NULL,
+                    PRIMARY KEY(canonical_url, provider, conversation_id, message_id),
+                    FOREIGN KEY(canonical_url) REFERENCES github_repository_refs(canonical_url)
+                );
+                CREATE INDEX IF NOT EXISTS ix_github_ref_sources_conversation
+                    ON github_repository_ref_sources(provider, conversation_id);
                 CREATE TABLE IF NOT EXISTS tree_snapshots (
                     snapshot_id TEXT PRIMARY KEY, project_id TEXT NOT NULL,
                     repository_path TEXT NOT NULL, tree_fingerprint TEXT NOT NULL,
@@ -437,6 +471,10 @@ class VaultCatalog:
                     ) VALUES(?,?,?,?,?,?,?,?)
                 """, (provider_key, conversation_key, fingerprint, provider_key,
                       conversation_key, source_existing["archive_path"], "byte_identical", _now()))
+            self.record_github_repository_references(
+                provider=provider_key, conversation_id=conversation_key, title=title,
+                conversation_url=url, messages=messages,
+            )
             return {"status": "duplicate", "duplicate": True, "source_reused": True,
                     "fingerprint": fingerprint, "archive_path": source_existing["archive_path"],
                     "project_id": source_existing["project_id"]}
@@ -525,6 +563,10 @@ class VaultCatalog:
                     """, (provider_key, conversation_key, artifact_id, fingerprint,
                           canonical_artifact["provider"], canonical_artifact["conversation_id"], canonical_artifact["artifact_id"],
                           artifact_fingerprint, now))
+        self.record_github_repository_references(
+            provider=provider_key, conversation_id=conversation_key, title=title,
+            conversation_url=url, messages=messages,
+        )
         return {"status": "archived_duplicate" if canonical_conversation else "archived",
                 "duplicate": bool(canonical_conversation), "source_reused": False, "fingerprint": fingerprint,
                 "archive_path": str(destination), "project_id": project_id,
@@ -532,6 +574,212 @@ class VaultCatalog:
                 "canonical_provider": canonical_conversation["provider"] if canonical_conversation else None,
                 "canonical_conversation_id": canonical_conversation["conversation_id"] if canonical_conversation else None,
                 "canonical_archive_path": canonical_conversation["archive_path"] if canonical_conversation else None}
+
+    @staticmethod
+    def _extract_github_repository_links(text: str) -> list[dict[str, str]]:
+        """Extract only canonical github.com owner/repository URLs; ignore other hosts."""
+        pattern = re.compile(
+            r"https?://(?:www\.)?github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:/[^\s<>\"']*)?",
+            re.IGNORECASE,
+        )
+        found: dict[str, dict[str, str]] = {}
+        for raw in pattern.findall(str(text or "")):
+            candidate = raw.rstrip(".,;:!?)]}\u00bb")
+            try:
+                parsed = urlsplit(candidate)
+                port = parsed.port
+            except ValueError:
+                continue
+            if parsed.scheme.casefold() != "https" or (parsed.hostname or "").casefold() not in {"github.com", "www.github.com"}:
+                continue
+            if parsed.username or parsed.password or port not in (None, 443):
+                continue
+            parts = [part for part in parsed.path.split("/") if part]
+            if len(parts) < 2:
+                continue
+            owner, repository = parts[0], parts[1]
+            if repository.casefold().endswith(".git"):
+                repository = repository[:-4]
+            if not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", owner) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", repository):
+                continue
+            if owner in {".", ".."} or repository in {".", ".."}:
+                continue
+            canonical = f"https://github.com/{owner.casefold()}/{repository.casefold()}"
+            found[canonical] = {"canonical_url": canonical, "owner": owner, "repository": repository}
+        return list(found.values())
+
+    def record_github_repository_references(
+        self, *, provider: str, conversation_id: str, title: str,
+        conversation_url: str | None, messages: list[dict[str, Any]],
+    ) -> int:
+        """Persist repository references with message provenance; never verifies by URL shape alone."""
+        now = _now()
+        occurrences: dict[tuple[str, str], dict[str, str]] = {}
+        for sequence, message in enumerate(messages):
+            if not isinstance(message, dict):
+                continue
+            message_id = str(message.get("message_id") or message.get("id") or sequence)[:200]
+            body = str(message.get("content") or "")
+            for item in self._extract_github_repository_links(body):
+                occurrences[(item["canonical_url"], message_id)] = item
+        for item in self._extract_github_repository_links(title):
+            occurrences[(item["canonical_url"], "__conversation_title__")] = item
+        if not occurrences:
+            return 0
+        with self._connect() as db:
+            for (canonical, message_id), item in occurrences.items():
+                db.execute("""
+                    INSERT INTO github_repository_refs(
+                        canonical_url,owner,repository,verification_status,created_at,updated_at
+                    ) VALUES(?,?,?,'pending_verification',?,?)
+                    ON CONFLICT(canonical_url) DO UPDATE SET
+                        updated_at=excluded.updated_at
+                """, (canonical, item["owner"], item["repository"], now, now))
+                db.execute("""
+                    INSERT OR IGNORE INTO github_repository_ref_sources(
+                        canonical_url,provider,conversation_id,message_id,conversation_url,
+                        conversation_title,first_seen_at
+                    ) VALUES(?,?,?,?,?,?,?)
+                """, (canonical, provider, conversation_id, message_id,
+                      conversation_url, str(title or "Untitled")[:500], now))
+        return len(occurrences)
+
+    def list_github_repository_references(
+        self, *, limit: int = 100, offset: int = 0,
+        verification_status: str | None = None,
+    ) -> dict[str, Any]:
+        if not 1 <= limit <= 500 or offset < 0:
+            raise ValueError("Invalid reference pagination")
+        allowed = {"pending_verification", "verified_public", "not_found_or_private", "rate_limited", "unavailable"}
+        if verification_status is not None and verification_status not in allowed:
+            raise ValueError("Unsupported verification status")
+        where = " WHERE verification_status=?" if verification_status else ""
+        params: tuple[Any, ...] = (verification_status,) if verification_status else ()
+        with self._connect() as db:
+            total = db.execute("SELECT COUNT(*) FROM github_repository_refs" + where, params).fetchone()[0]
+            rows = db.execute(
+                "SELECT * FROM github_repository_refs" + where +
+                " ORDER BY CASE verification_status WHEN 'pending_verification' THEN 0 ELSE 1 END, updated_at DESC LIMIT ? OFFSET ?",
+                (*params, limit, offset),
+            ).fetchall()
+            items = []
+            for row in rows:
+                sources = db.execute(
+                    "SELECT provider,conversation_id,message_id,conversation_url,conversation_title,first_seen_at "
+                    "FROM github_repository_ref_sources WHERE canonical_url=? ORDER BY first_seen_at",
+                    (row["canonical_url"],),
+                ).fetchall()
+                items.append({
+                    **dict(row),
+                    "is_archived": bool(row["is_archived"]) if row["is_archived"] is not None else None,
+                    "sources": [dict(source) for source in sources],
+                    "occurrence_count": len(sources),
+                })
+        return {"total": total, "limit": limit, "offset": offset, "items": items}
+
+    def reindex_github_repository_references(self, *, limit: int = 100, offset: int = 0) -> dict[str, Any]:
+        """Backfill references from already archived Vault conversations without altering transcripts."""
+        if not 1 <= limit <= 500 or offset < 0:
+            raise ValueError("Invalid reindex pagination")
+        rows = self.list_conversations()
+        selected = rows[offset:offset + limit]
+        indexed = skipped = failed = 0
+        errors: list[dict[str, str]] = []
+        for row in selected:
+            archive_candidate = Path(row["archive_path"])
+            try:
+                if archive_candidate.is_symlink():
+                    skipped += 1
+                    continue
+                archive_path = archive_candidate.resolve(strict=True)
+                if not archive_path.is_relative_to(self.root) or not archive_path.is_file():
+                    skipped += 1
+                    continue
+                payload = json.loads(archive_path.read_text(encoding="utf-8"))
+                messages = payload.get("messages", []) if isinstance(payload, dict) else []
+                if not isinstance(messages, list):
+                    raise ValueError("archive messages are not a list")
+                indexed += self.record_github_repository_references(
+                    provider=str(row["provider"]),
+                    conversation_id=str(row["conversation_id"]),
+                    title=str(row.get("title") or "Untitled"),
+                    conversation_url=row.get("url"),
+                    messages=messages,
+                )
+            except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+                failed += 1
+                errors.append({
+                    "provider": str(row.get("provider") or "")[:40],
+                    "conversation_id": str(row.get("conversation_id") or "")[:120],
+                    "error": type(exc).__name__,
+                })
+        next_offset = offset + len(selected)
+        return {
+            "status": "completed" if failed == 0 else "partial",
+            "conversations_seen": len(selected),
+            "links_indexed": indexed,
+            "skipped": skipped,
+            "failed": failed,
+            "total_conversations": len(rows),
+            "next_offset": next_offset if next_offset < len(rows) else None,
+            "errors": errors[:50],
+        }
+
+    def verify_pending_github_repository_references(self, *, limit: int = 10, timeout: float = 5.0) -> dict[str, Any]:
+        """Verify a small batch using only the public GitHub REST endpoint; never sends credentials."""
+        if not 1 <= limit <= 25 or not 1 <= timeout <= 10:
+            raise ValueError("Verification batch or timeout is outside safe bounds")
+        with self._connect() as db:
+            pending = db.execute(
+                "SELECT canonical_url,owner,repository FROM github_repository_refs "
+                "WHERE verification_status IN ('pending_verification','rate_limited','unavailable') "
+                "ORDER BY CASE verification_status WHEN 'pending_verification' THEN 0 ELSE 1 END, "
+                "updated_at ASC, created_at ASC LIMIT ?", (limit,)
+            ).fetchall()
+        results: list[dict[str, Any]] = []
+        for row in pending:
+            api_url = f"https://api.github.com/repos/{row['owner']}/{row['repository']}"
+            request = Request(api_url, headers={
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "DGM-MAT-GitHub-Reference-Verifier",
+                "X-GitHub-Api-Version": "2022-11-28",
+            })
+            status = "unavailable"
+            details: dict[str, Any] = {}
+            try:
+                with urlopen(request, timeout=timeout) as response:
+                    if response.status == 200:
+                        payload = json.loads(response.read(256 * 1024).decode("utf-8"))
+                        if payload.get("full_name", "").casefold() != f"{row['owner']}/{row['repository']}".casefold():
+                            status = "unavailable"
+                        else:
+                            status = "verified_public"
+                            details = {
+                                "html_url": payload.get("html_url"),
+                                "description": str(payload.get("description") or "")[:1000],
+                                "default_branch": str(payload.get("default_branch") or "")[:120],
+                                "is_archived": bool(payload.get("archived")),
+                            }
+                    elif response.status == 403:
+                        status = "rate_limited"
+            except HTTPError as exc:
+                status = "not_found_or_private" if exc.code == 404 else "rate_limited" if exc.code in {403, 429} else "unavailable"
+            except (URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError):
+                status = "unavailable"
+            now = _now()
+            with self._connect() as db:
+                db.execute("""
+                    UPDATE github_repository_refs SET verification_status=?,html_url=?,description=?,
+                        default_branch=?,is_archived=?,verified_at=?,updated_at=?
+                    WHERE canonical_url=?
+                """, (
+                    status, details.get("html_url"), details.get("description"),
+                    details.get("default_branch"), int(details["is_archived"]) if "is_archived" in details else None,
+                    now if status in {"verified_public", "not_found_or_private"} else None,
+                    now, row["canonical_url"],
+                ))
+            results.append({"canonical_url": row["canonical_url"], "verification_status": status, **details})
+        return {"checked": len(results), "results": results, "credentials_sent": False}
 
     def sync_completed_progress(
         self,
