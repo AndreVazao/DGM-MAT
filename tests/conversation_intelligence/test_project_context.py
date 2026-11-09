@@ -107,3 +107,95 @@ def test_invalid_or_path_traversal_project_key_is_rejected(tmp_path):
         pass
     else:
         raise AssertionError("unsafe project key was accepted")
+
+
+
+def test_message_and_artifact_provenance_are_rendered(tmp_path):
+    snapshot = _snapshot()
+    snapshot["conversation"]["messages"][0].update({
+        "timestamp": "2026-11-09T10:11:12Z",
+        "source_path": "Vault/raw/chatgpt/conv-1.json",
+        "metadata": {"sequence_source": "export", "capture": "verified"},
+    })
+    snapshot["artifacts"][0]["provenance"] = {
+        "message_id": "a1",
+        "source_fingerprint": "artifact-source-sha",
+        "source_path": "Vault/raw/chatgpt/conv-1.json",
+        "source_url": "https://example.invalid/source",
+    }
+    store = ConversationProgressStore(tmp_path / "progress.sqlite")
+    store.record_conversation(
+        "chatgpt", "conv-1", "source-fingerprint", "DGM-MAT decisions",
+        status="complete", result=snapshot,
+    )
+    ProjectContextDossierGenerator(store, tmp_path / "out", batch_size=1).build(
+        {"chatgpt:conv-1": "DGM-MAT"}
+    )
+    rendered = (tmp_path / "out" / "DGM-MAT" / "PROJECT_CONTEXT.md").read_text(encoding="utf-8")
+    assert "2026-11-09T10:11:12Z" in rendered
+    assert "Vault/raw/chatgpt/conv-1.json" in rendered
+    assert '"sequence_source":"export"' in rendered
+    assert "chatgpt:conv-1#message=a1" in rendered
+    assert "artifact-source-sha" in rendered
+    assert "https://example.invalid/source" in rendered
+
+
+def test_generator_uses_bounded_iterator_and_streamed_manifest(tmp_path):
+    store = _store(tmp_path)
+
+    class IteratorOnlyStore:
+        def iter_conversations(self, provider=None, batch_size=25):
+            assert batch_size == 1
+            yield from store.iter_conversations(provider=provider, batch_size=batch_size)
+
+        def list_conversations(self, provider=None):
+            raise AssertionError("generator must not materialize list_conversations")
+
+    result = ProjectContextDossierGenerator(
+        IteratorOnlyStore(), tmp_path / "out", batch_size=1
+    ).build({"chatgpt:conv-1": "DGM-MAT"})
+    manifest = json.loads(
+        (tmp_path / "out" / "DGM-MAT" / "manifest.json").read_text(encoding="utf-8")
+    )
+    assert result["batch_size"] == 1
+    assert "one decoded conversation snapshot" in result["memory_bound"]
+    assert manifest["source_ids"] == ["chatgpt:conv-1"]
+
+
+def test_progress_store_iterator_rejects_unsafe_batch_sizes(tmp_path):
+    store = _store(tmp_path)
+    for invalid in (0, -1, 501, True, 1.5):
+        try:
+            list(store.iter_conversations(batch_size=invalid))
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"invalid batch size accepted: {invalid!r}")
+
+
+
+def test_large_project_is_processed_across_multiple_sqlite_batches(tmp_path):
+    store = ConversationProgressStore(tmp_path / "large-progress.sqlite")
+    mapping = {}
+    for index in range(37):
+        cid = f"conversation-{index:03d}"
+        snapshot = _snapshot(cid=cid)
+        snapshot["conversation"]["messages"][0]["timestamp"] = f"2026-11-09T00:{index % 60:02d}:00Z"
+        store.record_conversation(
+            "chatgpt", cid, f"source-{index}", "Large project conversation",
+            status="complete", result=snapshot,
+        )
+        mapping[f"chatgpt:{cid}"] = "DGM-MAT"
+    before = hashlib.sha256((tmp_path / "large-progress.sqlite").read_bytes()).hexdigest()
+    result = ProjectContextDossierGenerator(
+        store, tmp_path / "out", batch_size=3
+    ).build(mapping)
+    after = hashlib.sha256((tmp_path / "large-progress.sqlite").read_bytes()).hexdigest()
+    dossier = (tmp_path / "out" / "DGM-MAT" / "PROJECT_CONTEXT.md").read_text(encoding="utf-8")
+    manifest = json.loads((tmp_path / "out" / "DGM-MAT" / "manifest.json").read_text(encoding="utf-8"))
+    assert result["conversations_assigned"] == 37
+    assert result["outputs"][0]["conversation_count"] == 37
+    assert result["outputs"][0]["message_count"] == 74
+    assert len(manifest["source_ids"]) == 37
+    assert "conversation-036" in dossier
+    assert before == after

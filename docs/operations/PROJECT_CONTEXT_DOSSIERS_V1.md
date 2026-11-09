@@ -53,3 +53,32 @@ Project keys are validated against path traversal. Writes use a temporary file
 in the destination directory followed by atomic replacement. History filenames
 are SHA-256 content-addressed. The generator does not delete or rewrite source
 records.
+
+
+## Bounded-memory and provenance hardening
+
+The follow-up implementation adds a SQLite iterator based on `fetchmany(batch_size)`.
+The dossier generator defaults to batches of 10 records (configurable from 1 to
+100), decodes one conversation snapshot at a time, and makes separate bounded
+passes for coverage, user messages, assistant messages, artifacts, and source
+manifest IDs. It writes the Markdown to a temporary file incrementally, hashes
+it in 1 MiB chunks, copies the content-addressed history file incrementally,
+and atomically replaces the current dossier. It does not build a project-wide
+list of snapshots, messages, artifacts, or source IDs.
+
+The explicit memory guarantee is therefore: SQLite page of at most
+`batch_size` result rows plus one decoded conversation snapshot and the
+current message/artifact being rendered. A single exceptionally large
+conversation or code artifact is still decoded as one JSON value and is not
+bounded independently; splitting source snapshots into message-level rows is
+a separate future migration. The generator reports this exact limitation and
+does not claim a hard process-RAM ceiling.
+
+Rendered message evidence now includes timestamp, source path, and serialized
+message metadata when supplied. Code candidates retain source message ID,
+artifact source fingerprint, source path and source URL when available; absent
+fields are explicitly marked unavailable. No provenance is fabricated.
+
+The manifest streams source IDs into JSON rather than retaining a potentially
+large array in memory. Schema version is 2. The source SQLite database and
+original archive remain read-only throughout generation.
