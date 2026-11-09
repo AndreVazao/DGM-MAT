@@ -97,12 +97,12 @@ These are provider product controls, not cryptographic isolation. The adapter th
 
 The extension can now consume an explicitly approved consultation marked `review_mode: "fresh_review"`. This is separate from the existing conversation-recovery mode.
 
-1. The authenticated local DGM-MAT API queues one consultation per selected provider in the existing SQLite browser-consultation store. Fresh mode currently accepts only ChatGPT and Gemini.
+1. The authenticated local DGM-MAT API queues one consultation per selected provider in the existing SQLite browser-consultation store. Fresh mode requires both ChatGPT and Gemini; one provider alone cannot complete an EGM review.
 2. Every consultation remains `PENDING_APPROVAL`; each provider request must be approved individually in the existing popup.
 3. The extension peeks at the next approved queue item without claiming it, then checks only the matching readiness mode. For fresh mode it requires the provider's explicit active privacy controls, a blank page, no recognized conversation ID, no visible prior messages and a visible composer. A failed preflight leaves the approved item pending; it does not consume a claim or trigger a cooldown.
 4. Before sending, the content script repeats the checks and consumes a one-shot nonce bound to the exact provider tab URL. It then waits for a new conversation ID and a stable response.
 5. The result API requires the host-observed privacy-mode and new-conversation evidence. Evidence and response are persisted with the consultation; a restart never replays a claimed consultation.
-6. The authenticated endpoint `GET /recovery/browser-consult/fresh-review/{review_id}` resumes the durable review and returns each provider's status, response and evidence.
+6. The authenticated endpoint `GET /recovery/browser-consult/fresh-review/{review_id}` resumes the durable review and returns the expected provider set, missing providers, each provider's status, response and evidence.
 
 The read-only `GET /recovery/browser-consult/peek?provider={provider}` endpoint lets the extension choose the correct preflight before consuming the one-shot claim. Enqueue uses the existing `POST /recovery/browser-consult/enqueue` contract with `review_mode: "fresh_review"` and a unique `review_id`; it still requires `free_capacity_confirmed: true`, explicit individual approval and the existing opt-in flag. Do not enable the flags merely to test the code.
 
