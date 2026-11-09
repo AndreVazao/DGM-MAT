@@ -318,3 +318,69 @@ def test_peek_does_not_claim_or_consume_approved_fresh_review(monkeypatch, tmp_p
     claimed = store.claim_next("chatgpt")
     assert claimed["consultation_id"] == consultation_id
     assert claimed["status"] == "RUNNING"
+
+
+def test_fresh_review_id_cannot_be_rebound_to_another_task_or_brief(monkeypatch, tmp_path):
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_ENABLED", "1")
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_FREE_PROVIDERS", "chatgpt,gemini")
+    store = BrowserConsultStore(tmp_path / "fresh-binding.sqlite3")
+    store.enqueue(
+        task_ref="egm-task:binding-1",
+        goal="Review original design.",
+        providers=["chatgpt", "gemini"],
+        review_mode="fresh_review",
+        review_id="review-bound",
+    )
+    with pytest.raises(ValueError, match="already bound"):
+        store.enqueue(
+            task_ref="egm-task:binding-2",
+            goal="Review original design.",
+            providers=["chatgpt", "gemini"],
+            review_mode="fresh_review",
+            review_id="review-bound",
+        )
+    with pytest.raises(ValueError, match="already bound"):
+        store.enqueue(
+            task_ref="egm-task:binding-1",
+            goal="Review a different design.",
+            providers=["chatgpt", "gemini"],
+            review_mode="fresh_review",
+            review_id="review-bound",
+        )
+
+
+def test_missing_expected_provider_keeps_fresh_review_pending(monkeypatch, tmp_path):
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_ENABLED", "1")
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_FREE_PROVIDERS", "gemini")
+    store = BrowserConsultStore(tmp_path / "fresh-missing-provider.sqlite3")
+    queued = store.enqueue(
+        task_ref="egm-task:missing-provider",
+        goal="Review this bounded design.",
+        providers=["chatgpt", "gemini"],
+        review_mode="fresh_review",
+        review_id="review-missing-provider",
+    )
+    assert queued["provider_count"] == 1
+    assert queued["expected_provider_count"] == 2
+    consultation_id = queued["consultation_ids"][0]
+    assert store.approve(consultation_id, operator="operator")
+    claimed = store.claim_next("gemini")
+    evidence = {
+        "provider": "gemini",
+        "source_id": "fresh-gemini-missing-provider",
+        "initial_source_id": None,
+        "initial_visible_message_count": 0,
+        "privacy_mode": "gemini_temporary_chat",
+        "privacy_mode_verified": True,
+        "verification": "blank_page_then_new_conversation_id",
+    }
+    store.finish(
+        consultation_id,
+        claim_token=claimed["claim_token"],
+        response_text="Gemini only; still incomplete.",
+        evidence=evidence,
+    )
+    review = store.get_review("review-missing-provider")
+    assert review["status"] == "PENDING"
+    assert review["missing_providers"] == ["chatgpt"]
+    assert review["expected_provider_count"] == 2
