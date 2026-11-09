@@ -73,6 +73,60 @@ class ConversationStore:
                 reverse=True,
             )
 
+    def search_threads(self, query: str, limit: int = 25) -> list[dict[str, Any]]:
+        """Search local durable thread metadata and message text without returning full transcripts."""
+        needle = query.strip().casefold()
+        if len(needle) < 2:
+            return []
+        bounded_limit = max(1, min(int(limit), 50))
+        with self._lock:
+            ordered = sorted(
+                self._threads.values(),
+                key=lambda item: item.updated_at,
+                reverse=True,
+            )
+            results: list[dict[str, Any]] = []
+            for thread in ordered:
+                title_match = needle in (thread.title or "").casefold()
+                context_match = needle in " ".join(
+                    value for value in (thread.project, thread.repository) if isinstance(value, str)
+                ).casefold()
+                matched_message = None
+                if not title_match and not context_match:
+                    for message in reversed(thread.messages):
+                        content = message.content if isinstance(message.content, str) else ""
+                        position = content.casefold().find(needle)
+                        if position < 0:
+                            continue
+                        start = max(0, position - 100)
+                        end = min(len(content), position + len(needle) + 160)
+                        matched_message = {
+                            "message_id": message.id,
+                            "message_role": message.role,
+                            "message_created_at": message.created_at,
+                            "snippet": content[start:end],
+                        }
+                        break
+                if not title_match and not context_match and matched_message is None:
+                    continue
+                result: dict[str, Any] = {
+                    "thread_id": thread.id,
+                    "title": thread.title,
+                    "created_at": thread.created_at,
+                    "updated_at": thread.updated_at,
+                    "project": thread.project,
+                    "repository": thread.repository,
+                    "match_type": "title" if title_match else "context" if context_match else "message",
+                }
+                if matched_message:
+                    result.update(matched_message)
+                else:
+                    result["snippet"] = (thread.title or "Nova conversa")[:240]
+                results.append(result)
+                if len(results) >= bounded_limit:
+                    break
+            return results
+
     def create_thread(
         self,
         title: str = "Nova conversa",

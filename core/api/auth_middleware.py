@@ -50,11 +50,29 @@ def _required_scope(scope: SecurityScope) -> str | None:
         return None
     if scope is SecurityScope.BROWSER_CAPTURE:
         return "browser-capture"
+    if scope is SecurityScope.MOBILE_READ:
+        return "mobile-read"
+    if scope is SecurityScope.MOBILE_CHAT:
+        return "mobile-chat"
+    if scope is SecurityScope.MOBILE_MAINTENANCE:
+        return "mobile-maintenance"
     if scope in {SecurityScope.LOCAL_CLIENT, SecurityScope.LOCAL_STATIC_CLIENT, SecurityScope.LOCAL_DOCUMENTATION}:
         return "local-client"
     if scope in {SecurityScope.OPERATOR, SecurityScope.PROVIDER_API, SecurityScope.PROVIDER_OPERATOR}:
         return "operator"
     return "operator"
+
+
+def _has_required_scope(scopes: Any, required: str | None) -> bool:
+    """Operator sessions are a superset; remote mobile sessions remain narrowly scoped."""
+    granted = set(scopes or ())
+    if not required:
+        return True
+    if required == "browser-capture":
+        return bool({"browser-capture", "operator"} & granted)
+    if required in {"mobile-read", "mobile-chat", "mobile-maintenance"}:
+        return required in granted or "operator" in granted
+    return required in granted
 
 
 class LocalSessionAuthMiddleware:
@@ -156,10 +174,7 @@ class LocalSessionAuthMiddleware:
             return
 
         required = _required_scope(classification.scope)
-        if required == "browser-capture":
-            sufficient = bool({"browser-capture", "operator"} & set(principal.scopes))
-        else:
-            sufficient = not required or required in principal.scopes
+        sufficient = _has_required_scope(principal.scopes, required)
         if not sufficient:
             if route_type == "websocket":
                 await self._websocket_denied(send, code=1008)

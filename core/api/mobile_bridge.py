@@ -6,7 +6,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from core.mobile_runtime import MobileConversationService
@@ -72,23 +72,30 @@ def _ollama_status() -> dict:
         with urlopen("http://127.0.0.1:11434/api/tags", timeout=2) as response:
             payload = json.loads(response.read().decode("utf-8"))
         models = [item.get("name") for item in payload.get("models", [])]
-        return {"available": True, "models": [m for m in models if m]}
-    except (OSError, ValueError):
+        installed = [m for m in models if isinstance(m, str) and m.strip()]
+        return {"available": bool(installed), "models": installed}
+    except (OSError, ValueError, TypeError):
         return {"available": False, "models": []}
 
 
 @router.get("/status")
 def get_mobile_status():
     tailscale = _tailscale_identity()
+    ollama = _ollama_status()
+    governed_chat = service.governed_chat_status()
+    ai_ready = bool(ollama.get("available") or governed_chat.get("available"))
     return {
-        "status": "ready",
+        "status": "ready" if ai_ready else "degraded",
+        "api_status": "ready",
         "bridge": "active",
         "chat": "continuous-thread",
         "intent": "enabled",
         "storage": "local-durable",
+        "ai_ready": ai_ready,
+        "ai_mode": "ollama" if ollama.get("available") else "governed-provider" if governed_chat.get("available") else "not-configured",
         "tailscale": tailscale,
-        "ollama": _ollama_status(),
-        "governed_chat": service.governed_chat_status(),
+        "ollama": ollama,
+        "governed_chat": governed_chat,
         "source_of_truth": "authorized-dgm-mat-pc",
     }
 
@@ -105,6 +112,21 @@ def create_thread(request: ThreadCreateRequest):
         project=request.project,
         repository=request.repository,
     )
+
+
+@router.get("/threads/search")
+def search_threads(
+    q: str = Query(min_length=2, max_length=200),
+    limit: int = Query(default=25, ge=1, le=50),
+):
+    """Search local conversation titles, project context and message snippets."""
+    query = q.strip()
+    if len(query) < 2:
+        raise HTTPException(status_code=422, detail="q must contain at least two non-space characters")
+    return {
+        "query": query,
+        "results": service.store.search_threads(query, limit=limit),
+    }
 
 
 @router.get("/threads/{thread_id}")

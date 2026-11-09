@@ -21,6 +21,7 @@ session_manager = LocalSessionManager(ttl_seconds=1800)
 # The Chrome extension receives only the browser-capture route scope and an 8-hour
 # local session so an explicitly enabled recovery run can finish unattended.
 extension_session_manager = LocalSessionManager(ttl_seconds=8 * 60 * 60)
+MOBILE_PAIR_CLIENT_IDS = frozenset({"dgm-mat-mobile-android", "dgm-mat-mobile-web"})
 _lock = threading.Lock()
 _attempts: dict[str, list[float]] = {}
 _RATE_WINDOW_SECONDS = 60.0
@@ -167,8 +168,13 @@ def create_pairing_code(request: Request, response: Response):
 
 @router.post("/pair", status_code=201)
 def pair_mobile_client(payload: PairingRequest, request: Request):
-    """Exchange a short-lived PC-local pairing code for a short-lived operator session."""
+    """Exchange a short-lived PC-local pairing code for an allowlisted scoped client session."""
     global _pairing_digest, _pairing_expires_at
+    # A pairing code must not let a remote caller choose a privileged client
+    # identity. The desktop cockpit uses the separate loopback-only bootstrap
+    # exchange; remote pairing is limited to the mobile and browser clients.
+    if payload.client_id != "dgm-mat-chrome-extension" and payload.client_id not in MOBILE_PAIR_CLIENT_IDS:
+        raise HTTPException(status_code=400, detail="Unsupported pairing client.")
     # Pairing-code issuance is loopback-only; redemption may come from the
     # already paired mobile client over its trusted local/Tailscale path.
     _check_origin(request)
@@ -195,7 +201,7 @@ def pair_mobile_client(payload: PairingRequest, request: Request):
     else:
         token, principal = session_manager.create_session(
             subject=payload.client_id,
-            scopes={"local-client", "operator"},
+            scopes={"local-client", "mobile-read", "mobile-chat", "mobile-maintenance"},
         )
     return {
         "access_token": token,

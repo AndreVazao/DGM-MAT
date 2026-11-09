@@ -65,3 +65,63 @@ def test_extension_pairing_issues_eight_hour_browser_capture_only_session(monkey
     assert principal.scopes == frozenset({"browser-capture"})
     assert paired["expires_in"] == 8 * 60 * 60
     assert local_auth_api.session_manager.authenticate(paired["access_token"]) is None
+
+
+def test_mobile_pairing_issues_narrow_scopes_without_general_operator(monkeypatch):
+    from fastapi import Response
+    from core.api.security_policy import SecurityScope
+
+    monkeypatch.setattr(local_auth_api, "_attempts", {})
+    request = _request("http://127.0.0.1:8181")
+    issued = local_auth_api.create_pairing_code(request, Response())
+    paired = local_auth_api.pair_mobile_client(
+        local_auth_api.PairingRequest(
+            code=issued["pairing_code"],
+            client_id="dgm-mat-mobile-android",
+        ),
+        request,
+    )
+    principal = local_auth_api.session_manager.authenticate(paired["access_token"])
+
+    assert principal is not None
+    assert principal.scopes == frozenset({
+        "local-client", "mobile-read", "mobile-chat", "mobile-maintenance"
+    })
+    assert "operator" not in principal.scopes
+    assert paired["expires_in"] == 30 * 60
+    assert auth_middleware._required_scope(SecurityScope.MOBILE_READ) == "mobile-read"
+    assert auth_middleware._required_scope(SecurityScope.MOBILE_CHAT) == "mobile-chat"
+    assert auth_middleware._required_scope(SecurityScope.MOBILE_MAINTENANCE) == "mobile-maintenance"
+
+
+def test_remote_pairing_rejects_unrecognized_client_identity_without_consuming_code(monkeypatch):
+    from fastapi import Response, HTTPException
+
+    monkeypatch.setattr(local_auth_api, "_attempts", {})
+    monkeypatch.setattr(local_auth_api, "_pairing_digest", None)
+    monkeypatch.setattr(local_auth_api, "_pairing_expires_at", 0.0)
+    request = _request("http://127.0.0.1:8181")
+    issued = local_auth_api.create_pairing_code(request, Response())
+
+    with pytest.raises(HTTPException) as exc:
+        local_auth_api.pair_mobile_client(
+            local_auth_api.PairingRequest(
+                code=issued["pairing_code"],
+                client_id="dgm-mat-desktop-cockpit",
+            ),
+            request,
+        )
+
+    assert exc.value.status_code == 400
+    assert local_auth_api._pairing_digest is not None
+
+
+def test_operator_scope_remains_a_superset_of_mobile_routes_but_mobile_is_not_operator():
+    from core.api.auth_middleware import _has_required_scope
+
+    assert _has_required_scope({"operator"}, "mobile-read")
+    assert _has_required_scope({"operator"}, "mobile-chat")
+    assert _has_required_scope({"operator"}, "mobile-maintenance")
+    assert _has_required_scope({"mobile-chat"}, "mobile-chat")
+    assert not _has_required_scope({"mobile-read"}, "operator")
+    assert not _has_required_scope({"mobile-chat"}, "mobile-maintenance")
