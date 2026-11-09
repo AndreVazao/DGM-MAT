@@ -144,7 +144,10 @@ consultPreviewButton.addEventListener("click", async () => {
   consultPreviewButton.disabled = true;
   consultSubmit.disabled = true;
   try {
-    const result = await send({ type: "DGM_PREVIEW_BROWSER_CONSULT", payload: draft });
+    const result = await send({
+      type: "DGM_PREVIEW_BROWSER_CONSULT",
+      payload: { goal: draft.goal, context: draft.context }
+    });
     consultPreview.value = result.prompt;
     consultPreviewDigest = result.prompt_sha256;
     consultPreviewSnapshot = JSON.stringify(draft);
