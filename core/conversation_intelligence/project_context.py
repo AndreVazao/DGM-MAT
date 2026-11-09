@@ -284,7 +284,7 @@ class ProjectContextDossierGenerator:
             normalized[source_key] = _safe_project_key(str(project_key))
 
         assigned_ids = set(normalized)
-        project_keys = sorted(set(normalized.values()))
+        seen_projects: set[str] = set()
         unmapped = incomplete = 0
         for row in self.progress_store.iter_conversations(batch_size=self.batch_size):
             if row.get("status") != "complete" or not isinstance(row.get("result"), dict):
@@ -296,10 +296,14 @@ class ProjectContextDossierGenerator:
                 continue
             provider = str(conversation.get("provider") or row.get("provider") or "unknown")
             cid = str(conversation.get("conversation_id") or row.get("conversation_id") or "")
-            if self._mapping_key(provider, cid) not in assigned_ids:
+            source_key = self._mapping_key(provider, cid)
+            if source_key not in assigned_ids:
                 unmapped += 1
+            else:
+                seen_projects.add(normalized[source_key])
 
         outputs = []
+        project_keys = sorted(seen_projects)
         for project_key in project_keys:
             project_dir = (self.output_root / project_key).resolve()
             if self.output_root not in project_dir.parents:
