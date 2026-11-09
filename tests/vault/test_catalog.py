@@ -358,7 +358,7 @@ def test_github_repository_links_are_indexed_with_message_provenance(tmp_path):
         title="Project discussion",
         conversation_url="https://chatgpt.com/c/conversation-123",
         messages=[
-            {"message_id": "m1", "content": "See https://github.com/AndreVazao/DGM-MAT/tree/main/core and https://github.com/AndreVazao/DGM-MAT"},
+            {"message_id": "m1", "content": "See https://github.com/andrevazao/dgm-mat/tree/main/core and https://github.com/andrevazao/dgm-mat"},
             {"message_id": "m2", "content": "Also inspect https://github.com/torvalds/linux.git."},
             {"message_id": "m3", "content": "Ignore https://github.com/login and https://evil.example/AndreVazao/DGM-MAT"},
         ],
@@ -368,7 +368,7 @@ def test_github_repository_links_are_indexed_with_message_provenance(tmp_path):
     result = vault.list_github_repository_references()
     assert result["total"] == 2
     by_url = {item["canonical_url"]: item for item in result["items"]}
-    dgm = by_url["https://github.com/AndreVazao/DGM-MAT"]
+    dgm = by_url["https://github.com/andrevazao/dgm-mat"]
     assert dgm["verification_status"] == "pending_verification"
     assert dgm["occurrence_count"] == 1
     assert dgm["sources"][0]["provider"] == "chatgpt"
@@ -384,7 +384,7 @@ def test_github_repository_reference_occurrences_are_idempotent(tmp_path):
         "conversation_id": "gem-1",
         "title": "Gemini discussion",
         "conversation_url": "https://gemini.google.com/app/gem-1",
-        "messages": [{"message_id": "m1", "content": "https://github.com/AndreVazao/DGM-MAT"}],
+        "messages": [{"message_id": "m1", "content": "https://github.com/andrevazao/dgm-mat"}],
     }
     vault.record_github_repository_references(**payload)
     vault.record_github_repository_references(**payload)
@@ -400,11 +400,11 @@ def test_archive_conversation_automatically_extracts_github_links(tmp_path):
         conversation_id="grok-1",
         title="Review this repo",
         url="https://grok.com/chat/grok-1",
-        messages=[{"message_id": "msg-1", "role": "user", "content": "Please inspect https://github.com/AndreVazao/DGM-MAT/pull/319"}],
+        messages=[{"message_id": "msg-1", "role": "user", "content": "Please inspect https://github.com/andrevazao/dgm-mat/pull/319"}],
     )
     refs = vault.list_github_repository_references()
     assert refs["total"] == 1
-    assert refs["items"][0]["canonical_url"] == "https://github.com/AndreVazao/DGM-MAT"
+    assert refs["items"][0]["canonical_url"] == "https://github.com/andrevazao/dgm-mat"
 
 
 def test_github_reference_verification_uses_public_metadata_without_credentials(tmp_path, monkeypatch):
@@ -421,7 +421,7 @@ def test_github_reference_verification_uses_public_metadata_without_credentials(
         def read(self, size):
             return json.dumps({
                 "full_name": "AndreVazao/DGM-MAT",
-                "html_url": "https://github.com/AndreVazao/DGM-MAT",
+                "html_url": "https://github.com/andrevazao/dgm-mat",
                 "description": "DevOps God Mode",
                 "default_branch": "main",
                 "archived": False,
@@ -439,7 +439,7 @@ def test_github_reference_verification_uses_public_metadata_without_credentials(
     vault.record_github_repository_references(
         provider="claude", conversation_id="claude-1", title="Repo",
         conversation_url=None,
-        messages=[{"message_id": "m1", "content": "https://github.com/AndreVazao/DGM-MAT"}],
+        messages=[{"message_id": "m1", "content": "https://github.com/andrevazao/dgm-mat"}],
     )
     result = vault.verify_pending_github_repository_references(limit=1)
     assert result["checked"] == 1
