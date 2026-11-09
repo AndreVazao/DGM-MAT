@@ -164,7 +164,7 @@ def test_mission_engine_routes_typed_inventory_through_registered_executor(tmp_p
         },
     )
 
-    mission = engine.create_mission("inventory repository DGM-MAT")
+    mission = engine.create_mission("inventory repository DGM-MAT", "Read-only repository inventory")
     action = engine.action_queue.get_action(mission.metadata["action_id"])
     assert action["status"] == "APPROVED"
     result = engine._handle_queue_execution({"mission_id": mission.mission_id})
