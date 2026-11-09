@@ -118,15 +118,14 @@ def create_thread(request: ThreadCreateRequest):
 def search_threads(
     q: str = Query(min_length=2, max_length=200),
     limit: int = Query(default=25, ge=1, le=50),
+    offset: int = Query(default=0, ge=0, le=100000),
 ):
-    """Search local conversation titles, project context and message snippets."""
+    """Search local conversations with stable offset pagination and provenance."""
     query = q.strip()
     if len(query) < 2:
         raise HTTPException(status_code=422, detail="q must contain at least two non-space characters")
-    return {
-        "query": query,
-        "results": service.store.search_threads(query, limit=limit),
-    }
+    page = service.store.search_threads_page(query, limit=limit, offset=offset)
+    return {"query": query, **page}
 
 
 @router.get("/threads/{thread_id}")
