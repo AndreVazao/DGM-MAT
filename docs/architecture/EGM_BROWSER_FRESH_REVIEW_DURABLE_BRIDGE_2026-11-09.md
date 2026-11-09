@@ -9,7 +9,7 @@ Connect the EGM fresh-review protocol to the existing free-tier browser consulta
 
 ## Lifecycle
 
-1. The local authenticated API accepts a consultation with `review_mode=fresh_review`, a bounded `review_id`, a task reference, and ChatGPT/Gemini providers only.
+1. The local authenticated API accepts a consultation with `review_mode=fresh_review`, a bounded `review_id`, a task reference, and exactly both ChatGPT and Gemini providers. A single provider is rejected.
 2. The existing SQLite `browser_consultations` table stores `review_mode`, `review_id`, status, prompt digest, response digest, and serialized UI evidence. Existing rows migrate with `review_mode=standard`; the existing table and queue remain authoritative.
 3. Each provider item starts in `PENDING_APPROVAL`. The operator approves each provider separately through the existing popup. Free-tier capacity attestation and the existing disabled-by-default opt-in remain mandatory.
 4. The extension calls the read-only `GET /recovery/browser-consult/peek` before claiming. It then checks only the required UI mode. A missing privacy-mode preflight leaves the item pending and consumes no claim or cooldown.
