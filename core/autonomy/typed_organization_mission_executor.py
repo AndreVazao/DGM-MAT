@@ -81,8 +81,14 @@ class TypedOrganizationMissionExecutor:
         ):
             raise RuntimeError("Typed worker durable receipt does not match the returned result.")
 
+        output = (
+            f"Read-only {task_kind} completed for repository {repository_id}. "
+            f"Worker: {decision.agent_id}. Durable receipt: {response['message_id']}."
+        )
         return {
             "handler": intent,
+            "output": output,
+            "summary": f"{task_kind} completed for {repository_id}",
             "task_kind": task_kind,
             "task_id": task_id,
             "repository_id": repository_id,
