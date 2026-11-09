@@ -101,10 +101,10 @@ class TypedOrganizationMissionExecutor:
 
         normalized = unicodedata.normalize("NFKD", goal.casefold())
         normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
-        words = " ".join(re.findall(r"[a-z0-9]+", normalized))
+        normalized = " ".join(normalized.split())
         match = re.search(
             r"(?:repository|repositorio) ([a-z0-9][a-z0-9._-]{0,63})$",
-            words,
+            normalized,
         )
         if match is None:
             raise ValueError(
