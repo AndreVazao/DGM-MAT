@@ -1,11 +1,11 @@
 # Automatic repository learning at full-runtime startup
 
-**Status:** implemented in PR `feat/repository-learning-autostart-2026-11-09`  
+**Status:** implemented for standard profile; LOW_MEMORY startup guard included in this change.  
 **Scope:** local metadata-only repository inventory; not conversation ingestion or autonomous coding.
 
 ## Startup behavior
 
-The full DGM-MAT runtime now starts the existing `RepositoryLearningService` by default. The worker:
+The full DGM-MAT runtime starts the existing `RepositoryLearningService` by default on the standard profile. The worker:
 
 - scans only configured roots (`DGM_REPO_SCAN_ROOTS` plus the conservative built-in roots);
 - processes bounded batches (default 5 repositories, configurable up to 25);
@@ -15,11 +15,14 @@ The full DGM-MAT runtime now starts the existing `RepositoryLearningService` by 
 - excludes common dependency/build folders and sensitive filenames;
 - does not execute project code, modify Git state, edit source files, or read the protected `DGM-MAT-FULL-MIRROR` contents.
 
-## Operator control
+## Operator control and resource profile
 
-Default: enabled when the **full runtime** starts.
+- Standard profile: automatic startup is enabled by default.
+- LOW_MEMORY profile (less than 4 GB total RAM): automatic startup is disabled by default to preserve resources.
+- Explicit opt-in: set `DGM_REPOSITORY_LEARNING_ENABLED=1` to enable the worker even on a LOW_MEMORY machine.
+- Explicit opt-out: set `DGM_REPOSITORY_LEARNING_ENABLED=0` to disable it on every profile.
 
-Set `DGM_REPOSITORY_LEARNING_ENABLED=0` to disable automatic startup. The existing authenticated/runtime API controls remain available:
+On older machines, use conservative settings such as `DGM_REPOSITORY_LEARNING_BATCH_SIZE=1` and `DGM_REPOSITORY_LEARNING_REFRESH_SECONDS=3600`. The existing authenticated/runtime API controls remain available:
 
 - `GET /runtime/repository-learning` — status and inventory
 - `GET /runtime/repository-learning/tree?repo_path=...` — read an indexed tree
@@ -30,8 +33,5 @@ The worker is not a replacement for the GitHub portfolio comparison or branch re
 
 ## What this does not yet do
 
-It does not import ChatGPT/Grok/Gemini/Zia conversations, extract scripts from provider sessions, create project context dossiers, or run coding agents. Those require the separate authenticated conversation-ingestion and project-context stages. A repository inventory is evidence about the checkout, not proof that its historical conversations have been recovered.
+It does not import ChatGPT/Grok/Gemini/Claude/DeepSeek/Qwen conversations, extract scripts from provider sessions, create project context dossiers, or run coding agents. Those require the separate authenticated conversation-ingestion and project-context stages. A repository inventory is evidence about the checkout, not proof that its historical conversations have been recovered.
 
-## Resource profile
-
-The service is intentionally incremental and low-concurrency. On older machines, reduce `DGM_REPOSITORY_LEARNING_BATCH_SIZE` (minimum 1) and increase `DGM_REPOSITORY_LEARNING_REFRESH_SECONDS`. Keep the opt-out available for diagnosis.
