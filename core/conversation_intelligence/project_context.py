@@ -2,11 +2,6 @@
 
 The generator streams SQLite pages and writes Markdown incrementally. A single
 conversation snapshot is decoded at a time; original progress rows are read-only.
-"""Evidence-first, explicitly mapped project context dossiers.
-
-The generator reads completed conversation snapshots from ConversationProgressStore.
-It never guesses project membership, rewrites source archives, or treats assistant
-messages as user approvals. Output files are generated artifacts, not source records.
 """
 from __future__ import annotations
 
@@ -19,10 +14,6 @@ import tempfile
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from pathlib import Path
 from typing import TextIO
-import tempfile
-from collections import defaultdict
-from pathlib import Path
-from typing import Mapping
 
 from .progress_store import ConversationProgressStore
 
@@ -413,27 +404,21 @@ class ProjectContextDossierGenerator:
             raise
 
     def build(self, explicit_mapping: Mapping[str, str]) -> dict:
-    def build(self, explicit_mapping: Mapping[str, str]) -> dict:
         """Build assigned projects; unmapped conversations are counted, never guessed."""
+        if not isinstance(explicit_mapping, Mapping):
+            raise ValueError("explicit_mapping must be a mapping of exact provider:conversation_id keys.")
         normalized: dict[str, str] = {}
         for source_key, project_key in explicit_mapping.items():
             if not isinstance(source_key, str) or ":" not in source_key:
                 raise ValueError("mapping keys must be exact 'provider:conversation_id' identifiers.")
+            provider, conversation_id = source_key.split(":", 1)
+            if not provider.strip() or not conversation_id.strip():
+                raise ValueError("mapping keys must include a provider and conversation ID.")
             normalized[source_key] = _safe_project_key(str(project_key))
 
-        assigned_ids = set(normalized)
         seen_projects: set[str] = set()
         unmapped = incomplete = 0
         for row in self.progress_store.iter_conversations(batch_size=self.batch_size):
-            if row.get("status") != "complete" or not isinstance(row.get("result"), dict):
-                incomplete += 1
-                continue
-            conversation = row["result"].get("conversation")
-        rows = self.progress_store.list_conversations()
-        grouped: dict[str, list[dict]] = defaultdict(list)
-        unmapped = 0
-        incomplete = 0
-        for row in rows:
             if row.get("status") != "complete" or not isinstance(row.get("result"), dict):
                 incomplete += 1
                 continue
@@ -445,10 +430,11 @@ class ProjectContextDossierGenerator:
             provider = str(conversation.get("provider") or row.get("provider") or "unknown")
             cid = str(conversation.get("conversation_id") or row.get("conversation_id") or "")
             source_key = self._mapping_key(provider, cid)
-            if source_key not in assigned_ids:
+            project_key = normalized.get(source_key)
+            if project_key is None:
                 unmapped += 1
             else:
-                seen_projects.add(normalized[source_key])
+                seen_projects.add(project_key)
 
         outputs = []
         project_keys = sorted(seen_projects)
@@ -492,77 +478,3 @@ class ProjectContextDossierGenerator:
             "memory_bound": "SQLite fetchmany(batch_size) plus one decoded conversation snapshot and streamed output",
             "outputs": outputs,
         }
-            project_key = normalized.get(self._mapping_key(provider, cid))
-            if not project_key:
-                unmapped += 1
-                continue
-            grouped[project_key].append({
-                "provider": provider,
-                "conversation_id": cid,
-                "title": conversation.get("title") or row.get("title") or "Untitled conversation",
-                "url": conversation.get("url"),
-                "processed_at": row.get("processed_at"),
-                "source_fingerprint": row.get("source_fingerprint"),
-                "messages": conversation.get("messages") if isinstance(conversation.get("messages"), list) else [],
-                "artifacts": result.get("artifacts") if isinstance(result.get("artifacts"), list) else [],
-            })
-
-        outputs = []
-        for project_key in sorted(grouped):
-            markdown = render_project_context(project_key, grouped[project_key])
-            digest = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
-            project_dir = (self.output_root / project_key).resolve()
-            if self.output_root not in project_dir.parents:
-                raise ValueError("project output escaped the configured output root.")
-            history_dir = project_dir / "history"
-            history_dir.mkdir(parents=True, exist_ok=True)
-            history_path = history_dir / f"{digest}.md"
-            if not history_path.exists():
-                self._atomic_write(history_path, markdown)
-            current_path = project_dir / "PROJECT_CONTEXT.md"
-            self._atomic_write(current_path, markdown)
-            manifest = {
-                "schema_version": 1,
-                "project_key": project_key,
-                "sha256": digest,
-                "conversation_count": len(grouped[project_key]),
-                "source_ids": [
-                    self._mapping_key(item["provider"], item["conversation_id"])
-                    for item in sorted(grouped[project_key], key=lambda x: (x["provider"], x["conversation_id"]))
-                ],
-                "mapping_mode": "explicit_only",
-            }
-            self._atomic_write(
-                project_dir / "manifest.json",
-                json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-            )
-            outputs.append({
-                "project_key": project_key,
-                "path": str(current_path),
-                "sha256": digest,
-                "conversation_count": len(grouped[project_key]),
-            })
-        return {
-            "projects_written": len(outputs),
-            "conversations_assigned": sum(item["conversation_count"] for item in outputs),
-            "conversations_unmapped": unmapped,
-            "conversations_incomplete": incomplete,
-            "outputs": outputs,
-        }
-
-    @staticmethod
-    def _atomic_write(path: Path, content: str) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
-                stream.write(content)
-                stream.flush()
-                os.fsync(stream.fileno())
-            os.replace(temporary, path)
-        except Exception:
-            try:
-                os.unlink(temporary)
-            except FileNotFoundError:
-                pass
-            raise
