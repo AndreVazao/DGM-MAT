@@ -50,6 +50,8 @@ def _required_scope(scope: SecurityScope) -> str | None:
         return None
     if scope is SecurityScope.BROWSER_CAPTURE:
         return "browser-capture"
+    if scope is SecurityScope.BROWSER_CONSULT_CONTROL:
+        return "browser-consult-control"
     if scope is SecurityScope.MOBILE_READ:
         return "mobile-read"
     if scope is SecurityScope.MOBILE_CHAT:
@@ -68,8 +70,8 @@ def _has_required_scope(scopes: Any, required: str | None) -> bool:
     granted = set(scopes or ())
     if not required:
         return True
-    if required == "browser-capture":
-        return bool({"browser-capture", "operator"} & granted)
+    if required in {"browser-capture", "browser-consult-control"}:
+        return required in granted or "operator" in granted
     if required in {"mobile-read", "mobile-chat", "mobile-maintenance"}:
         return required in granted or "operator" in granted
     return required in granted
