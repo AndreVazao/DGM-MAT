@@ -224,3 +224,44 @@ def test_organization_result_change_after_review_invalidates_approval(monkeypatc
     )
     assert decision.status_code == 409
     assert FakeApprovalManager.records[approval_id].status == "awaiting_approval"
+
+
+def test_organization_task_api_runs_real_allowlisted_readonly_worker(tmp_path, monkeypatch):
+    from core.autonomy.mission_engine import MissionEngine
+    from core.organization.message_bus import InternalMessageBus
+
+    workspace = tmp_path / "workspace"
+    repository = workspace / "demo-repo"
+    repository.mkdir(parents=True)
+    (repository / "README.md").write_text("# Synthetic repository\\n", encoding="utf-8")
+    (repository / "module.py").write_text("VALUE = 7\\n", encoding="utf-8")
+    monkeypatch.setenv("DGM_READ_ONLY_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("DGM_READ_ONLY_REPOSITORIES", '{"demo":"demo-repo"}')
+
+    bus = InternalMessageBus(tmp_path / "organization.sqlite3")
+    engine = MissionEngine(organization_bus=bus)
+    monkeypatch.setattr(runtime_api, "mission_engine", engine)
+    monkeypatch.setattr(runtime_api, "ApprovalManager", FakeApprovalManager)
+    app = FastAPI()
+    app.include_router(runtime_api.router)
+    client = TestClient(app)
+
+    try:
+        response = client.post(
+            "/runtime/organization/tasks",
+            json={"task_kind": "repository_inventory", "repository_id": "demo"},
+        )
+        assert response.status_code == 201
+        body = response.json()
+        assert body["status"] == "COMPLETED"
+        task = body["task"]
+        assert task["assigned_agent"] == "agent:repository-cartographer"
+        assert task["durable_receipt"] is True
+        assert task["message_id"].startswith("msg:readonly:")
+        assert task["result_sha256"] and len(task["result_sha256"]) == 64
+        assert task["result"]["status"] == "completed"
+        restored = engine.get_organization_task(task["task_id"])
+        assert restored is not None
+        assert restored.metadata["worker_execution"]["durable_receipt"] is True
+    finally:
+        bus.close()
