@@ -60,6 +60,7 @@ def list_github_repository_references(
 def reindex_github_repository_references(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    legacy_offset: int = Query(default=0, ge=0),
 ):
     """Backfill archived Vault and legacy ChatGPT recovery exports without modifying source files."""
     try:
@@ -70,7 +71,8 @@ def reindex_github_repository_references(
             for item in vault.list_conversations()
         }
         ledger = get_recovery_ledger()
-        sources = ledger.list_sources(limit=limit, offset=offset)
+        legacy_total = ledger.source_count()
+        sources = ledger.list_sources(limit=limit, offset=legacy_offset)
         legacy_checked = legacy_links = legacy_failed = 0
         legacy_errors = []
         for source in sources:
@@ -104,7 +106,10 @@ def reindex_github_repository_references(
                 "failed": legacy_failed,
                 "errors": legacy_errors[:20],
             },
-            "next_offset": vault_result["next_offset"],
+            "next_offset": {
+                "vault": vault_result["next_offset"],
+                "legacy_chatgpt": legacy_offset + len(sources) if legacy_offset + len(sources) < legacy_total else None,
+            },
         }
     except (ValueError, OSError) as exc:
         raise HTTPException(status_code=503, detail="GitHub reference reindex could not be completed safely.") from exc
