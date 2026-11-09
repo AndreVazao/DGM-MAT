@@ -38,6 +38,7 @@ class ReviewNextAction(str, Enum):
     ACCEPT_FOR_OPERATOR_APPROVAL = "ACCEPT_FOR_OPERATOR_APPROVAL"
     RETURN_TO_AUTHOR = "RETURN_TO_AUTHOR"
     ASK_NEXT_INDEPENDENT_REVIEWER = "ASK_NEXT_INDEPENDENT_REVIEWER"
+    REVIEW_REVISED_RESULT = "REVIEW_REVISED_RESULT"
     WEB_RESEARCH_REQUIRED = "WEB_RESEARCH_REQUIRED"
     BLOCKED = "BLOCKED"
 
@@ -203,6 +204,7 @@ class TechnicalDirectorReviewPolicy:
         rounds: tuple[PeerReviewRound, ...],
         quality: QualityAssessment,
         research_question: str = "",
+        author_revision_ready: bool = False,
     ) -> PeerReviewDecision:
         if author not in self.ALLOWED_PROVIDERS:
             raise DirectorInputError("author_provider_not_allowed")
@@ -234,10 +236,15 @@ class TechnicalDirectorReviewPolicy:
                     ReviewNextAction.ACCEPT_FOR_OPERATOR_APPROVAL, None, len(rounds), None,
                     "objective_gates_passed_and_independent_peer_approved; operator approval still required",
                 )
-            if latest.outcome == ReviewOutcome.REQUEST_CHANGES:
+            if latest.outcome == ReviewOutcome.REQUEST_CHANGES and not author_revision_ready:
                 return PeerReviewDecision(
                     ReviewNextAction.RETURN_TO_AUTHOR, author, len(rounds), None,
                     "peer_review_requested_changes; revise against cited findings before another review",
+                )
+            if latest.outcome == ReviewOutcome.REQUEST_CHANGES and author_revision_ready:
+                return PeerReviewDecision(
+                    ReviewNextAction.REVIEW_REVISED_RESULT, latest.reviewer, len(rounds), None,
+                    "author_revision_ready; the same independent reviewer must verify the exact revised candidate",
                 )
 
         used = {item.reviewer for item in rounds}
