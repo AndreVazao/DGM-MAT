@@ -23,6 +23,11 @@ def _store() -> BrowserConsultStore:
     return _store_instance
 
 
+def _mission_engine():
+    from core.api.runtime_api import mission_engine
+    return mission_engine
+
+
 def _principal(request: Request) -> dict:
     principal = request.scope.get("state", {}).get("dgm_principal")
     if not isinstance(principal, dict) or not isinstance(principal.get("session_id"), str):
@@ -98,8 +103,7 @@ def build_browser_consult_mission_context(payload: BrowserConsultMissionContextR
     """Build a bounded, redacted consultation context from one durable mission checkpoint."""
     _principal(request)
     try:
-        from core.api.runtime_api import mission_engine
-
+        mission_engine = _mission_engine()
         checkpoint = mission_engine.missions_path / (payload.mission_id + ".json")
         if not checkpoint.is_file() or checkpoint.is_symlink():
             raise HTTPException(status_code=404, detail="Mission checkpoint not found.")
@@ -334,8 +338,7 @@ def complete_browser_consultation(payload: BrowserConsultResultRequest, request:
         elif result.get("status") == "COMPLETED" and re.fullmatch(r"mission_[0-9a-f]{8}", task_ref):
             try:
                 from datetime import datetime, timezone
-                from core.api.runtime_api import mission_engine
-
+                mission_engine = _mission_engine()
                 mission = mission_engine._reload_mission_checkpoint(task_ref)
                 if mission is not None:
                     metadata = mission.metadata if isinstance(mission.metadata, dict) else {}
