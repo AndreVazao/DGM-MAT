@@ -41,6 +41,7 @@ class ApprovalManager:
                 "impact": payload.get("impact", "LOW"),
                 "requested_at": item.get("created_at"),
                 "decision_at": item.get("approved_at"),
+                "approved_by": item.get("approved_by"),
                 "reason": item.get("error_message"),
             }
         return result
@@ -49,13 +50,13 @@ class ApprovalManager:
         self.queue.request_approval(task_id, diff, risk_score, impact)
         return self.queue.get_approval(task_id) or {}
 
-    def approve(self, task_id: str) -> bool:
+    def approve(self, task_id: str, operator: str = "manual") -> bool:
         """Return whether the durable approval transition was accepted."""
-        return self.queue.approve_approval(task_id, operator="manual")
+        return self.queue.approve_approval(task_id, operator=operator)
 
-    def reject(self, task_id: str, reason: str = "") -> bool:
+    def reject(self, task_id: str, reason: str = "", operator: str = "manual") -> bool:
         """Return whether the durable rejection transition was accepted."""
-        return self.queue.reject_approval(task_id, reason, operator="manual")
+        return self.queue.reject_approval(task_id, reason, operator=operator)
 
     def get_pending_approvals(self) -> List[Dict[str, Any]]:
         return [
