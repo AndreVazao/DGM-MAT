@@ -104,6 +104,8 @@ def test_desktop_chat_exposes_thread_history_controls(qt_app):
 
     assert chat.new_thread_btn.text() == "＋ Nova conversa"
     assert chat.search_btn.text() == "Pesquisar"
+    assert chat.search_more_btn.text() == "Mais resultados"
+    assert not chat.search_more_btn.isEnabled()
     assert chat.thread_list is not None
     assert chat._active_thread_id is None
 
@@ -201,4 +203,29 @@ def test_transcript_entries_are_written_sequentially(qt_app, monkeypatch):
 
     assert len(calls) == 2
     assert calls[1][1]["payload"]["content"] == "estado da missão"
+    chat.close()
+
+
+
+def test_desktop_history_search_uses_next_offset(qt_app, monkeypatch):
+    chat = CommandConsoleWidget()
+    calls = []
+    monkeypatch.setattr(
+        chat,
+        "_conversation_request",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+    chat.search_field.setText("DGM")
+    chat._search_threads()
+
+    assert calls[0][1]["params"] == {"q": "DGM", "limit": 25, "offset": 0}
+    chat._on_conversation_request_completed(
+        "thread-search",
+        {"results": [], "total_count": 30, "next_offset": 25, "has_more": True},
+        "",
+    )
+    assert chat.search_more_btn.isEnabled()
+
+    chat._search_more_threads()
+    assert calls[1][1]["params"] == {"q": "DGM", "limit": 25, "offset": 25}
     chat.close()
