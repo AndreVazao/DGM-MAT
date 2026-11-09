@@ -36,3 +36,12 @@ This increment produces a bounded research question only. It does not silently b
 ## Explicit non-capabilities
 
 This increment is a deterministic policy/state machine. It does not launch Codex/Claude, execute code, collect Git diffs, run tests, or make real provider calls. Those operations require separately tested host adapters, isolation, receipts, and task-specific approval.
+
+
+## Provider command references
+
+The current Codex CLI reference documents `codex exec`, `--sandbox read-only`, `--ask-for-approval`, `--ignore-user-config`, JSONL output and the managed `--worktree` option: https://learn.chatgpt.com/docs/cli/reference
+
+Anthropic's CLI reference documents print mode, JSON output, turn limits, plan permission mode and tool deny lists: https://docs.anthropic.com/en/docs/claude-code/cli-usage
+
+These flags are not a substitute for host-level process/network isolation. The DGM-MAT must verify the installed CLI version and effective runtime policy before enabling a process adapter.
