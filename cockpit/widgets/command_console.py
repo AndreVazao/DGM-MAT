@@ -573,13 +573,22 @@ class CommandConsoleWidget(QWidget):
         if action == "thread-create":
             self._thread_create_active = False
         if error:
-            if action in {"send-user-entry", "thread-create"}:
+            if action == "send-user-entry":
                 self._pending_directive = None
                 self._append_message(
                     "Erro",
                     f"A mensagem não foi guardada no histórico; por segurança, a missão não foi enviada. {error}",
                     "error",
                 )
+            elif action == "thread-create":
+                had_pending_message = bool(self._pending_directive)
+                self._pending_directive = None
+                message = (
+                    f"A mensagem não foi guardada; a missão não foi enviada. {error}"
+                    if had_pending_message
+                    else f"Não foi possível criar uma nova conversa. {error}"
+                )
+                self._append_message("Erro", message, "error")
             elif action == "transcript-entry":
                 self._append_message(
                     "Aviso",
