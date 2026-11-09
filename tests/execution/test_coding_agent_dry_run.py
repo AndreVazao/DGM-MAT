@@ -40,10 +40,14 @@ def test_dry_run_builds_fixed_read_only_argv_without_launch(repository, provider
     plan = planner.plan(_request(repository, provider=provider))
     assert plan.launch_enabled is False
     assert plan.access_mode == "read_only"
-    assert plan.network_allowed is False
+    assert plan.network_isolation_verified is False
+    assert plan.provider_controls_verified is False
+    assert plan.network_allowed is (False if provider == "codex" else None)
     assert plan.write_allowed is False
     assert plan.cwd == str(repository.resolve())
     assert plan.request_sha256 and len(plan.request_sha256) == 64
+    if provider == "codex":
+        assert "--ignore-user-config" in plan.argv
     assert "--dangerously-bypass-approvals-and-sandbox" not in plan.argv
     assert "--dangerously-skip-permissions" not in plan.argv
     assert "--sandbox" in plan.argv if provider == "codex" else "--permission-mode" in plan.argv
