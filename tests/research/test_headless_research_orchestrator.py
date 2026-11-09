@@ -82,7 +82,7 @@ def test_github_repository_search_uses_fixed_read_only_argv(monkeypatch):
             "isArchived": False,
             "isFork": False,
             "license": {"name": "MIT"},
-            "primaryLanguage": {"name": "Python"},
+            "language": "Python",
             "visibility": "PUBLIC",
         }]
         return SimpleNamespace(returncode=0, stdout=json.dumps(payload), stderr="")
@@ -98,7 +98,7 @@ def test_github_repository_search_uses_fixed_read_only_argv(monkeypatch):
     argv, kwargs = calls[0]
     assert argv[:4] == ["gh", "search", "repos", "agent research framework"]
     assert "--archived=false" in argv
-    assert "--visibility" in argv and "public" in argv
+    assert "--visibility" not in argv
     assert kwargs["shell"] is False
     assert kwargs["stdin"] is __import__("subprocess").DEVNULL
     assert result["mutated_repositories"] is False
