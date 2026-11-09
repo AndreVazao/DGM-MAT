@@ -389,6 +389,7 @@ class BrowserConsultStore:
         for row in rows:
             item = dict(row)
             raw_evidence = item.pop("evidence_json", None)
+            item.pop("review_expected_providers_json", None)
             item["evidence"] = json.loads(raw_evidence) if raw_evidence else None
             item["result_trusted"] = False
             item["automatic_retry"] = False
