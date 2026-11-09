@@ -127,6 +127,11 @@ class OrganizationTaskManager:
                 schema_version=self.SCHEMA_VERSION,
             )
 
+    @property
+    def durable_persistence_enabled(self) -> bool:
+        """Whether task lifecycle updates use the existing SQLite message bus."""
+        return self._message_bus is not None
+
     def create(self, task: Task) -> Task:
         with self._lock:
             if task.task_id in self._tasks:
