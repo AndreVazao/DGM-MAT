@@ -17,6 +17,7 @@ on:
       - "core/api/recovery_api.py"
       - "core/api/browser_consult_api.py"
       - "tests/test_browser_consult_store.py"
+      - "tests/api/test_browser_consult_api.py"
       - "core/recovery/**"
       - "core/conversation_intelligence/**"
       - "core/storage/**"
@@ -94,7 +95,8 @@ jobs:
             tests/api/test_extension_session_scope.py \
             tests/api/test_recovery_api.py \
             tests/test_recovery_ledger.py \
-            tests/test_browser_consult_store.py
+            tests/test_browser_consult_store.py \
+            tests/api/test_browser_consult_api.py
       - name: Package unpacked Chrome extension
         run: |
           cd browser_extension
