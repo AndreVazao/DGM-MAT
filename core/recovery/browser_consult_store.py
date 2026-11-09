@@ -367,7 +367,7 @@ class BrowserConsultStore:
                 else "PENDING" if any(item["status"] in {"PENDING_APPROVAL", "PENDING", "RUNNING"} for item in consultations)
                 else "INCOMPLETE"
             ),
-            "reviewer_count": len(consultations),
+            "provider_count": len(consultations),
             "consultations": consultations,
             "independence_attested": False,
         }
