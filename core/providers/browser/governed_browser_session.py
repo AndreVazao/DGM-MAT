@@ -276,7 +276,13 @@ class GovernedBrowserSession:
             page = self._require_page()
             if self.screenshot_dir is None:
                 raise RuntimeError("Screenshot output directory was not configured")
-            if not isinstance(filename, str) or Path(filename).name != filename:
+            if (
+                not isinstance(filename, str)
+                or not filename
+                or "/" in filename
+                or "\\" in filename
+                or Path(filename).name != filename
+            ):
                 raise BrowserPolicyError("Screenshot path traversal denied")
             name = Path(filename).name
             if not name or name in {".", ".."}:
