@@ -20,18 +20,20 @@ class FakeApprovalManager:
         self.records.setdefault(task_id, {"status": "awaiting_approval", "diff": diff})
         return {"task_id": task_id}
 
-    def approve(self, task_id):
+    def approve(self, task_id, operator="manual"):
         item = self.records.get(task_id)
         if not item or item["status"] != "awaiting_approval":
             return False
         item["status"] = "approved"
+        item["approved_by"] = operator
         return True
 
-    def reject(self, task_id, reason=""):
+    def reject(self, task_id, reason="", operator="manual"):
         item = self.records.get(task_id)
         if not item or item["status"] != "awaiting_approval":
             return False
         item["status"] = "rejected"
+        item["approved_by"] = operator
         item["reason"] = reason
         return True
 
@@ -138,9 +140,11 @@ def test_organization_result_approval_is_bound_to_exact_result_digest(monkeypatc
     assert decided.status_code == 200
     assert decided.json()["status"] == "approved"
     assert decided.json()["result_sha256"] == digest
+    assert decided.json()["decided_by"] == "local-operator"
 
     refreshed = client.get(f"/runtime/organization/tasks/{task_id}")
     assert refreshed.json()["approval_status"] == "approved"
+    assert refreshed.json()["approval_by"] == "local-operator"
 
 
 def test_organization_task_command_rejects_free_form_or_unknown_task_kinds(monkeypatch):
