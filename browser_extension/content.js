@@ -607,13 +607,29 @@
       node.getAttribute("aria-label"),
       node.getAttribute("title")
     ].filter(Boolean).join(" ")).join(" ").toLowerCase();
-    const visibleUi = bodyText + " " + labels;
+    const activeControls = controls.filter(node => {
+      const state = [
+        node.getAttribute("aria-pressed"),
+        node.getAttribute("aria-checked"),
+        node.getAttribute("aria-selected"),
+        node.getAttribute("data-state"),
+        node.getAttribute("data-checked")
+      ].map(value => String(value || "").toLowerCase());
+      return state.some(value => ["true", "on", "checked", "selected"].includes(value));
+    });
+    const activeLabels = activeControls.map(node => [
+      node.innerText,
+      node.getAttribute("aria-label"),
+      node.getAttribute("title")
+    ].filter(Boolean).join(" ")).join(" ").toLowerCase();
+    // Labels alone are not proof: settings menus can display disabled options.
+    // Require the provider UI to expose an explicit active/checked state.
     if (provider === "chatgpt" &&
-        /temporary(?:\s+chat)?/.test(visibleUi) &&
-        /unpersonalized|without personalization|sem personaliza/.test(visibleUi)) {
+        /temporary(?:\\s+chat)?/.test(activeLabels) &&
+        /unpersonalized|without personalization|sem personaliza/.test(activeLabels)) {
       return "chatgpt_temporary_unpersonalized";
     }
-    if (provider === "gemini" && /temporary\s+chat/.test(visibleUi)) {
+    if (provider === "gemini" && /temporary\\s+chat/.test(activeLabels)) {
       return "gemini_temporary_chat";
     }
     // Grok Private Chat is not enough by itself: its separate X-personalization
