@@ -19,7 +19,8 @@
     "https://grok.com/*",
     "https://x.com/i/grok*",
     "https://chat.deepseek.com/*",
-    "https://chat.qwen.ai/*"
+    "https://chat.qwen.ai/*",
+    "https://claude.ai/*"
   ],
   "background": {
     "service_worker": "background.js"
