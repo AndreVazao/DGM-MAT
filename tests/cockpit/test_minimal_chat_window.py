@@ -145,6 +145,7 @@ def test_conversation_worker_uses_authenticated_api_off_gui_thread(qt_app, monke
     worker.start()
 
     assert worker.wait(3000)
+    qt_app.processEvents()
     assert request_threads and request_threads[0] != gui_thread
     assert calls[0][0:2] == ("GET", "http://127.0.0.1:8181/mobile/threads")
     assert emitted == [("threads-list", {"threads": []}, "")]
