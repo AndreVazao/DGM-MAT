@@ -256,7 +256,8 @@ def decide_organization_result(task_id: str, payload: OrganizationTaskDecision):
     if snapshot["result_sha256"] != payload.result_sha256:
         raise HTTPException(status_code=409, detail="Result digest mismatch; decision refused")
     approval_id = f"orgresult-{task_id}-{payload.result_sha256[:16]}"
-    approval = ApprovalManager().approvals.get(approval_id)
+    manager = ApprovalManager()
+    approval = manager.approvals.get(approval_id)
     if not approval:
         raise HTTPException(status_code=409, detail="No approval request exists for this exact result")
     try:
@@ -272,9 +273,14 @@ def decide_organization_result(task_id: str, payload: OrganizationTaskDecision):
         raise HTTPException(status_code=409, detail="Approval envelope does not match the current durable result")
     if payload.decision == "reject" and not payload.reason.strip():
         raise HTTPException(status_code=422, detail="A rejection reason is required")
-    if not mission_engine.handle_approval_decision(approval_id, payload.decision):
+    changed = (
+        manager.approve(approval_id)
+        if payload.decision == "approve"
+        else manager.reject(approval_id, reason=payload.reason.strip())
+    )
+    if not changed:
         raise HTTPException(status_code=409, detail="Approval decision was not persisted")
-    updated = ApprovalManager().approvals.get(approval_id)
+    updated = manager.approvals.get(approval_id)
     decision_status = getattr(updated.get("status"), "value", updated.get("status")) if updated else "unknown"
     expected = "approved" if payload.decision == "approve" else "rejected"
     if str(decision_status).casefold() != expected:
