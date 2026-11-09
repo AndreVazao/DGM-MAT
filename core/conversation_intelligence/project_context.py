@@ -257,7 +257,7 @@ class ProjectContextDossierGenerator:
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
         try:
-            with os.fdopen(fd, "w", encoding="utf-8", newline="\\n") as stream:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
                 header = {
                     "schema_version": 2,
                     "project_key": project_key,
@@ -274,7 +274,7 @@ class ProjectContextDossierGenerator:
                         stream.write(",")
                     stream.write(json.dumps(source_id, ensure_ascii=False))
                     first = False
-                stream.write("]}\\n")
+                stream.write("]}\n")
                 stream.flush()
                 os.fsync(stream.fileno())
             os.replace(temporary, path)
