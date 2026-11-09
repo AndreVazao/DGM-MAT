@@ -695,10 +695,6 @@ class VaultCatalog:
                 if not archive_path.is_relative_to(self.root) or not archive_path.is_file():
                     skipped += 1
                     continue
-            try:
-                if archive_path.is_symlink() or not archive_path.is_file():
-                    skipped += 1
-                    continue
                 payload = json.loads(archive_path.read_text(encoding="utf-8"))
                 messages = payload.get("messages", []) if isinstance(payload, dict) else []
                 if not isinstance(messages, list):
