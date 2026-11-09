@@ -27,6 +27,28 @@
       <button id="retry-button" type="button" class="secondary" disabled>Repetir conversa bloqueada</button>
       <button id="stop-button" type="button" class="secondary">Parar recuperação</button>
     </section>
+    <section>
+      <label class="toggle"><input id="consult-checkbox" type="checkbox"> Consultar IAs gratuitas através dos separadores abertos</label>
+      <small>Usa apenas ChatGPT, Grok, Gemini, DeepSeek e Qwen autorizados no DGM-MAT. Cada consulta exige aprovação no DGM-MAT antes do envio. Respostas ficam marcadas como não verificadas.</small>
+      <small id="consult-status">Consulta externa desativada.</small>
+      <form id="consult-request-form">
+        <label for="consult-goal">Pedido de segunda opinião</label>
+        <textarea id="consult-goal" rows="3" maxlength="4000" required placeholder="Descreve a questão técnica a consultar…"></textarea>
+        <label for="consult-context">Contexto mínimo (opcional)</label>
+        <textarea id="consult-context" rows="2" maxlength="4000" placeholder="Contexto sem credenciais ou dados sensíveis."></textarea>
+        <div class="provider-grid">
+          <label><input type="checkbox" name="consult-provider" value="chatgpt" checked> ChatGPT</label>
+          <label><input type="checkbox" name="consult-provider" value="grok"> Grok</label>
+          <label><input type="checkbox" name="consult-provider" value="gemini"> Gemini</label>
+          <label><input type="checkbox" name="consult-provider" value="deepseek"> DeepSeek</label>
+          <label><input type="checkbox" name="consult-provider" value="qwen"> Qwen</label>
+        </div>
+        <label class="toggle"><input id="consult-free-confirm" type="checkbox" required> Confirmo que as contas selecionadas estão no plano gratuito.</label>
+        <button id="consult-submit" type="submit">Criar consulta para aprovação</button>
+      </form>
+      <strong>Consultas pendentes de aprovação</strong>
+      <div id="consult-queue" aria-live="polite">A carregar…</div>
+    </section>
     <p id="status" role="status">Checking local connection…</p>
     <small>Só é lido conteúdo visível. Não são acedidos cookies, palavras-passe ou APIs ocultas.</small>
   </main>
