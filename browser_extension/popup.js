@@ -12,6 +12,12 @@ const consultForm = document.getElementById("consult-request-form");
 const consultGoal = document.getElementById("consult-goal");
 const consultContext = document.getElementById("consult-context");
 const consultFreeConfirm = document.getElementById("consult-free-confirm");
+const consultPreviewButton = document.getElementById("consult-preview-button");
+const consultPreview = document.getElementById("consult-preview");
+const consultPreviewStatus = document.getElementById("consult-preview-status");
+const consultSubmit = document.getElementById("consult-submit");
+let consultPreviewDigest = null;
+let consultPreviewSnapshot = null;
 const consultQueue = document.getElementById("consult-queue");
 
 function showStatus(value, error = false) {
@@ -87,8 +93,45 @@ async function refresh() {
   }
 }
 
+function invalidateConsultPreview() {
+  consultPreviewDigest = null;
+  consultPreviewSnapshot = null;
+  consultPreview.value = "";
+  consultPreviewStatus.textContent = "Pedido alterado. Faz uma nova pré-visualização antes de colocar na fila.";
+  consultSubmit.disabled = true;
+}
+
+function currentConsultDraft() {
+  return { goal: consultGoal.value.trim(), context: consultContext.value.trim() };
+}
+
+consultGoal.addEventListener("input", invalidateConsultPreview);
+consultContext.addEventListener("input", invalidateConsultPreview);
+
+consultPreviewButton.addEventListener("click", async () => {
+  const draft = currentConsultDraft();
+  if (!draft.goal) return showStatus("Escreve o pedido antes de pré-visualizar.", true);
+  consultPreviewButton.disabled = true;
+  consultSubmit.disabled = true;
+  try {
+    const result = await send({ type: "DGM_PREVIEW_BROWSER_CONSULT", payload: draft });
+    consultPreview.value = result.prompt;
+    consultPreviewDigest = result.prompt_sha256;
+    consultPreviewSnapshot = JSON.stringify(draft);
+    consultPreviewStatus.textContent = "Pré-visualização pronta · SHA-256 " + result.prompt_sha256 + (result.prompt_redacted ? " · segredos removidos" : " · sem padrões de segredo detetados");
+    consultSubmit.disabled = false;
+  } catch (error) {
+    invalidateConsultPreview();
+    showStatus(error.message, true);
+  } finally {
+    consultPreviewButton.disabled = false;
+  }
+});
+
 consultForm.addEventListener("submit", async event => {
   event.preventDefault();
+  const draft = currentConsultDraft();
+  if (!consultPreviewDigest || consultPreviewSnapshot !== JSON.stringify(draft)) return showStatus("Pré-visualiza novamente o texto exato antes de criar a consulta.", true);
   const providers = Array.from(consultForm.querySelectorAll('input[name="consult-provider"]:checked')).map(input => input.value);
   if (!providers.length) return showStatus("Seleciona pelo menos um fornecedor.", true);
   if (!consultFreeConfirm.checked) return showStatus("Confirma que as contas selecionadas são gratuitas.", true);
@@ -102,12 +145,14 @@ consultForm.addEventListener("submit", async event => {
         goal: consultGoal.value.trim(),
         context: consultContext.value.trim(),
         providers,
-        free_capacity_confirmed: true
+        free_capacity_confirmed: true,
+        preview_sha256: consultPreviewDigest
       }
     });
     consultGoal.value = "";
     consultContext.value = "";
     consultFreeConfirm.checked = false;
+    invalidateConsultPreview();
     consultStatus.textContent = result.consultation_ids.length + " consulta(s) criada(s), pendente(s) de aprovação.";
     await refreshConsultQueue();
   } catch (error) {

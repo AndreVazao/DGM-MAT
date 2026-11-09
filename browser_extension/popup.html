@@ -30,6 +30,7 @@
     <section>
       <label class="toggle"><input id="consult-checkbox" type="checkbox"> Consultar IAs gratuitas através dos separadores abertos</label>
       <small>Usa apenas ChatGPT, Grok, Gemini, DeepSeek e Qwen autorizados no DGM-MAT. Cada consulta exige aprovação no DGM-MAT antes do envio. Respostas ficam marcadas como não verificadas.</small>
+      <small>Claude ainda não está disponível neste canal; só será ativado após adapter visível e validação real da interface.</small>
       <small id="consult-status">Consulta externa desativada.</small>
       <form id="consult-request-form">
         <label for="consult-goal">Pedido de segunda opinião</label>
@@ -44,7 +45,11 @@
           <label><input type="checkbox" name="consult-provider" value="qwen"> Qwen</label>
         </div>
         <label class="toggle"><input id="consult-free-confirm" type="checkbox" required> Confirmo que as contas selecionadas estão no plano gratuito.</label>
-        <button id="consult-submit" type="submit">Criar consulta para aprovação</button>
+        <button id="consult-preview-button" type="button">Pré-visualizar pedido redigido</button>
+        <label for="consult-preview">Prompt exato que será enviado (apenas leitura)</label>
+        <textarea id="consult-preview" rows="8" readonly placeholder="Pré-visualiza o pedido para ver o texto final. Para o alterar, edita os campos acima e pré-visualiza novamente."></textarea>
+        <small id="consult-preview-status">Ainda não existe pré-visualização. Nada será enviado nesta etapa.</small>
+        <button id="consult-submit" type="submit" disabled>Colocar na fila para aprovação</button>
       </form>
       <strong>Consultas pendentes de aprovação</strong>
       <div id="consult-queue" aria-live="polite">A carregar…</div>
