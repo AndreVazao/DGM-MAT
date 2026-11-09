@@ -337,3 +337,86 @@ A ligação Hub fica NÃO VERIFICADA. Não se presume que um perfil ou repositó
 - Nenhuma conversa marcada como recuperada sem conteúdo e proveniência.
 
 A única alteração GitHub desta ronda é este relatório documental numa branch isolada e PR draft.
+
+
+---
+
+## Addendum — 2026-11-09, corte adicional após 15:37 UTC
+
+Esta atualização substitui apenas os valores de estado que envelheceram desde o corte inicial do relatório. Os resultados anteriores continuam preservados como observações históricas.
+
+### 1. Estado geral e GitHub atualizado
+
+- `main` avançou de `717b92c2a4d4f70a1276630fa92bdf3f3b17b19a` para `82a743500257a9ee552056d53246a6b0b1f9df6b` através da PR #305.
+- Inventário atual: **80 branches**, **6 PRs abertas**, **18 issues abertas**, **24 workflows** e **0 releases publicadas**.
+- A branch API reporta `main.protected=false`. Não foi possível ler o endpoint de branch-protection com a integração disponível; nenhuma proteção foi alterada.
+- As seis PRs abertas no corte: #309, #307, #306, #304, #302 e #295. As PRs #304 e #295 continuam draft.
+- A PR #305 foi integrada. A aprendizagem de repositórios arranca agora por defeito no full runtime, usando o serviço SQLite existente e inventário local read-only.
+
+### 2. Checks e artefactos
+
+Main `82a7435`:
+- [Windows Executable Build #42641509725](https://github.com/AndreVazao/DGM-MAT/actions/runs/42641509725): SUCCESS.
+- [Mission E2E Regression Gate #42641509731](https://github.com/AndreVazao/DGM-MAT/actions/runs/42641509731): SUCCESS em Ubuntu e Windows.
+- Artefacto `DGM-MAT-Windows-3.12-82a7435`, ID `13686106483`, 111.262.561 bytes, digest ZIP `sha256:257753e4dc152f31efd02d24b7c70d18236f54f4ba5f04691c0690f2e5c458ee`. Não foi descarregado nem instalado.
+
+PR #309:
+- Base `main` em `82a7435`; head `dbafc54485096651a04e9ff14228b7b4a9b17065`, 8 commits à frente e 0 atrás.
+- [Focused PR Validation #42645471750](https://github.com/AndreVazao/DGM-MAT/actions/runs/42645471750): SUCCESS.
+- [Chrome Extension Validation #42645471751](https://github.com/AndreVazao/DGM-MAT/actions/runs/42645471751): SUCCESS.
+- [Windows Executable Build #42645471807](https://github.com/AndreVazao/DGM-MAT/actions/runs/42645471807): SUCCESS.
+- Artefacto `DGM-MAT-Windows-3.12-e92a90b`, 111.262.574 bytes, digest ZIP `sha256:2146d39019bb958e8225f3f4a1c106a25c563347b00be13a65f30aa0cf5defe3`.
+- A PR #309 contém a evolução de #306 mais sete commits de endurecimento. #306 continua aberta e não foi fechada; a duplicação de revisão fica assinalada para decisão posterior.
+
+### 3. Nova correção de baixo risco — PR #312
+
+A revisão do commit #305 revelou uma incoerência concreta: o perfil `LOW_MEMORY` já desativa scans de providers e autonomia no arranque, mas a nova política de repository-learning ignorava esse perfil e arrancava sempre por defeito. O worker é read-only e limitado, mas a descoberta inicial percorre as raízes e gera árvores de paths por lotes.
+
+Foi criada a branch isolada `fix/repository-learning-low-memory-autostart-2026-11-09` e aberta a [PR #312](https://github.com/AndreVazao/DGM-MAT/pull/312):
+- perfil standard: mantém autostart por defeito;
+- perfil LOW_MEMORY: autostart fica desligado por defeito;
+- `DGM_REPOSITORY_LEARNING_ENABLED=1` continua a permitir opt-in explícito, mesmo em LOW_MEMORY;
+- `DGM_REPOSITORY_LEARNING_ENABLED=0` desliga em qualquer perfil;
+- seis testes cobrem standard, LOW_MEMORY, opt-in e opt-out;
+- documentação atualizada.
+
+A PR altera apenas runtime policy, testes e documentação. Não muda o serviço, a base de dados, credenciais, permissões ou estado do PC. No corte de 15:37 UTC:
+- [Focused PR Validation #42646429260](https://github.com/AndreVazao/DGM-MAT/actions/runs/42646429260): SUCCESS.
+- [Mission E2E Regression Gate #42646429389](https://github.com/AndreVazao/DGM-MAT/actions/runs/42646429389): IN_PROGRESS.
+- [Windows Executable Build #42646429266](https://github.com/AndreVazao/DGM-MAT/actions/runs/42646429266): IN_PROGRESS.
+
+A PR #312 permanece aberta e não integrada.
+
+### 4. PC-Vazao-Anjos — observação adicional
+
+O Desktop Commander voltou a identificar o PC como **Online**. Para respeitar a quota remota restante, foi feita uma única recolha PowerShell read-only, sem iniciar uma missão nem criar sessão autenticada.
+
+Observações:
+- Diretório `C:\ProgramasGodMode\DGM-MAT` existe.
+- Checkout: `recovery/local-worktree-consolidation-2026-11-09`, HEAD `e06d89402d9e3cd6e36a189daa3f13bee8c4d413`.
+- `git diff --stat` vazio; o working tree mantém sete entradas untracked: `bash.exe.stackdump`, backup de `api_server.py`, `installed/`, `update-backups/` e três diretórios `update-staging-*`. Todos foram preservados.
+- Comparação atual com `main`: branch divergente, **2 commits exclusivos à frente e 187 atrás**; contém alterações recuperadas de importer, portfolio inventory, MissionEngine e documentação. Não foi feito checkout, rebase, cherry-pick, merge ou limpeza.
+- Foram observados quatro processos `DGM-MAT.exe`, em duas árvores pai/filho. A porta `127.0.0.1:8181` está em LISTEN, associada ao PID 4304.
+- `GET /health`: HTTP 200, `status=healthy`.
+- `GET /runtime/status` sem credencial: HTTP 401, comportamento compatível com rota autenticada. Não foi criada nem reutilizada uma sessão/token para contornar isto; estado autenticado, fila e missões não foram reconsultados neste corte.
+- Memória observada: 0,75 GB livres de 2,96 GB totais, coerente com o perfil LOW_MEMORY.
+- Executável instalado: 111.825.469 bytes, última escrita observada às 11:51 UTC. Não foi recalculado um hash válido nesta recolha; a verificação de manifesto/hash descrita no corpo principal permanece a evidência anterior, não uma nova verificação.
+- Nenhum ficheiro local foi alterado e nenhuma atualização foi aplicada.
+
+### 5. Missão, conversas, providers e Hub
+
+- Não foi criada nem repetida qualquer missão nesta atualização.
+- A última missão real confirmada continua a ser `mission_edcdf5ab`, FAILED por ausência de executor genérico no binário/runtime instalado. O sucesso do Mission E2E no GitHub é teste automatizado, não prova de missão concluída no PC.
+- O PC ainda não recebeu o build `82a7435`; não existe prova de atualização local.
+- Nenhuma conversa foi importada nesta atualização. A cobertura por plataforma mantém-se não comprovada; não se promove metadado de histórico a transcrição integral.
+- Codex, Claude Code/FCC e providers web não foram invocados nesta ronda.
+- DGM-HUB não foi revalidado nesta recolha. O último relatório continua a indicar ausência de processo/federação, sem nova prova em contrário.
+- Observer/Respond não foi alterado.
+
+### 6. Integridade e próximos passos
+
+- Sem merge, commits em `main`, alterações de permissões, aprovação de ações antigas, eliminação de branches, reset, clean ou force-push.
+- Correção de código feita apenas na branch/PR #312; relatório atualizado apenas na branch/PR #307.
+- Próximo gate: aguardar os dois workflows ainda em execução da #312; depois, rever o diff e manter a PR isolada até aceitação.
+- Para o PC: preservar o checkout divergente e os diretórios untracked; preparar eventual atualização numa worktree isolada, nunca por pull/checkout no checkout atual.
+- Só depois de instalar com autorização já existente e confirmar hash/backup/rollback deverá ser tentada uma missão tipada read-only com recibo durável.
