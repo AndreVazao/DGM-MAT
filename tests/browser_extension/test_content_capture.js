@@ -146,7 +146,8 @@ function createHarness(mode, provider = "chatgpt", bodyText = "") {
         gemini: "https://gemini.google.com/app/fixture-conversation",
         grok: "https://grok.com/chat/fixture-conversation",
         deepseek: "https://chat.deepseek.com/a/chat/s/fixture-conversation",
-        qwen: "https://chat.qwen.ai/chat/fixture-conversation"
+        qwen: "https://chat.qwen.ai/chat/fixture-conversation",
+        claude: "https://claude.ai/chat/fixture-conversation"
       }[provider],
       pathname: {
         chatgpt: "/c/fixture-conversation",
