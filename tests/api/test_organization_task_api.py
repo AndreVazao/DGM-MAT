@@ -199,3 +199,28 @@ def test_organization_task_can_resume_after_a_queued_dispatch(monkeypatch):
     assert resumed.json()["status"] == "COMPLETED"
     assert resumed.json()["task"]["durable_receipt"] is True
     assert calls["count"] == 2
+
+
+def test_organization_result_change_after_review_invalidates_approval(monkeypatch):
+    client, engine = setup_client(monkeypatch)
+    created = client.post(
+        "/runtime/organization/tasks",
+        json={"task_kind": "repository_inventory", "repository_id": "demo"},
+    ).json()["task"]
+    task_id = created["task_id"]
+    digest = created["result_sha256"]
+    requested = client.post(
+        f"/runtime/organization/tasks/{task_id}/approval",
+        json={"result_sha256": digest},
+    )
+    assert requested.status_code == 201
+    approval_id = requested.json()["approval_id"]
+
+    engine.tasks[task_id].metadata["worker_execution"]["result"]["files"] = 999
+
+    decision = client.post(
+        f"/runtime/organization/tasks/{task_id}/decision",
+        json={"decision": "approve", "result_sha256": digest},
+    )
+    assert decision.status_code == 409
+    assert FakeApprovalManager.records[approval_id].status == "awaiting_approval"
