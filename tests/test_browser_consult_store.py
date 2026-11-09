@@ -27,7 +27,7 @@ def test_prompt_is_minimal_and_redacts_secrets():
 
 def test_disabled_store_never_queues(monkeypatch, tmp_path):
     monkeypatch.delenv("DGM_BROWSER_CONSULT_ENABLED", raising=False)
-    _configure(monkeypatch, "chatgpt")
+    _configure(monkeypatch, "chatgpt,gemini")
     monkeypatch.setenv("DGM_BROWSER_CONSULT_ENABLED", "0")
     store = BrowserConsultStore(tmp_path / "consult.sqlite3")
     result = store.enqueue(task_ref="mission-1", goal="Review the recovery pipeline")
@@ -138,11 +138,11 @@ def test_claim_token_is_required_and_single_use(monkeypatch, tmp_path):
         )
 
 
-def test_fresh_review_queue_is_durable_and_requires_supported_privacy_provider(monkeypatch, tmp_path):
+def test_fresh_review_queue_requires_both_providers_and_completes_only_after_both(monkeypatch, tmp_path):
     monkeypatch.setenv("DGM_BROWSER_CONSULT_ENABLED", "1")
     monkeypatch.setenv("DGM_BROWSER_CONSULT_FREE_PROVIDERS", "chatgpt,gemini,grok")
     store = BrowserConsultStore(tmp_path / "fresh-review.sqlite3")
-    with pytest.raises(ValueError, match="only ChatGPT and Gemini"):
+    with pytest.raises(ValueError, match="both ChatGPT and Gemini"):
         store.enqueue(
             task_ref="egm-task:task-1",
             goal="Review this bounded design.",
@@ -153,17 +153,22 @@ def test_fresh_review_queue_is_durable_and_requires_supported_privacy_provider(m
     queued = store.enqueue(
         task_ref="egm-task:task-1",
         goal="Review this bounded design.",
-        providers=["chatgpt"],
+        providers=["chatgpt", "gemini"],
         review_mode="fresh_review",
         review_id="review-1",
     )
     assert queued["status"] == "PENDING_APPROVAL"
-    item_id = queued["consultation_ids"][0]
-    assert store.approve(item_id, operator="operator")
-    claimed = store.claim_next("chatgpt")
-    assert claimed["review_mode"] == "fresh_review"
-    assert claimed["review_id"] == "review-1"
-    evidence = {
+    assert queued["provider_count"] == 2
+    assert queued["expected_provider_count"] == 2
+    assert queued["expected_providers"] == ["chatgpt", "gemini"]
+    ids = dict(zip(["chatgpt", "gemini"], queued["consultation_ids"]))
+    for consultation_id in ids.values():
+        assert store.approve(consultation_id, operator="operator")
+
+    chatgpt = store.claim_next("chatgpt")
+    assert chatgpt["review_mode"] == "fresh_review"
+    assert chatgpt["review_id"] == "review-1"
+    chatgpt_evidence = {
         "provider": "chatgpt",
         "source_id": "new-chat-1",
         "initial_source_id": None,
@@ -172,18 +177,41 @@ def test_fresh_review_queue_is_durable_and_requires_supported_privacy_provider(m
         "privacy_mode_verified": True,
         "verification": "blank_page_then_new_conversation_id",
     }
+    store.finish(
+        ids["chatgpt"],
+        claim_token=chatgpt["claim_token"],
+        response_text="ChatGPT review; untrusted.",
+        evidence=chatgpt_evidence,
+    )
+    partial = store.get_review("review-1")
+    assert partial["status"] == "PENDING"
+    assert partial["provider_count"] == 2
+    assert partial["expected_provider_count"] == 2
+    assert len([x for x in partial["consultations"] if x["status"] == "COMPLETED"]) == 1
+
+    gemini = store.claim_next("gemini")
+    gemini_evidence = {
+        "provider": "gemini",
+        "source_id": "new-gemini-chat-1",
+        "initial_source_id": None,
+        "initial_visible_message_count": 0,
+        "privacy_mode": "gemini_temporary_chat",
+        "privacy_mode_verified": True,
+        "verification": "blank_page_then_new_conversation_id",
+    }
     completed = store.finish(
-        item_id,
-        claim_token=claimed["claim_token"],
-        response_text="Independent-looking review; still untrusted.",
-        evidence=evidence,
+        ids["gemini"],
+        claim_token=gemini["claim_token"],
+        response_text="Gemini review; untrusted.",
+        evidence=gemini_evidence,
     )
     assert completed["status"] == "COMPLETED"
     assert completed["review_mode"] == "fresh_review"
     assert completed["review_id"] == "review-1"
-    assert completed["evidence"] == evidence
+    assert completed["independence_attested"] is False
+    assert completed["evidence"] == gemini_evidence
     reopened = BrowserConsultStore(tmp_path / "fresh-review.sqlite3")
-    assert reopened.status()["counts"]["COMPLETED"] == 1
+    assert reopened.status()["counts"]["COMPLETED"] == 2
 
 
 def test_fresh_review_evidence_fails_closed(monkeypatch, tmp_path):
@@ -193,7 +221,7 @@ def test_fresh_review_evidence_fails_closed(monkeypatch, tmp_path):
     queued = store.enqueue(
         task_ref="egm-task:task-2",
         goal="Review this bounded design.",
-        providers=["gemini"],
+        providers=["chatgpt", "gemini"],
         review_mode="fresh_review",
         review_id="review-2",
     )
@@ -211,25 +239,26 @@ def test_fresh_review_evidence_fails_closed(monkeypatch, tmp_path):
 
 def test_fresh_review_result_requires_evidence_and_can_be_resumed(monkeypatch, tmp_path):
     monkeypatch.setenv("DGM_BROWSER_CONSULT_ENABLED", "1")
-    monkeypatch.setenv("DGM_BROWSER_CONSULT_FREE_PROVIDERS", "chatgpt")
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_FREE_PROVIDERS", "chatgpt,gemini")
     store = BrowserConsultStore(tmp_path / "fresh-resume.sqlite3")
     queued = store.enqueue(
         task_ref="egm-task:task-3",
         goal="Review this bounded design.",
-        providers=["chatgpt"],
+        providers=["chatgpt", "gemini"],
         review_mode="fresh_review",
         review_id="review-resume",
     )
-    consultation_id = queued["consultation_ids"][0]
-    assert store.approve(consultation_id, operator="operator")
-    claimed = store.claim_next("chatgpt")
+    ids = dict(zip(["chatgpt", "gemini"], queued["consultation_ids"]))
+    for consultation_id in ids.values():
+        assert store.approve(consultation_id, operator="operator")
+    chatgpt = store.claim_next("chatgpt")
     with pytest.raises(ValueError, match="requires host-observed"):
         store.finish(
-            consultation_id,
-            claim_token=claimed["claim_token"],
+            ids["chatgpt"],
+            claim_token=chatgpt["claim_token"],
             response_text="A response without evidence.",
         )
-    evidence = {
+    chatgpt_evidence = {
         "provider": "chatgpt",
         "source_id": "fresh-conversation-3",
         "initial_source_id": None,
@@ -239,16 +268,34 @@ def test_fresh_review_result_requires_evidence_and_can_be_resumed(monkeypatch, t
         "verification": "blank_page_then_new_conversation_id_and_stable_response",
     }
     store.finish(
-        consultation_id,
-        claim_token=claimed["claim_token"],
-        response_text="A bounded independent review.",
-        evidence=evidence,
+        ids["chatgpt"],
+        claim_token=chatgpt["claim_token"],
+        response_text="A bounded ChatGPT review.",
+        evidence=chatgpt_evidence,
+    )
+    partial = store.get_review("review-resume")
+    assert partial["status"] == "PENDING"
+    gemini = store.claim_next("gemini")
+    gemini_evidence = {
+        "provider": "gemini",
+        "source_id": "fresh-gemini-conversation-3",
+        "initial_source_id": None,
+        "initial_visible_message_count": 0,
+        "privacy_mode": "gemini_temporary_chat",
+        "privacy_mode_verified": True,
+        "verification": "blank_page_then_new_conversation_id_and_stable_response",
+    }
+    store.finish(
+        ids["gemini"],
+        claim_token=gemini["claim_token"],
+        response_text="A bounded Gemini review.",
+        evidence=gemini_evidence,
     )
     resumed = store.get_review("review-resume")
     assert resumed["status"] == "COMPLETED"
-    assert resumed["provider_count"] == 1
-    assert resumed["consultations"][0]["response_text"] == "A bounded independent review."
-    assert resumed["consultations"][0]["evidence"] == evidence
+    assert resumed["provider_count"] == 2
+    assert resumed["expected_provider_count"] == 2
+    assert resumed["consultations"][0]["result_trusted"] is False
     assert resumed["independence_attested"] is False
 
 
@@ -258,7 +305,7 @@ def test_peek_does_not_claim_or_consume_approved_fresh_review(monkeypatch, tmp_p
     queued = store.enqueue(
         task_ref="egm-task:peek",
         goal="Review the design.",
-        providers=["chatgpt"],
+        providers=["chatgpt", "gemini"],
         review_mode="fresh_review",
         review_id="review-peek",
     )
