@@ -19,7 +19,7 @@ let browserPollInProgress = false;
 let startInProgress = false;
 
 async function pauseBrowserProvider(provider, reason) {
-  if (!["chatgpt", "grok", "gemini", "deepseek", "qwen"].includes(provider)) return;
+  if (!["chatgpt", "grok", "gemini", "deepseek", "qwen", "claude"].includes(provider)) return;
   const stored = await chrome.storage.local.get(PROVIDER_PAUSE_KEY);
   const pauses = stored[PROVIDER_PAUSE_KEY] || {};
   const cooldownMs = reason === "rate_limited" ? 60 * 60 * 1000 : 15 * 60 * 1000;
@@ -134,7 +134,7 @@ async function startNextAutoProvider(excludeProvider) {
   const stored = await chrome.storage.local.get([AUTO_KEY, PROVIDER_TABS_KEY]);
   if (!stored[AUTO_KEY]) return { started: false };
   const tabs = stored[PROVIDER_TABS_KEY] || {};
-  for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
+  for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen", "claude"]) {
     if (provider === excludeProvider || !Number.isInteger(tabs[provider])) continue;
     if (await isBrowserProviderPaused(provider)) continue;
     try {
@@ -272,7 +272,7 @@ async function pollBrowserConsultQueue() {
     }
     if (settings[BROWSER_TASK_KEY] || !settings[CONSULT_ENABLED_KEY] || state.run?.active) return;
     const tabs = settings[PROVIDER_TABS_KEY] || {};
-    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
+    for (const provider of ["chatgpt","grok","gemini","deepseek","qwen"]) {
       if (await isBrowserProviderPaused(provider)) continue;
       const tabId = tabs[provider];
       if (!Number.isInteger(tabId)) continue;
@@ -473,7 +473,7 @@ async function pollBrowserOperatorQueue() {
     const state = await readState();
     if (!state.token || state.run?.active) return;
     const tabs = settings[PROVIDER_TABS_KEY] || {};
-    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
+    for (const provider of ["chatgpt","grok","gemini","deepseek","qwen"]) {
       if (await isBrowserProviderPaused(provider)) continue;
       const tabId = tabs[provider];
       if (!Number.isInteger(tabId)) continue;
@@ -530,6 +530,7 @@ function providerForTabUrl(value) {
     if (host === "grok.com" || (host === "x.com" && url.pathname.startsWith("/i/grok"))) return "grok";
     if (host === "chat.deepseek.com") return "deepseek";
     if (host === "chat.qwen.ai") return "qwen";
+    if (host === "claude.ai") return "claude";
   } catch (_) {}
   return null;
 }
@@ -569,7 +570,7 @@ async function pair(code) {
     await pollBrowserConsultQueue().catch(() => {});
   }
   if (settings[AUTO_KEY]) {
-    for (const provider of ["chatgpt", "grok", "gemini", "deepseek", "qwen"]) {
+    for (const provider of ["chatgpt","grok","gemini","deepseek","qwen","claude"]) {
       const tabId = providerTabs[provider];
       if (!Number.isInteger(tabId) || await isBrowserProviderPaused(provider)) continue;
       try {

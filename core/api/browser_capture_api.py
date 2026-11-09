@@ -30,6 +30,7 @@ PROVIDER_HOSTS = {
     "grok": {"grok.com", "x.com"},
     "deepseek": {"chat.deepseek.com"},
     "qwen": {"chat.qwen.ai"},
+    "claude": {"claude.ai"},
 }
 MAX_DISCOVERY_ITEMS = 500
 MAX_MESSAGES = 3000
@@ -113,6 +114,17 @@ def _validate_provider_url(provider: str, value: str, source_id: str | None = No
             if candidate != source_id:
                 raise ValueError("source ID does not match the Grok conversation URL")
             return value
+        elif provider == "claude":
+            route_match = re.search(
+                r"/(?:chat|project/[A-Za-z0-9_-]+/chat)/([A-Za-z0-9_-]+)(?:/|$)",
+                parsed.path,
+            )
+            query_values = parse_qs(parsed.query)
+            query_id = next((query_values[key][0] for key in ("conversation", "chatId", "id") if query_values.get(key)), None)
+            candidate = route_match.group(1) if route_match else query_id
+            if candidate != source_id:
+                raise ValueError("source ID does not match the Claude conversation URL")
+            return value
         else:
             route_pattern = (r"/(?:a/)?chat/(?:s/)?([A-Za-z0-9_-]+)(?:/|$)"
                              if provider == "deepseek"
@@ -154,7 +166,7 @@ class BrowserConversationItem(BaseModel):
 
 
 class BrowserDiscoveryRequest(BaseModel):
-    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen", "claude"]
     items: list[BrowserConversationItem] = Field(min_length=1, max_length=MAX_DISCOVERY_ITEMS)
     truncated: bool = False
 
@@ -172,7 +184,7 @@ class BrowserMessage(BaseModel):
 
 
 class BrowserCaptureRequest(BaseModel):
-    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen", "claude"]
     source_id: str = Field(min_length=1, max_length=200)
     title: str = Field(min_length=1, max_length=500)
     url: str = Field(min_length=12, max_length=2048)
@@ -279,13 +291,13 @@ def claim_next_browser_conversation(payload: BrowserNextRequest):
 
 
 class BrowserNextRequest(BaseModel):
-    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen", "claude"]
 
     model_config = ConfigDict(extra="forbid")
 
 
 class BrowserCaptureBlockRequest(BaseModel):
-    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]
+    provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen", "claude"]
     source_id: str = Field(min_length=1, max_length=200)
     status: Literal["blocked", "rate_limited", "failed"] = "blocked"
     reason: str = Field(min_length=1, max_length=300)
@@ -660,7 +672,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
 
 
 @router.post("/retry")
-def retry_browser_conversation(provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"], source_id: str):
+def retry_browser_conversation(provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen", "claude"], source_id: str):
     try:
         _ledger().request_retry(provider, source_id, "operator_or_extension_retry")
     except (ValueError, RecoveryLedgerError) as exc:
