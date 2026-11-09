@@ -52,3 +52,6 @@ Inspection of the free-tier browser consultation implementation on PR #283's rec
 The coordinator now catches packet-builder `TypeError`/ `ValueError` and returns `BLOCKED` with an `invalid_review_packet` reason before creating any provider sessions. Regression cases cover too few reviewers, duplicate IDs, blank IDs, and a mutable list supplied instead of the required tuple. The task remains RUNNING and no session or success receipt is created.
 
 The commit containing this hardening must be validated on the current PR head; previous Focused/Windows runs apply only to the earlier head. Snyk status remains unapproved/unknown.
+
+
+Windows executable CI was enabled for this stacked review branch; the current PR head must pass the full frozen executable build before any merge decision.
