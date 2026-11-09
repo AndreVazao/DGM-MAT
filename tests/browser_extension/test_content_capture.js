@@ -65,6 +65,10 @@ function createHarness(mode, provider = "chatgpt", bodyText = "", urlOverride = 
   let scrollCalls = 0;
 
   function updateVisible(top) {
+    if (mode === "claude-nested") {
+      visible = [nestedClaudeWrapper, nestedClaudeMessage];
+      return;
+    }
     if (mode === "dom-mismatch") {
       visible = [];
       return;
