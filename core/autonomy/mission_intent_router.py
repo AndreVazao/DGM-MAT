@@ -100,6 +100,31 @@ def classify_mission_intent(goal: str) -> IntentDecision:
             "Matched the fixed DGM-MAT GitHub-main isolated-worktree sync; explicit operator approval is required.",
         )
 
+    # Exact typed requests for the three registered, read-only repository specialists.
+    # Repository IDs are identifiers, never filesystem paths or free-form commands.
+    typed_patterns = (
+        ("organization_python_test_inventory",
+         r"^(?:inventory|inventaria|inventariar|lista|listar) (?:the )?(?:python )?(?:tests|testes)(?: python)? (?:in|of|do|da|no|na) (?:the )?(?:repository|repositorio) ([a-z0-9][a-z0-9._-]{0,63})$"),
+        ("organization_python_source_analysis",
+         r"^(?:analyze|analyse|analisa|analisar) (?:the )?(?:python )?(?:source|codigo)(?: python)? (?:in|of|do|da|no|na) (?:the )?(?:repository|repositorio) ([a-z0-9][a-z0-9._-]{0,63})$"),
+        ("organization_repository_inventory",
+         r"^(?:inventory|inventaria|inventariar|lista|listar) (?:the )?(?:repository|repositorio) ([a-z0-9][a-z0-9._-]{0,63})$"),
+    )
+    normalized_goal = unicodedata.normalize("NFKD", goal.casefold())
+    normalized_goal = "".join(ch for ch in normalized_goal if not unicodedata.combining(ch))
+    normalized_goal = " ".join(normalized_goal.split())
+    if re.search(r"(?:repository|repositorio)\s+(?:\.\.|/|\\)", normalized_goal):
+        return IntentDecision(
+            "unsupported", False, 0.0, True,
+            "Repository path syntax is forbidden; provide a host-allowlisted repository ID.",
+        )
+    for typed_intent, pattern in typed_patterns:
+        if re.fullmatch(pattern, normalized_goal):
+            return IntentDecision(
+                typed_intent, True, 0.99, False,
+                "Matched an exact typed read-only specialist request; repository access remains host-allowlisted.",
+            )
+
     # A read-only keyword must never override a mutating request in the same sentence.
     if word_set & _MUTATION_WORDS:
         return IntentDecision(

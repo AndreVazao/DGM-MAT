@@ -121,6 +121,7 @@ def test_mission_result_exposes_page_cursor_and_partial_status(tmp_path, monkeyp
         "current_page": 2,
         "page_size": 1,
         "page_offset": 1,
+        "repository_name_filter": [],
         "next_cursor": 2,
         "has_more": True,
         "complete": False,

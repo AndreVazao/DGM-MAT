@@ -1,0 +1,60 @@
+name: Mission E2E Regression Gate
+
+on:
+  pull_request:
+    paths:
+      - "core/autonomy/**"
+      - "core/execution/**"
+      - "core/organization/**"
+      - "core/runtime/**"
+      - "tests/autonomy/**"
+      - "tests/organization/**"
+      - ".github/workflows/mission-e2e.yml"
+  push:
+    branches: [main]
+    paths:
+      - "core/autonomy/**"
+      - "core/execution/**"
+      - "core/organization/**"
+      - "core/runtime/**"
+      - "tests/autonomy/**"
+      - "tests/organization/**"
+      - ".github/workflows/mission-e2e.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mission-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mission-contract-and-e2e:
+    name: Mission lifecycle (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.12"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    env:
+      DGM_TEST_MODE: "1"
+      DGM_VAULT_BOOTSTRAP_ENABLED: "0"
+      PYTHONUTF8: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install project dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+      - name: Compile mission and execution packages
+        run: python -m compileall -q core/autonomy core/execution core/organization core/runtime
+      - name: Run mission, execution, queue and organization regressions
+        run: python -m pytest -q tests/autonomy tests/organization
