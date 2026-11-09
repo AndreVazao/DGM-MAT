@@ -279,8 +279,8 @@ class CommandConsoleWidget(QWidget):
         self._conversation_workers: set[_ConversationRequestWorker] = set()
         self._transcript_queue: list[tuple[str, str, str, str]] = []
         self._transcript_write_active = False
+        self._threads_loaded = False
         self._setup_ui()
-        self._load_threads()
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -440,6 +440,12 @@ class CommandConsoleWidget(QWidget):
             self._worker = None
         self._refresh_controls()
 
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not self._threads_loaded:
+            self._threads_loaded = True
+            self._load_threads()
 
     def _conversation_request(
         self,
