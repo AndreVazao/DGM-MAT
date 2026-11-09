@@ -147,6 +147,62 @@ class WorktreeManager:
             raise WorktreeError("Existing task worktree is dirty; it will be preserved, not reused.")
         return root
 
+    def create_worktree_at_commit(self, branch: str, task_id: str, commit_sha: str) -> Path:
+        """Create a task worktree from one immutable commit SHA.
+
+        The primary checkout must be clean. The supplied revision must be a
+        full object ID resolving to a commit in this repository; moving refs
+        and abbreviated hashes are deliberately rejected.
+        """
+        branch = self._validate_branch(branch)
+        target = self._target_path(task_id)
+        if (
+            self.base_path == self.repo_root
+            or self.base_path.is_relative_to(self.repo_root)
+            or self.repo_root.is_relative_to(self.base_path)
+        ):
+            raise WorktreeError(
+                "Pinned execution worktree root must be separate from and not contain the canonical checkout."
+            )
+        if not isinstance(commit_sha, str) or not re.fullmatch(r"(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})", commit_sha):
+            raise WorktreeError("base commit must be a full 40- or 64-character Git object ID.")
+
+        if self._run_git(["status", "--porcelain", "--untracked-files=all"], cwd=self.repo_root):
+            raise WorktreeError("Primary checkout is dirty; pinned worktree creation refused.")
+
+        resolved_commit = self._run_git(
+            ["rev-parse", "--verify", "--end-of-options", f"{commit_sha}^{{commit}}"],
+            cwd=self.repo_root,
+        ).strip().lower()
+        if resolved_commit != commit_sha.lower():
+            raise WorktreeError("base commit did not resolve to the exact supplied commit SHA.")
+
+        if target.exists():
+            existing = self._validate_existing_target(target, branch)
+            existing_sha = self._run_git(["rev-parse", "HEAD"], cwd=existing).strip().lower()
+            if existing_sha != resolved_commit:
+                raise WorktreeError("Existing worktree is pinned to a different commit; it will be preserved.")
+            return existing
+
+        checked_out = self._registered_worktrees().get(branch)
+        if checked_out is not None:
+            raise WorktreeError(
+                f"Branch '{branch}' is already checked out at another worktree; refusing to share it."
+            )
+        if self._run_git(["branch", "--list", branch], cwd=self.repo_root).strip():
+            raise WorktreeError("Task branch already exists; pinned worktree creation will not reuse it.")
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        self._run_git(
+            ["worktree", "add", "-b", branch, str(target), resolved_commit],
+            cwd=self.repo_root,
+        )
+        created = self._validate_existing_target(target, branch)
+        actual_sha = self._run_git(["rev-parse", "HEAD"], cwd=created).strip().lower()
+        if actual_sha != resolved_commit:
+            raise WorktreeError("Created worktree HEAD does not match the approved base commit.")
+        return created
+
     def create_worktree(self, branch: str, task_id: str) -> Path:
         """Create a task branch/worktree; reuse only the exact existing clean pair."""
         branch = self._validate_branch(branch)
