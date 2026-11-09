@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import shutil
 import subprocess
 from dataclasses import asdict, dataclass
@@ -38,7 +37,7 @@ class HeadlessResearchOrchestrator:
     SEARCH_HOSTS = ("html.duckduckgo.com", "duckduckgo.com")
     GH_FIELDS = (
         "fullName,description,url,stargazersCount,forksCount,updatedAt,"
-        "pushedAt,isArchived,isFork,license,primaryLanguage,visibility"
+        "pushedAt,isArchived,isFork,license,language,visibility"
     )
     MAX_QUERY_CHARS = 300
     MAX_RESULTS = 10
@@ -185,7 +184,6 @@ class HeadlessResearchOrchestrator:
             "--limit", str(result_limit),
             "--json", self.GH_FIELDS,
             "--archived=false",
-            "--visibility", "public",
         ]
         try:
             completed = subprocess.run(
@@ -230,6 +228,8 @@ class HeadlessResearchOrchestrator:
         for item in decoded[:result_limit]:
             if not isinstance(item, dict):
                 continue
+            if item.get("visibility") and str(item.get("visibility")).casefold() != "public":
+                continue
             url = str(item.get("url") or "")
             parsed = urlparse(url)
             if parsed.scheme != "https" or parsed.hostname != "github.com":
@@ -245,7 +245,7 @@ class HeadlessResearchOrchestrator:
                 "archived": bool(item.get("isArchived")),
                 "fork": bool(item.get("isFork")),
                 "license": item.get("license"),
-                "primary_language": item.get("primaryLanguage"),
+                "language": item.get("language"),
                 "visibility": item.get("visibility"),
                 "laboratory_decision": "not_evaluated",
             })
