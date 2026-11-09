@@ -45,3 +45,10 @@ Inspection of the free-tier browser consultation implementation on PR #283's rec
 - The browser queue also requires an operator approval for each consultation and completes asynchronously. The current coordinator contract is synchronous. A real adapter therefore needs a durable start/resume workflow rather than blocking a worker while waiting for manual approval.
 - The next implementation must add a distinct fresh-review browser protocol: blank/new conversation preflight, no visible prior messages, one isolated provider tab per reviewer, manual approval, newly created conversation ID after submission, durable completion polling, and host-verifiable evidence. Existing conversation-recovery and browser-operator routes remain unchanged.
 - Until this exists and passes live Windows/Chrome acceptance, no browser result can be marked as an independent EGM review.
+
+
+## Post-implementation hardening — 2026-11-09
+
+The coordinator now catches packet-builder `TypeError`/ `ValueError` and returns `BLOCKED` with an `invalid_review_packet` reason before creating any provider sessions. Regression cases cover too few reviewers, duplicate IDs, blank IDs, and a mutable list supplied instead of the required tuple. The task remains RUNNING and no session or success receipt is created.
+
+The commit containing this hardening must be validated on the current PR head; previous Focused/Windows runs apply only to the earlier head. Snyk status remains unapproved/unknown.
