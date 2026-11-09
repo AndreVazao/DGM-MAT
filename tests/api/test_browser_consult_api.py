@@ -122,9 +122,10 @@ def test_real_paired_extension_session_can_manage_consults_but_not_operator_rout
 
 def test_mission_context_preview_reads_durable_checkpoint_and_redacts_secrets(monkeypatch, tmp_path):
     import json
-    from core.api import runtime_api
+    from types import SimpleNamespace
 
-    monkeypatch.setattr(runtime_api.mission_engine, "missions_path", tmp_path)
+    fake_engine = SimpleNamespace(missions_path=tmp_path)
+    monkeypatch.setattr(browser_consult_api, "_mission_engine", lambda: fake_engine)
     checkpoint = {
         "mission_id": "mission_1234abcd",
         "goal": "Review the DGM-MAT authentication boundary",
@@ -173,9 +174,10 @@ def test_mission_context_preview_reads_durable_checkpoint_and_redacts_secrets(mo
 
 
 def test_mission_context_preview_rejects_missing_or_malformed_checkpoint(monkeypatch, tmp_path):
-    from core.api import runtime_api
+    from types import SimpleNamespace
 
-    monkeypatch.setattr(runtime_api.mission_engine, "missions_path", tmp_path)
+    fake_engine = SimpleNamespace(missions_path=tmp_path)
+    monkeypatch.setattr(browser_consult_api, "_mission_engine", lambda: fake_engine)
     client, store = make_client(monkeypatch, tmp_path / "consult")
     missing = client.post(
         "/recovery/browser-consult/mission-context",
@@ -297,15 +299,13 @@ def test_consultation_requires_operator_approval_and_claim_token(monkeypatch, tm
 
 def test_mission_consultation_result_is_attached_as_unverified_checkpoint_evidence(monkeypatch, tmp_path):
     from types import SimpleNamespace
-    from core.api import runtime_api
-
     mission = SimpleNamespace(metadata={}, logs=[])
     saved = []
     fake_engine = SimpleNamespace(
         _reload_mission_checkpoint=lambda mission_id: mission if mission_id == "mission_1234abcd" else None,
         save_mission=lambda value: saved.append(value),
     )
-    monkeypatch.setattr(runtime_api, "mission_engine", fake_engine)
+    monkeypatch.setattr(browser_consult_api, "_mission_engine", lambda: fake_engine)
     client, store = make_client(monkeypatch, tmp_path)
 
     queued = client.post("/recovery/browser-consult/enqueue", json={
