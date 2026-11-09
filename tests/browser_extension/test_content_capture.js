@@ -26,11 +26,11 @@ function makeMessage(
     parentElement: null,
     isConnected: true,
     innerText: text,
-    contains() { return false; },
+    contains(other) { return Array.isArray(options.children) && options.children.includes(other); },
     getAttribute(name) {
       if (name === "data-message-id") return options.explicitId === false ? null : "message-" + index;
       if (name === "data-message-author-role") return role;
-      if (name === "data-testid") return provider === "claude" ? role + "-message" : "conversation-turn";
+      if (name === "data-testid") return options.testId || (provider === "claude" ? role + "-message" : "conversation-turn");
       return null;
     },
     getBoundingClientRect() {
@@ -44,6 +44,10 @@ function makeMessage(
 
 function createHarness(mode, provider = "chatgpt", bodyText = "", urlOverride = null) {
   const all = Array.from({ length: 12 }, (_, index) => makeMessage(index, undefined, {}, provider));
+  const nestedClaudeMessage = provider === "claude" ? makeMessage(99, "user", { text: "Nested Claude turn" }, provider) : null;
+  const nestedClaudeWrapper = provider === "claude" ? makeMessage(100, "assistant", {
+    text: "Wrapper text", testId: "chat-message", children: [nestedClaudeMessage]
+  }, provider) : null;
   const ambiguousFirst = makeMessage(50, "user", {
     text: "Repeated identical text-only turn",
     explicitId: false
@@ -52,7 +56,8 @@ function createHarness(mode, provider = "chatgpt", bodyText = "", urlOverride = 
     text: "Repeated identical text-only turn",
     explicitId: false
   }, provider);
-  let visible = mode === "dom-mismatch" ? [] : mode === "ambiguous-duplicate" ? [ambiguousFirst] : all.slice(6, 10);
+  let visible = mode === "dom-mismatch" ? [] : mode === "ambiguous-duplicate" ? [ambiguousFirst]
+    : mode === "claude-nested" ? [nestedClaudeWrapper, nestedClaudeMessage] : all.slice(6, 10);
   let olderLoaded = false;
   let topWaits = 0;
   let listener = null;
@@ -278,6 +283,16 @@ async function testClaudeProjectConversationRouteUsesConversationId() {
     "project route must use the chat ID, not the project ID");
 }
 
+async function testClaudeNestedMessageWrappersAreNotDuplicated() {
+  const harness = createHarness("claude-nested", "claude");
+  const response = await harness.capture();
+  assert.equal(response.ok, true, response.error);
+  assert.equal(response.data.messages_total, 1,
+    "nested chat-message wrapper and user-message child must produce one archived turn");
+  assert.equal(response.data.messages[0].content, "Nested Claude turn");
+  assert.equal(response.data.messages[0].role, "user");
+}
+
 async function testClaudeNonConversationRoutesFailClosed() {
   for (const url of [
     "https://claude.ai/new",
@@ -355,6 +370,7 @@ async function main() {
   await testVirtualizedHistoryWindowsAndDuplicates();
   await testProviderScopedSelectorsRemainSupported();
   await testClaudeProjectConversationRouteUsesConversationId();
+  await testClaudeNestedMessageWrappersAreNotDuplicated();
   await testClaudeNonConversationRoutesFailClosed();
   await testMissingOldestMarkerRemainsPartialOrUnknown();
   await testTopLoadingHardLimitIsExplicitlyTruncated();
@@ -362,7 +378,7 @@ async function main() {
   await testIdenticalTextOnlyTurnsAreMarkedAmbiguous();
   await testScrollHardLimitIsExplicitlyTruncated();
   await testProviderUsageLimitsTriggerSafeProviderRotationSignal();
-  process.stdout.write("PASS: 10 deterministic virtualized-history, Claude route and provider-limit fixtures\n");
+  process.stdout.write("PASS: 11 deterministic virtualized-history, Claude route and provider-limit fixtures\n");
 }
 
 main().catch(error => {
