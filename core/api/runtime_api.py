@@ -29,6 +29,7 @@ from core.runtime.provider_freshness import (
 from core.realtime.websocket_manager import manager
 from core.organization.office import OFFICE_AGENTS, OFFICE_DEPARTMENTS
 from core.organization.models import Task, TaskStatus
+from core.organization.delegation import DelegationError
 from core.api.browser_operator_api import _queue as browser_operator_queue
 
 router = APIRouter(prefix="/runtime", tags=["runtime"])
@@ -172,12 +173,13 @@ def create_and_dispatch_organization_task(payload: OrganizationTaskCreate):
     )
     try:
         mission_engine.create_organization_task(task)
-        delegation = mission_engine.delegate_organization_task(task_id)
-        if not getattr(delegation, "agent_id", None):
+        try:
+            delegation = mission_engine.delegate_organization_task(task_id)
+        except DelegationError:
             current = mission_engine.get_organization_task(task_id)
             return {
                 "status": "BLOCKED",
-                "reason": getattr(delegation, "reason", "no_eligible_worker"),
+                "reason": "no_eligible_worker_or_host_allowlist_not_configured",
                 "task": _organization_task_snapshot(current or task),
             }
         result = mission_engine.dispatch_organization_task(task_id)
@@ -189,6 +191,28 @@ def create_and_dispatch_organization_task(payload: OrganizationTaskCreate):
         }
     except (KeyError, ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=409, detail=f"Organization task was not dispatched: {type(exc).__name__}") from exc
+
+
+@router.post("/organization/tasks/{task_id}/dispatch")
+def resume_organization_task_dispatch(task_id: str):
+    """Resume one assigned typed task; durable message identity prevents duplicate work."""
+    if not re.fullmatch(r"orgtask_[0-9a-f]{32}", task_id):
+        raise HTTPException(status_code=404, detail="Organization task not found")
+    task = mission_engine.get_organization_task(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Organization task not found")
+    if task.status is not TaskStatus.ASSIGNED:
+        raise HTTPException(status_code=409, detail=f"Task cannot be dispatched from {task.status.value}")
+    try:
+        result = mission_engine.dispatch_organization_task(task_id)
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=409, detail=f"Organization task dispatch failed: {type(exc).__name__}") from exc
+    current = mission_engine.get_organization_task(task_id)
+    return {
+        "status": result.get("status", "UNKNOWN"),
+        "dispatch": result,
+        "task": _organization_task_snapshot(current or task),
+    }
 
 
 @router.get("/organization/tasks/{task_id}")
