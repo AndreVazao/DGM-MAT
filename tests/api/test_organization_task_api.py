@@ -217,7 +217,7 @@ def test_organization_result_change_after_review_invalidates_approval(monkeypatc
         json={"decision": "approve", "result_sha256": digest},
     )
     assert decision.status_code == 409
-    assert FakeApprovalManager.records[approval_id].status == "awaiting_approval"
+    assert FakeApprovalManager.records[approval_id]["status"] == "awaiting_approval"
 
 
 def test_organization_task_api_runs_real_allowlisted_readonly_worker(tmp_path, monkeypatch):
