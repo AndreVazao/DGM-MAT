@@ -135,3 +135,41 @@ def test_typed_worker_rejects_unknown_intent():
     mission = SimpleNamespace(mission_id="mission_test_125", goal="inventory repository DGM-MAT")
     with pytest.raises(ValueError, match="No typed organization executor"):
         _executor().execute(mission, "unsupported")
+
+
+
+def test_mission_engine_routes_typed_inventory_through_registered_executor(tmp_path, monkeypatch):
+    from core.autonomy.mission_engine import MissionEngine
+    from core.autonomy.mission_models import MissionStatus
+    from core.organization.message_bus import InternalMessageBus
+
+    engine = MissionEngine(organization_bus=InternalMessageBus())
+    engine.missions_path = tmp_path
+    monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
+    monkeypatch.setattr(engine, "_emit_mission_result", lambda mission, result: None)
+    monkeypatch.setattr(engine, "_record_execution_observation", lambda mission, result, status: None)
+    monkeypatch.setattr(
+        engine.typed_organization_mission_executor,
+        "execute",
+        lambda mission, intent: {
+            "handler": intent,
+            "task_id": "mission_task_test",
+            "repository_id": "DGM-MAT",
+            "agent_id": "agent:repository-cartographer",
+            "message_id": "msg:test-receipt",
+            "durable_receipt": True,
+            "read_only": True,
+            "code_mutation": False,
+            "result": {"status": "COMPLETED", "files_scanned": 1},
+        },
+    )
+
+    mission = engine.create_mission("inventory repository DGM-MAT")
+    action = engine.action_queue.get_action(mission.metadata["action_id"])
+    assert action["status"] == "APPROVED"
+    result = engine._handle_queue_execution({"mission_id": mission.mission_id})
+
+    assert mission.status is MissionStatus.COMPLETED
+    assert result["handler"] == "organization_repository_inventory"
+    assert result["durable_receipt"] is True
+    assert mission.metadata["result"]["repository_id"] == "DGM-MAT"
