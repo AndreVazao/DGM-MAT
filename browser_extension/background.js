@@ -267,49 +267,45 @@ async function pollBrowserConsultQueue() {
       let tab;
       try { tab = await chrome.tabs.get(tabId); } catch (_) { continue; }
       if (!tab) continue;
-      let standardReadiness;
-      let freshReadiness;
+      const peek = await apiGet(
+        "/recovery/browser-consult/peek?provider=" + encodeURIComponent(provider),
+        state.token
+      );
+      if (peek.status !== "pending" || !peek.next) continue;
+      let readiness;
       try {
-        standardReadiness = await sendToTab(tabId, { type: "DGM_PROVIDER_PING" });
-        freshReadiness = await sendToTab(tabId, { type: "DGM_FRESH_REVIEW_PING" });
+        readiness = await sendToTab(
+          tabId,
+          { type: peek.next.review_mode === "fresh_review" ? "DGM_FRESH_REVIEW_PING" : "DGM_PROVIDER_PING" }
+        );
       } catch (_) { continue; }
-      const standardReady = Boolean(
-        standardReadiness?.ok &&
-        standardReadiness.provider === provider &&
-        standardReadiness.source_id &&
-        !standardReadiness.blocked
-      );
-      const freshReady = Boolean(
-        freshReadiness?.ok &&
-        freshReadiness.fresh_review_ready === true &&
-        freshReadiness.provider === provider &&
-        freshReadiness.preflight_nonce &&
-        freshReadiness.privacy_mode_verified === true
-      );
-      if (!standardReady && !freshReady) {
-        if (standardReadiness?.blocked || freshReadiness?.reason) {
-          await chrome.storage.local.set({
-            dgmBrowserConsultLastStatus: provider + " unavailable for approved consultation: " +
-              String(freshReadiness?.reason || standardReadiness?.blocked || "not_ready")
-          });
-        }
+      const freshMode = peek.next.review_mode === "fresh_review";
+      const ready = freshMode
+        ? Boolean(
+            readiness?.ok &&
+            readiness.fresh_review_ready === true &&
+            readiness.provider === provider &&
+            readiness.preflight_nonce &&
+            readiness.privacy_mode_verified === true
+          )
+        : Boolean(
+            readiness?.ok &&
+            readiness.provider === provider &&
+            readiness.source_id &&
+            !readiness.blocked
+          );
+      if (!ready) {
+        await chrome.storage.local.set({
+          dgmBrowserConsultLastStatus: provider + " waiting for " +
+            (freshMode ? "a verified temporary privacy-mode blank page." : "an existing conversation tab.")
+        });
         continue;
       }
       const claimed = await api("/recovery/browser-consult/next?provider=" + encodeURIComponent(provider), {}, state.token);
       if (claimed.status !== "claimed" || !claimed.next) continue;
       const task = { ...claimed.next, tab_id: tabId };
-      if (task.review_mode === "fresh_review" && !freshReady) {
-        await api("/recovery/browser-consult/block", {
-          consultation_id: task.consultation_id,
-          claim_token: task.claim_token,
-          reason: "ui_mismatch"
-        }, state.token).catch(() => {});
-        await chrome.storage.local.set({
-          dgmBrowserConsultLastStatus: provider + " fresh review blocked: privacy-mode preflight failed; no prompt sent."
-        });
-        return;
-      }
-      if (task.review_mode !== "fresh_review" && !standardReady) {
+      if (task.review_mode !== peek.next.review_mode ||
+          task.consultation_id !== peek.next.consultation_id) {
         await api("/recovery/browser-consult/block", {
           consultation_id: task.consultation_id,
           claim_token: task.claim_token,
@@ -317,9 +313,7 @@ async function pollBrowserConsultQueue() {
         }, state.token).catch(() => {});
         return;
       }
-      task.source_id = task.review_mode === "fresh_review"
-        ? null
-        : standardReadiness.source_id;
+      task.source_id = freshMode ? null : readiness.source_id;
       // Persist before touching the provider UI. A worker restart never replays this one-shot claim.
       await chrome.storage.local.set({ [CONSULT_CURRENT_KEY]: task });
       try {
@@ -327,7 +321,7 @@ async function pollBrowserConsultQueue() {
           ? await sendToTab(tabId, {
               type: "DGM_EXECUTE_FRESH_REVIEW",
               provider,
-              preflight_nonce: freshReadiness.preflight_nonce,
+              preflight_nonce: readiness.preflight_nonce,
               message: task.prompt,
               response_timeout_ms: 180000
             })
