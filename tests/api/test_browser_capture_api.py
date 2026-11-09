@@ -71,6 +71,7 @@ def _capture(provider="chatgpt", source_id="conversation-1", url=None, content="
             "grok": "https://grok.com/chat/conversation-1",
             "deepseek": "https://chat.deepseek.com/a/chat/s/conversation-1",
             "qwen": "https://chat.qwen.ai/chat/conversation-1",
+            "claude": "https://claude.ai/chat/conversation-1",
         }[provider]
     return {
         "provider": provider,
