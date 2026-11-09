@@ -30,7 +30,7 @@ function makeMessage(
     getAttribute(name) {
       if (name === "data-message-id") return options.explicitId === false ? null : "message-" + index;
       if (name === "data-message-author-role") return role;
-      if (name === "data-testid") return "conversation-turn";
+      if (name === "data-testid") return provider === "claude" ? role + "-message" : "conversation-turn";
       return null;
     },
     getBoundingClientRect() {
@@ -111,6 +111,7 @@ function createHarness(mode, provider = "chatgpt", bodyText = "") {
     querySelectorAll(selector) {
       if (provider === "chatgpt" && selector === "[data-message-author-role]") return visible;
       if (provider === "gemini" && selector === "user-query, model-response") return visible;
+      if (provider === "claude" && selector === '[data-testid="user-message"], [data-testid="assistant-message"], [data-testid="chat-message"]') return visible;
       if (provider === "grok" && [
         '[data-testid="conversation-turn"]',
         '[data-testid*="message"]',
@@ -152,7 +153,8 @@ function createHarness(mode, provider = "chatgpt", bodyText = "") {
         gemini: "/app/fixture-conversation",
         grok: "/chat/fixture-conversation",
         deepseek: "/a/chat/s/fixture-conversation",
-        qwen: "/chat/fixture-conversation"
+        qwen: "/chat/fixture-conversation",
+        claude: "/chat/fixture-conversation"
       }[provider],
       assign() {
         throw new Error("Navigation is not expected during capture tests.");
@@ -245,7 +247,7 @@ async function testVirtualizedHistoryWindowsAndDuplicates() {
 }
 
 async function testProviderScopedSelectorsRemainSupported() {
-  for (const provider of ["chatgpt", "gemini", "grok", "deepseek", "qwen"]) {
+  for (const provider of ["chatgpt", "gemini", "grok", "deepseek", "qwen", "claude"]) {
     const harness = createHarness("no-oldest-marker", provider);
     const response = await harness.capture();
     assert.equal(response.ok, true, provider + ": " + response.error);
