@@ -100,6 +100,20 @@ def enqueue_browser_consultation(payload: BrowserConsultEnqueueRequest, request:
     return result
 
 
+@router.get("/fresh-review/{review_id}")
+def get_fresh_browser_review(review_id: str, request: Request):
+    _principal(request)
+    try:
+        result = _store().get_review(review_id)
+        result["result_trusted"] = False
+        result["independence_attested"] = False
+        return result
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Fresh review not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Fresh review identifier is invalid.") from exc
+
+
 @router.post("/approve/{consultation_id}")
 def approve_browser_consultation(consultation_id: str, request: Request):
     principal = _principal(request)
