@@ -40,8 +40,8 @@
       return index >= 0 ? segments[index + 1] || null : null;
     }
     if (provider === "claude") {
-      const index = segments.lastIndexOf("chat");
-      const candidate = index >= 0 ? segments[index + 1] : null;
+      const nodes = [...document.querySelectorAll('[data-testid="user-message"], [data-testid="assistant-message"], [data-testid="chat-message"]')];
+      return [...new Set(nodes)].filter(node => !nodes.some(other => other !== node && node.contains(other)));
       return candidate && /^[A-Za-z0-9_-]+$/.test(candidate) ? candidate : null;
     }
     const queryKeys = provider === "deepseek" || provider === "qwen"
