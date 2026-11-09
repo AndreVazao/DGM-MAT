@@ -56,6 +56,60 @@ def list_github_repository_references(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post("/github-references/reindex")
+def reindex_github_repository_references(
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+):
+    """Backfill archived Vault and legacy ChatGPT recovery exports without modifying source files."""
+    try:
+        vault = _vault_catalog()
+        vault_result = vault.reindex_github_repository_references(limit=limit, offset=offset)
+        known = {
+            (str(item["provider"]), str(item["conversation_id"]))
+            for item in vault.list_conversations()
+        }
+        ledger = get_recovery_ledger()
+        sources = ledger.list_sources(limit=limit, offset=offset)
+        legacy_checked = legacy_links = legacy_failed = 0
+        legacy_errors = []
+        for source in sources:
+            provider = str(getattr(source, "provider", ""))
+            source_id = str(getattr(source, "source_id", ""))
+            if provider != "chatgpt" or (provider, source_id) in known:
+                continue
+            archive_path = Path(str(getattr(source, "raw_archive_path", "") or ""))
+            if not archive_path.is_file() or archive_path.is_symlink():
+                continue
+            legacy_checked += 1
+            try:
+                raw = archive_path.read_text(encoding="utf-8")
+                payload = json.loads(raw)
+                title = str(getattr(source, "title", "") or "Imported ChatGPT conversation")
+                legacy_links += vault.record_github_repository_references(
+                    provider=provider, conversation_id=source_id, title=title,
+                    conversation_url=getattr(source, "source_url", None),
+                    messages=[{"message_id": "__legacy_recovery_archive__", "content": raw}],
+                )
+            except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+                legacy_failed += 1
+                legacy_errors.append(type(exc).__name__)
+        return {
+            "status": "partial" if vault_result["failed"] or legacy_failed else "completed",
+            "vault": vault_result,
+            "legacy_chatgpt": {
+                "sources_seen": len(sources),
+                "archives_scanned": legacy_checked,
+                "links_indexed": legacy_links,
+                "failed": legacy_failed,
+                "errors": legacy_errors[:20],
+            },
+            "next_offset": vault_result["next_offset"],
+        }
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=503, detail="GitHub reference reindex could not be completed safely.") from exc
+
+
 @router.post("/github-references/verify")
 def verify_github_repository_references(
     limit: int = Query(default=10, ge=1, le=25),
