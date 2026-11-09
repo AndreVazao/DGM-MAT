@@ -194,3 +194,19 @@ def test_mobile_session_scopes_do_not_replace_general_operator_scope():
     assert "operator" not in mobile_scopes
     assert _required_scope(SecurityScope.OPERATOR) == "operator"
     assert _required_scope(SecurityScope.MOBILE_CHAT) == "mobile-chat"
+
+
+def test_organization_task_command_result_and_approval_routes_are_scoped():
+    from core.api.auth_middleware import _required_scope
+
+    expected = {
+        ("/runtime/organization/tasks", "POST"): (SecurityScope.OPERATOR, "operator"),
+        ("/runtime/organization/tasks/{task_id}", "GET"): (SecurityScope.LOCAL_CLIENT, "local-client"),
+        ("/runtime/organization/tasks/{task_id}/approval", "POST"): (SecurityScope.OPERATOR, "operator"),
+        ("/runtime/organization/tasks/{task_id}/decision", "POST"): (SecurityScope.OPERATOR, "operator"),
+    }
+    for (path, method), (scope, token_scope) in expected.items():
+        classification = classify_route(path, (method,))
+        assert classification is not None
+        assert classification.scope is scope
+        assert _required_scope(scope) == token_scope
