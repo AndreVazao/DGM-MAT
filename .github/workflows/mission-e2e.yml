@@ -7,8 +7,12 @@ on:
       - "core/execution/**"
       - "core/organization/**"
       - "core/runtime/**"
+      - "core/providers/browser/**"
+      - "core/research/**"
       - "tests/autonomy/**"
       - "tests/organization/**"
+      - "tests/research/**"
+      - "tests/test_governed_browser_session.py"
       - ".github/workflows/mission-e2e.yml"
   push:
     branches: [main]
@@ -17,8 +21,12 @@ on:
       - "core/execution/**"
       - "core/organization/**"
       - "core/runtime/**"
+      - "core/providers/browser/**"
+      - "core/research/**"
       - "tests/autonomy/**"
       - "tests/organization/**"
+      - "tests/research/**"
+      - "tests/test_governed_browser_session.py"
       - ".github/workflows/mission-e2e.yml"
   workflow_dispatch:
 
@@ -49,7 +57,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.python-version}}
           cache: pip
           cache-dependency-path: requirements.txt
       - name: Install project dependencies
