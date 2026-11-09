@@ -34,6 +34,39 @@ def import_chrome_conversation_archive():
     return ChromeConversationArchiveImporter().import_inbox()
 
 
+def _vault_catalog():
+    from core.vault import VaultCatalog
+
+    configured = os.getenv("DGM_VAULT_PATH") or VaultCatalog.default_root()
+    return VaultCatalog(configured)
+
+
+@router.get("/github-references")
+def list_github_repository_references(
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    verification_status: str | None = Query(default=None),
+):
+    """List GitHub repository links found in archived conversations, with provenance."""
+    try:
+        return _vault_catalog().list_github_repository_references(
+            limit=limit, offset=offset, verification_status=verification_status,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/github-references/verify")
+def verify_github_repository_references(
+    limit: int = Query(default=10, ge=1, le=25),
+):
+    """Verify a bounded batch against public GitHub metadata; private repositories remain ambiguous."""
+    try:
+        return _vault_catalog().verify_pending_github_repository_references(limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/status")
 def recovery_status():
     """Return aggregate progress only; never inspect provider accounts or delete data."""
