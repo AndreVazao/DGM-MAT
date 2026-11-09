@@ -30,8 +30,10 @@ jobs:
       - name: Download public dashboard source
         shell: pwsh
         run: |
-          git -c protocol.version=2 clone --depth 1 --branch main https://github.com/AndreVazao/DGM-Cockpit-Frontend.git cockpit
-          if (!(Test-Path "cockpit/app.js") -or !(Test-Path "cockpit/tests/cockpit-contract.test.cjs")) { throw "Dashboard checkout is incomplete or missing expected files." }
+          git -c protocol.version=2 clone --depth 1 --branch main https://github.com/AndreVazao/DGM-Cockpit-Frontend.git dashboard-source
+          if (!(Test-Path "dashboard-source/app.js") -or !(Test-Path "dashboard-source/tests/cockpit-contract.test.cjs")) { throw "Dashboard checkout is incomplete or missing expected files." }
+          $dashboardSha = (git -C dashboard-source rev-parse HEAD).Trim()
+          "DGM_DASHBOARD_SHA=$dashboardSha" >> $env:GITHUB_ENV
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -39,7 +41,7 @@ jobs:
           node-version: "22"
 
       - name: Validate dashboard source
-        working-directory: cockpit
+        working-directory: dashboard-source
         shell: pwsh
         run: |
           node --check app.js
@@ -65,10 +67,10 @@ jobs:
           $release = Join-Path $PWD "release/DGM-MAT-Windows"
           New-Item -ItemType Directory -Force -Path "$release/engine", "$release/dashboard" | Out-Null
           Copy-Item "dist/DGM-MAT-BackOffice/*" "$release/engine" -Recurse -Force
-          Copy-Item "cockpit/index.html", "cockpit/app.js", "cockpit/styles.css" "$release/dashboard" -Force
+          Copy-Item "dashboard-source/index.html", "dashboard-source/app.js", "dashboard-source/styles.css" "$release/dashboard" -Force
           Copy-Item "packaging/windows/Install-DGM-MAT.ps1" "$release/Install-DGM-MAT.ps1" -Force
           Copy-Item "packaging/windows/README-PT-PT.md" "$release/README-PT-PT.md" -Force
-          Set-Content -Path "$release/BUILD.txt" -Value @("DGM-MAT commit: $env:GITHUB_SHA", "Dashboard source: AndreVazao/DGM-Cockpit-Frontend@main", "Workflow run: $env:GITHUB_RUN_ID") -Encoding utf8
+          Set-Content -Path "$release/BUILD.txt" -Value @("DGM-MAT commit: $env:GITHUB_SHA", "Dashboard source: AndreVazao/DGM-Cockpit-Frontend@$env:DGM_DASHBOARD_SHA", "Workflow run: $env:GITHUB_RUN_ID") -Encoding utf8
           Compress-Archive -Path "$release/*" -DestinationPath "$PWD/DGM-MAT-Windows-BackOffice-Dashboard.zip" -Force
 
       - name: Upload Windows package
