@@ -218,6 +218,13 @@ def import_chatgpt_conversations_json(
 
     discovered = archived = skipped = partial = failed = 0
     errors: list[str] = []
+    github_reference_vault = None
+    try:
+        from core.vault import VaultCatalog
+        configured_vault = os.environ.get("DGM_VAULT_PATH") or VaultCatalog.default_root()
+        github_reference_vault = VaultCatalog(configured_vault)
+    except Exception as exc:
+        errors.append("github-reference-index-unavailable:" + type(exc).__name__)
 
     for index, item in enumerate(_iter_json_array(source)):
         discovered += 1
@@ -314,6 +321,15 @@ def import_chatgpt_conversations_json(
             last_error="attachment references detected; attachment files not copied" if has_attachments else "",
         ))
         archived += 1
+        if github_reference_vault is not None:
+            try:
+                github_reference_vault.record_github_repository_references(
+                    provider="chatgpt", conversation_id=source_id, title=title,
+                    conversation_url=None,
+                    messages=[{"message_id": "__conversation_export__", "content": serialized}],
+                )
+            except Exception as exc:
+                errors.append(f"record[{index}] ({source_id}): github-reference-index:{type(exc).__name__}")
         if is_partial:
             partial += 1
 
