@@ -199,6 +199,92 @@ class ProjectContextDossierGenerator:
         self.progress_store = progress_store
         self.output_root = Path(output_root).expanduser().resolve()
         self.batch_size = batch_size
+
+    @staticmethod
+    def _mapping_key(provider: str, conversation_id: str) -> str:
+        return f"{provider}:{conversation_id}"
+
+    def _project_rows(self, project_key: str, mapping: Mapping[str, str]) -> Iterator[dict]:
+        """Yield only completed snapshots explicitly assigned to one project."""
+        for row in self.progress_store.iter_conversations(batch_size=self.batch_size):
+            if row.get("status") != "complete" or not isinstance(row.get("result"), dict):
+                continue
+            result = row["result"]
+            conversation = result.get("conversation")
+            if not isinstance(conversation, dict):
+                continue
+            provider = str(conversation.get("provider") or row.get("provider") or "unknown")
+            conversation_id = str(conversation.get("conversation_id") or row.get("conversation_id") or "")
+            if mapping.get(self._mapping_key(provider, conversation_id)) != project_key:
+                continue
+            yield {
+                "provider": provider,
+                "conversation_id": conversation_id,
+                "title": conversation.get("title") or row.get("title") or "Untitled conversation",
+                "url": conversation.get("url"),
+                "processed_at": row.get("processed_at"),
+                "source_fingerprint": row.get("source_fingerprint"),
+                "conversation": conversation,
+                "artifacts": result.get("artifacts") if isinstance(result.get("artifacts"), list) else [],
+            }
+
+    @staticmethod
+    def _hash_file(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    @staticmethod
+    def _atomic_copy(source: Path, destination: Path) -> None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        fd, temporary = tempfile.mkstemp(prefix=f".{destination.name}.", suffix=".tmp", dir=str(destination.parent))
+        os.close(fd)
+        try:
+            shutil.copyfile(source, temporary)
+            os.replace(temporary, destination)
+        except Exception:
+            try:
+                os.unlink(temporary)
+            except FileNotFoundError:
+                pass
+            raise
+
+    def _write_manifest(
+        self, path: Path, project_key: str, mapping: Mapping[str, str], digest: str, count: int
+    ) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="\\n") as stream:
+                header = {
+                    "schema_version": 2,
+                    "project_key": project_key,
+                    "sha256": digest,
+                    "conversation_count": count,
+                    "mapping_mode": "explicit_only",
+                }
+                stream.write(json.dumps(header, ensure_ascii=False, sort_keys=True)[:-1])
+                stream.write(',"source_ids":[')
+                first = True
+                for row in self._project_rows(project_key, mapping):
+                    source_id = self._mapping_key(row["provider"], row["conversation_id"])
+                    if not first:
+                        stream.write(",")
+                    stream.write(json.dumps(source_id, ensure_ascii=False))
+                    first = False
+                stream.write("]}\\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, path)
+        except Exception:
+            try:
+                os.unlink(temporary)
+            except FileNotFoundError:
+                pass
+            raise
+
     def build(self, explicit_mapping: Mapping[str, str]) -> dict:
         """Build assigned projects; unmapped conversations are counted, never guessed."""
         if not isinstance(explicit_mapping, Mapping):
