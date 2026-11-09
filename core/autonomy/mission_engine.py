@@ -30,6 +30,7 @@ from core.execution.local_coding_agent_probe import LocalCodingAgentProbe
 from core.organization.configured_readonly_workers import register_configured_readonly_workers
 from core.organization.read_only_worker_orchestrator import ReadOnlyWorkerOrchestrator
 from core.organization.task_dispatcher import OrganizationTaskDispatcher
+from core.autonomy.typed_organization_mission_executor import TypedOrganizationMissionExecutor
 from core.organization.office import bootstrap_full_office
 from core.organization.qa_intake_worker import QAIntakeWorker
 from core.organization.qa_review_queue import QAReviewQueue
@@ -61,6 +62,8 @@ class MissionEngine:
     AUTO_RUN_READ_ONLY_INTENTS = frozenset({
         "list_repositories", "architecture_summary", "repository_status", "local_research",
         "system_summary", "engines_inventory", "ollama_status", "claude_status",
+        "organization_repository_inventory", "organization_python_source_analysis",
+        "organization_python_test_inventory",
     })
 
     def __init__(self, organization_bus: InternalMessageBus | None = None):
@@ -93,6 +96,11 @@ class MissionEngine:
             self.organization_tasks,
             self.organization_delegation,
             self.readonly_worker_orchestrator,
+        )
+        self.typed_organization_mission_executor = TypedOrganizationMissionExecutor(
+            self.organization_tasks,
+            self.organization_delegation,
+            self.organization_task_dispatcher,
         )
         self.human_intervention_queue = HumanInterventionQueue(
             storage_manager.get_path("tasks") / "human_intervention_queue.sqlite3"
@@ -815,6 +823,21 @@ class MissionEngine:
                         raise RuntimeError(
                             "Local research finalization was refused because durable state "
                             "changed or its checkpoint is unavailable."
+                        )
+                    return finalized
+                elif intent.intent in {
+                    "organization_repository_inventory",
+                    "organization_python_source_analysis",
+                    "organization_python_test_inventory",
+                } and intent.supported:
+                    result = self.typed_organization_mission_executor.execute(
+                        mission, intent.intent
+                    )
+                    finalized = self._finish_mission_success(mission, result)
+                    if finalized is None:
+                        raise RuntimeError(
+                            "Typed organization mission finalization was refused because durable "
+                            "state changed or its checkpoint is unavailable."
                         )
                     return finalized
                 elif intent.intent in {"system_summary", "engines_inventory", "ollama_status", "claude_status"} and intent.supported:
