@@ -107,3 +107,6 @@ The extension can now consume an explicitly approved consultation marked `review
 The read-only `GET /recovery/browser-consult/peek?provider={provider}` endpoint lets the extension choose the correct preflight before consuming the one-shot claim. Enqueue uses the existing `POST /recovery/browser-consult/enqueue` contract with `review_mode: "fresh_review"` and a unique `review_id`; it still requires `free_capacity_confirmed: true`, explicit individual approval and the existing opt-in flag. Do not enable the flags merely to test the code.
 
 **Important:** this bridge records provider UI evidence, not a trusted runtime isolation attestation. The stored result remains untrusted and `independence_attested=false`; it cannot yet be passed as a successful `RuntimeIsolationAttestation` to `DesignReviewCoordinator`. A later host-side verifier must reconcile the durable result with the EGM task/mission, verify reviewer mapping and policy, then persist the final task receipt through the existing OrganizationTaskManager. No synchronous worker waits for operator approval.
+
+
+Architecture and implementation gates: [EGM Browser Fresh-Review Durable Bridge](../docs/architecture/EGM_BROWSER_FRESH_REVIEW_DURABLE_BRIDGE_2026-11-09.md).
