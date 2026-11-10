@@ -759,6 +759,7 @@ def test_conversation_search_paginates_without_duplicates_and_reports_provenance
     assert len(set(first_ids + second_ids + third_ids)) == 5
     assert first["results"][0]["provenance"]["source"] == "dgm-mat-local-conversation-store"
     assert first["results"][0]["provenance"]["capture_completeness"] == "complete"
+    assert first["results"][0]["status"] == "active"
 
 
 def test_conversation_search_pagination_is_bounded_and_backward_compatible(tmp_path: Path):
@@ -838,3 +839,28 @@ def test_thread_status_rejects_unknown_values_without_mutating_thread(tmp_path):
     with pytest.raises(ValueError, match="status must be active or archived"):
         store.set_status(thread.id, "deleted")
     assert store.get_thread(thread.id).status == "active"
+
+
+def test_archive_restore_routes_preserve_thread_and_return_status():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from core.api.mobile_bridge import router, service
+
+    app = FastAPI()
+    app.include_router(router)
+    thread = service.create_thread("API archive test")
+    service.append_transcript_entry(thread["id"], "user", "Keep this message.")
+    client = TestClient(app)
+
+    archived = client.post(f"/mobile/threads/{thread['id']}/archive")
+    assert archived.status_code == 200
+    assert archived.json()["status"] == "archived"
+    assert archived.json()["messages"][0]["content"] == "Keep this message."
+
+    restored = client.post(f"/mobile/threads/{thread['id']}/restore")
+    assert restored.status_code == 200
+    assert restored.json()["status"] == "active"
+    assert restored.json()["messages"][0]["content"] == "Keep this message."
+
+    missing = client.post("/mobile/threads/thread-missing/archive")
+    assert missing.status_code == 404
