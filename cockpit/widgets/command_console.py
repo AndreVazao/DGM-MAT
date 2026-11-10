@@ -611,6 +611,7 @@ class CommandConsoleWidget(QWidget):
     def _on_conversation_request_completed(
         self, action: str, payload: object, error: str
     ) -> None:
+        data = payload if isinstance(payload, dict) else {}
         is_transcript_write = action in {"send-user-entry", "transcript-entry"}
         if is_transcript_write:
             self._transcript_write_active = False
@@ -660,7 +661,6 @@ class CommandConsoleWidget(QWidget):
             self._refresh_controls()
             return
 
-        data = payload if isinstance(payload, dict) else {}
         if action in {"threads-list", "thread-search", "thread-search-more"}:
             threads = data.get("threads") if action == "threads-list" else data.get("results")
             if action != "thread-search-more":
