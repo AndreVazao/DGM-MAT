@@ -185,7 +185,7 @@ def _runtime_readiness(host: str, port: int) -> tuple[bool, str]:
 
 def _command_for_mode(mode: str, host: str, port: int) -> list[str]:
     if mode == "api":
-        return [sys.executable, "-m", "uvicorn", "core.api.api_server:app", "--host", host, "--port", str(port), "--log-level", "info"]
+        return [sys.executable, "-c", "from core.api.api_server import run_api; run_api()"]
     if mode == "full":
         installed_executable = PROJECT_ROOT / "installed" / "DGM-MAT.exe"
         if installed_executable.is_file():
