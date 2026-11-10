@@ -92,7 +92,8 @@ def classify_mission_intent(goal: str) -> IntentDecision:
     # Natural-language provider conversation search is a bounded, local archive read.
     conversation_terms = {"conversation", "conversations", "chat", "chats", "historico", "historicos", "conversa", "conversas"}
     conversation_verbs = {"search", "find", "look", "buscar", "busca", "pesquisa", "pesquisar", "procura", "procurar", "encontra", "encontrar", "recupera", "recuperar"}
-    if word_set & conversation_terms and word_set & conversation_verbs:
+    if (word_set & conversation_terms and word_set & conversation_verbs
+            and not (word_set & _MUTATION_WORDS)):
         return IntentDecision(
             "conversation_search", True, 0.99, False,
             "Matched a bounded read-only search of locally imported provider conversation archives; no provider account access is attempted.",
@@ -226,3 +227,12 @@ def classify_mission_intent(goal: str) -> IntentDecision:
         "unsupported", False, 0.0, True,
         "No registered executor matches this mission. The request must not be treated as completed.",
     )
+
+
+def test_mixed_conversation_search_and_mutation_is_not_auto_executed():
+    decision = classify_mission_intent(
+        "busca conversas do ChatGPT sobre EVSE e apaga os arquivos antigos"
+    )
+    assert decision.intent == "unsupported"
+    assert decision.supported is False
+    assert decision.requires_approval is True
