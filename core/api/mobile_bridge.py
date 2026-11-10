@@ -163,6 +163,22 @@ def append_message(thread_id: str, request: MessageRequest):
         raise HTTPException(status_code=404, detail="Conversation thread not found") from exc
 
 
+@router.post("/threads/{thread_id}/archive")
+def archive_thread(thread_id: str):
+    try:
+        return service.set_thread_status(thread_id, "archived")
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Conversation thread not found") from exc
+
+
+@router.post("/threads/{thread_id}/restore")
+def restore_thread(thread_id: str):
+    try:
+        return service.set_thread_status(thread_id, "active")
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Conversation thread not found") from exc
+
+
 @router.post("/threads/{thread_id}/rename")
 def rename_thread(thread_id: str, request: RenameRequest):
     title = request.title.strip()
