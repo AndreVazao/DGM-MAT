@@ -994,3 +994,36 @@ def get_queue_status():
         "health": queue.get_health(),
         "recent_actions": queue.list_all(limit=20)
     }
+
+
+@router.post("/shutdown")
+def request_runtime_shutdown_endpoint(request: Request):
+    """Stop the full local runtime through its owner; never kill a process."""
+    import ipaddress
+
+    client_host = request.client.host if request.client else ""
+    try:
+        address = ipaddress.ip_address(client_host)
+        is_loopback = address.is_loopback
+    except ValueError:
+        is_loopback = client_host.casefold() == "localhost"
+    if not is_loopback:
+        raise HTTPException(status_code=403, detail="Runtime shutdown is loopback-only.")
+
+    principal = request.scope.get("state", {}).get("dgm_principal")
+    if not isinstance(principal, dict) or not isinstance(principal.get("session_id"), str):
+        raise HTTPException(status_code=401, detail="Authenticated local operator session required.")
+    if "operator" not in set(principal.get("scopes") or ()):
+        raise HTTPException(status_code=403, detail="Operator scope is required to stop the runtime.")
+
+    from core.api.api_server import request_api_shutdown
+    if not request_api_shutdown():
+        raise HTTPException(status_code=503, detail="The API server cannot accept a shutdown request.")
+
+    from core.runtime.runtime_control import request_runtime_shutdown
+    request_runtime_shutdown()
+    return {
+        "status": "shutdown_requested",
+        "service": "dgm-mat",
+        "provider_contacted": False,
+    }
