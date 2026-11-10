@@ -19,6 +19,8 @@ def test_consultation_requires_preview_provider_and_free_capacity(app):
     dialog.goal.setPlainText("Review the current mission failure.")
     assert dialog.send_button.isEnabled() is False
 
+    dialog._status_loaded = True
+    dialog._consult_enabled = True
     dialog._preview_sha256 = "a" * 64
     dialog._refresh_controls()
     assert dialog.send_button.isEnabled() is False
@@ -44,6 +46,8 @@ def test_consultation_payload_is_bound_to_active_thread_and_selected_providers(a
     dialog.provider_checks["gemini"].setChecked(True)
     dialog.provider_checks["qwen"].setChecked(True)
     dialog.free_capacity.setChecked(True)
+    dialog._status_loaded = True
+    dialog._consult_enabled = True
     dialog._preview_sha256 = "b" * 64
 
     captured = {}
