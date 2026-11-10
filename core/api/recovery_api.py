@@ -484,6 +484,9 @@ def search_recovery_sources(
             "source_date": source.source_date,
             "match_type": "metadata",
             "snippet": source.title[:240],
+            "source_url": source.source_url,
+            "capture_status": source.capture_status,
+            "completeness": source.completeness,
         })
 
     scanned_sources = 0
@@ -536,6 +539,9 @@ def search_recovery_sources(
                             "message_role": record.get("role", "unknown"),
                             "node_id": record.get("node_id", ""),
                             "snippet": snippet,
+                            "source_url": source.source_url,
+                            "capture_status": source.capture_status,
+                            "completeness": source.completeness,
                         })
                         seen.add(key)
                     if len(results) >= limit:
