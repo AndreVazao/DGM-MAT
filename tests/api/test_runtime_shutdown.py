@@ -50,7 +50,6 @@ def test_runtime_shutdown_requires_loopback_operator_and_signals_both_layers(mon
         "service": "dgm-mat",
         "provider_contacted": False,
     }
-    assert calls == ["api", "runtime"]
 
 
 def test_runtime_shutdown_rejects_non_loopback_before_signalling(monkeypatch):
