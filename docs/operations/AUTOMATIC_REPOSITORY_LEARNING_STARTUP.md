@@ -1,11 +1,11 @@
 # Automatic repository learning at full-runtime startup
 
-**Status:** implemented for standard profile; LOW_MEMORY startup guard included in this change.  
+**Status:** enabled by default on all hardware profiles; hardware size is informational only.  
 **Scope:** local metadata-only repository inventory; not conversation ingestion or autonomous coding.
 
 ## Startup behavior
 
-The full DGM-MAT runtime starts the existing `RepositoryLearningService` by default on the standard profile. The worker:
+The full DGM-MAT runtime starts the existing `RepositoryLearningService` by default on every hardware profile. The worker:
 
 - scans only configured roots (`DGM_REPO_SCAN_ROOTS` plus the conservative built-in roots);
 - processes bounded batches (default 5 repositories, configurable up to 25);
@@ -17,13 +17,13 @@ The full DGM-MAT runtime starts the existing `RepositoryLearningService` by defa
 
 ## Operator control and resource profile
 
-- Standard profile: automatic startup is enabled by default.
-- LOW_MEMORY profile (less than 4 GB total RAM): automatic startup is disabled by default to preserve resources.
-- Explicit opt-in: set `DGM_REPOSITORY_LEARNING_ENABLED=1` to enable the worker even on a LOW_MEMORY machine.
-- Explicit opt-out: set `DGM_REPOSITORY_LEARNING_ENABLED=0` to disable it on every profile.
-- The Windows backend service manager deliberately leaves `DGM_REPOSITORY_LEARNING_ENABLED` unset by default; it must not silently opt a LOW_MEMORY PC back in. An operator-provided value is preserved unchanged.
+- Repository learning starts by default regardless of installed RAM.
+- The LOW_MEMORY label is retained only as hardware telemetry; it does not disable engines, defer provider/autonomy scans, or block local inference.
+- Explicit opt-out: set `DGM_REPOSITORY_LEARNING_ENABLED=0` to pause this worker on every profile.
+- Explicit opt-in: set `DGM_REPOSITORY_LEARNING_ENABLED=1` to ensure it starts when the environment has otherwise been customized.
+- No minimum or maximum RAM threshold is used to decide whether a requested task may run. Windows manages memory pressure; if the OS terminates a process, durable checkpoints and error records remain the recovery mechanism.
 
-On older machines, use conservative settings such as `DGM_REPOSITORY_LEARNING_BATCH_SIZE=1` and `DGM_REPOSITORY_LEARNING_REFRESH_SECONDS=3600`. The existing authenticated/runtime API controls remain available:
+The existing authenticated/runtime API controls remain available:
 
 - `GET /runtime/repository-learning` — status and inventory
 - `GET /runtime/repository-learning/tree?repo_path=...` — read an indexed tree
