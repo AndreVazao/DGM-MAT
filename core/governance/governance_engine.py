@@ -109,12 +109,13 @@ class GovernanceEngine:
 
     def _handle_resource_update(self, snapshot):
         try:
-            self.memory_controller.check_memory(snapshot)
+            # Memory remains visible in resource telemetry, but does not prune
+            # state or throttle requested work. CPU safeguards remain independent.
             self.degradation_controller.update_degradation(
                 snapshot.cpu_percent,
                 snapshot.memory_percent,
                 self.limits.cpu_degradation_threshold,
-                self.limits.memory_degradation_threshold
+                None,
             )
         except Exception as exc:
             dgm_logger.error(f"GovernanceEngine: Resource update failure: {exc}")
