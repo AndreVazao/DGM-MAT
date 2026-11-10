@@ -706,7 +706,7 @@ class MissionEngine:
     def _mission_executor_readiness(self, intent_decision) -> Dict[str, Any]:
         """Verify a real, registered handler before creating an approval-capable action."""
         intent_name = intent_decision.intent
-        typed_kind = self.typed_organization_mission_executor.INTENT_TO_KIND.get(intent_name)
+        typed_kind = TypedOrganizationMissionExecutor.INTENT_TO_KIND.get(intent_name)
         if typed_kind is not None:
             policy = self.organization_task_dispatcher.TASK_KINDS.get(typed_kind)
             if not isinstance(policy, dict):
