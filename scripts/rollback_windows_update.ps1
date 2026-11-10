@@ -75,14 +75,24 @@ if (Test-DgmMatApiPortOpen) {
     }
 }
 
-$running = Get-CimInstance Win32_Process -Filter "Name = 'DGM-MAT.exe'" |
-    Where-Object {
-        $_.ExecutablePath -and
-        [System.IO.Path]::GetFullPath($_.ExecutablePath) -ieq $targetPath
+$deadline = (Get-Date).AddSeconds(20)
+while ($true) {
+    $running = @(Get-CimInstance Win32_Process -Filter "Name = 'DGM-MAT.exe'" |
+        Where-Object {
+            $_.ExecutablePath -and
+            [System.IO.Path]::GetFullPath($_.ExecutablePath) -ieq $targetPath
+        })
+    if (-not $running) { break }
+    $cockpit = @($running | Where-Object { $_.CommandLine -match "--cockpit-only" })
+    if ($cockpit) {
+        $ids = ($cockpit | ForEach-Object { $_.ProcessId }) -join ", "
+        throw "Close DGM-MAT cockpit process(es) $ids and rerun rollback. No process was killed."
     }
-if ($running) {
-    $ids = ($running | ForEach-Object { $_.ProcessId }) -join ", "
-    throw "Close DGM-MAT cockpit process(es) $ids and rerun rollback. No process was killed."
+    if ((Get-Date) -ge $deadline) {
+        $ids = ($running | ForEach-Object { $_.ProcessId }) -join ", "
+        throw "Runtime process(es) $ids did not exit after orderly shutdown. No process was killed."
+    }
+    Start-Sleep -Milliseconds 500
 }
 
 $restoreTemp = "$targetPath.rollback"
