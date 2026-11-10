@@ -25,8 +25,8 @@ class GovernanceEngine:
     def __init__(self, config_path: str = "config/runtime_limits.json"):
         self.limits = self._load_limits(config_path)
         self.profile = detect_runtime_profile()
-        if self.profile.low_memory:
-            self.limits.memory_degradation_threshold = self.profile.memory_degradation_threshold
+        # Resource observations remain telemetry; RAM pressure does not impose
+        # an artificial execution throttle on the operator's requested work.
         self.lock = threading.Lock()
 
         # Initialize components
