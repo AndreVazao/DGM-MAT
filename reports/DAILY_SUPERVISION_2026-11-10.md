@@ -323,3 +323,16 @@ Esta correção prevalece sobre qualquer formulação anterior neste relatório 
 **Confirmado:** executável oficial abre uma janela Qt visível e responsiva; API autenticada; lista e pesquisa de conversas; criação e persistência de uma conversa após fechar/reabrir o cockpit.  
 **Ainda por confirmar:** interação manual completa no ecrã, conteúdo visual de cada componente, envio de mensagem, pesquisa pela interface, arquivo/restauro pela interface, atalho Desktop e persistência após reinício do backend.  
 **Classificação global:** VERIFICAÇÃO INCOMPLETA.
+
+
+## Correção adicional — atalho Desktop localizado — 2026-11-10 19:29 UTC
+
+A pesquisa inicial de atalhos não incluiu a localização Desktop redirecionada para OneDrive. A consulta correta a `[Environment]::GetFolderPath('Desktop')` encontrou o atalho existente:
+
+- Ficheiro: `DGM-MAT Chat.lnk` no Desktop OneDrive.
+- Target: `C:\\ProgramasGodMode\\DGM-MAT\\installed\\DGM-MAT.exe`.
+- Argumentos: `--cockpit-only`.
+- Working directory: `C:\\ProgramasGodMode\\DGM-MAT`.
+- Descrição: abrir o cockpit de chat ligado ao backend local.
+
+O atalho já estava corretamente configurado; não foi criado nem alterado. O teste anterior do executável com o mesmo argumento confirmou uma janela oficial `DGM-MAT - Assistente` visível e responsiva.
