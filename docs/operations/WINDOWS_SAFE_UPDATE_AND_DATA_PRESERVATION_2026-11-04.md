@@ -45,8 +45,8 @@ O script deixa deliberadamente intactos:
 3. O instalador valida que o processo que detém a API pertence exatamente ao `DGM-MAT.exe` de destino; nunca tenta parar um runtime de outra instalação.
 4. Se a API estiver ativa, o instalador troca o bootstrap token local por uma sessão de operador e chama `POST /runtime/shutdown` em loopback. O servidor deixa de aceitar novos pedidos, envia a resposta e só depois sinaliza o proprietário do runtime para executar `Runtime.shutdown()`.
 5. O instalador aguarda até 30 segundos pela libertação da porta e até 20 segundos pela saída dos processos. Se a janela `--cockpit-only` continuar aberta, pede ao operador que a feche e aborta sem matar processos nem criar backups parciais.
-6. Se faltar o bootstrap token, a sessão não for operador, o servidor não suportar shutdown gerido ou o runtime não terminar, a atualização falha fechada. Não existe fallback para `Stop-Process`, `TerminateProcess` ou `.Kill()`.
-5. Não apagar nem renomear manualmente as pastas de memória.
+6. Se faltar o bootstrap token, a sessão não for operador, o servidor não suportar shutdown gerido ou o runtime não terminar, a atualização falha fechada. Não existe fallback para `Stop-Process`, `TerminateProcess` ou `.Kill()`. O modo API-only também usa o entrypoint Uvicorn gerido; processos iniciados por um Uvicorn externo não são terminados automaticamente e fazem a atualização abortar.
+7. Não apagar nem renomear manualmente as pastas de memória.
 
 ## Atualização
 
