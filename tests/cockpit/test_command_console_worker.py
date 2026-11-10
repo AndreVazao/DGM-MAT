@@ -97,3 +97,26 @@ def test_archived_active_conversation_disables_message_submission(app):
     assert widget.send_btn.isEnabled() is False
     assert "arquivada" in widget.input_field.placeholderText().casefold()
     widget.close()
+
+
+def test_archive_restore_response_updates_state_without_unbound_data(app, monkeypatch):
+    widget = CommandConsoleWidget()
+    widget._active_thread_id = "thread-archive-test"
+    widget._active_thread_status = "active"
+    requests = []
+    monkeypatch.setattr(
+        widget,
+        "_conversation_request",
+        lambda action, method, path, **kwargs: requests.append((action, method, path)),
+    )
+
+    widget._on_conversation_request_completed(
+        "thread-archive",
+        {"id": "thread-archive-test", "status": "archived"},
+        "",
+    )
+
+    assert widget._active_thread_status == "archived"
+    assert requests == [("threads-list", "GET", "/mobile/threads")]
+    assert "arquivada" in widget.input_field.placeholderText().casefold()
+    widget.close()
