@@ -47,14 +47,14 @@ def test_unregistered_or_mutating_work_never_receives_automatic_approval(goal: s
     assert decision.requires_approval is True
 
 
-def test_unsupported_mission_is_queued_for_operator_not_auto_approved() -> None:
+def test_unsupported_mission_waits_for_executor_before_approval() -> None:
     engine = MissionEngine(organization_bus=InternalMessageBus())
     mission = engine.create_mission(
         "recover conversations from the AI assistants",
         "Regression: no conversation-recovery executor is registered yet",
     )
-    action = engine.action_queue.get_action(mission.metadata["action_id"])
 
-    assert mission.status.value == "QUEUED"
-    assert action["status"] == "QUEUED"
-    assert action["is_approved"] is False
+    assert mission.status.value == "WAITING_FOR_CAPABILITY"
+    assert mission.metadata["executor_readiness"]["reason_code"] == "NO_REGISTERED_EXECUTOR"
+    assert mission.metadata["approval_blocked"] is True
+    assert "action_id" not in mission.metadata
