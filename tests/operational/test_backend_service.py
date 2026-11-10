@@ -264,3 +264,11 @@ def test_full_runtime_service_manager_preserves_explicit_learning_opt_in():
         "full",
     )
     assert configured["DGM_REPOSITORY_LEARNING_ENABLED"] == "1"
+
+
+def test_api_only_mode_uses_managed_uvicorn_server_entrypoint():
+    assert backend_service._command_for_mode("api", "127.0.0.1", 8181) == [
+        backend_service.sys.executable,
+        "-c",
+        "from core.api.api_server import run_api; run_api()",
+    ]
