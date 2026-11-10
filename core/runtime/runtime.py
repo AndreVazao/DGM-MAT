@@ -23,10 +23,10 @@ def repository_learning_autostart_enabled(
     *,
     low_memory: bool = False,
 ) -> bool:
-    """Respect the low-memory profile unless the operator explicitly opts in."""
+    """Enable repository learning by default regardless of installed RAM."""
     configured = os.getenv("DGM_REPOSITORY_LEARNING_ENABLED") if value is None else value
     if configured is None:
-        return not low_memory
+        return True
     return str(configured).strip().casefold() in {"1", "true", "yes", "on"}
 
 
