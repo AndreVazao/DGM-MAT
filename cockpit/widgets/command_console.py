@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any
 
 from cockpit.api_client import authenticated_request, LocalApiAuthenticationError
+from cockpit.workspace.ai_consultation_dialog import AIConsultationDialog
 from cockpit.mission_status_client import (
     fetch_mission_checkpoint,
     submit_mission_once,
@@ -304,12 +305,15 @@ class CommandConsoleWidget(QWidget):
         self.search_field.returnPressed.connect(self._search_threads)
         self.search_btn = QPushButton("Pesquisar")
         self.search_btn.clicked.connect(self._search_threads)
+        self.ai_help_btn = QPushButton("Pedir ajuda a uma IA")
+        self.ai_help_btn.clicked.connect(self._open_ai_consultation)
         self.search_more_btn = QPushButton("Mais resultados")
         self.search_more_btn.setEnabled(False)
         self.search_more_btn.clicked.connect(self._search_more_threads)
         history_bar.addWidget(self.new_thread_btn)
         history_bar.addWidget(self.search_field, 1)
         history_bar.addWidget(self.search_btn)
+        history_bar.addWidget(self.ai_help_btn)
         history_bar.addWidget(self.search_more_btn)
         layout.addLayout(history_bar)
 
@@ -495,6 +499,22 @@ class CommandConsoleWidget(QWidget):
 
     def _load_threads(self) -> None:
         self._conversation_request("threads-list", "GET", "/mobile/threads")
+
+    def _open_ai_consultation(self) -> None:
+        if not self._active_thread_id:
+            self._append_message(
+                "Sistema",
+                "Cria ou abre uma conversa antes de pedir ajuda a uma IA. "
+                "A resposta externa ficará associada a essa conversa.",
+                "system",
+            )
+            return
+        dialog = AIConsultationDialog(
+            self.api_url,
+            self._active_thread_id,
+            self,
+        )
+        dialog.exec()
 
     def _create_thread(self, *, for_pending_send: bool = False) -> None:
         if self._worker is not None and self._worker.isRunning():
