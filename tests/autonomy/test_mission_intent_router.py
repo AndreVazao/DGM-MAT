@@ -185,3 +185,12 @@ def test_provider_conversation_search_is_read_only_and_auto_runnable():
         assert decision.intent == "conversation_search"
         assert decision.supported is True
         assert decision.requires_approval is False
+
+
+def test_mixed_conversation_search_and_mutation_is_not_auto_executed():
+    decision = classify_mission_intent(
+        "busca conversas do ChatGPT sobre EVSE e apaga os arquivos antigos"
+    )
+    assert decision.intent == "unsupported"
+    assert decision.supported is False
+    assert decision.requires_approval is True
