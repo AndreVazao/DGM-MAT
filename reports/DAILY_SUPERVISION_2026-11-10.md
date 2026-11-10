@@ -336,3 +336,18 @@ A pesquisa inicial de atalhos não incluiu a localização Desktop redirecionada
 - Descrição: abrir o cockpit de chat ligado ao backend local.
 
 O atalho já estava corretamente configurado; não foi criado nem alterado. O teste anterior do executável com o mesmo argumento confirmou uma janela oficial `DGM-MAT - Assistente` visível e responsiva.
+
+
+## Novo bloqueio confirmado — archive/restore e classificação da rota — 2026-11-10 21:44 UTC
+
+- Foi tentado arquivar exclusivamente a conversa de teste `thread-14375e4504ee4365`.
+- O endpoint `POST /mobile/threads/{id}/archive` devolveu HTTP 403: `Route has no security classification.`
+- O teste parou imediatamente; o endpoint restore não foi chamado e a conversa de teste não foi alterada.
+- Não se deve contornar nem enfraquecer a middleware. É necessário inspecionar o registo/classificador de segurança das rotas e acrescentar a classificação explícita correta, com testes de autorização para arquivo/restauro.
+- O achado foi registado na issue #313. A quota Desktop Commander está a 13% disponível; o próximo ciclo deve privilegiar inspeção do código e testes determinísticos no GitHub/CI, reservando nova execução remota para uma verificação agrupada depois da correção.
+
+## Documentação da readiness
+
+- PR #344 criada: [docs: record mission executor readiness validation](https://github.com/AndreVazao/DGM-MAT/pull/344).
+- Corrige o estado obsoleto `awaiting CI validation` do documento de readiness, regista os runs Windows build #42806219347 e Mission E2E Regression Gate #42806219343 e distingue esses resultados de uma missão read-only real ainda não concluída.
+- PR #344 está aberta, não mergeada. O combined status mostra apenas `security/snyk` pendente; não o usaremos como bloqueio porque a quota mensal gratuita do Snyk está esgotada. Nenhuma alteração de código/runtime foi feita nesta PR.
