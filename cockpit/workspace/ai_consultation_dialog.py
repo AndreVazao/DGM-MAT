@@ -103,7 +103,11 @@ class AIConsultationDialog(QDialog):
         self._approval_ids: list[str] = []
         self._approved_count = 0
         self._queued_count = 0
+        self._pending_approval_start = False
+        self._status_loaded = False
+        self._consult_enabled = False
         self._setup_ui()
+        self._request_status()
 
     def _setup_ui(self) -> None:
         self.setWindowTitle("Pedir ajuda a uma IA — DGM-MAT")
@@ -111,7 +115,8 @@ class AIConsultationDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel(
             "A consulta é enviada apenas para a fila local. A extensão Chrome "
-            "emparelhada faz o transporte pela interface visível do fornecedor."
+            "emparelhada faz o transporte pela interface visível do fornecedor. "
+            "Claude ainda não está configurado nesta via; Codex e Claude Code são agentes locais separados."
         ))
 
         form = QFormLayout()
@@ -187,7 +192,9 @@ class AIConsultationDialog(QDialog):
     def _refresh_controls(self) -> None:
         busy = self._worker is not None and self._worker.isRunning()
         ready = (
-            bool(self._preview_sha256)
+            self._status_loaded
+            and self._consult_enabled
+            and bool(self._preview_sha256)
             and bool(self._selected_providers())
             and self.free_capacity.isChecked()
             and bool(self.goal.toPlainText().strip())
@@ -216,6 +223,10 @@ class AIConsultationDialog(QDialog):
         self._worker = worker
         self._refresh_controls()
         worker.start()
+
+    def _request_status(self) -> None:
+        self.status.setText("A verificar se a consulta browser está ativada e quais os fornecedores permitidos…")
+        self._start_request("status", "GET", "/recovery/browser-consult/status")
 
     def _request_preview(self) -> None:
         goal = self.goal.toPlainText().strip()
@@ -274,6 +285,7 @@ class AIConsultationDialog(QDialog):
     ) -> None:
         if error:
             if action == "approve":
+                self._approval_ids.clear()
                 self.status.setText(
                     "A consulta foi criada, mas uma aprovação falhou. "
                     "Verifica o estado da fila antes de repetir. " + error
@@ -284,6 +296,24 @@ class AIConsultationDialog(QDialog):
             return
 
         data = payload if isinstance(payload, dict) else {}
+        if action == "status":
+            self._status_loaded = True
+            self._consult_enabled = data.get("enabled") is True
+            allowed = set(data.get("free_providers_allowlisted") or [])
+            for provider, checkbox in self.provider_checks.items():
+                available = provider in allowed
+                checkbox.setEnabled(available)
+                if not available:
+                    checkbox.setChecked(False)
+            if not self._consult_enabled:
+                self.status.setText("Consulta externa desativada neste PC. A pré-visualização continua disponível, mas a fila não pode ser usada.")
+            elif not allowed:
+                self.status.setText("Consulta ativada, mas nenhum fornecedor browser está na allowlist deste PC.")
+            else:
+                self.status.setText("Consulta ativada. Fornecedores permitidos: " + ", ".join(sorted(allowed)))
+            self._refresh_controls()
+            return
+
         if action == "preview":
             prompt = data.get("prompt")
             digest = data.get("prompt_sha256")
@@ -317,15 +347,20 @@ class AIConsultationDialog(QDialog):
             self.status.setText(
                 f"{self._queued_count} consulta(s) criada(s). A aplicar a aprovação explícita…"
             )
-            self._approve_next()
+            self._pending_approval_start = True
             return
 
         if action == "approve":
             self._approved_count += 1
-            self._approve_next()
+            self._pending_approval_start = True
 
     def _on_worker_finished(self) -> None:
-        self._refresh_controls()
+        self._worker = None
+        if self._pending_approval_start:
+            self._pending_approval_start = False
+            self._approve_next()
+        else:
+            self._refresh_controls()
 
     def closeEvent(self, event) -> None:
         if self._worker is not None and self._worker.isRunning():
