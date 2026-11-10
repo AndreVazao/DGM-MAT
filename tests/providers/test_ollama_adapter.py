@@ -31,7 +31,7 @@ def test_ollama_generate_uses_installed_model_and_bounded_local_options():
         "models": [{"name": "qwen2.5:1.5b"}]
     })):
         provider.check_health()
-    with patch.object(provider, "available_memory_gb", return_value=2.0), patch("core.providers.local.ollama_adapter.urlopen", return_value=_response({
+    with patch("psutil.virtual_memory", side_effect=AssertionError("RAM must not gate inference")), patch("core.providers.local.ollama_adapter.urlopen", return_value=_response({
         "message": {"content": "{\\\"subtasks\\\":[{\\\"title\\\":\\\"A\\\",\\\"description\\\":\\\"Do A\\\"}]}"}
     })) as call:
         result = provider.generate([{"role": "user", "content": "plan"}], model="qwen2.5:1.5b", json_mode=True)
@@ -59,16 +59,19 @@ def test_default_provider_initialization_registers_trusted_local_adapter():
     assert isinstance(provider, OllamaProvider)
     assert provider.config["base_url"] == "http://127.0.0.1:11434"
 
-def test_ollama_skips_inference_when_free_ram_is_below_safe_threshold(monkeypatch):
-    from types import SimpleNamespace
+def test_ollama_inference_is_not_blocked_by_low_available_ram(monkeypatch):
     provider = OllamaProvider()
-    monkeypatch.delenv("DGM_OLLAMA_ALLOW_LOW_MEMORY", raising=False)
-    monkeypatch.setenv("DGM_OLLAMA_MIN_FREE_GB", "1.25")
-    with patch("psutil.virtual_memory", return_value=SimpleNamespace(available=int(0.5 * 1024 ** 3))):
-        with patch("core.providers.local.ollama_adapter.urlopen") as urlopen:
-            with pytest.raises(RuntimeError, match="No remote provider fallback"):
-                provider.generate([{"role": "user", "content": "plan"}], model="llama3.2:1b")
-    urlopen.assert_not_called()
+    with patch.object(provider, "check_health", return_value={
+        "available": True, "models": ["llama3.2:1b"], "status": "ok"
+    }), patch.object(provider, "_request_json", return_value={
+        "message": {"content": "inference completed"}
+    }) as request:
+        provider._installed_models = ["llama3.2:1b"]
+        provider.health_metrics["last_check"] = __import__("time").time()
+        with patch("psutil.virtual_memory", side_effect=AssertionError("RAM must not gate inference")):
+            result = provider.generate([{"role": "user", "content": "continue slowly"}], model="llama3.2:1b")
+    assert result == "inference completed"
+    request.assert_called_once()
 
 def test_broadcast_health_persists_provider_observation_in_runtime_truth():
     import time

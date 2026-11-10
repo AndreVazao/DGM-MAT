@@ -8,9 +8,9 @@ def test_repository_learning_autostart_defaults_to_enabled_on_standard_profile(m
     assert repository_learning_autostart_enabled(low_memory=False) is True
 
 
-def test_repository_learning_autostart_defaults_to_disabled_on_low_memory_profile(monkeypatch):
+def test_repository_learning_autostart_defaults_to_enabled_on_low_memory_hardware(monkeypatch):
     monkeypatch.delenv("DGM_REPOSITORY_LEARNING_ENABLED", raising=False)
-    assert repository_learning_autostart_enabled(low_memory=True) is False
+    assert repository_learning_autostart_enabled(low_memory=True) is True
 
 
 def test_explicit_opt_in_overrides_low_memory_profile(monkeypatch):

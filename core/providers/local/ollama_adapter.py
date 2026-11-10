@@ -97,14 +97,6 @@ class OllamaProvider(ProviderBase):
             "cost_profile": "local_zero_token",
         }
 
-    @staticmethod
-    def available_memory_gb() -> float | None:
-        try:
-            import psutil
-            return psutil.virtual_memory().available / (1024 ** 3)
-        except Exception:
-            return None
-
     def generate(
         self,
         messages: list[dict[str, str]],
@@ -114,14 +106,8 @@ class OllamaProvider(ProviderBase):
         num_ctx: int | None = None,
         num_predict: int | None = None,
     ) -> str:
-        available_gb = self.available_memory_gb()
-        minimum_gb = max(0.5, float(os.getenv("DGM_OLLAMA_MIN_FREE_GB", "1.25")))
-        allow_low_memory = os.getenv("DGM_OLLAMA_ALLOW_LOW_MEMORY", "0").strip().casefold() in {"1", "true", "yes", "on"}
-        if available_gb is not None and available_gb < minimum_gb and not allow_low_memory:
-            raise RuntimeError(
-                f"Local inference skipped to protect the PC: {available_gb:.2f} GB RAM available; "
-                f"{minimum_gb:.2f} GB required. No remote provider fallback is attempted."
-            )
+        # Deliberately do not gate local inference on available RAM. The operator
+        # accepts slower execution on older hardware; the OS manages memory pressure.
         if not isinstance(messages, list) or not messages or len(messages) > 40:
             raise ValueError("messages must contain between 1 and 40 items")
         normalized = []

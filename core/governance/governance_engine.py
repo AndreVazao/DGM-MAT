@@ -10,7 +10,6 @@ from core.governance.event_governor import EventGovernor
 from core.governance.loop_detector import LoopDetector
 from core.governance.recursion_guard import RecursionGuard
 from core.governance.resource_monitor import ResourceMonitor
-from core.governance.memory_controller import MemoryController
 from core.governance.execution_throttler import ExecutionThrottler
 from core.governance.queue_balancer import QueueBalancer
 from core.governance.deadlock_detector import DeadlockDetector
@@ -25,8 +24,8 @@ class GovernanceEngine:
     def __init__(self, config_path: str = "config/runtime_limits.json"):
         self.limits = self._load_limits(config_path)
         self.profile = detect_runtime_profile()
-        if self.profile.low_memory:
-            self.limits.memory_degradation_threshold = self.profile.memory_degradation_threshold
+        # Resource observations remain telemetry; RAM pressure does not impose
+        # an artificial execution throttle on the operator's requested work.
         self.lock = threading.Lock()
 
         # Initialize components
@@ -34,7 +33,6 @@ class GovernanceEngine:
         self.loop_detector = LoopDetector()
         self.recursion_guard = RecursionGuard(self.limits.max_recursion_depth)
         self.resource_monitor = ResourceMonitor()
-        self.memory_controller = MemoryController(self.limits.memory_degradation_threshold)
         self.throttler = ExecutionThrottler()
         self.balancer = QueueBalancer()
         self.deadlock_detector = DeadlockDetector()
@@ -109,12 +107,13 @@ class GovernanceEngine:
 
     def _handle_resource_update(self, snapshot):
         try:
-            self.memory_controller.check_memory(snapshot)
+            # Memory remains visible in resource telemetry, but does not prune
+            # state or throttle requested work. CPU safeguards remain independent.
             self.degradation_controller.update_degradation(
                 snapshot.cpu_percent,
                 snapshot.memory_percent,
                 self.limits.cpu_degradation_threshold,
-                self.limits.memory_degradation_threshold
+                None,
             )
         except Exception as exc:
             dgm_logger.error(f"GovernanceEngine: Resource update failure: {exc}")

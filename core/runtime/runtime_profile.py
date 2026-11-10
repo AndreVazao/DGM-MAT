@@ -24,7 +24,6 @@ class RuntimeProfile:
     startup_autonomy_delay: int
     lazy_load_knowledge: bool
     lazy_provider_health: bool
-    memory_degradation_threshold: float
 
 
 _profile_lock = Lock()
@@ -52,28 +51,15 @@ def _build_runtime_profile() -> RuntimeProfile:
 
     if low_memory:
         dgm_logger.warning(
-            f"LOW_MEMORY_PROFILE_ACTIVATED: total_ram={total_ram_gb}GB memory={memory_percent:.1f}%"
-        )
-        return RuntimeProfile(
-            name="low_memory",
-            low_memory=True,
-            total_ram_gb=total_ram_gb,
-            memory_percent=memory_percent,
-            idle_snapshot_interval=30,
-            active_snapshot_interval=5,
-            degraded_snapshot_interval=60,
-            governance_monitor_interval=10,
-            enable_startup_provider_scan=False,
-            enable_startup_autonomy_scan=False,
-            startup_autonomy_delay=30,
-            lazy_load_knowledge=True,
-            lazy_provider_health=True,
-            memory_degradation_threshold=95.0,
+            f"LOW_MEMORY_HARDWARE_DETECTED_NO_TASK_RESTRICTIONS: total_ram={total_ram_gb}GB "
+            f"memory={memory_percent:.1f}%; tasks remain enabled"
         )
 
+    # Hardware size is retained as diagnostic metadata only. It must not
+    # disable engines, defer provider/autonomy scans, or reduce task capability.
     return RuntimeProfile(
-        name="standard",
-        low_memory=False,
+        name="low_memory" if low_memory else "standard",
+        low_memory=low_memory,
         total_ram_gb=total_ram_gb,
         memory_percent=memory_percent,
         idle_snapshot_interval=30,
@@ -85,5 +71,4 @@ def _build_runtime_profile() -> RuntimeProfile:
         startup_autonomy_delay=10,
         lazy_load_knowledge=False,
         lazy_provider_health=False,
-        memory_degradation_threshold=85.0,
     )

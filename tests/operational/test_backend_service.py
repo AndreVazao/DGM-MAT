@@ -249,12 +249,12 @@ def test_stop_recovers_orphaned_verified_listener_when_recorded_parent_is_gone(t
     assert "process tree rooted at PID 7020" in capsys.readouterr().out
 
 
-def test_full_runtime_service_manager_preserves_low_memory_guard(monkeypatch):
+def test_full_runtime_service_manager_enables_learning_on_low_memory_hardware_by_default(monkeypatch):
     monkeypatch.delenv("DGM_REPOSITORY_LEARNING_ENABLED", raising=False)
     configured = backend_service._configure_runtime_environment({}, "full")
 
     assert "DGM_REPOSITORY_LEARNING_ENABLED" not in configured
-    assert repository_learning_autostart_enabled(low_memory=True) is False
+    assert repository_learning_autostart_enabled(low_memory=True) is True
     assert repository_learning_autostart_enabled(low_memory=False) is True
 
 
