@@ -811,3 +811,30 @@ def test_append_transcript_entry_rejects_invalid_roles_and_oversized_content(tmp
         service.append_transcript_entry(thread["id"], "assistant", "x" * 20001)
     with pytest.raises(KeyError):
         service.append_transcript_entry("thread-inexistente", "assistant", "Resultado")
+
+
+def test_archive_and_restore_preserve_conversation_history(tmp_path):
+    store = ConversationStore(tmp_path / "conversations.json")
+    service = MobileConversationService(store)
+    thread = service.create_thread("Conversa importante")
+    store.append_message(thread["id"], "user", "Não apagar este registo.")
+
+    archived = service.set_thread_status(thread["id"], "archived")
+    assert archived["status"] == "archived"
+    assert len(archived["messages"]) == 1
+    assert archived["messages"][0]["content"] == "Não apagar este registo."
+
+    restored_store = ConversationStore(tmp_path / "conversations.json")
+    restored_service = MobileConversationService(restored_store)
+    restored = restored_service.set_thread_status(thread["id"], "active")
+    assert restored["status"] == "active"
+    assert len(restored["messages"]) == 1
+    assert restored["messages"][0]["content"] == "Não apagar este registo."
+
+
+def test_thread_status_rejects_unknown_values_without_mutating_thread(tmp_path):
+    store = ConversationStore(tmp_path / "conversations.json")
+    thread = store.create_thread("Estado protegido")
+    with pytest.raises(ValueError, match="status must be active or archived"):
+        store.set_status(thread.id, "deleted")
+    assert store.get_thread(thread.id).status == "active"
