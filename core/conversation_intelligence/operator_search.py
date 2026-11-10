@@ -159,8 +159,8 @@ def search_archived_conversations(goal: str, *, limit: int = 15) -> dict[str, An
     truncated = False
     for term in terms:
         payload = _search_archive_term(term, provider, limit)
-        scanned_sources = max(scanned_sources, int(payload.get("scanned_sources", 0) or 0))
-        scanned_bytes = max(scanned_bytes, int(payload.get("scanned_bytes", 0) or 0))
+        scanned_sources += int(payload.get("scanned_sources", 0) or 0)
+        scanned_bytes += int(payload.get("scanned_bytes", 0) or 0)
         truncated = truncated or bool(payload.get("truncated"))
         for raw in payload.get("results", []):
             if not isinstance(raw, dict):
