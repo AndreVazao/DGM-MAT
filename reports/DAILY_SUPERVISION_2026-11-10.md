@@ -370,3 +370,15 @@ Alterações na branch `fix/classify-mobile-thread-archive-restore`:
 - Testar que uma sessão apenas `local-client` recebe 403 e não altera o estado da conversa.
 
 A PR está aberta e mergeável. O único check reportado neste momento é `security/snyk` pendente; não será usado como bloqueio devido à quota mensal gratuita esgotada. Não foi feito bypass à middleware, merge ou instalação. A correção ainda aguarda CI de testes e validação real no PC.
+
+
+## CI parcial da correção archive/restore — 2026-11-10 21:50 UTC
+
+PR #345 / commit `246f08b55101fa599e29c37e87c2d2d216cbe28f`:
+
+- Focused PR Validation run `42908115013`: **SUCCESS** — regressões afetadas passaram; Windows installer digest gate também passou.
+- Chrome Extension Validation run `42908115162`: **SUCCESS**.
+- Windows Executable Build run `42908115116`: ainda **IN_PROGRESS** no último polling.
+- `security/snyk`: permanece pendente e é ignorado por quota gratuita esgotada; não é apresentado como aprovação.
+- PR #345 continua aberta e mergeável. Não foi feito merge nem instalação.
+- Falta esperar o build Windows terminar e, depois da integração autorizada, repetir archive/restore no PC com o executável atualizado e confirmar 200/estado archived/active.
