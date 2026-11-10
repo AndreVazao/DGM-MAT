@@ -152,7 +152,8 @@ def test_mission_engine_routes_typed_inventory_through_registered_executor(tmp_p
         lambda message: {"worker": "repository-cartographer"},
         capabilities=("file-inventory", "project-tree"),
     )
-    engine.organization_registry.set_status(agent_id, AgentStatus.AVAILABLE)
+    profile = engine.organization_registry.get_agent(agent_id)
+    monkeypatch.setattr(profile, "status", AgentStatus.AVAILABLE)
     monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
     monkeypatch.setattr(engine, "_emit_mission_result", lambda mission, result: None)
     monkeypatch.setattr(engine, "_record_execution_observation", lambda mission, result, status: None)
