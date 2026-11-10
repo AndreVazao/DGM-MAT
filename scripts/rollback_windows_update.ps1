@@ -33,6 +33,14 @@ function Test-DgmMatApiPortOpen {
 }
 
 if (Test-DgmMatApiPortOpen) {
+    $matching = Get-CimInstance Win32_Process -Filter "Name = 'DGM-MAT.exe'" |
+        Where-Object {
+            $_.ExecutablePath -and
+            [System.IO.Path]::GetFullPath($_.ExecutablePath) -ieq $targetPath
+        }
+    if (-not $matching) {
+        throw "The API port is active, but no process matches the rollback target executable. Refusing to stop an unrelated runtime."
+    }
     $bootstrapPath = Join-Path $env:LOCALAPPDATA "DGM-MAT\\security\\bootstrap.token"
     if (-not (Test-Path -LiteralPath $bootstrapPath -PathType Leaf)) {
         throw "Local bootstrap credential is unavailable; rollback stopped without killing any process."
