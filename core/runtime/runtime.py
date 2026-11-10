@@ -53,11 +53,9 @@ class Runtime:
                 dgm_logger.error(f"Runtime: Governance monitoring failed: {e}")
                 self.is_degraded = True
 
-        self._knowledge_engine = None
-        if self.profile.lazy_load_knowledge:
-            dgm_logger.info("Runtime: Knowledge lazy-load enabled by low-memory profile.")
-        else:
-            self._knowledge_engine = self._load_and_init("core.knowledge.knowledge_engine", "KnowledgeEngine", "Knowledge")
+        self._knowledge_engine = self._load_and_init(
+            "core.knowledge.knowledge_engine", "KnowledgeEngine", "Knowledge"
+        )
         self.kernel = self._load_and_init("core.kernel.cognitive_kernel", "CognitiveKernel", "Kernel")
         self.evolution_engine = self._load_and_init("core.evolution.evolution_engine", "EvolutionEngine", "Evolution")
         self.update_engine = self._load_and_init("core.update.update_engine", "UpdateEngine", "Update")
@@ -85,11 +83,8 @@ class Runtime:
                 "source": "core.runtime.Runtime",
             })
 
-        # Initialize advanced engines via late import
-        if self.profile.low_memory:
-            dgm_logger.info("Runtime: Low-memory profile defers advanced engine initialization.")
-        else:
-            self._init_advanced_engines()
+        # Hardware profile is informational; initialize the same engine set on every PC.
+        self._init_advanced_engines()
 
         self._register()
 
@@ -340,13 +335,11 @@ class Runtime:
         )
         publish_event(
             5,
-            Event(source="runtime", target="provider-agent", event_type="providers.scan", payload={}),
-            enabled=self.profile.enable_startup_provider_scan
+            Event(source="runtime", target="provider-agent", event_type="providers.scan", payload={})
         )
         publish_event(
             self.profile.startup_autonomy_delay,
-            Event(source="runtime", target="autonomy-agent", event_type="autonomy.analyze", payload={}),
-            enabled=self.profile.enable_startup_autonomy_scan
+            Event(source="runtime", target="autonomy-agent", event_type="autonomy.analyze", payload={})
         )
 
     def shutdown(self):
