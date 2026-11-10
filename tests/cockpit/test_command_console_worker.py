@@ -53,3 +53,44 @@ def test_console_stays_disabled_when_runtime_is_offline(app):
     assert not widget.input_field.isEnabled()
     assert not widget.send_btn.isEnabled()
     widget.close()
+
+
+def test_archive_button_targets_selected_thread_and_toggles_restore(app, monkeypatch):
+    widget = CommandConsoleWidget()
+    from PySide6.QtWidgets import QListWidgetItem
+    from PySide6.QtCore import Qt
+
+    item = QListWidgetItem("Projeto [active]")
+    item.setData(Qt.ItemDataRole.UserRole, "thread-archive-test")
+    item.setData(Qt.ItemDataRole.UserRole + 1, "active")
+    widget.thread_list.addItem(item)
+    widget.thread_list.setCurrentItem(item)
+    captured = []
+    monkeypatch.setattr(
+        widget,
+        "_conversation_request",
+        lambda action, method, path, **kwargs: captured.append((action, method, path)),
+    )
+
+    widget._archive_selected_thread()
+    assert captured[-1] == (
+        "thread-archive", "POST", "/mobile/threads/thread-archive-test/archive"
+    )
+
+    item.setData(Qt.ItemDataRole.UserRole + 1, "archived")
+    widget._archive_selected_thread()
+    assert captured[-1] == (
+        "thread-restore", "POST", "/mobile/threads/thread-archive-test/restore"
+    )
+    widget.close()
+
+
+def test_archived_active_conversation_disables_message_submission(app):
+    widget = CommandConsoleWidget()
+    widget._active_thread_id = "thread-archived"
+    widget._active_thread_status = "archived"
+    widget._refresh_controls()
+    assert widget.input_field.isEnabled() is False
+    assert widget.send_btn.isEnabled() is False
+    assert "arquivada" in widget.input_field.placeholderText().casefold()
+    widget.close()
