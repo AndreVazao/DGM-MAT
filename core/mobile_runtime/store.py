@@ -122,6 +122,7 @@ class ConversationStore:
                     "updated_at": thread.updated_at,
                     "project": thread.project,
                     "repository": thread.repository,
+                    "status": thread.status,
                     "match_type": "title" if title_match else "context" if context_match else "message",
                     "provenance": {
                         "source": "dgm-mat-local-conversation-store",
