@@ -411,6 +411,7 @@ class CommandConsoleWidget(QWidget):
             or self._pending_directive
             or self._transcript_write_active
             or self._thread_create_active
+            or self._active_thread_status != "active"
         ):
             return
         directive = self.input_field.text().strip()
@@ -431,8 +432,9 @@ class CommandConsoleWidget(QWidget):
             or self._pending_directive
             or self._transcript_write_active
             or self._thread_create_active
+            or self._active_thread_status != "active"
         ):
-            self._append_message("Sistema", "Já existe um pedido em curso.", "error")
+            self._append_message("Sistema", "Já existe um pedido em curso ou a conversa está arquivada.", "error")
             return
         normalized = directive.strip()
         if not normalized:
