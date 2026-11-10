@@ -151,3 +151,21 @@ def test_mission_submit_rejects_invalid_returned_id():
         submit_mission_once(request, "test mission")
 
     assert calls == [("POST", "/missions")]
+
+def test_status_poll_stops_when_mission_waits_for_capability():
+    mission = wait_for_mission_checkpoint(
+        "mission_b55c3887",
+        lambda _mission_id: {
+            "mission_id": "mission_b55c3887",
+            "status": "WAITING_FOR_CAPABILITY",
+            "executor_readiness": {
+                "status": "WAITING_FOR_CAPABILITY",
+                "reason_code": "NO_REGISTERED_EXECUTOR",
+            },
+        },
+        timeout_seconds=1,
+        poll_interval=0,
+        sleep=lambda _seconds: None,
+    )
+    assert mission["status"] == "WAITING_FOR_CAPABILITY"
+
