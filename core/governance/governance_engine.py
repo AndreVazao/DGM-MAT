@@ -10,7 +10,6 @@ from core.governance.event_governor import EventGovernor
 from core.governance.loop_detector import LoopDetector
 from core.governance.recursion_guard import RecursionGuard
 from core.governance.resource_monitor import ResourceMonitor
-from core.governance.memory_controller import MemoryController
 from core.governance.execution_throttler import ExecutionThrottler
 from core.governance.queue_balancer import QueueBalancer
 from core.governance.deadlock_detector import DeadlockDetector
@@ -34,7 +33,6 @@ class GovernanceEngine:
         self.loop_detector = LoopDetector()
         self.recursion_guard = RecursionGuard(self.limits.max_recursion_depth)
         self.resource_monitor = ResourceMonitor()
-        self.memory_controller = MemoryController(self.limits.memory_degradation_threshold)
         self.throttler = ExecutionThrottler()
         self.balancer = QueueBalancer()
         self.deadlock_detector = DeadlockDetector()
