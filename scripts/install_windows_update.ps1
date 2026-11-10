@@ -71,7 +71,7 @@ function Request-GracefulRuntimeShutdown {
     if (-not (Test-DgmMatApiPortOpen)) { return }
     Assert-ExpectedRuntimeOwner -ExecutablePath $ExecutablePath
 
-    $bootstrapPath = Join-Path $env:LOCALAPPDATA "DGM-MAT\\security\\bootstrap.token"
+    $bootstrapPath = Join-Path $env:LOCALAPPDATA "DGM-MAT\security\bootstrap.token"
     if (-not (Test-Path -LiteralPath $bootstrapPath -PathType Leaf)) {
         throw "The local bootstrap credential is unavailable. Runtime was not stopped; no installation changes were made."
     }
