@@ -117,7 +117,7 @@ def test_full_runtime_defaults_to_bounded_read_only_repository_learning():
 
     configured = backend_service._configure_runtime_environment(environment, "full")
 
-    assert configured["DGM_REPOSITORY_LEARNING_ENABLED"] == "1"
+    assert "DGM_REPOSITORY_LEARNING_ENABLED" not in configured
     assert configured["DGM_REPOSITORY_LEARNING_BATCH_SIZE"] == "2"
     assert configured["DGM_REPOSITORY_LEARNING_MAX_DEPTH"] == "6"
     assert configured["DGM_REPOSITORY_LEARNING_REFRESH_SECONDS"] == "1800"
