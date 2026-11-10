@@ -51,8 +51,25 @@ function Test-DgmMatApiPortOpen {
     finally { $client.Close() }
 }
 
+function Assert-ExpectedRuntimeOwner {
+    param([Parameter(Mandatory = $true)][string]$ExecutablePath)
+
+    $fullPath = [System.IO.Path]::GetFullPath($ExecutablePath)
+    $matching = Get-CimInstance Win32_Process -Filter "Name = 'DGM-MAT.exe'" |
+        Where-Object {
+            $_.ExecutablePath -and
+            [System.IO.Path]::GetFullPath($_.ExecutablePath) -ieq $fullPath
+        }
+    if (-not $matching) {
+        throw "The API port is active, but no process matches the target DGM-MAT executable. Refusing to stop an unrelated runtime."
+    }
+}
+
 function Request-GracefulRuntimeShutdown {
+    param([Parameter(Mandatory = $true)][string]$ExecutablePath)
+
     if (-not (Test-DgmMatApiPortOpen)) { return }
+    Assert-ExpectedRuntimeOwner -ExecutablePath $ExecutablePath
 
     $bootstrapPath = Join-Path $env:LOCALAPPDATA "DGM-MAT\\security\\bootstrap.token"
     if (-not (Test-Path -LiteralPath $bootstrapPath -PathType Leaf)) {
@@ -184,7 +201,7 @@ if (-not [string]::Equals($packageHash, $ExpectedExeSha256, [StringComparison]::
     throw "Package executable SHA-256 does not match the independently supplied expected digest. No installation changes were made."
 }
 
-Request-GracefulRuntimeShutdown
+Request-GracefulRuntimeShutdown -ExecutablePath $targetPath
 Assert-RuntimeStopped
 Assert-NoInstalledProcess -ExecutablePath $targetPath
 
