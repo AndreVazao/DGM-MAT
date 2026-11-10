@@ -1,5 +1,4 @@
 import threading
-import time
 import sys
 import argparse
 import os
@@ -21,16 +20,23 @@ def run_runtime(profile="FULL"):
         sys.exit(1)
 
     from core.runtime.runtime import Runtime
+    from core.runtime.runtime_control import (
+        reset_runtime_shutdown_request,
+        wait_for_runtime_shutdown,
+    )
+    reset_runtime_shutdown_request()
     runtime = Runtime()
     trace_runtime_activation("TRACE_RUNTIME_OWNER:Runtime:core/runtime/runtime.py")
     trace_runtime_activation("TRACE_RUNTIME_ACTIVATE:core.runtime.runtime")
     runtime.bootstrap()
 
     try:
-        while True:
-            time.sleep(1)
+        while not wait_for_runtime_shutdown(1.0):
+            pass
     except KeyboardInterrupt:
-        dgm_logger.info("Main: Shutdown requested.")
+        dgm_logger.info("Main: Keyboard shutdown requested.")
+    finally:
+        dgm_logger.info("Main: Performing orderly runtime shutdown.")
         runtime.shutdown()
 
 
