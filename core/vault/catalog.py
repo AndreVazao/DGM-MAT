@@ -5,6 +5,7 @@ import json
 import os
 import re
 import sqlite3
+import unicodedata
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
@@ -1003,6 +1004,137 @@ class VaultCatalog:
         query += " ORDER BY provider,conversation_id,sequence"
         with self._connect() as db:
             return [dict(row) for row in db.execute(query, params).fetchall()]
+
+
+    @staticmethod
+    def _fold_search_text(value: str) -> str:
+        normalized = unicodedata.normalize("NFKD", value.casefold())
+        return "".join(char for char in normalized if not unicodedata.combining(char))
+
+    def search_conversations(
+        self,
+        query: str,
+        *,
+        provider: str | None = None,
+        limit: int = 25,
+        max_scan: int = 50,
+        max_bytes: int = 8 * 1024 * 1024,
+        max_file_bytes: int = 4 * 1024 * 1024,
+    ) -> dict[str, Any]:
+        """Search archived Vault transcripts with strict row, file and byte bounds."""
+        term = query.strip()
+        if len(term) < 2 or len(term) > 200:
+            raise ValueError("query must contain between 2 and 200 characters")
+        if not 1 <= limit <= 50 or not 1 <= max_scan <= 200:
+            raise ValueError("invalid search limit")
+        if max_bytes < 1024 or max_file_bytes < 1024 or max_file_bytes > max_bytes:
+            raise ValueError("invalid search byte limits")
+
+        needle = self._fold_search_text(term)
+        sql = """
+            SELECT provider,conversation_id,title,url,archive_path,completeness,
+                   project_id,assignment_status,captured_at,source_fingerprint
+            FROM conversations
+        """
+        parameters: list[Any] = []
+        if provider:
+            sql += " WHERE provider=?"
+            parameters.append(provider.strip().casefold())
+        sql += " ORDER BY captured_at DESC,provider,conversation_id LIMIT ?"
+        parameters.append(max_scan)
+        with self._connect() as db:
+            rows = [dict(row) for row in db.execute(sql, tuple(parameters)).fetchall()]
+
+        results: list[dict[str, Any]] = []
+        scanned_sources = 0
+        scanned_bytes = 0
+        truncated = False
+        for row in rows:
+            raw_path = Path(str(row.get("archive_path") or ""))
+            try:
+                if raw_path.is_symlink():
+                    continue
+                archive = raw_path.resolve(strict=True)
+                if not archive.is_relative_to(self.root) or not archive.is_file():
+                    continue
+                size = archive.stat().st_size
+            except (OSError, RuntimeError, ValueError):
+                continue
+            if size > max_file_bytes or scanned_bytes + size > max_bytes:
+                truncated = True
+                continue
+            try:
+                payload = json.loads(archive.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                continue
+            scanned_sources += 1
+            scanned_bytes += size
+            if not isinstance(payload, dict):
+                continue
+
+            title = str(row.get("title") or payload.get("title") or "Untitled conversation")
+            content = str(payload.get("content") or "")
+            match_type = ""
+            snippet = ""
+            message_role = None
+            message_id = None
+
+            title_position = self._fold_search_text(title).find(needle)
+            if title_position >= 0:
+                match_type = "title"
+                snippet = title[max(0, title_position - 100):title_position + len(term) + 180]
+            if not match_type and content:
+                position = self._fold_search_text(content).find(needle)
+                if position >= 0:
+                    match_type = "content"
+                    snippet = content[max(0, position - 100):position + len(term) + 180]
+            messages = payload.get("messages")
+            if isinstance(messages, list):
+                for message in messages:
+                    if not isinstance(message, dict):
+                        continue
+                    body = str(message.get("content") or message.get("text") or "")
+                    position = self._fold_search_text(body).find(needle)
+                    if position < 0:
+                        continue
+                    match_type = "message"
+                    snippet = body[max(0, position - 100):position + len(term) + 180]
+                    message_role = str(message.get("role") or "unknown")
+                    message_id = str(message.get("message_id") or message.get("id") or "")
+                    break
+            if not match_type:
+                continue
+            results.append({
+                "provider": str(row["provider"]),
+                "source_id": str(row["conversation_id"]),
+                "title": title,
+                "source_date": str(row.get("captured_at") or ""),
+                "match_type": match_type,
+                "snippet": snippet[:420],
+                "source_url": row.get("url"),
+                "capture_status": row.get("completeness"),
+                "completeness": row.get("completeness"),
+                "project_id": row.get("project_id"),
+                "assignment_status": row.get("assignment_status"),
+                "source_fingerprint": row.get("source_fingerprint"),
+                "message_role": message_role,
+                "message_id": message_id,
+            })
+            if len(results) >= limit:
+                truncated = True
+                break
+
+        return {
+            "query": term,
+            "provider_filter": provider,
+            "results": results,
+            "result_count": len(results),
+            "scanned_sources": scanned_sources,
+            "scanned_bytes": scanned_bytes,
+            "truncated": truncated,
+            "source_store": "vault",
+            "source_modified": False,
+        }
 
     def list_duplicate_messages(self) -> list[dict[str, Any]]:
         with self._connect() as db:
