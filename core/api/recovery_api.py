@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import unicodedata
 from functools import lru_cache
 from pathlib import Path
 
@@ -493,7 +494,11 @@ def search_recovery_sources(
     scanned_bytes = 0
     truncated = False
     candidates = ledger.list_sources(limit=MAX_RECOVERY_SEARCH_SOURCES, offset=0)
-    needle = query.casefold()
+    def _fold_search_text(value: str) -> str:
+        normalized = unicodedata.normalize("NFKD", value.casefold())
+        return "".join(char for char in normalized if not unicodedata.combining(char))
+
+    needle = _fold_search_text(query)
     for source in candidates:
         if provider and source.provider.casefold() != provider.strip().casefold():
             continue
@@ -523,7 +528,7 @@ def search_recovery_sources(
                     content = message.get("content") if isinstance(message, dict) else None
                     text_parts = _message_text(content)
                     joined = " ".join(text_parts)
-                    position = joined.casefold().find(needle)
+                    position = _fold_search_text(joined).find(needle)
                     if position < 0:
                         continue
                     key = (source.provider, source.source_id)
