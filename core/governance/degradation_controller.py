@@ -5,8 +5,15 @@ class DegradationController:
     def __init__(self):
         self.state = GovernanceState()
 
-    def update_degradation(self, cpu_usage: float, mem_usage: float, cpu_threshold: float, mem_threshold: float):
-        if cpu_usage > cpu_threshold or mem_usage > mem_threshold:
+    def update_degradation(
+        self,
+        cpu_usage: float,
+        mem_usage: float,
+        cpu_threshold: float,
+        mem_threshold: float | None,
+    ):
+        memory_pressure = mem_threshold is not None and mem_usage > mem_threshold
+        if cpu_usage > cpu_threshold or memory_pressure:
             if not self.state.is_degraded:
                 dgm_logger.warning(f"DegradationController: System ENTERING degraded mode (CPU: {cpu_usage}%, MEM: {mem_usage}%)")
                 self.state.is_degraded = True
