@@ -55,11 +55,12 @@ def _client(monkeypatch, tmp_path):
     return TestClient(app), ledger, archive_root
 
 
-def test_recovery_search_and_message_read_are_operator_only():
-    assert classify_request_path("/recovery/search", "GET").scope is SecurityScope.OPERATOR
+def test_recovery_search_and_message_read_are_read_only_mobile_scoped():
+    # These endpoints expose bounded read-only recovery data to authenticated mobile clients.
+    assert classify_request_path("/recovery/search", "GET").scope is SecurityScope.MOBILE_READ
     assert classify_request_path(
         "/recovery/sources/chatgpt/recovery-search-001/messages", "GET"
-    ).scope is SecurityScope.OPERATOR
+    ).scope is SecurityScope.MOBILE_READ
 
 
 def test_search_finds_message_body_and_returns_grounded_snippet(monkeypatch, tmp_path):
@@ -125,3 +126,24 @@ def test_message_read_does_not_allow_archive_path_escape(monkeypatch, tmp_path):
     response = client.get("/recovery/sources/chatgpt/outside-path/messages")
 
     assert response.status_code == 404
+
+
+def test_recovery_search_matches_accents_without_changing_original_snippet(monkeypatch, tmp_path):
+    client, ledger, archive_root = _client(monkeypatch, tmp_path)
+    conversation = _conversation()
+    conversation["id"] = "recovery-accent-002"
+    conversation["title"] = "VAZÃO EVSE"
+    conversation["mapping"]["user-node"]["message"]["content"]["parts"] = [
+        "O projeto VAZÃO EVSE utiliza carregamento AC modular."
+    ]
+    source_file = tmp_path / "accent-conversations.json"
+    source_file.write_text(json.dumps([conversation]), encoding="utf-8")
+    report = import_chatgpt_conversations_json(source_file, archive_root, ledger)
+    assert report.archived == 1
+
+    response = client.get("/recovery/search", params={"q": "VAZAO"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["result_count"] == 1
+    assert payload["results"][0]["source_id"] == "recovery-accent-002"
+    assert "VAZÃO EVSE" in payload["results"][0]["snippet"]

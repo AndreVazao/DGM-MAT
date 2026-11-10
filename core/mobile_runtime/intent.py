@@ -10,6 +10,7 @@ class IntentInterpreter:
     """Cheap deterministic intent layer; no LLM is required to understand commands."""
 
     _patterns = [
+        ("conversation_search", ("busca conversas", "busca as conversas", "pesquisa conversas", "pesquisa as conversas", "procura conversas", "procura as conversas", "encontra conversas", "recupera conversas", "search conversations", "find conversations", "search chats", "find chats")),
         ("status", ("estado", "status", "como está", "como esta", "saúde", "saude", "verifica")),
         ("audit", ("audit", "audits", "auditing", "audita", "auditar", "auditoria", "analisa", "analisar", "analyze", "analyse", "review", "revisa", "revisar", "inspeciona", "inspecionar", "verifica o código", "verifica o codigo")),
         ("repair", ("corrige", "corrigir", "repara", "reparar", "resolve", "resolver", "conserta")),
@@ -89,6 +90,7 @@ class IntentInterpreter:
             "implement",
             "sync",
             "deploy",
+            "conversation_search",
         }
 
         summary = text.strip()
@@ -100,6 +102,8 @@ class IntentInterpreter:
             summary = "Sincronizar o estado relevante entre PC, GitHub, memória e cockpit."
         elif intent == "implement":
             summary = "Transformar o pedido numa missão de implementação, sem executar ações destrutivas implicitamente."
+        elif intent == "conversation_search":
+            summary = "Pesquisar automaticamente os arquivos locais importados das conversas das IAs e gerar um relatório com fontes e cobertura."
 
         return IntentResult(
             intent=intent,

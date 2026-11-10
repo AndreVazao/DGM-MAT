@@ -866,3 +866,29 @@ def test_archive_restore_routes_preserve_thread_and_return_status(tmp_path, monk
 
     missing = client.post("/mobile/threads/thread-missing/archive")
     assert missing.status_code == 404
+
+
+def test_provider_conversation_search_creates_read_only_mission_without_manual_help(tmp_path: Path):
+    service = MobileConversationService(ConversationStore(tmp_path / "conversations.json"))
+    thread = service.create_thread("Pesquisa de conversas")
+
+    with patch("core.mobile_runtime.service.mission_engine.create_mission") as create_mission:
+        create_mission.return_value.mission_id = "mission_conversation_search"
+        create_mission.return_value.status.value = "QUEUED"
+        create_mission.return_value.metadata = {"action_id": 28}
+        with patch(
+            "core.mobile_runtime.service.mission_engine.action_queue.get_action",
+            return_value={"status": "APPROVED"},
+        ):
+            response = service.append_user_message(
+                thread["id"],
+                "busca conversas do ChatGPT sobre VAZAO EVSE",
+            )
+
+    create_mission.assert_called_once()
+    assert response["intent"]["intent"] == "conversation_search"
+    assert response["mission_decision"]["intent"] == "conversation_search"
+    assert response["mission_decision"]["supported"] is True
+    assert response["mission_requires_approval"] is False
+    assert response["action_status"] == "APPROVED"
+    assert response["mission_id"] == "mission_conversation_search"

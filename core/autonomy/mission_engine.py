@@ -60,7 +60,7 @@ class MissionEngine:
     REPO_TIMEOUT_SECONDS = 5.0
     MISSION_EXECUTION_TIMEOUT_SECONDS = 300.0
     AUTO_RUN_READ_ONLY_INTENTS = frozenset({
-        "list_repositories", "architecture_summary", "repository_status", "local_research",
+        "list_repositories", "architecture_summary", "repository_status", "local_research", "conversation_search",
         "system_summary", "engines_inventory", "ollama_status", "claude_status",
         "organization_repository_inventory", "organization_python_source_analysis",
         "organization_python_test_inventory",
@@ -816,6 +816,15 @@ class MissionEngine:
                             "changed or its checkpoint is unavailable."
                         )
                     return finalized
+                elif intent.intent == "conversation_search" and intent.supported:
+                    result = self._execute_conversation_search_mission(mission)
+                    finalized = self._finish_mission_success(mission, result)
+                    if finalized is None:
+                        raise RuntimeError(
+                            "Conversation search finalization was refused because durable state "
+                            "changed or its checkpoint is unavailable."
+                        )
+                    return finalized
                 elif intent.intent == "local_research" and intent.supported:
                     result = self._execute_local_research_mission(mission)
                     finalized = self._finish_mission_success(mission, result)
@@ -1166,6 +1175,32 @@ class MissionEngine:
                 self._finish_mission_success(mission, result)
             except Exception as exc:
                 self._finish_mission_failure(mission, exc)
+        elif not mission.subtasks and intent.intent == "conversation_search" and intent.supported:
+            try:
+                result = self._execute_conversation_search_mission(mission)
+                self._finish_mission_success(mission, result)
+            except Exception as exc:
+                self._finish_mission_failure(mission, exc)
+
+    def _execute_conversation_search_mission(self, mission: Mission) -> Dict[str, Any]:
+        """Search imported provider archives and publish a provenance-linked local report."""
+        from core.conversation_intelligence.operator_search import search_archived_conversations
+
+        started = time.monotonic()
+        result = search_archived_conversations(mission.goal)
+        result.update({
+            "mission_id": mission.mission_id,
+            "handler": "conversation_search",
+            "read_only_sources": True,
+            "external_calls": 0,
+            "execution_duration": round(time.monotonic() - started, 3),
+            "generated_at": datetime.now().isoformat(),
+        })
+        dgm_logger.info(
+            f"MISSION_RESULT_GENERATED: {mission.mission_id} - conversation search "
+            f"({result.get('result_count', 0)} matches)"
+        )
+        return result
 
     def _execute_architecture_summary_mission(self, mission: Mission) -> Dict[str, Any]:
         """Build a bounded, read-only architecture summary from fixed local documents."""

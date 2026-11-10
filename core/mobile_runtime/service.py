@@ -165,7 +165,7 @@ class MobileConversationService:
             intent_name = intent_data.get("intent")
             actionable = (
                 intent_data.get("execution_candidate") is True
-                or intent_name in {"audit", "repair", "implement", "sync", "deploy", "research"}
+                or intent_name in {"audit", "repair", "implement", "sync", "deploy", "research", "conversation_search"}
                 or decision_data.get("supported") is True
             )
             if not actionable:
