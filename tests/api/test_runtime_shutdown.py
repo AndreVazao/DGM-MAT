@@ -95,3 +95,23 @@ def test_runtime_shutdown_fails_closed_when_server_control_is_unavailable(monkey
 
     assert exc.value.status_code == 503
     assert calls == []
+
+
+def test_api_server_shutdown_request_sets_uvicorn_exit_flag(monkeypatch):
+    from core.api import api_server
+
+    class FakeServer:
+        should_exit = False
+
+    server = FakeServer()
+    monkeypatch.setattr(api_server, "_api_server", server)
+
+    assert api_server.request_api_shutdown() is True
+    assert server.should_exit is True
+
+
+def test_api_server_shutdown_request_fails_when_server_is_not_running(monkeypatch):
+    from core.api import api_server
+
+    monkeypatch.setattr(api_server, "_api_server", None)
+    assert api_server.request_api_shutdown() is False
