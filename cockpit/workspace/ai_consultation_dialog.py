@@ -106,8 +106,8 @@ class AIConsultationDialog(QDialog):
         self._pending_approval_start = False
         self._status_loaded = False
         self._consult_enabled = False
+        self._status_requested = False
         self._setup_ui()
-        self._request_status()
 
     def _setup_ui(self) -> None:
         self.setWindowTitle("Pedir ajuda a uma IA — DGM-MAT")
@@ -223,6 +223,12 @@ class AIConsultationDialog(QDialog):
         self._worker = worker
         self._refresh_controls()
         worker.start()
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not self._status_requested:
+            self._status_requested = True
+            self._request_status()
 
     def _request_status(self) -> None:
         self.status.setText("A verificar se a consulta browser está ativada e quais os fornecedores permitidos…")
