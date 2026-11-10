@@ -255,3 +255,41 @@ Observer/Respond não foi alterado. Não foram enviadas mensagens nem alterado o
 ## Nota de publicação — 2026-11-10 15:13 UTC
 
 O inventário da secção 4.1 representa o estado observado antes da publicação deste relatório e indicava zero PRs abertas. A publicação criou a PR documental draft [#343](https://github.com/AndreVazao/DGM-MAT/pull/343), na branch `reports/daily-supervision-2026-11-10`, com um único ficheiro e sem alterações de código. Assim, após a publicação, esta é a única PR aberta criada nesta ronda. Permanece sem merge.
+
+
+## Aditamento de validação posterior — 2026-11-10 19:20 UTC
+
+Esta secção complementa os resultados recolhidos às 15:06 UTC e não altera retroativamente o âmbito da ronda inicial.
+
+### Instalação e runtime após a ronda inicial
+
+- O build oficial `fdae0ce` foi posteriormente instalado no PC através do instalador oficial.
+- O SHA-256 do executável instalado coincide com o pacote oficial: `97C4B1FCA805E884C3AFEF54902D047F700254F96989632502C65849DD44D675`.
+- Foi criado backup/manifesto em `C:\\ProgramasGodMode\\DGM-MAT\\update-backups\\20261110-125511\\INSTALL-MANIFEST.json`.
+- O endpoint `/health` continua a devolver HTTP 200.
+- O cliente oficial do cockpit conseguiu trocar o bootstrap local por sessão autenticada e consultar `GET /runtime/status`: HTTP 200, `status=running`, `is_degraded=false`, zero missões ativas.
+- `GET /runtime/queue`: HTTP 200; worker vivo, um thread e handler `MISSION_EXECUTION`.
+- A consulta `GET /runtime/missions` excedeu o timeout de leitura de 5 segundos. Não foi repetida em ciclo nem contornada.
+
+### Cockpit desktop
+
+- Importação de `cockpit.app` validada com Python 3.12.6 e PySide6 6.11.1.
+- Foi iniciado o cockpit nativo; o processo Python GUI permaneceu ativo e responsivo, com janela `DGM-MAT - Chat` e handle de janela não nulo.
+- O widget de chat foi testado com a instrução read-only `runtime status`; apresentou corretamente o estado autenticado do runtime.
+- Não foi encontrado um atalho `DGM-MAT Chat` no Desktop nem nos menus de programas/startup pesquisados.
+- A inspeção do código instalado confirma que esta versão é ainda uma consola de chat de missões: o histórico é mantido numa lista em memória da instância, sem sidebar de conversas, pesquisa integrada ou persistência demonstrada. Portanto, a abertura da janela e a consulta de estado passaram; a experiência ChatGPT-like pretendida ainda NÃO está funcionalmente validada.
+- Não foi submetida qualquer missão nova, não foi aprovada/rejeitada qualquer ação e não foram alterados registos históricos.
+
+### Checkout local — preservação obrigatória
+
+A inspeção read-only encontrou o checkout em:
+
+- Branch: `recovery/local-worktree-consolidation-2026-11-09`
+- HEAD: `e06d89402d9e3cd6e36a189daa3f13bee8c4d413`
+- Working tree com alteração em `scripts/autostart/backend_service.py` e ficheiros não rastreados, incluindo `installed/`, backups, staging e ficheiros de recuperação.
+
+Não foi executado pull, checkout, reset, clean, commit ou qualquer limpeza. Estes elementos devem ser preservados até reconciliação explícita com a main e com o relatório de instalação.
+
+### Conclusão revista
+
+A instalação do executável, a autenticação normal do cockpit e as leituras de estado/queue estão agora comprovadas. Continua por validar uma missão read-only concluída com recibo durável, o endpoint de listagem de missões, a persistência/histórico/sidebar do cockpit, o atalho, o rollback real, os providers e o DGM-HUB. O estado global permanece **VERIFICAÇÃO INCOMPLETA**.
