@@ -21,6 +21,7 @@ The full DGM-MAT runtime starts the existing `RepositoryLearningService` by defa
 - LOW_MEMORY profile (less than 4 GB total RAM): automatic startup is disabled by default to preserve resources.
 - Explicit opt-in: set `DGM_REPOSITORY_LEARNING_ENABLED=1` to enable the worker even on a LOW_MEMORY machine.
 - Explicit opt-out: set `DGM_REPOSITORY_LEARNING_ENABLED=0` to disable it on every profile.
+- The Windows backend service manager deliberately leaves `DGM_REPOSITORY_LEARNING_ENABLED` unset by default; it must not silently opt a LOW_MEMORY PC back in. An operator-provided value is preserved unchanged.
 
 On older machines, use conservative settings such as `DGM_REPOSITORY_LEARNING_BATCH_SIZE=1` and `DGM_REPOSITORY_LEARNING_REFRESH_SECONDS=3600`. The existing authenticated/runtime API controls remain available:
 

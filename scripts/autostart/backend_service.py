@@ -185,7 +185,7 @@ def _runtime_readiness(host: str, port: int) -> tuple[bool, str]:
 
 def _command_for_mode(mode: str, host: str, port: int) -> list[str]:
     if mode == "api":
-        return [sys.executable, "-m", "uvicorn", "core.api.api_server:app", "--host", host, "--port", str(port), "--log-level", "info"]
+        return [sys.executable, "-c", "from core.api.api_server import run_api; run_api()"]
     if mode == "full":
         installed_executable = PROJECT_ROOT / "installed" / "DGM-MAT.exe"
         if installed_executable.is_file():
@@ -198,7 +198,6 @@ def _configure_runtime_environment(child_env: dict[str, str], mode: str) -> dict
     """Apply safe full-runtime defaults while preserving operator overrides."""
     if mode == "full":
         defaults = {
-            "DGM_REPOSITORY_LEARNING_ENABLED": "1",
             "DGM_REPOSITORY_LEARNING_BATCH_SIZE": "2",
             "DGM_REPOSITORY_LEARNING_MAX_DEPTH": "6",
             "DGM_REPOSITORY_LEARNING_REFRESH_SECONDS": "1800",
