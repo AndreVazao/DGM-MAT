@@ -64,3 +64,48 @@ def test_consultation_payload_is_bound_to_active_thread_and_selected_providers(a
     assert captured["payload"]["preview_sha256"] == "b" * 64
     assert captured["payload"]["free_capacity_confirmed"] is True
     dialog.close()
+
+
+def test_status_response_limits_provider_choices_to_local_allowlist(app):
+    dialog = AIConsultationDialog(
+        "http://127.0.0.1:8181/runtime",
+        "thread-status",
+    )
+    dialog._on_request_completed(
+        "status",
+        {"enabled": True, "free_providers_allowlisted": ["gemini", "qwen"]},
+        "",
+    )
+    assert dialog.provider_checks["chatgpt"].isEnabled() is False
+    assert dialog.provider_checks["gemini"].isEnabled() is True
+    assert dialog.provider_checks["qwen"].isEnabled() is True
+    assert dialog.provider_checks["grok"].isEnabled() is False
+    assert dialog.send_button.isEnabled() is False
+    dialog.close()
+
+
+def test_consultation_approvals_are_started_sequentially(app):
+    dialog = AIConsultationDialog(
+        "http://127.0.0.1:8181/runtime",
+        "thread-approval",
+    )
+    captured = []
+    dialog._start_request = lambda action, method, path, payload=None: captured.append(
+        (action, method, path)
+    )
+    dialog._on_request_completed(
+        "enqueue",
+        {"consultation_ids": ["consultation-a", "consultation-b"]},
+        "",
+    )
+    assert captured == []
+    dialog._on_worker_finished()
+    assert captured == [(
+        "approve", "POST", "/recovery/browser-consult/approve/consultation-a"
+    )]
+    dialog._on_request_completed("approve", {"status": "PENDING"}, "")
+    dialog._on_worker_finished()
+    assert captured[-1] == (
+        "approve", "POST", "/recovery/browser-consult/approve/consultation-b"
+    )
+    dialog.close()
