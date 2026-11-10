@@ -113,3 +113,47 @@ def test_consultation_approvals_are_started_sequentially(app):
         "approve", "POST", "/recovery/browser-consult/approve/consultation-b"
     )
     dialog.close()
+
+
+def test_mission_context_loader_uses_durable_checkpoint_and_requires_fresh_preview(app):
+    dialog = AIConsultationDialog(
+        "http://127.0.0.1:8181/runtime",
+        "thread-mission",
+    )
+    captured = []
+    dialog._start_request = lambda action, method, path, payload=None: captured.append(
+        (action, method, path, payload)
+    )
+
+    dialog.mission_id.setText("invalid-id")
+    dialog._load_mission_context()
+    assert captured == []
+
+    dialog.mission_id.setText("mission_1234abcd")
+    dialog._load_mission_context()
+    assert captured == [(
+        "mission-context",
+        "POST",
+        "/recovery/browser-consult/mission-context",
+        {"mission_id": "mission_1234abcd"},
+    )]
+
+    dialog._preview_sha256 = "c" * 64
+    dialog._on_request_completed(
+        "mission-context",
+        {
+            "mission_id": "mission_1234abcd",
+            "mission_status": "RUNNING",
+            "goal": "Resolve the failing DGM-MAT mission.",
+            "context": "LATEST ERROR: test assertion failed",
+            "context_sha256": "d" * 64,
+            "source": "durable_mission_checkpoint",
+            "provider_contacted": False,
+        },
+        "",
+    )
+    assert dialog.goal.toPlainText() == "Resolve the failing DGM-MAT mission."
+    assert "LATEST ERROR" in dialog.context.toPlainText()
+    assert dialog._preview_sha256 is None
+    assert "Fornecedor contactado: não" in dialog.mission_context_info.text()
+    dialog.close()

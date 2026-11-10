@@ -6,6 +6,7 @@ contacted directly by this dialog.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from PySide6.QtCore import QThread, Signal
@@ -15,6 +16,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QPlainTextEdit,
     QVBoxLayout,
@@ -117,6 +119,19 @@ class AIConsultationDialog(QDialog):
             "Claude ainda não está configurado nesta via; Codex e Claude Code são agentes locais separados."
         ))
 
+        mission_row = QHBoxLayout()
+        self.mission_id = QLineEdit()
+        self.mission_id.setPlaceholderText("mission_1234abcd")
+        self.load_context_button = QPushButton("Carregar contexto da missão")
+        self.load_context_button.clicked.connect(self._load_mission_context)
+        mission_row.addWidget(self.mission_id, 1)
+        mission_row.addWidget(self.load_context_button)
+        layout.addWidget(QLabel("ID de missão opcional — carrega o checkpoint durável, limitado e redigido:"))
+        layout.addLayout(mission_row)
+        self.mission_context_info = QLabel("Ainda não foi carregado contexto de missão.")
+        self.mission_context_info.setWordWrap(True)
+        layout.addWidget(self.mission_context_info)
+
         form = QFormLayout()
         self.goal = QPlainTextEdit()
         self.goal.setPlaceholderText("O que queres que a IA analise? (máx. 4000 caracteres)")
@@ -201,6 +216,7 @@ class AIConsultationDialog(QDialog):
             and self._queued_count == 0
         )
         self.preview_button.setEnabled(not busy and self._queued_count == 0)
+        self.load_context_button.setEnabled(not busy and self._queued_count == 0)
         self.send_button.setEnabled(not busy and ready)
         self.cancel_button.setEnabled(not busy)
 
@@ -231,6 +247,19 @@ class AIConsultationDialog(QDialog):
     def _request_status(self) -> None:
         self.status.setText("A verificar se a consulta browser está ativada e quais os fornecedores permitidos…")
         self._start_request("status", "GET", "/recovery/browser-consult/status")
+
+    def _load_mission_context(self) -> None:
+        mission_id = self.mission_id.text().strip()
+        if not re.fullmatch(r"mission_[0-9a-f]{8}", mission_id):
+            self.status.setText("Indica um ID de missão válido no formato mission_1234abcd.")
+            return
+        self.status.setText("A carregar contexto do checkpoint local. Nenhum fornecedor será contactado.")
+        self._start_request(
+            "mission-context",
+            "POST",
+            "/recovery/browser-consult/mission-context",
+            {"mission_id": mission_id},
+        )
 
     def _request_preview(self) -> None:
         goal = self.goal.toPlainText().strip()
@@ -315,6 +344,31 @@ class AIConsultationDialog(QDialog):
                 self.status.setText("Consulta ativada, mas nenhum fornecedor browser está na allowlist deste PC.")
             else:
                 self.status.setText("Consulta ativada. Fornecedores permitidos: " + ", ".join(sorted(allowed)))
+            self._refresh_controls()
+            return
+
+        if action == "mission-context":
+            goal = data.get("goal")
+            context = data.get("context")
+            if not isinstance(goal, str) or not isinstance(context, str):
+                self.status.setText("O checkpoint não devolveu contexto utilizável; nada foi enviado.")
+                return
+            self.goal.setPlainText(goal)
+            self.context.setPlainText(context)
+            self._preview_sha256 = None
+            mission_id = str(data.get("mission_id") or self.mission_id.text().strip())
+            mission_status = str(data.get("mission_status") or "unknown")
+            digest = str(data.get("context_sha256") or "")
+            source = str(data.get("source") or "unknown")
+            self.mission_context_info.setText(
+                f"Origem: {source} | Missão: {mission_id} | Estado: {mission_status} | "
+                f"Contexto SHA-256: {digest[:16] or 'n/d'} | "
+                f"Fornecedor contactado: {'sim' if data.get('provider_contacted') else 'não'}"
+            )
+            self.status.setText(
+                "Contexto de missão carregado. Revê e edita o pedido/contexto; "
+                "gera uma nova pré-visualização antes de qualquer consulta."
+            )
             self._refresh_controls()
             return
 
