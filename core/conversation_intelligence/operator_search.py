@@ -83,7 +83,7 @@ def _write_report(
         str(Path.home() / ".dgm-mat" / "reports" / "conversation-search"),
     )).expanduser().resolve()
     root.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
     report = root / f"{stamp}-{_safe_slug(' '.join(terms))}.md"
     lines = [
         "# DGM-MAT — Pesquisa de conversas",
@@ -96,6 +96,7 @@ def _write_report(
         f"- Fontes verificadas: {coverage.get('scanned_sources', 0)}",
         f"- Pesquisa truncada: {bool(coverage.get('truncated'))}",
         "- Cobertura: arquivos locais importados; não representa o histórico integral das contas.",
+        "- Pesquisa de conteúdo integral nesta versão: ChatGPT importado; outros fornecedores podem devolver apenas metadados.",
         "- Acesso direto a contas de fornecedores: não utilizado.",
         "",
         "## Resultados",
@@ -189,6 +190,7 @@ def search_archived_conversations(goal: str, *, limit: int = 15) -> dict[str, An
         "truncated": truncated,
         "provider_access_used": False,
         "full_history_verified": False,
+        "transcript_search_providers": ["chatgpt"],
     }
     report = _write_report(goal, terms, provider, results, coverage)
     summary = (
@@ -220,5 +222,6 @@ def search_archived_conversations(goal: str, *, limit: int = 15) -> dict[str, An
         "coverage": coverage,
         "provider_access_used": False,
         "full_history_verified": False,
+        "transcript_search_providers": ["chatgpt"],
         "source_modified": False,
     }
