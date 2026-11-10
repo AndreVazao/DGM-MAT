@@ -364,3 +364,11 @@ def stop_dgm_hub_meeting_observer() -> None:
         get_hub_meeting_observer().stop()
     except Exception:
         logging.getLogger(__name__).exception("DGM-HUB observer shutdown failed.")
+
+
+@app.on_event("shutdown")
+def signal_runtime_owner_after_api_drain() -> None:
+    """Wake the runtime owner only after Uvicorn drained active API requests."""
+    from core.runtime.runtime_control import request_runtime_shutdown
+
+    request_runtime_shutdown()
