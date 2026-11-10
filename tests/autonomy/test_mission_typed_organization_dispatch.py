@@ -79,7 +79,8 @@ def test_typed_mission_is_queued_only_after_worker_handler_and_capabilities_exis
         lambda message: {"worker": "repository-cartographer"},
         capabilities=("file-inventory", "project-tree"),
     )
-    engine.organization_registry.set_status(agent_id, AgentStatus.AVAILABLE)
+    profile = engine.organization_registry.get_agent(agent_id)
+    monkeypatch.setattr(profile, "status", AgentStatus.AVAILABLE)
 
     mission = engine.create_mission(
         "inventory repository demo",
