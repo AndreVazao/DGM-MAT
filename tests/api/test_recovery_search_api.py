@@ -55,11 +55,12 @@ def _client(monkeypatch, tmp_path):
     return TestClient(app), ledger, archive_root
 
 
-def test_recovery_search_and_message_read_are_operator_only():
-    assert classify_request_path("/recovery/search", "GET").scope is SecurityScope.OPERATOR
+def test_recovery_search_and_message_read_are_read_only_mobile_scoped():
+    # These endpoints expose bounded read-only recovery data to authenticated mobile clients.
+    assert classify_request_path("/recovery/search", "GET").scope is SecurityScope.MOBILE_READ
     assert classify_request_path(
         "/recovery/sources/chatgpt/recovery-search-001/messages", "GET"
-    ).scope is SecurityScope.OPERATOR
+    ).scope is SecurityScope.MOBILE_READ
 
 
 def test_search_finds_message_body_and_returns_grounded_snippet(monkeypatch, tmp_path):
