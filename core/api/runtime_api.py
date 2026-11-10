@@ -997,7 +997,7 @@ def get_queue_status():
 
 
 @router.post("/shutdown")
-def request_runtime_shutdown_endpoint(request: Request):
+def request_runtime_shutdown_endpoint(request: Request, background_tasks: BackgroundTasks):
     """Stop the full local runtime through its owner; never kill a process."""
     import ipaddress
 
@@ -1021,7 +1021,9 @@ def request_runtime_shutdown_endpoint(request: Request):
         raise HTTPException(status_code=503, detail="The API server cannot accept a shutdown request.")
 
     from core.runtime.runtime_control import request_runtime_shutdown
-    request_runtime_shutdown()
+    # Starlette runs this task after sending the response body. Uvicorn has
+    # already stopped accepting new work and drains the current request first.
+    background_tasks.add_task(request_runtime_shutdown)
     return {
         "status": "shutdown_requested",
         "service": "dgm-mat",
