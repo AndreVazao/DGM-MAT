@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+
 import pytest
+from fastapi import BackgroundTasks
 from fastapi import HTTPException
 from starlette.requests import Request
 
@@ -36,8 +39,12 @@ def test_runtime_shutdown_requires_loopback_operator_and_signals_both_layers(mon
         lambda: calls.append("runtime"),
     )
 
-    result = request_runtime_shutdown_endpoint(_request("127.0.0.1"))
+    background_tasks = BackgroundTasks()
+    result = request_runtime_shutdown_endpoint(_request("127.0.0.1"), background_tasks)
 
+    assert calls == ["api"]
+    asyncio.run(background_tasks())
+    assert calls == ["api", "runtime"]
     assert result == {
         "status": "shutdown_requested",
         "service": "dgm-mat",
@@ -58,7 +65,7 @@ def test_runtime_shutdown_rejects_non_loopback_before_signalling(monkeypatch):
     )
 
     with pytest.raises(HTTPException) as exc:
-        request_runtime_shutdown_endpoint(_request("192.0.2.20"))
+        request_runtime_shutdown_endpoint(_request("192.0.2.20"), BackgroundTasks())
 
     assert exc.value.status_code == 403
     assert calls == []
@@ -76,7 +83,7 @@ def test_runtime_shutdown_requires_operator_scope(monkeypatch):
     )
 
     with pytest.raises(HTTPException) as exc:
-        request_runtime_shutdown_endpoint(_request("127.0.0.1", ["local-client"]))
+        request_runtime_shutdown_endpoint(_request("127.0.0.1", ["local-client"]), BackgroundTasks())
 
     assert exc.value.status_code == 403
     assert calls == []
@@ -91,7 +98,7 @@ def test_runtime_shutdown_fails_closed_when_server_control_is_unavailable(monkey
     )
 
     with pytest.raises(HTTPException) as exc:
-        request_runtime_shutdown_endpoint(_request("127.0.0.1"))
+        request_runtime_shutdown_endpoint(_request("127.0.0.1"), BackgroundTasks())
 
     assert exc.value.status_code == 503
     assert calls == []
