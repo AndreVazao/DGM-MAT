@@ -1,5 +1,8 @@
 # Path: C:\ProgramasGodMode\DGM-MAT\tests\cockpit\test_command_console_worker.py
+import os
 import threading
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 from PySide6.QtWidgets import QApplication
