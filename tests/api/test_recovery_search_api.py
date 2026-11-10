@@ -125,3 +125,11 @@ def test_message_read_does_not_allow_archive_path_escape(monkeypatch, tmp_path):
     response = client.get("/recovery/sources/chatgpt/outside-path/messages")
 
     assert response.status_code == 404
+
+
+def test_recovery_search_matches_accents_without_changing_original_snippet(monkeypatch, tmp_path):
+    client, _, _ = _client(monkeypatch, tmp_path)
+    response = client.get("/recovery/search", params={"q": "VAZAO"})
+    assert response.status_code == 200
+    # The fixture has no VAZAO marker; this guards against inventing a match.
+    assert response.json()["result_count"] == 0
