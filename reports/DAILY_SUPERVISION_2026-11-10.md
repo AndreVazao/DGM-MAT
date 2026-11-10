@@ -351,3 +351,22 @@ O atalho já estava corretamente configurado; não foi criado nem alterado. O te
 - PR #344 criada: [docs: record mission executor readiness validation](https://github.com/AndreVazao/DGM-MAT/pull/344).
 - Corrige o estado obsoleto `awaiting CI validation` do documento de readiness, regista os runs Windows build #42806219347 e Mission E2E Regression Gate #42806219343 e distingue esses resultados de uma missão read-only real ainda não concluída.
 - PR #344 está aberta, não mergeada. O combined status mostra apenas `security/snyk` pendente; não o usaremos como bloqueio porque a quota mensal gratuita do Snyk está esgotada. Nenhuma alteração de código/runtime foi feita nesta PR.
+
+
+## Correção preparada — classificação archive/restore — 2026-11-10 21:48 UTC
+
+A inspeção da fonte na main confirmou a causa exata do HTTP 403:
+
+- `core/api/mobile_bridge.py` regista `POST /threads/{thread_id}/archive` e `POST /threads/{thread_id}/restore`.
+- `core/api/auth_middleware.py` aplica classificação fail-closed e devolve 403 quando não existe entrada explícita.
+- `core/api/security_policy.py` classificava create, messages e rename, mas omitia archive e restore.
+
+Foi preparada a PR #345: [fix(security): classify mobile conversation archive and restore routes](https://github.com/AndreVazao/DGM-MAT/pull/345).
+
+Alterações na branch `fix/classify-mobile-thread-archive-restore`:
+- Classificar os dois endpoints como `MOBILE_CHAT`, exigindo o scope `mobile-chat`.
+- Testar a classificação por template e por caminho concreto.
+- Testar a autorização de sessão mobile-chat para arquivar/restaurar.
+- Testar que uma sessão apenas `local-client` recebe 403 e não altera o estado da conversa.
+
+A PR está aberta e mergeável. O único check reportado neste momento é `security/snyk` pendente; não será usado como bloqueio devido à quota mensal gratuita esgotada. Não foi feito bypass à middleware, merge ou instalação. A correção ainda aguarda CI de testes e validação real no PC.
