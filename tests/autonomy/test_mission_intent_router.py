@@ -173,3 +173,15 @@ def test_external_repository_status_research_is_not_auto_routed_locally():
     assert decision.intent == "unsupported"
     assert decision.supported is False
     assert decision.requires_approval is True
+
+
+def test_provider_conversation_search_is_read_only_and_auto_runnable():
+    for goal in (
+        "busca conversas do ChatGPT sobre VAZAO EVSE",
+        "pesquisa conversas do Grok sobre carregadores",
+        "search conversations in Gemini about DGM-MAT",
+    ):
+        decision = classify_mission_intent(goal)
+        assert decision.intent == "conversation_search"
+        assert decision.supported is True
+        assert decision.requires_approval is False
