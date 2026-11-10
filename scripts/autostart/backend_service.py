@@ -198,7 +198,6 @@ def _configure_runtime_environment(child_env: dict[str, str], mode: str) -> dict
     """Apply safe full-runtime defaults while preserving operator overrides."""
     if mode == "full":
         defaults = {
-            "DGM_REPOSITORY_LEARNING_ENABLED": "1",
             "DGM_REPOSITORY_LEARNING_BATCH_SIZE": "2",
             "DGM_REPOSITORY_LEARNING_MAX_DEPTH": "6",
             "DGM_REPOSITORY_LEARNING_REFRESH_SECONDS": "1800",
