@@ -122,18 +122,29 @@ function Assert-RuntimeStopped {
     }
 }
 
-function Assert-NoInstalledProcess {
+function Wait-NoInstalledProcess {
     param([Parameter(Mandatory = $true)][string]$ExecutablePath)
 
     $fullPath = [System.IO.Path]::GetFullPath($ExecutablePath)
-    $running = Get-CimInstance Win32_Process -Filter "Name = 'DGM-MAT.exe'" |
-        Where-Object {
-            $_.ExecutablePath -and
-            [System.IO.Path]::GetFullPath($_.ExecutablePath) -ieq $fullPath
+    $deadline = (Get-Date).AddSeconds(20)
+    while ($true) {
+        $running = @(Get-CimInstance Win32_Process -Filter "Name = 'DGM-MAT.exe'" |
+            Where-Object {
+                $_.ExecutablePath -and
+                [System.IO.Path]::GetFullPath($_.ExecutablePath) -ieq $fullPath
+            })
+        if (-not $running) { return }
+
+        $cockpit = @($running | Where-Object { $_.CommandLine -match "--cockpit-only" })
+        if ($cockpit) {
+            $ids = ($cockpit | ForEach-Object { $_.ProcessId }) -join ", "
+            throw "Close the DGM-MAT Chat cockpit process(es) $ids and rerun the installer. No process was killed."
         }
-    if ($running) {
-        $ids = ($running | ForEach-Object { $_.ProcessId }) -join ", "
-        throw "DGM-MAT process(es) $ids are still open. Close the DGM-MAT Chat cockpit window and rerun the installer. No process was killed."
+        if ((Get-Date) -ge $deadline) {
+            $ids = ($running | ForEach-Object { $_.ProcessId }) -join ", "
+            throw "Runtime process(es) $ids did not exit after orderly shutdown. No process was killed."
+        }
+        Start-Sleep -Milliseconds 500
     }
 }
 
@@ -203,7 +214,7 @@ if (-not [string]::Equals($packageHash, $ExpectedExeSha256, [StringComparison]::
 
 Request-GracefulRuntimeShutdown -ExecutablePath $targetPath
 Assert-RuntimeStopped
-Assert-NoInstalledProcess -ExecutablePath $targetPath
+Wait-NoInstalledProcess -ExecutablePath $targetPath
 
 New-Item -ItemType Directory -Path $targetDirectory -Force | Out-Null
 New-Item -ItemType Directory -Path $BackupRoot -Force | Out-Null
