@@ -665,15 +665,31 @@ class MissionEngine:
         self._sync_state(mission)
 
         if status != MissionStatus.FAILED:
-            # Enqueue in SafeActionQueue for visibility and execution control
+            readiness = self._mission_executor_readiness(intent_decision)
+            mission.metadata["executor_readiness"] = readiness
+            if readiness["status"] != "READY":
+                reason = readiness["reason"]
+                mission.logs.append(
+                    "Mission is waiting for an executable capability; no approval was requested "
+                    "and no queue action was created."
+                )
+                mission.metadata["approval_blocked"] = True
+                mission.metadata["approval_block_reason"] = reason
+                self._update_status(mission, MissionStatus.WAITING_FOR_CAPABILITY, {
+                    "readiness_checked_at": datetime.now().isoformat(),
+                })
+                dgm_logger.info(
+                    f"MISSION_WAITING_FOR_CAPABILITY: {mission_id} - {readiness['reason_code']}"
+                )
+                return mission
+
+            # Queue only after a concrete, registered execution path is confirmed.
             action_id = self.action_queue.enqueue("MISSION_EXECUTION", {
                 "mission_id": mission_id,
                 "goal": goal
             })
             mission.metadata["action_id"] = action_id
             dgm_logger.info(f"QUEUE_PUSHED: Action {action_id} for mission {mission_id}")
-
-            # Transition to QUEUED immediately
             self._update_status(mission, MissionStatus.QUEUED)
 
             # Only explicitly allowlisted, read-only registered handlers may auto-run.
@@ -686,6 +702,67 @@ class MissionEngine:
                 self.action_queue.approve(action_id, operator="system_auto")
 
         return mission
+
+    def _mission_executor_readiness(self, intent_decision) -> Dict[str, Any]:
+        """Verify a real, registered handler before creating an approval-capable action."""
+        intent_name = intent_decision.intent
+        typed_kind = self.typed_organization_mission_executor.INTENT_TO_KIND.get(intent_name)
+        if typed_kind is not None:
+            policy = self.organization_task_dispatcher.TASK_KINDS.get(typed_kind)
+            if not isinstance(policy, dict):
+                return {
+                    "status": "WAITING_FOR_CAPABILITY",
+                    "reason_code": "TYPED_TASK_KIND_NOT_REGISTERED",
+                    "reason": "The typed task kind has no dispatcher policy.",
+                }
+            agent_id = policy.get("agent_id")
+            capabilities = policy.get("capabilities", ())
+            profile = self.organization_registry.get_agent(agent_id) if isinstance(agent_id, str) else None
+            profile_status = getattr(getattr(profile, "status", None), "value", getattr(profile, "status", None))
+            ready = (
+                isinstance(agent_id, str)
+                and profile is not None
+                and profile_status == "AVAILABLE"
+                and self.worker_runtime.has_handler(agent_id)
+                and self.worker_runtime.declares_capabilities(agent_id, capabilities)
+            )
+            if not ready:
+                return {
+                    "status": "WAITING_FOR_CAPABILITY",
+                    "reason_code": "TYPED_WORKER_NOT_READY",
+                    "reason": (
+                        f"No available registered worker currently satisfies the {typed_kind} "
+                        "handler and capability requirements."
+                    ),
+                    "required_agent": agent_id,
+                    "required_capabilities": list(capabilities),
+                    "handler_registered": self.worker_runtime.has_handler(agent_id) if isinstance(agent_id, str) else False,
+                    "roster_status": profile_status,
+                }
+            return {
+                "status": "READY",
+                "handler": intent_name,
+                "agent_id": agent_id,
+                "required_capabilities": list(capabilities),
+            }
+
+        if intent_name in self.AUTO_RUN_READ_ONLY_INTENTS or intent_name == "repository_sync_worktree":
+            if intent_decision.supported:
+                return {
+                    "status": "READY",
+                    "handler": intent_name,
+                    "approval_required": bool(intent_decision.requires_approval),
+                }
+
+        return {
+            "status": "WAITING_FOR_CAPABILITY",
+            "reason_code": "NO_REGISTERED_EXECUTOR",
+            "reason": (
+                "No executable handler is registered for this request. The mission remains "
+                "recoverable, but approval and execution are blocked until a compatible "
+                "handler is registered."
+            ),
+        }
 
     def _capability_request_from_goal(self, goal: str) -> Optional[str]:
         """Extract an explicit capability-gap signal without invoking execution."""
