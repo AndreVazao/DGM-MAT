@@ -178,6 +178,8 @@ def test_mobile_pairing_routes_use_separate_least_privilege_scopes():
         ("/runtime/queue", "GET"): (SecurityScope.MOBILE_READ, "mobile-read"),
         ("/mobile/threads", "POST"): (SecurityScope.MOBILE_CHAT, "mobile-chat"),
         ("/mobile/threads/{thread_id}/messages", "POST"): (SecurityScope.MOBILE_CHAT, "mobile-chat"),
+        ("/mobile/threads/{thread_id}/archive", "POST"): (SecurityScope.MOBILE_CHAT, "mobile-chat"),
+        ("/mobile/threads/{thread_id}/restore", "POST"): (SecurityScope.MOBILE_CHAT, "mobile-chat"),
         ("/mobile/usb-recovery/repair", "POST"): (SecurityScope.MOBILE_MAINTENANCE, "mobile-maintenance"),
     }
     for (path, method), (scope, token_scope) in expected.items():
@@ -185,6 +187,11 @@ def test_mobile_pairing_routes_use_separate_least_privilege_scopes():
         assert classification is not None
         assert classification.scope is scope
         assert _required_scope(scope) == token_scope
+
+    for endpoint in ("archive", "restore"):
+        concrete = classify_request_path(f"/mobile/threads/thread-test/{endpoint}", "POST")
+        assert concrete is not None
+        assert concrete.scope is SecurityScope.MOBILE_CHAT
 
 
 def test_mobile_session_scopes_do_not_replace_general_operator_scope():
