@@ -293,3 +293,33 @@ Não foi executado pull, checkout, reset, clean, commit ou qualquer limpeza. Est
 ### Conclusão revista
 
 A instalação do executável, a autenticação normal do cockpit e as leituras de estado/queue estão agora comprovadas. Continua por validar uma missão read-only concluída com recibo durável, o endpoint de listagem de missões, a persistência/histórico/sidebar do cockpit, o atalho, o rollback real, os providers e o DGM-HUB. O estado global permanece **VERIFICAÇÃO INCOMPLETA**.
+
+
+## Correção de evidência — cockpit oficial validado — 2026-11-10 19:27 UTC
+
+Esta correção prevalece sobre qualquer formulação anterior neste relatório que pudesse confundir o teste Python do checkout local com o executável oficial instalado.
+
+### Separação entre código local e executável instalado
+
+- O primeiro processo GUI Python (PID 4416) foi iniciado a partir do checkout local `recovery/local-worktree-consolidation-2026-11-09`, cujo código de cockpit está desatualizado. Esse processo foi fechado e o seu teste visual/widget não é aceite como prova do cockpit oficial.
+- O executável instalado foi iniciado separadamente com `DGM-MAT.exe --cockpit-only`, sem iniciar um segundo backend.
+- A janela Qt do executável oficial foi confirmada visível, com título `DGM-MAT - Assistente`, processo GUI PID 2816 e `Responding=True`.
+- Os processos backend originais PID 6052/2364 mantiveram-se ativos; não foram reiniciados.
+- O código da main observada em `fdae0ce` contém sidebar com Nova conversa, pesquisa, histórico, paginação, arquivo/restauro, consulta governada a IA e estado do sistema. A inspeção da fonte confirmou os handlers e endpoints correspondentes.
+
+### Conversas — criação, pesquisa e persistência
+
+- `GET /mobile/threads`: HTTP 200; 24 conversas listadas antes do teste.
+- `GET /mobile/threads/search?q=DGM&limit=5&offset=0`: HTTP 200; cinco resultados e `has_more=true`.
+- Foi criada uma conversa de teste local, sem mensagem: título `Validação técnica cockpit — 2026-11-10`, ID `thread-14375e4504ee4365`; `POST /mobile/threads` devolveu HTTP 200.
+- `GET /mobile/threads` confirmou o ID e o título exatos (25 conversas na listagem).
+- A janela oficial foi fechada graciosamente e o cockpit foi iniciado novamente com `--cockpit-only`. Após o fecho/reabertura, a consulta autenticada à lista voltou a devolver HTTP 200 e confirmou que a conversa de teste continuava presente com estado `active`.
+- Esta prova cobre persistência da conversa através do fecho/reabertura do cockpit enquanto o backend permaneceu ativo; não prova persistência após reinício do backend/PC.
+- A conversa de teste foi mantida para inspeção no cockpit. Não contém mensagens de teste.
+- Não foi submetida missão, nem executada ação de aprovação, arquivo ou restauro.
+
+### Estado final desta validação
+
+**Confirmado:** executável oficial abre uma janela Qt visível e responsiva; API autenticada; lista e pesquisa de conversas; criação e persistência de uma conversa após fechar/reabrir o cockpit.  
+**Ainda por confirmar:** interação manual completa no ecrã, conteúdo visual de cada componente, envio de mensagem, pesquisa pela interface, arquivo/restauro pela interface, atalho Desktop e persistência após reinício do backend.  
+**Classificação global:** VERIFICAÇÃO INCOMPLETA.
