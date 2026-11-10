@@ -60,7 +60,6 @@ def test_default_provider_initialization_registers_trusted_local_adapter():
     assert provider.config["base_url"] == "http://127.0.0.1:11434"
 
 def test_ollama_inference_is_not_blocked_by_low_available_ram(monkeypatch):
-    from types import SimpleNamespace
     provider = OllamaProvider()
     with patch.object(provider, "check_health", return_value={
         "available": True, "models": ["llama3.2:1b"], "status": "ok"
@@ -69,7 +68,7 @@ def test_ollama_inference_is_not_blocked_by_low_available_ram(monkeypatch):
     }) as request:
         provider._installed_models = ["llama3.2:1b"]
         provider.health_metrics["last_check"] = __import__("time").time()
-        with patch("psutil.virtual_memory", return_value=SimpleNamespace(available=int(0.1 * 1024 ** 3))):
+        with patch("psutil.virtual_memory", side_effect=AssertionError("RAM must not gate inference")):
             result = provider.generate([{"role": "user", "content": "continue slowly"}], model="llama3.2:1b")
     assert result == "inference completed"
     request.assert_called_once()
