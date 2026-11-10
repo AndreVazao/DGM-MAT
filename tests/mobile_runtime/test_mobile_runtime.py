@@ -841,15 +841,17 @@ def test_thread_status_rejects_unknown_values_without_mutating_thread(tmp_path):
     assert store.get_thread(thread.id).status == "active"
 
 
-def test_archive_restore_routes_preserve_thread_and_return_status():
+def test_archive_restore_routes_preserve_thread_and_return_status(tmp_path, monkeypatch):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
-    from core.api.mobile_bridge import router, service
+    import core.api.mobile_bridge as mobile_bridge
 
+    test_service = MobileConversationService(ConversationStore(tmp_path / "api-archive.json"))
+    monkeypatch.setattr(mobile_bridge, "service", test_service)
     app = FastAPI()
-    app.include_router(router)
-    thread = service.create_thread("API archive test")
-    service.append_transcript_entry(thread["id"], "user", "Keep this message.")
+    app.include_router(mobile_bridge.router)
+    thread = test_service.create_thread("API archive test")
+    test_service.append_transcript_entry(thread["id"], "user", "Keep this message.")
     client = TestClient(app)
 
     archived = client.post(f"/mobile/threads/{thread['id']}/archive")
