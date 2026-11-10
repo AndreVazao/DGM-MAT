@@ -29,3 +29,82 @@ QListWidget {
     background-color: #0D0D0D;
     border: 1px solid #2A2A2A;
 }
+
+/* Chat-first desktop cockpit */
+QFrame#conversationSidebar {
+    background-color: #0b0e14;
+    border: none;
+    border-right: 1px solid #202634;
+    border-radius: 0;
+}
+QLabel#sidebarBrand {
+    color: #f4f7fb;
+    font-size: 19px;
+    font-weight: 700;
+    padding: 4px 2px;
+}
+QLabel#sidebarSubtitle {
+    color: #778397;
+    font-size: 11px;
+    padding: 0 2px 10px 2px;
+}
+QLabel#sidebarSectionLabel {
+    color: #69768b;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 12px 2px 0 2px;
+}
+QLineEdit#conversationSearch {
+    background-color: #151b26;
+    border: 1px solid #273246;
+    border-radius: 9px;
+    color: #e8edf5;
+    padding: 10px;
+}
+QListWidget#conversationHistory {
+    background-color: transparent;
+    border: none;
+    outline: none;
+    color: #d8e0eb;
+    padding: 2px;
+}
+QListWidget#conversationHistory::item {
+    border-radius: 7px;
+    padding: 9px 7px;
+    margin: 2px 0;
+}
+QListWidget#conversationHistory::item:selected {
+    background-color: #1c2b3d;
+    color: #ffffff;
+}
+QPushButton#primarySidebarButton {
+    background-color: #087f91;
+    color: #ffffff;
+    border: none;
+    border-radius: 9px;
+    padding: 11px;
+    font-weight: 700;
+    text-align: left;
+}
+QPushButton#sidebarSecondaryButton {
+    background-color: #151b26;
+    color: #cbd5e1;
+    border: 1px solid #273246;
+    border-radius: 8px;
+    padding: 9px;
+    text-align: left;
+}
+QPushButton#sidebarTextButton {
+    background: transparent;
+    color: #91a0b5;
+    border: none;
+    padding: 8px 2px;
+    text-align: left;
+}
+QLabel#sidebarFooter {
+    color: #536176;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 10px 2px 2px 2px;
+}

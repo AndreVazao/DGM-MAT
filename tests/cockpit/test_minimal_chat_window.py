@@ -20,13 +20,17 @@ def qt_app():
     return QApplication.instance() or QApplication(sys.argv)
 
 
-def test_default_cockpit_is_single_chat_view(qt_app):
+def test_default_cockpit_is_chat_first_with_sidebar_history(qt_app):
     window = MinimalChatWindow()
 
-    assert window.windowTitle() == "DGM-MAT — Chat"
-    assert isinstance(window.centralWidget(), CommandConsoleWidget)
-    assert window.centralWidget().input_field is not None
-    assert window.centralWidget().send_btn is not None
+    assert window.windowTitle() == "DGM-MAT — Assistente"
+    assert window.chat.input_field is not None
+    assert window.chat.send_btn is not None
+    assert window.chat.thread_list.parent() is not None
+    assert window.chat.search_field.placeholderText() == "Pesquisar conversas…"
+    assert window.chat.new_thread_btn.text().strip().endswith("Nova conversa")
+    assert window.chat.search_more_btn.text() == "Mais conversas"
+    assert window.chat.archive_thread_btn.text() == "Arquivar / restaurar"
 
     window.close()
 
