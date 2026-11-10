@@ -41,7 +41,7 @@ if (Test-DgmMatApiPortOpen) {
     if (-not $matching) {
         throw "The API port is active, but no process matches the rollback target executable. Refusing to stop an unrelated runtime."
     }
-    $bootstrapPath = Join-Path $env:LOCALAPPDATA "DGM-MAT\\security\\bootstrap.token"
+    $bootstrapPath = Join-Path $env:LOCALAPPDATA "DGM-MAT\security\bootstrap.token"
     if (-not (Test-Path -LiteralPath $bootstrapPath -PathType Leaf)) {
         throw "Local bootstrap credential is unavailable; rollback stopped without killing any process."
     }
