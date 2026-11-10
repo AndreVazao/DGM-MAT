@@ -24,7 +24,6 @@ class RuntimeProfile:
     startup_autonomy_delay: int
     lazy_load_knowledge: bool
     lazy_provider_health: bool
-    memory_degradation_threshold: float
 
 
 _profile_lock = Lock()
@@ -72,5 +71,4 @@ def _build_runtime_profile() -> RuntimeProfile:
         startup_autonomy_delay=10,
         lazy_load_knowledge=False,
         lazy_provider_health=False,
-        memory_degradation_threshold=85.0,
     )
