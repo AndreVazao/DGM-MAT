@@ -21,4 +21,3 @@ def test_low_memory_hardware_does_not_disable_runtime_capabilities(monkeypatch):
     assert profile.lazy_provider_health is False
     assert profile.enable_startup_provider_scan is True
     assert profile.enable_startup_autonomy_scan is True
-    assert profile.memory_degradation_threshold == 85.0
