@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 from uuid import uuid4
 import psutil
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import List, Optional, Dict, Any, Literal
 from core.storage.storage_manager import storage_manager
@@ -997,7 +997,7 @@ def get_queue_status():
 
 
 @router.post("/shutdown")
-def request_runtime_shutdown_endpoint(request: Request, background_tasks: BackgroundTasks):
+def request_runtime_shutdown_endpoint(request: Request):
     """Stop the full local runtime through its owner; never kill a process."""
     import ipaddress
 
@@ -1020,10 +1020,6 @@ def request_runtime_shutdown_endpoint(request: Request, background_tasks: Backgr
     if not request_api_shutdown():
         raise HTTPException(status_code=503, detail="The API server cannot accept a shutdown request.")
 
-    from core.runtime.runtime_control import request_runtime_shutdown
-    # Starlette runs this task after sending the response body. Uvicorn has
-    # already stopped accepting new work and drains the current request first.
-    background_tasks.add_task(request_runtime_shutdown)
     return {
         "status": "shutdown_requested",
         "service": "dgm-mat",
