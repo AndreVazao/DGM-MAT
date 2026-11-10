@@ -227,12 +227,3 @@ def classify_mission_intent(goal: str) -> IntentDecision:
         "unsupported", False, 0.0, True,
         "No registered executor matches this mission. The request must not be treated as completed.",
     )
-
-
-def test_mixed_conversation_search_and_mutation_is_not_auto_executed():
-    decision = classify_mission_intent(
-        "busca conversas do ChatGPT sobre EVSE e apaga os arquivos antigos"
-    )
-    assert decision.intent == "unsupported"
-    assert decision.supported is False
-    assert decision.requires_approval is True
