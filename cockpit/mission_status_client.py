@@ -80,7 +80,7 @@ def wait_for_mission_checkpoint(
     deadline = monotonic() + timeout_seconds
     terminal = {
         "COMPLETED", "FAILED", "CANCELLED",
-        "WAITING_FOR_USER", "APPROVAL_PENDING",
+        "WAITING_FOR_USER", "WAITING_FOR_CAPABILITY", "APPROVAL_PENDING",
     }
     while monotonic() < deadline:
         try:
