@@ -30,14 +30,28 @@ def test_runtime_shutdown_cancels_startup_timers_and_stops_event_bus(monkeypatch
         def stop_consumer(self):
             self.stopped = True
 
+    class FakeThread:
+        alive = True
+        joined = False
+
+        def is_alive(self):
+            return self.alive
+
+        def join(self, timeout):
+            assert timeout == 10
+            self.joined = True
+            self.alive = False
+
     timer = FakeTimer()
     event_bus = FakeEventBus()
     store = FakeStore()
     queue = FakeQueue()
+    api_thread = FakeThread()
     runtime = Runtime.__new__(Runtime)
     runtime.repository_learning_service = None
     runtime.auto_help_worker = None
     runtime._startup_timers = [timer]
+    runtime.api_thread = api_thread
     runtime.event_bus = event_bus
     runtime.state_store = store
     runtime.kernel = None
@@ -50,6 +64,7 @@ def test_runtime_shutdown_cancels_startup_timers_and_stops_event_bus(monkeypatch
     assert timer.cancelled is True
     assert runtime._startup_timers == []
     assert event_bus.stopped is True
+    assert api_thread.joined is True
     assert queue.stopped is True
     assert store.events[-1][0] is StateEvents.COCKPIT_STATE_CHANGED
     assert store.events[-1][1]["runtime_status"] == "stopped"
