@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from scripts.autostart import backend_service
+from core.runtime.runtime import repository_learning_autostart_enabled
 
 
 def _urlopen_context(payload: dict):
@@ -246,3 +247,20 @@ def test_stop_recovers_orphaned_verified_listener_when_recorded_parent_is_gone(t
     assert "terminate:7020" in events
     assert not state_file.exists()
     assert "process tree rooted at PID 7020" in capsys.readouterr().out
+
+
+def test_full_runtime_service_manager_preserves_low_memory_guard(monkeypatch):
+    monkeypatch.delenv("DGM_REPOSITORY_LEARNING_ENABLED", raising=False)
+    configured = backend_service._configure_runtime_environment({}, "full")
+
+    assert "DGM_REPOSITORY_LEARNING_ENABLED" not in configured
+    assert repository_learning_autostart_enabled(low_memory=True) is False
+    assert repository_learning_autostart_enabled(low_memory=False) is True
+
+
+def test_full_runtime_service_manager_preserves_explicit_learning_opt_in():
+    configured = backend_service._configure_runtime_environment(
+        {"DGM_REPOSITORY_LEARNING_ENABLED": "1"},
+        "full",
+    )
+    assert configured["DGM_REPOSITORY_LEARNING_ENABLED"] == "1"
