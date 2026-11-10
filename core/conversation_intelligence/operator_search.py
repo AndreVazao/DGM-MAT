@@ -20,6 +20,7 @@ _STOP_WORDS = {
     "chatgpt", "gpt", "openai", "grok", "gemini", "claude", "deepseek", "qwen",
     "resumo", "resume", "resumir", "summary", "summarize", "organiza", "organizar",
     "mostra", "mostrar", "apresenta", "apresentar", "dossier", "dossie",
+    "ia", "ias", "ai", "provider", "fornecedor",
 }
 
 
