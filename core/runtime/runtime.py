@@ -43,6 +43,7 @@ class Runtime:
         self.is_degraded = False
         self.repository_learning_service = None
         self.auto_help_worker = None
+        self.api_thread: Thread | None = None
         self._startup_timers: list[Timer] = []
 
         # Guarded Subsystem Initialization
@@ -225,8 +226,8 @@ class Runtime:
     def start_api(self):
         try:
             from core.api.api_server import run_api
-            thread = Thread(target=run_api, daemon=True)
-            thread.start()
+            self.api_thread = Thread(target=run_api, name="dgm-api-server", daemon=True)
+            self.api_thread.start()
             dgm_logger.info("Runtime: API Server thread started.")
         except Exception as exc:
             self.is_degraded = True
@@ -365,6 +366,10 @@ class Runtime:
             self.event_bus.stop()
         except Exception as exc:
             dgm_logger.warning("Runtime: Event bus stop failed: %s", type(exc).__name__)
+        if self.api_thread is not None and self.api_thread.is_alive():
+            self.api_thread.join(timeout=10)
+            if self.api_thread.is_alive():
+                dgm_logger.warning("Runtime: API server thread did not exit within 10 seconds.")
         if self.repository_learning_service is not None:
             try:
                 self.repository_learning_service.stop()
