@@ -22,6 +22,7 @@ Exemplo: "busca conversas do ChatGPT sobre o projeto VAZAO EVSE"
 - Não lê cookies, tokens, palavras-passe, bases de autenticação ou armazenamento privado do browser.
 - Não percorre automaticamente todas as conversas da barra lateral dos fornecedores.
 - O histórico integral não é considerado verificado; a cobertura fica sempre marcada como parcial.
+- Nesta versão, a pesquisa de conteúdo das mensagens está ligada ao arquivo importado do ChatGPT; para outros fornecedores, os resultados podem limitar-se aos metadados disponíveis.
 - A ausência de resultados significa apenas que não houve correspondência no arquivo importado disponível.
 - A pesquisa é limitada a três termos, 15 resultados por termo e aos limites de leitura já aplicados pelo Recovery API.
 - Os relatórios são derivados e não alteram nem eliminam os arquivos originais.
