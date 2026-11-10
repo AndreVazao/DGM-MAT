@@ -43,6 +43,7 @@ class Runtime:
         self.is_degraded = False
         self.repository_learning_service = None
         self.auto_help_worker = None
+        self._startup_timers: list[Timer] = []
 
         # Guarded Subsystem Initialization
         self.governance_engine = self._load_and_init("core.governance.governance_engine", "GovernanceEngine", "Governance")
@@ -332,7 +333,10 @@ class Runtime:
             if delay <= 0:
                 run()
             else:
-                Timer(delay, run).start()
+                timer = Timer(delay, run)
+                timer.daemon = True
+                self._startup_timers.append(timer)
+                timer.start()
 
         publish_event(
             0,
@@ -351,6 +355,16 @@ class Runtime:
 
     def shutdown(self):
         dgm_logger.info("Runtime: Initiating shutdown...")
+        for timer in self._startup_timers:
+            try:
+                timer.cancel()
+            except Exception:
+                pass
+        self._startup_timers.clear()
+        try:
+            self.event_bus.stop()
+        except Exception as exc:
+            dgm_logger.warning("Runtime: Event bus stop failed: %s", type(exc).__name__)
         if self.repository_learning_service is not None:
             try:
                 self.repository_learning_service.stop()
