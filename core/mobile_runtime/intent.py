@@ -10,7 +10,7 @@ class IntentInterpreter:
     """Cheap deterministic intent layer; no LLM is required to understand commands."""
 
     _patterns = [
-        ("conversation_search", ("busca conversas", "pesquisa conversas", "procura conversas", "encontra conversas", "recupera conversas", "search conversations", "find conversations", "search chats", "find chats")),
+        ("conversation_search", ("busca conversas", "busca as conversas", "pesquisa conversas", "pesquisa as conversas", "procura conversas", "procura as conversas", "encontra conversas", "recupera conversas", "search conversations", "find conversations", "search chats", "find chats")),
         ("status", ("estado", "status", "como está", "como esta", "saúde", "saude", "verifica")),
         ("audit", ("audit", "audits", "auditing", "audita", "auditar", "auditoria", "analisa", "analisar", "analyze", "analyse", "review", "revisa", "revisar", "inspeciona", "inspecionar", "verifica o código", "verifica o codigo")),
         ("repair", ("corrige", "corrigir", "repara", "reparar", "resolve", "resolver", "conserta")),
