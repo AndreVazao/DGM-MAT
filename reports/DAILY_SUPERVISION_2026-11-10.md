@@ -143,7 +143,7 @@ Não foi apagada nem atualizada qualquer branch. A branch de shutdown/update tem
 - [#310 — execução headless governada de Codex/Claude e captura autenticada](https://github.com/AndreVazao/DGM-MAT/issues/310).
 - [#308 — memória e proveniência dos project context dossiers](https://github.com/AndreVazao/DGM-MAT/issues/308).
 - [#244 — instalador inteligente e self-update](https://github.com/AndreVazao/DGM-MAT/issues/244).
-- [#212] (https://github.com/AndreVazao/DGM-MAT/issues/212) — ligar o executor backup-first ao MissionEngine.
+- [#212](https://github.com/AndreVazao/DGM-MAT/issues/212) — ligar o executor backup-first ao MissionEngine.
 - [#242](https://github.com/AndreVazao/DGM-MAT/issues/242) — Codex/Claude Free via FCC e memória adaptativa.
 - [#237](https://github.com/AndreVazao/DGM-MAT/issues/237) — Vault e catálogo pesquisável.
 - [#215](https://github.com/AndreVazao/DGM-MAT/issues/215) — completude e histórico virtualizado.
@@ -250,3 +250,8 @@ Observer/Respond não foi alterado. Não foram enviadas mensagens nem alterado o
 9. Rever com o proprietário a proteção da branch main; nenhuma alteração de segurança deve ser feita automaticamente.
 
 **Conclusão:** a main tem CI/build verdes e o ciclo de aprovação de missões está mais honesto e seguro. O DGM-MAT ainda não foi comprovado como operacional de ponta a ponta no PC: a API autenticada, missão live, providers, arquivo multi-IA e DGM-HUB continuam por validar. Nenhuma capacidade foi declarada funcional apenas por existir código ou passar no CI.
+
+
+## Nota de publicação — 2026-11-10 15:13 UTC
+
+O inventário da secção 4.1 representa o estado observado antes da publicação deste relatório e indicava zero PRs abertas. A publicação criou a PR documental draft [#343](https://github.com/AndreVazao/DGM-MAT/pull/343), na branch `reports/daily-supervision-2026-11-10`, com um único ficheiro e sem alterações de código. Assim, após a publicação, esta é a única PR aberta criada nesta ronda. Permanece sem merge.
