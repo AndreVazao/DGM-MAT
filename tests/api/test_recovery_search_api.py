@@ -128,8 +128,21 @@ def test_message_read_does_not_allow_archive_path_escape(monkeypatch, tmp_path):
 
 
 def test_recovery_search_matches_accents_without_changing_original_snippet(monkeypatch, tmp_path):
-    client, _, _ = _client(monkeypatch, tmp_path)
+    client, ledger, archive_root = _client(monkeypatch, tmp_path)
+    conversation = _conversation()
+    conversation["id"] = "recovery-accent-002"
+    conversation["title"] = "VAZÃO EVSE"
+    conversation["mapping"]["user-node"]["message"]["content"]["parts"] = [
+        "O projeto VAZÃO EVSE utiliza carregamento AC modular."
+    ]
+    source_file = tmp_path / "accent-conversations.json"
+    source_file.write_text(json.dumps([conversation]), encoding="utf-8")
+    report = import_chatgpt_conversations_json(source_file, archive_root, ledger)
+    assert report.archived == 1
+
     response = client.get("/recovery/search", params={"q": "VAZAO"})
     assert response.status_code == 200
-    # The fixture has no VAZAO marker; this guards against inventing a match.
-    assert response.json()["result_count"] == 0
+    payload = response.json()
+    assert payload["result_count"] == 1
+    assert payload["results"][0]["source_id"] == "recovery-accent-002"
+    assert "VAZÃO EVSE" in payload["results"][0]["snippet"]
