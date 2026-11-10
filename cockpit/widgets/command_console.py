@@ -276,6 +276,7 @@ class CommandConsoleWidget(QWidget):
         self._worker: _RuntimeRequestWorker | None = None
         self._runtime_available = True
         self._active_thread_id: str | None = None
+        self._active_thread_status = "active"
         self._pending_directive: str | None = None
         self._thread_create_active = False
         self._search_query = ""
@@ -310,11 +311,15 @@ class CommandConsoleWidget(QWidget):
         self.search_more_btn = QPushButton("Mais resultados")
         self.search_more_btn.setEnabled(False)
         self.search_more_btn.clicked.connect(self._search_more_threads)
+        self.archive_thread_btn = QPushButton("Arquivar / restaurar")
+        self.archive_thread_btn.setEnabled(False)
+        self.archive_thread_btn.clicked.connect(self._archive_selected_thread)
         history_bar.addWidget(self.new_thread_btn)
         history_bar.addWidget(self.search_field, 1)
         history_bar.addWidget(self.search_btn)
         history_bar.addWidget(self.ai_help_btn)
         history_bar.addWidget(self.search_more_btn)
+        history_bar.addWidget(self.archive_thread_btn)
         layout.addLayout(history_bar)
 
         self.thread_list = QListWidget()
@@ -324,6 +329,7 @@ class CommandConsoleWidget(QWidget):
             "border: 1px solid #3e3e3e;"
         )
         self.thread_list.itemClicked.connect(self._open_selected_thread)
+        self.thread_list.itemSelectionChanged.connect(self._refresh_controls)
         layout.addWidget(self.thread_list)
 
         self.output = QTextEdit()
@@ -379,7 +385,7 @@ class CommandConsoleWidget(QWidget):
             or bool(self._pending_directive)
             or self._thread_create_active
         )
-        available = self._runtime_available and not busy and not conversation_busy
+        available = self._runtime_available and not busy and not conversation_busy and self._active_thread_status == "active"
         self.input_field.setEnabled(available)
         self.send_btn.setEnabled(available)
         self.new_thread_btn.setEnabled(not busy and not conversation_busy)
@@ -389,8 +395,11 @@ class CommandConsoleWidget(QWidget):
             not busy and not conversation_busy and self._search_has_more
         )
         self.thread_list.setEnabled(not busy and not conversation_busy)
+        self.archive_thread_btn.setEnabled(not busy and not conversation_busy and self.thread_list.currentItem() is not None)
         if not self._runtime_available:
             self.input_field.setPlaceholderText("Runtime offline — envio desativado")
+        elif self._active_thread_status == "archived":
+            self.input_field.setPlaceholderText("Conversa arquivada — restaura-a para continuar")
         elif busy:
             self.input_field.setPlaceholderText("À espera do backend…")
         else:
@@ -402,6 +411,7 @@ class CommandConsoleWidget(QWidget):
             or self._pending_directive
             or self._transcript_write_active
             or self._thread_create_active
+            or self._active_thread_status != "active"
         ):
             return
         directive = self.input_field.text().strip()
@@ -422,8 +432,9 @@ class CommandConsoleWidget(QWidget):
             or self._pending_directive
             or self._transcript_write_active
             or self._thread_create_active
+            or self._active_thread_status != "active"
         ):
-            self._append_message("Sistema", "Já existe um pedido em curso.", "error")
+            self._append_message("Sistema", "Já existe um pedido em curso ou a conversa está arquivada.", "error")
             return
         normalized = directive.strip()
         if not normalized:
@@ -553,6 +564,20 @@ class CommandConsoleWidget(QWidget):
             params={"q": self._search_query, "limit": 25, "offset": self._search_offset},
         )
 
+    def _archive_selected_thread(self) -> None:
+        item = self.thread_list.currentItem()
+        if item is None:
+            return
+        thread_id = item.data(Qt.ItemDataRole.UserRole)
+        if not isinstance(thread_id, str) or not thread_id:
+            return
+        status = str(item.data(Qt.ItemDataRole.UserRole + 1) or "active")
+        action = "thread-restore" if status == "archived" else "thread-archive"
+        endpoint = "restore" if status == "archived" else "archive"
+        self._conversation_request(
+            action, "POST", f"/mobile/threads/{thread_id}/{endpoint}"
+        )
+
     def _open_selected_thread(self, item: QListWidgetItem) -> None:
         thread_id = item.data(Qt.ItemDataRole.UserRole)
         if isinstance(thread_id, str) and thread_id:
@@ -589,6 +614,20 @@ class CommandConsoleWidget(QWidget):
         is_transcript_write = action in {"send-user-entry", "transcript-entry"}
         if is_transcript_write:
             self._transcript_write_active = False
+        if action in {"thread-archive", "thread-restore"}:
+            thread_id = data.get("id")
+            status = str(data.get("status") or ("archived" if action == "thread-archive" else "active"))
+            if isinstance(thread_id, str) and thread_id == self._active_thread_id:
+                self._active_thread_status = status
+            self._append_message(
+                "Sistema",
+                "Conversa arquivada sem apagar mensagens." if status == "archived" else "Conversa restaurada; podes continuar.",
+                "system",
+            )
+            self._load_threads()
+            self._refresh_controls()
+            return
+
         if action == "thread-create":
             self._thread_create_active = False
         if error:
@@ -638,8 +677,11 @@ class CommandConsoleWidget(QWidget):
                 title = thread.get("title") or "Nova conversa"
                 if not isinstance(thread_id, str):
                     continue
-                item = QListWidgetItem(str(title))
+                status = str(thread.get("status") or "active")
+                display_title = f"{title}  [{status}]"
+                item = QListWidgetItem(display_title)
                 item.setData(Qt.ItemDataRole.UserRole, thread_id)
+                item.setData(Qt.ItemDataRole.UserRole + 1, status)
                 self.thread_list.addItem(item)
             self._refresh_controls()
             return
@@ -652,6 +694,7 @@ class CommandConsoleWidget(QWidget):
                 self._refresh_controls()
                 return
             self._active_thread_id = thread_id
+            self._active_thread_status = "active"
             self._search_has_more = False
             self.output.clear()
             self.history.clear()
@@ -686,6 +729,7 @@ class CommandConsoleWidget(QWidget):
                 self._append_message("Erro", "O backend devolveu uma conversa inválida.", "error")
                 return
             self._active_thread_id = thread_id
+            self._active_thread_status = str(data.get("status") or "active")
             self.output.clear()
             self.history.clear()
             for message in messages:

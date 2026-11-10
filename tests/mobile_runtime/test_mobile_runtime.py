@@ -759,6 +759,7 @@ def test_conversation_search_paginates_without_duplicates_and_reports_provenance
     assert len(set(first_ids + second_ids + third_ids)) == 5
     assert first["results"][0]["provenance"]["source"] == "dgm-mat-local-conversation-store"
     assert first["results"][0]["provenance"]["capture_completeness"] == "complete"
+    assert first["results"][0]["status"] == "active"
 
 
 def test_conversation_search_pagination_is_bounded_and_backward_compatible(tmp_path: Path):
@@ -811,3 +812,57 @@ def test_append_transcript_entry_rejects_invalid_roles_and_oversized_content(tmp
         service.append_transcript_entry(thread["id"], "assistant", "x" * 20001)
     with pytest.raises(KeyError):
         service.append_transcript_entry("thread-inexistente", "assistant", "Resultado")
+
+
+def test_archive_and_restore_preserve_conversation_history(tmp_path):
+    store = ConversationStore(tmp_path / "conversations.json")
+    service = MobileConversationService(store)
+    thread = service.create_thread("Conversa importante")
+    store.append_message(thread["id"], "user", "Não apagar este registo.")
+
+    archived = service.set_thread_status(thread["id"], "archived")
+    assert archived["status"] == "archived"
+    assert len(archived["messages"]) == 1
+    assert archived["messages"][0]["content"] == "Não apagar este registo."
+
+    restored_store = ConversationStore(tmp_path / "conversations.json")
+    restored_service = MobileConversationService(restored_store)
+    restored = restored_service.set_thread_status(thread["id"], "active")
+    assert restored["status"] == "active"
+    assert len(restored["messages"]) == 1
+    assert restored["messages"][0]["content"] == "Não apagar este registo."
+
+
+def test_thread_status_rejects_unknown_values_without_mutating_thread(tmp_path):
+    store = ConversationStore(tmp_path / "conversations.json")
+    thread = store.create_thread("Estado protegido")
+    with pytest.raises(ValueError, match="status must be active or archived"):
+        store.set_status(thread.id, "deleted")
+    assert store.get_thread(thread.id).status == "active"
+
+
+def test_archive_restore_routes_preserve_thread_and_return_status(tmp_path, monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    import core.api.mobile_bridge as mobile_bridge
+
+    test_service = MobileConversationService(ConversationStore(tmp_path / "api-archive.json"))
+    monkeypatch.setattr(mobile_bridge, "service", test_service)
+    app = FastAPI()
+    app.include_router(mobile_bridge.router)
+    thread = test_service.create_thread("API archive test")
+    test_service.append_transcript_entry(thread["id"], "user", "Keep this message.")
+    client = TestClient(app)
+
+    archived = client.post(f"/mobile/threads/{thread['id']}/archive")
+    assert archived.status_code == 200
+    assert archived.json()["status"] == "archived"
+    assert archived.json()["messages"][0]["content"] == "Keep this message."
+
+    restored = client.post(f"/mobile/threads/{thread['id']}/restore")
+    assert restored.status_code == 200
+    assert restored.json()["status"] == "active"
+    assert restored.json()["messages"][0]["content"] == "Keep this message."
+
+    missing = client.post("/mobile/threads/thread-missing/archive")
+    assert missing.status_code == 404

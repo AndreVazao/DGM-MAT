@@ -226,6 +226,9 @@ class MobileConversationService:
             ),
         }
 
+    def set_thread_status(self, thread_id: str, status: str) -> dict[str, Any]:
+        return self.store.set_status(thread_id, status).to_dict()
+
     def rename(self, thread_id: str, title: str) -> dict[str, Any]:
         return self.store.rename(thread_id, title).to_dict()
 

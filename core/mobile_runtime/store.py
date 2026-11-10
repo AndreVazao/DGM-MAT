@@ -122,6 +122,7 @@ class ConversationStore:
                     "updated_at": thread.updated_at,
                     "project": thread.project,
                     "repository": thread.repository,
+                    "status": thread.status,
                     "match_type": "title" if title_match else "context" if context_match else "message",
                     "provenance": {
                         "source": "dgm-mat-local-conversation-store",
@@ -196,6 +197,18 @@ class ConversationStore:
             thread.updated_at = utc_now()
             self._save()
             return message
+
+    def set_status(self, thread_id: str, status: str) -> ConversationThread:
+        """Archive or restore a thread without deleting its messages."""
+        normalized = str(status).strip().casefold()
+        if normalized not in {"active", "archived"}:
+            raise ValueError("status must be active or archived")
+        with self._lock:
+            thread = self._threads[thread_id]
+            thread.status = normalized
+            thread.updated_at = utc_now()
+            self._save()
+            return thread
 
     def rename(self, thread_id: str, title: str) -> ConversationThread:
         with self._lock:
