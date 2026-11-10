@@ -31,7 +31,7 @@ def test_ollama_generate_uses_installed_model_and_bounded_local_options():
         "models": [{"name": "qwen2.5:1.5b"}]
     })):
         provider.check_health()
-    with patch.object(provider, "available_memory_gb", return_value=2.0), patch("core.providers.local.ollama_adapter.urlopen", return_value=_response({
+    with patch("psutil.virtual_memory", side_effect=AssertionError("RAM must not gate inference")), patch("core.providers.local.ollama_adapter.urlopen", return_value=_response({
         "message": {"content": "{\\\"subtasks\\\":[{\\\"title\\\":\\\"A\\\",\\\"description\\\":\\\"Do A\\\"}]}"}
     })) as call:
         result = provider.generate([{"role": "user", "content": "plan"}], model="qwen2.5:1.5b", json_mode=True)
