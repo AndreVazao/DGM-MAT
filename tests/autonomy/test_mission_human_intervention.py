@@ -28,7 +28,7 @@ def test_waiting_mission_is_persisted_and_does_not_timeout_or_block_scheduler(tm
     waiting.created_at = datetime.now() - timedelta(days=2)
     engine.save_mission(waiting)
 
-    other = engine.create_mission("Independent work test", "Must remain schedulable")
+    other = engine.create_mission("check git status", "Must remain schedulable")
     engine.process_missions()
 
     assert waiting.status == MissionStatus.WAITING_FOR_USER

@@ -145,6 +145,15 @@ def test_mission_engine_routes_typed_inventory_through_registered_executor(tmp_p
 
     engine = MissionEngine(organization_bus=InternalMessageBus())
     engine.missions_path = tmp_path
+    from core.organization.models import AgentStatus
+    agent_id = "agent:repository-cartographer"
+    engine.worker_runtime.register_handler(
+        agent_id,
+        lambda message: {"worker": "repository-cartographer"},
+        capabilities=("file-inventory", "project-tree"),
+    )
+    profile = engine.organization_registry.get_agent(agent_id)
+    monkeypatch.setattr(profile, "status", AgentStatus.AVAILABLE)
     monkeypatch.setattr(engine, "_sync_state", lambda mission: None)
     monkeypatch.setattr(engine, "_emit_mission_result", lambda mission, result: None)
     monkeypatch.setattr(engine, "_record_execution_observation", lambda mission, result, status: None)

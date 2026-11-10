@@ -7,7 +7,7 @@ from core.autonomy.active_runtime.objective_engine import ObjectiveEngine
 
 def test_mission_lifecycle():
     engine = MissionEngine(organization_bus=InternalMessageBus())
-    mission = engine.create_mission("Test Goal", "Test Description")
+    mission = engine.create_mission("check git status", "Test Description")
     assert mission.mission_id.startswith("mission_")
     assert mission.status == MissionStatus.QUEUED
 
@@ -18,7 +18,7 @@ def test_mission_lifecycle():
 def test_objective_generation_with_missions():
     obj_engine = ObjectiveEngine()
     engine = MissionEngine(organization_bus=InternalMessageBus())
-    mission = engine.create_mission("Build Feature X", "Desc")
+    mission = engine.create_mission("check git status", "Desc")
     engine.decompose_mission(mission.mission_id)
 
     objectives = obj_engine.generate_objectives(analysis={}, active_missions=[mission])
@@ -100,17 +100,17 @@ def test_failed_mission_surfaces_local_research_evidence(tmp_path, monkeypatch):
 
 
 
-def test_unsupported_mission_does_not_auto_approve_its_queue_action():
+def test_unsupported_mission_waits_for_capability_before_any_approval_action():
     engine = MissionEngine(organization_bus=InternalMessageBus())
     mission = engine.create_mission(
         "Implement a new autonomous code mutator",
-        "Mutating and unsupported work must stay behind human approval",
+        "No executor is registered; approval must not be requested",
     )
 
-    action = engine.action_queue.get_action(mission.metadata["action_id"])
-    assert mission.status == MissionStatus.QUEUED
-    assert action["status"] == "QUEUED"
-    assert action["is_approved"] is False
+    assert mission.status == MissionStatus.WAITING_FOR_CAPABILITY
+    assert mission.metadata["executor_readiness"]["reason_code"] == "NO_REGISTERED_EXECUTOR"
+    assert mission.metadata["approval_blocked"] is True
+    assert "action_id" not in mission.metadata
 
 
 def test_read_only_repository_status_uses_fixed_git_command(tmp_path, monkeypatch):
