@@ -81,6 +81,12 @@ jobs:
               return any(path in changed for path in paths)
           if any_changed("core/vault/catalog.py", "core/vault/__init__.py", "scripts/sync_dgm_vault.py", "tests/vault/test_catalog.py"):
               tests.add("tests/vault/test_catalog.py")
+          if any_changed(
+              "core/conversation_intelligence/project_context.py",
+              "core/conversation_intelligence/progress_store.py",
+              "tests/conversation_intelligence/test_project_context.py",
+          ):
+              tests.add("tests/conversation_intelligence/test_project_context.py")
           if any_changed("core/runtime/safe_action_queue.py", "tests/runtime/test_safe_action_queue.py"):
               tests.add("tests/runtime/test_safe_action_queue.py")
           if any_changed("core/autonomy/mission_engine.py", "core/execution/approval_manager.py",
