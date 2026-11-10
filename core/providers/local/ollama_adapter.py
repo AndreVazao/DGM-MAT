@@ -97,14 +97,6 @@ class OllamaProvider(ProviderBase):
             "cost_profile": "local_zero_token",
         }
 
-    @staticmethod
-    def available_memory_gb() -> float | None:
-        try:
-            import psutil
-            return psutil.virtual_memory().available / (1024 ** 3)
-        except Exception:
-            return None
-
     def generate(
         self,
         messages: list[dict[str, str]],
