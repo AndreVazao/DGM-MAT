@@ -89,6 +89,15 @@ def classify_mission_intent(goal: str) -> IntentDecision:
     words = _normalized_words(goal)
     word_set = set(words)
 
+    # Natural-language provider conversation search is a bounded, local archive read.
+    conversation_terms = {"conversation", "conversations", "chat", "chats", "historico", "historicos", "conversa", "conversas"}
+    conversation_verbs = {"search", "find", "look", "buscar", "busca", "pesquisa", "pesquisar", "procura", "procurar", "encontra", "encontrar", "recupera", "recuperar"}
+    if word_set & conversation_terms and word_set & conversation_verbs:
+        return IntentDecision(
+            "conversation_search", True, 0.99, False,
+            "Matched a bounded read-only search of locally imported provider conversation archives; no provider account access is attempted.",
+        )
+
     # Fixed DGM-MAT GitHub-main sync into a dedicated detached worktree.
     # It never updates the authoritative checkout and always requires approval.
     if (
