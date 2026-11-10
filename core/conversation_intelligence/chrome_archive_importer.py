@@ -19,6 +19,9 @@ class ChromeConversationArchiveImporter:
         "dgm-mat.chrome-conversation-inventory.v1",
         "dgm-mat.chrome-conversation-capture.v1",
     }
+    MAX_INBOX_FILES = 10
+    MAX_INBOX_FILE_BYTES = 4 * 1024 * 1024
+    MAX_INBOX_TOTAL_BYTES = 12 * 1024 * 1024
 
     def __init__(
         self,
@@ -79,9 +82,22 @@ class ChromeConversationArchiveImporter:
         files: list[dict[str, Any]] = []
         conversation_count = 0
         message_count = 0
-        candidates = sorted(self.inbox_dir.glob("*.json"), key=lambda path: path.name.casefold())
+        total_bytes = 0
+        all_candidates = sorted(self.inbox_dir.glob("*.json"), key=lambda path: path.name.casefold())
+        candidates = all_candidates[:self.MAX_INBOX_FILES]
+        deferred_files = max(0, len(all_candidates) - len(candidates))
         for source in candidates:
             try:
+                size = source.stat().st_size
+                if size > self.MAX_INBOX_FILE_BYTES or total_bytes + size > self.MAX_INBOX_TOTAL_BYTES:
+                    files.append({
+                        "file": source.name,
+                        "status": "deferred_size_limit",
+                        "size_bytes": size,
+                    })
+                    deferred_files += 1
+                    continue
+                total_bytes += size
                 payload = json.loads(source.read_text(encoding="utf-8"))
                 schema = payload.get("schema") if isinstance(payload, dict) else None
                 if schema not in self.SUPPORTED_SCHEMAS:
@@ -142,7 +158,10 @@ class ChromeConversationArchiveImporter:
             "status": "completed" if failed_files == 0 else "partial",
             "inbox": str(self.inbox_dir),
             "archive": str(self.archive_dir),
-            "files_seen": len(candidates),
+            "files_seen": len(all_candidates),
+            "files_processed": len(candidates),
+            "files_deferred": deferred_files,
+            "bytes_read": total_bytes,
             "files_imported": imported_files,
             "files_failed": failed_files,
             "conversations_imported": conversation_count,
