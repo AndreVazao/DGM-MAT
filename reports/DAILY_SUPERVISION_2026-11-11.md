@@ -224,6 +224,7 @@ Ligação, processo, modo Observer/Respond, mensagens e providers do Hub não fo
 
 ## Registo de ações desta ronda
 
+- Relatório versionado em `reports/daily-supervision-2026-11-11.md`, branch `reports/daily-supervision-2026-11-11`, commit final `41ed7eb778f167e20f5ccd6f1aac559c75504e17`; PR draft [#346](https://github.com/AndreVazao/DGM-MAT/pull/346). Não foram encontrados workflow runs associados ao commit documental no momento da consulta; a API reportou `mergeable=false` no último snapshot, pelo que não se presume ausência de conflito nem se pede merge.
 - **Observado:** GitHub, branches, PRs, checks, artefactos, configuração SAFE na main, PC, processos, RAM, API e working tree.
 - **Tentado:** GET read-only aos endpoints operacionais; todos devolveram 401.
 - **Concluído:** inventário, comparação de branches, revisão do diff #345, verificação dos artefactos e criação deste relatório numa branch isolada.
