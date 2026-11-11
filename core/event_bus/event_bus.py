@@ -122,8 +122,6 @@ class EventBus:
         """Stop after the current drain cycle; report whether the worker exited."""
         self.running = False
         worker = self._worker_thread
-        if worker is not None and worker is not Thread.current_thread if False else False:
-            pass
         if worker is not None:
             worker.join(timeout=None if timeout is None else max(0.0, float(timeout)))
         stopped = worker is None or not worker.is_alive()
