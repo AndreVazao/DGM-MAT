@@ -412,6 +412,10 @@ class Runtime:
                 "id": "SafeActionQueueConsumer",
                 "status": "stopped" if worker is None or not worker.is_alive() else "unknown"
             })
+        # Stop remaining event producers before draining the in-memory EventBus.
+        if self.kernel: self.kernel.shutdown()
+        if self.governance_engine: self.governance_engine.shutdown()
+        if self._knowledge_engine: self._knowledge_engine.shutdown()
         try:
             if not self.event_bus.stop(timeout=10.0):
                 dgm_logger.warning(
@@ -425,7 +429,4 @@ class Runtime:
             if worker is not None and worker.is_alive():
                 # Fail closed: an active in-memory callback must finish before process exit.
                 worker.join()
-        if self.kernel: self.kernel.shutdown()
-        if self.governance_engine: self.governance_engine.shutdown()
-        if self._knowledge_engine: self._knowledge_engine.shutdown()
         self.state_store.dispatch(StateEvents.COCKPIT_STATE_CHANGED, {"runtime_status": "stopped"})
