@@ -78,6 +78,27 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ./DGM-Contracts
           python -m pip install -r requirements.txt
+      - name: Validate Windows update PowerShell syntax
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $files = @(
+            "scripts/install_windows_update.ps1",
+            "scripts/rollback_windows_update.ps1"
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Join-Path $PWD $file),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_.ToString() }
+              throw "PowerShell syntax validation failed for $file"
+            }
+          }
       - name: Compile mission and execution packages
         run: python -m compileall -q core/autonomy core/execution core/organization core/runtime
       - name: Run mission, execution, queue and organization regressions
