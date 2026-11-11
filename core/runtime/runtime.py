@@ -379,7 +379,11 @@ class Runtime:
             pass
         try:
             if not self.event_bus.stop(timeout=10.0):
-                dgm_logger.warning("Runtime: Event bus worker did not fully stop before timeout.")
+                dgm_logger.warning(
+                    "Runtime: EventBus is still processing; keeping the runtime owner alive until it exits."
+                )
+                # Never let the process exit while an in-memory event callback is still running.
+                self.event_bus.stop(timeout=None)
         except Exception as exc:
             dgm_logger.warning("Runtime: Event bus stop failed: %s", type(exc).__name__)
         if self.kernel: self.kernel.shutdown()
