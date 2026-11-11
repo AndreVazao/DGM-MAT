@@ -135,33 +135,37 @@ if ($launcherTarget) {
 }
 
 $restoreTemp = "$targetPath.rollback"
-if ($expectedHash -notmatch "^[A-Fa-f0-9]{64}$") {
-    throw "Manifest does not contain a valid previous executable SHA-256; rollback refused."
-}
-$backupHash = (Get-FileHash -LiteralPath $backupPath -Algorithm SHA256).Hash
-if (-not [string]::Equals($backupHash, $expectedHash, [StringComparison]::OrdinalIgnoreCase)) {
-    throw "Previous executable backup does not match the manifest SHA-256; rollback refused."
-}
-Copy-Item -LiteralPath $backupPath -Destination $restoreTemp -Force
-$actualHash = (Get-FileHash -LiteralPath $restoreTemp -Algorithm SHA256).Hash
-if (-not [string]::Equals($expectedHash, $actualHash, [StringComparison]::OrdinalIgnoreCase)) {
-    Remove-Item -LiteralPath $restoreTemp -Force -ErrorAction SilentlyContinue
-    throw "Rollback copy failed manifest SHA-256 verification."
-}
-Move-Item -LiteralPath $restoreTemp -Destination $targetPath -Force
-
-if ($restoreLauncher) {
-    $launcherRestoreTemp = "$launcherTarget.rollback"
-    Copy-Item -LiteralPath $launcherBackup -Destination $launcherRestoreTemp -Force
-    $launcherActualHash = (Get-FileHash -LiteralPath $launcherRestoreTemp -Algorithm SHA256).Hash
-    if (-not [string]::Equals($launcherExpectedHash, $launcherActualHash, [StringComparison]::OrdinalIgnoreCase)) {
-        Remove-Item -LiteralPath $launcherRestoreTemp -Force -ErrorAction SilentlyContinue
-        throw "Rollback service launcher copy failed manifest SHA-256 verification."
+$launcherRestoreTemp = if ($launcherTarget) { "$launcherTarget.rollback" } else { $null }
+try {
+    # Stage and verify every file before replacing either installed target.
+    Copy-Item -LiteralPath $backupPath -Destination $restoreTemp -Force
+    $actualHash = (Get-FileHash -LiteralPath $restoreTemp -Algorithm SHA256).Hash
+    if (-not [string]::Equals($expectedHash, $actualHash, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Rollback executable staging copy failed manifest SHA-256 verification."
     }
-    Move-Item -LiteralPath $launcherRestoreTemp -Destination $launcherTarget -Force
+
+    if ($restoreLauncher) {
+        Copy-Item -LiteralPath $launcherBackup -Destination $launcherRestoreTemp -Force
+        $launcherActualHash = (Get-FileHash -LiteralPath $launcherRestoreTemp -Algorithm SHA256).Hash
+        if (-not [string]::Equals($launcherExpectedHash, $launcherActualHash, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Rollback launcher staging copy failed manifest SHA-256 verification."
+        }
+    }
+
+    Move-Item -LiteralPath $restoreTemp -Destination $targetPath -Force
+    if ($restoreLauncher) {
+        Move-Item -LiteralPath $launcherRestoreTemp -Destination $launcherTarget -Force
+    }
+    elseif ($launcherTarget -and -not $launcherExpectedHash) {
+        Remove-Item -LiteralPath $launcherTarget -Force -ErrorAction SilentlyContinue
+    }
 }
-elseif ($launcherTarget -and -not $launcherExpectedHash) {
-    Remove-Item -LiteralPath $launcherTarget -Force -ErrorAction SilentlyContinue
+catch {
+    Remove-Item -LiteralPath $restoreTemp -Force -ErrorAction SilentlyContinue
+    if ($launcherRestoreTemp) {
+        Remove-Item -LiteralPath $launcherRestoreTemp -Force -ErrorAction SilentlyContinue
+    }
+    throw
 }
 
 Write-Host "Previous DGM-MAT executable restored: $targetPath"
