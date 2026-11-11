@@ -62,12 +62,18 @@ class SafeActionQueue:
         self._worker_thread.start()
         dgm_logger.info("QUEUE_CONSUMER_STARTED")
 
-    def stop_consumer(self):
-        """Stop the background consumer worker."""
+    def stop_consumer(self, timeout: float | None = 5.0) -> bool:
+        """Request stop and report only after the current action worker exits."""
         self._stop_event.set()
-        if self._worker_thread:
-            self._worker_thread.join(timeout=5)
+        worker = self._worker_thread
+        if worker is not None:
+            worker.join(timeout=None if timeout is None else max(0.0, float(timeout)))
+        stopped = worker is None or not worker.is_alive()
+        if stopped:
             dgm_logger.info("SafeActionQueue: Consumer stopped.")
+        else:
+            dgm_logger.warning("SafeActionQueue: Consumer is still processing; shutdown must wait.")
+        return stopped
 
     def _claim_approved_action(self, session, action_id: int) -> bool:
         """Atomically claim one approved action so competing consumers cannot both execute it."""
