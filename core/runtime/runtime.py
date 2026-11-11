@@ -369,14 +369,24 @@ class Runtime:
                 self.api_thread.join()
         if self.repository_learning_service is not None:
             try:
-                self.repository_learning_service.stop()
+                if self.repository_learning_service.stop(timeout=5.0) is False:
+                    dgm_logger.warning("Runtime: Repository learning is still active; waiting for worker exit.")
+                    self.repository_learning_service.stop(timeout=None)
             except Exception as exc:
-                dgm_logger.warning("Runtime: Repository learning worker stop failed: %s", type(exc).__name__)
+                dgm_logger.warning("Runtime: Repository learning shutdown needs fallback wait: %s", type(exc).__name__)
+                worker = getattr(self.repository_learning_service, "_thread", None)
+                if worker is not None and worker.is_alive():
+                    worker.join()
         if self.auto_help_worker is not None:
             try:
-                self.auto_help_worker.stop()
+                if self.auto_help_worker.stop(timeout=5.0) is False:
+                    dgm_logger.warning("Runtime: Auto-help is still active; waiting for worker exit.")
+                    self.auto_help_worker.stop(timeout=None)
             except Exception as exc:
-                dgm_logger.warning("Runtime: Auto-help worker stop failed: %s", type(exc).__name__)
+                dgm_logger.warning("Runtime: Auto-help shutdown needs fallback wait: %s", type(exc).__name__)
+                worker = getattr(self.auto_help_worker, "_thread", None)
+                if worker is not None and worker.is_alive():
+                    worker.join()
         try:
             queue = SafeActionQueue()
             if queue.stop_consumer(timeout=5.0) is False:
