@@ -103,8 +103,38 @@ while ($true) {
     Start-Sleep -Milliseconds 500
 }
 
-$restoreTemp = "$targetPath.rollback"
+# Validate every previous artifact before replacing either target. This prevents
+# a bad launcher backup from leaving a mixed executable/launcher installation.
 $expectedHash = [string]$manifest.previous_sha256
+if ($expectedHash -notmatch "^[A-Fa-f0-9]{64}$") {
+    throw "Manifest does not contain a valid previous executable SHA-256; rollback refused."
+}
+$backupHash = (Get-FileHash -LiteralPath $backupPath -Algorithm SHA256).Hash
+if (-not [string]::Equals($backupHash, $expectedHash, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "Previous executable backup does not match the manifest SHA-256; rollback refused."
+}
+
+$launcherTarget = [string]$manifest.launcher_target
+$launcherBackup = [string]$manifest.previous_launcher_backup
+$launcherExpectedHash = [string]$manifest.launcher_previous_sha256
+$restoreLauncher = $false
+if ($launcherTarget) {
+    if ($launcherExpectedHash -match "^[A-Fa-f0-9]{64}$") {
+        if (-not $launcherBackup -or -not (Test-Path -LiteralPath $launcherBackup -PathType Leaf)) {
+            throw "Previous launcher backup is missing; rollback refused before modifying the executable."
+        }
+        $launcherBackupHash = (Get-FileHash -LiteralPath $launcherBackup -Algorithm SHA256).Hash
+        if (-not [string]::Equals($launcherBackupHash, $launcherExpectedHash, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Previous launcher backup does not match the manifest SHA-256; rollback refused."
+        }
+        $restoreLauncher = $true
+    }
+    elseif ($launcherExpectedHash) {
+        throw "Manifest contains an invalid previous launcher SHA-256; rollback refused."
+    }
+}
+
+$restoreTemp = "$targetPath.rollback"
 if ($expectedHash -notmatch "^[A-Fa-f0-9]{64}$") {
     throw "Manifest does not contain a valid previous executable SHA-256; rollback refused."
 }
@@ -120,18 +150,8 @@ if (-not [string]::Equals($expectedHash, $actualHash, [StringComparison]::Ordina
 }
 Move-Item -LiteralPath $restoreTemp -Destination $targetPath -Force
 
-$launcherTarget = [string]$manifest.launcher_target
-$launcherBackup = [string]$manifest.previous_launcher_backup
-if ($launcherTarget -and $launcherBackup -and (Test-Path -LiteralPath $launcherBackup)) {
+if ($restoreLauncher) {
     $launcherRestoreTemp = "$launcherTarget.rollback"
-    $launcherExpectedHash = [string]$manifest.launcher_previous_sha256
-    if ($launcherExpectedHash -notmatch "^[A-Fa-f0-9]{64}$") {
-        throw "Manifest does not contain a valid previous launcher SHA-256; rollback refused."
-    }
-    $launcherBackupHash = (Get-FileHash -LiteralPath $launcherBackup -Algorithm SHA256).Hash
-    if (-not [string]::Equals($launcherBackupHash, $launcherExpectedHash, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Previous launcher backup does not match the manifest SHA-256; rollback refused."
-    }
     Copy-Item -LiteralPath $launcherBackup -Destination $launcherRestoreTemp -Force
     $launcherActualHash = (Get-FileHash -LiteralPath $launcherRestoreTemp -Algorithm SHA256).Hash
     if (-not [string]::Equals($launcherExpectedHash, $launcherActualHash, [StringComparison]::OrdinalIgnoreCase)) {
@@ -140,7 +160,7 @@ if ($launcherTarget -and $launcherBackup -and (Test-Path -LiteralPath $launcherB
     }
     Move-Item -LiteralPath $launcherRestoreTemp -Destination $launcherTarget -Force
 }
-elseif ($launcherTarget -and -not $manifest.launcher_previous_sha256) {
+elseif ($launcherTarget -and -not $launcherExpectedHash) {
     Remove-Item -LiteralPath $launcherTarget -Force -ErrorAction SilentlyContinue
 }
 
