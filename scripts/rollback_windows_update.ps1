@@ -33,13 +33,21 @@ function Test-DgmMatApiPortOpen {
 }
 
 if (Test-DgmMatApiPortOpen) {
-    $matching = Get-CimInstance Win32_Process -Filter "Name = 'DGM-MAT.exe'" |
-        Where-Object {
-            $_.ExecutablePath -and
-            [System.IO.Path]::GetFullPath($_.ExecutablePath) -ieq $targetPath
+    try {
+        $listeners = @(Get-NetTCPConnection -LocalPort 8181 -State Listen -ErrorAction Stop)
+    }
+    catch {
+        throw "Cannot identify the process listening on API port 8181. Rollback refused without stopping any process."
+    }
+    if (-not $listeners) {
+        throw "API port 8181 was reported open but has no identifiable listener. Rollback refused."
+    }
+    foreach ($listener in $listeners) {
+        $owner = Get-CimInstance Win32_Process -Filter "ProcessId = '$($listener.OwningProcess)'"
+        if (-not $owner -or -not $owner.ExecutablePath -or
+            [System.IO.Path]::GetFullPath($owner.ExecutablePath) -ine $targetPath) {
+            throw "API port 8181 is owned by a process other than the rollback target executable. Rollback refused."
         }
-    if (-not $matching) {
-        throw "The API port is active, but no process matches the rollback target executable. Refusing to stop an unrelated runtime."
     }
     $bootstrapPath = Join-Path $env:LOCALAPPDATA "DGM-MAT\security\bootstrap.token"
     if (-not (Test-Path -LiteralPath $bootstrapPath -PathType Leaf)) {
