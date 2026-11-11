@@ -28,8 +28,9 @@ def test_runtime_shutdown_cancels_startup_timers_and_stops_event_bus(monkeypatch
     class FakeQueue:
         stopped = False
 
-        def stop_consumer(self):
+        def stop_consumer(self, timeout=5.0):
             self.stopped = True
+            return True
 
     class FakeThread:
         alive = True
