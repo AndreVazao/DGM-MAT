@@ -13,6 +13,12 @@ on:
       - "tests/organization/**"
       - "tests/research/**"
       - "tests/test_governed_browser_session.py"
+      - "tests/api/test_runtime_shutdown.py"
+      - "tests/operational/test_installer_graceful_shutdown.py"
+      - "tests/runtime/test_event_bus_shutdown.py"
+      - "tests/runtime/test_runtime_control.py"
+      - "tests/runtime/test_runtime_shutdown_lifecycle.py"
+      - "tests/security/test_api_security_policy.py"
       - ".github/workflows/mission-e2e.yml"
   push:
     branches: [main]
@@ -65,4 +71,13 @@ jobs:
       - name: Compile mission and execution packages
         run: python -m compileall -q core/autonomy core/execution core/organization core/runtime
       - name: Run mission, execution, queue and organization regressions
-        run: python -m pytest -q tests/autonomy tests/organization
+        run: >-
+          python -m pytest -q
+          tests/autonomy
+          tests/organization
+          tests/api/test_runtime_shutdown.py
+          tests/operational/test_installer_graceful_shutdown.py
+          tests/runtime/test_event_bus_shutdown.py
+          tests/runtime/test_runtime_control.py
+          tests/runtime/test_runtime_shutdown_lifecycle.py
+          tests/security/test_api_security_policy.py
