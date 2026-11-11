@@ -133,7 +133,7 @@ Comparações atuais com main mostram, entre outras:
 - `fix/classify-mobile-thread-archive-restore`: 3 commits à frente, 0 atrás — corresponde à PR #345.
 - `docs/mission-readiness-post-merge-2026-11-10`: 1 à frente, 0 atrás — PR #344.
 - `reports/daily-supervision-2026-11-10`: 8 à frente, 0 atrás — PR #343.
-- `fix/graceful-runtime-shutdown-windows-update-2026-11-10`: 36 à frente, 7 atrás, 16 ficheiros alterados — linha relevante para self-update, mas demasiado divergente para integrar sem revisão por ficheiro/testes.
+- `fix/graceful-runtime-shutdown-windows-update-2026-11-10`: 36 à frente, 7 atrás, 16 ficheiros alterados. A revisão do diff confirma um caminho de shutdown ordenado: valida o processo dono da porta, troca o bootstrap token por sessão local, pede `POST /runtime/shutdown`, aguarda a libertação da porta e recusa terminar o cockpit à força. Acrescenta endpoint/runtime control e testes de shutdown. **Não tem Actions runs (0 observados)** e altera API/autenticação/runtime; é a melhor linha de trabalho identificada para corrigir o update, mas exige revisão arquitetural/segurança e André OK antes de integrar ou portar.
 - `feat/proactive-conversation-search-2026-11-10`: 23 à frente, 4 atrás; a PR #338 já foi merged. A divergência de histórico após squash merge não prova trabalho exclusivo; não apagar.
 - `fix/low-memory-service-manager-defaults-2026-11-10`: 6 à frente, 8 atrás; PR #335 merged e política posteriormente alterada por #340. Não reintroduzir nem apagar sem análise de conteúdo.
 - `fix/unrestricted-memory-and-mission-readiness-2026-11-10`: 22 à frente, 2 atrás; PR #340 merged. Não apagar apenas pelo estado do merge.
@@ -156,14 +156,19 @@ Artefactos:
 ## 6. Sincronização e self-update
 
 Leitura da main:
-- `scripts/install_windows_update.ps1` exige `ExpectedExeSha256` com 64 hexadecimais e valida o SHA-256 do executável antes de criar backups ou parar o runtime.
-- O script verifica se o runtime ainda responde em 127.0.0.1:8181 e recusa a instalação enquanto estiver ativo.
-- O rollback verifica o SHA-256 da cópia restaurada antes de substituir o executável.
-- `config/autonomous_runtime.json` mantém `execution_mode=SAFE`, `approval_required=true), `auto_merge_enabled=false) e `max_parallel_tasks=2).
+- `scripts/install_windows_update.ps1` exige `ExpectedExeSha256` com 64 hexadecimais e compara o hash do executável com o digest esperado antes de criar backups ou parar o runtime.
+- `build-windows.yml` produz `publish/DGM-MAT.exe.sha256` e um sidecar SHA-256 do ZIP; a estrutura do workflow valida a presença/formato dos sidecars. O valor do digest do EXE não foi descarregado nem comparado com o ficheiro local nesta ronda.
+- O instalador atual chama `Stop-ExactInstalledProcess`, que usa `Stop-Process -Force` para os processos do executável instalado antes de confirmar que a API deixou de responder. Este comportamento pode terminar à força o backend/cockpit e é um defeito de segurança operacional confirmado no caminho de atualização.
+- O rollback da main verifica SHA-256 da cópia restaurada antes de substituir o executável, mas a sequência de paragem atual também pode terminar processos à força.
+- `config/autonomous_runtime.json` mantém `execution_mode=SAFE`, `approval_required=true`, `auto_merge_enabled=false` e `max_parallel_tasks=2`.
+
+Linha de correção já existente:
+- `fix/graceful-runtime-shutdown-windows-update-2026-11-10` implementa shutdown autenticado e ordenado, sem fallback para matar processos, com recusa se o cockpit continuar aberto e testes dedicados.
+- A branch está 36 commits à frente/7 atrás, altera 16 ficheiros e tem zero Actions runs observados. Não foi aberta PR nesta ronda porque a solução introduz endpoint de shutdown e fluxo de autenticação local; exige revisão de segurança/arquitetura e André OK.
 
 Limitações:
 - Não há GitHub Release publicada.
-- Não foi obtido nesta ronda um SHA-256 independente do executável extraído do artefacto main.
+- O sidecar existe no workflow, mas o seu valor não foi obtido e comparado com o EXE local.
 - Não foi demonstrado download/verificação/aplicação automática end-to-end.
 - Não foi testado rollback real.
 - O timestamp do EXE local (10-11 11:21:24) é próximo do build main (11:21:43), mas sem comparação de hash/manifesto não se afirma que é exatamente o artefacto #554.
