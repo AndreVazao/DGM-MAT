@@ -39,42 +39,112 @@ function New-DgmMatCockpitShortcut {
     return $shortcutPath
 }
 
-function Stop-ExactInstalledProcess {
+function Test-DgmMatApiPortOpen {
+    $client = New-Object System.Net.Sockets.TcpClient
+    try {
+        $pending = $client.BeginConnect("127.0.0.1", 8181, $null, $null)
+        if (-not $pending.AsyncWaitHandle.WaitOne(1000)) { return $false }
+        $client.EndConnect($pending)
+        return $true
+    }
+    catch { return $false }
+    finally { $client.Close() }
+}
+
+function Assert-ExpectedRuntimeOwner {
     param([Parameter(Mandatory = $true)][string]$ExecutablePath)
 
     $fullPath = [System.IO.Path]::GetFullPath($ExecutablePath)
-    $running = Get-CimInstance Win32_Process -Filter "Name = 'DGM-MAT.exe'" |
+    $matching = Get-CimInstance Win32_Process -Filter "Name = 'DGM-MAT.exe'" |
         Where-Object {
             $_.ExecutablePath -and
             [System.IO.Path]::GetFullPath($_.ExecutablePath) -ieq $fullPath
         }
+    if (-not $matching) {
+        throw "The API port is active, but no process matches the target DGM-MAT executable. Refusing to stop an unrelated runtime."
+    }
+}
 
-    foreach ($processInfo in $running) {
-        Stop-Process -Id $processInfo.ProcessId -Force
-        $deadline = (Get-Date).AddSeconds(15)
-        do {
-            Start-Sleep -Milliseconds 250
-            $stillRunning = Get-Process -Id $processInfo.ProcessId -ErrorAction SilentlyContinue
-        } while ($stillRunning -and (Get-Date) -lt $deadline)
+function Request-GracefulRuntimeShutdown {
+    param([Parameter(Mandatory = $true)][string]$ExecutablePath)
 
-        if ($stillRunning) {
-            throw "Could not stop the installed DGM-MAT process (PID $($processInfo.ProcessId))."
+    if (-not (Test-DgmMatApiPortOpen)) { return }
+    Assert-ExpectedRuntimeOwner -ExecutablePath $ExecutablePath
+
+    $bootstrapPath = Join-Path $env:LOCALAPPDATA "DGM-MAT\security\bootstrap.token"
+    if (-not (Test-Path -LiteralPath $bootstrapPath -PathType Leaf)) {
+        throw "The local bootstrap credential is unavailable. Runtime was not stopped; no installation changes were made."
+    }
+    $bootstrap = (Get-Content -LiteralPath $bootstrapPath -Raw -ErrorAction Stop).Trim()
+    if ($bootstrap.Length -lt 60) {
+        throw "The local bootstrap credential is invalid. Runtime was not stopped."
+    }
+
+    $sessionArgs = @{
+        Method = "Post"
+        Uri = "http://127.0.0.1:8181/auth/session"
+        Headers = @{ Authorization = "Bearer $bootstrap" }
+        ContentType = "application/json"
+        Body = (@{ client_id = "dgm-mat-windows-installer" } | ConvertTo-Json -Compress)
+        TimeoutSec = 5
+    }
+    $session = Invoke-RestMethod @sessionArgs
+    $accessToken = [string]$session.access_token
+    if ($accessToken.Length -lt 20) {
+        throw "The local API did not issue a shutdown session. Runtime was not stopped."
+    }
+
+    $shutdownArgs = @{
+        Method = "Post"
+        Uri = "http://127.0.0.1:8181/runtime/shutdown"
+        Headers = @{ Authorization = "Bearer $accessToken" }
+        ContentType = "application/json"
+        Body = "{}"
+        TimeoutSec = 5
+    }
+    $shutdown = Invoke-RestMethod @shutdownArgs
+    if ($shutdown.status -ne "shutdown_requested") {
+        throw "The runtime did not acknowledge an orderly shutdown request."
+    }
+
+    $deadline = (Get-Date).AddSeconds(30)
+    while (Test-DgmMatApiPortOpen) {
+        if ((Get-Date) -ge $deadline) {
+            throw "The runtime did not close its API port within 30 seconds. No process was killed and installation was aborted."
         }
+        Start-Sleep -Milliseconds 500
     }
 }
 
 function Assert-RuntimeStopped {
-    try {
-        $response = Invoke-WebRequest -Uri "http://127.0.0.1:8181/health" -UseBasicParsing -TimeoutSec 2
-        if ($response.StatusCode -eq 200) {
-            throw "DGM-MAT API is still responding on 127.0.0.1:8181. Stop the runtime before updating so its database is not being written."
-        }
+    if (Test-DgmMatApiPortOpen) {
+        throw "DGM-MAT API is still listening on 127.0.0.1:8181. Stop the runtime before updating."
     }
-    catch {
-        if ($_.Exception.Message -like "DGM-MAT API is still responding*") {
-            throw
+}
+
+function Wait-NoInstalledProcess {
+    param([Parameter(Mandatory = $true)][string]$ExecutablePath)
+
+    $fullPath = [System.IO.Path]::GetFullPath($ExecutablePath)
+    $deadline = (Get-Date).AddSeconds(20)
+    while ($true) {
+        $running = @(Get-CimInstance Win32_Process -Filter "Name = 'DGM-MAT.exe'" |
+            Where-Object {
+                $_.ExecutablePath -and
+                [System.IO.Path]::GetFullPath($_.ExecutablePath) -ieq $fullPath
+            })
+        if (-not $running) { return }
+
+        $cockpit = @($running | Where-Object { $_.CommandLine -match "--cockpit-only" })
+        if ($cockpit) {
+            $ids = ($cockpit | ForEach-Object { $_.ProcessId }) -join ", "
+            throw "Close the DGM-MAT Chat cockpit process(es) $ids and rerun the installer. No process was killed."
         }
-        # Connection refusal/timeout means no local API was confirmed.
+        if ((Get-Date) -ge $deadline) {
+            $ids = ($running | ForEach-Object { $_.ProcessId }) -join ", "
+            throw "Runtime process(es) $ids did not exit after orderly shutdown. No process was killed."
+        }
+        Start-Sleep -Milliseconds 500
     }
 }
 
@@ -142,6 +212,10 @@ if (-not [string]::Equals($packageHash, $ExpectedExeSha256, [StringComparison]::
     throw "Package executable SHA-256 does not match the independently supplied expected digest. No installation changes were made."
 }
 
+Request-GracefulRuntimeShutdown -ExecutablePath $targetPath
+Assert-RuntimeStopped
+Wait-NoInstalledProcess -ExecutablePath $targetPath
+
 New-Item -ItemType Directory -Path $targetDirectory -Force | Out-Null
 New-Item -ItemType Directory -Path $BackupRoot -Force | Out-Null
 
@@ -149,9 +223,6 @@ $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $backupDirectory = Join-Path $BackupRoot $timestamp
 New-Item -ItemType Directory -Path $backupDirectory -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $backupDirectory "exe") -Force | Out-Null
-
-Stop-ExactInstalledProcess -ExecutablePath $targetPath
-Assert-RuntimeStopped
 
 $oldExeBackup = $null
 $oldExeHash = $null

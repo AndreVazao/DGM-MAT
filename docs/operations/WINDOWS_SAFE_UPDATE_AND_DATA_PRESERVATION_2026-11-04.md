@@ -1,6 +1,7 @@
 # DGM-MAT — atualização segura do executável Windows
 
-**Data:** 2026-11-04`r`n**Estado:** implementação local em validação; não instalar até existir artefacto CI validado.
+**Data:** 2026-11-10
+**Estado:** atualização controlada por SHA-256; requer artefacto CI validado e runtime parado de forma ordenada.
 
 ## Objetivo
 
@@ -41,9 +42,11 @@ O script deixa deliberadamente intactos:
 
 1. Extrair o ZIP para uma pasta temporária.
 2. Confirmar que contém `DGM-MAT.exe` e `scripts\autostart\backend_service.py`.
-3. Parar o runtime. O instalador termina apenas um `DGM-MAT.exe` cujo caminho coincide exatamente com o destino.
-4. Se a API local ainda responder em `127.0.0.1:8181`, a atualização é recusada para não copiar uma base de dados enquanto está a ser escrita.
-5. Não apagar nem renomear manualmente as pastas de memória.
+3. O instalador valida que o processo que detém a API pertence exatamente ao `DGM-MAT.exe` de destino; nunca tenta parar um runtime de outra instalação.
+4. Se a API estiver ativa, o instalador troca o bootstrap token local por uma sessão de operador e chama `POST /runtime/shutdown` em loopback. O servidor deixa de aceitar novos pedidos, envia a resposta e só depois sinaliza o proprietário do runtime para executar `Runtime.shutdown()`.
+5. O instalador aguarda até 30 segundos pela libertação da porta e até 20 segundos pela saída dos processos. Se a janela `--cockpit-only` continuar aberta, pede ao operador que a feche e aborta sem matar processos nem criar backups parciais.
+6. Se faltar o bootstrap token, a sessão não for operador, o servidor não suportar shutdown gerido ou o runtime não terminar, a atualização falha fechada. Não existe fallback para `Stop-Process`, `TerminateProcess` ou `.Kill()`. O modo API-only também usa o entrypoint Uvicorn gerido; processos iniciados por um Uvicorn externo não são terminados automaticamente e fazem a atualização abortar.
+7. Não apagar nem renomear manualmente as pastas de memória.
 
 ## Atualização
 
@@ -62,7 +65,9 @@ O instalador:
 
 - valida o tamanho do executável e a presença do gestor de arranque;
 - compara o SHA-256 do executável com o digest esperado fornecido separadamente, antes de criar diretórios/backups, parar processos ou tocar no destino;
-- cria uma pasta de backup com timestamp;
+- pede shutdown ordenado através da API local autenticada e aguarda a saída do runtime; nunca termina processos à força;
+- aborta se permanecer uma janela de cockpit ou qualquer processo do executável de destino;
+- só depois cria uma pasta de backup com timestamp;
 - copia os dados persistentes listados acima;
 - guarda o executável e o gestor de arranque anteriores;
 - verifica SHA-256 do pacote contra o sidecar independente, dos ficheiros preparados e dos ficheiros instalados;
@@ -81,7 +86,7 @@ Usar o caminho do manifesto produzido pelo instalador:
 .\scripts\rollback_windows_update.ps1 -ManifestPath "C:\ProgramasGodMode\DGM-MAT\update-backups\<timestamp>\INSTALL-MANIFEST.json"
 ```
 
-O rollback restaura o executável e o gestor de arranque anteriores. Os dados persistentes ficam intactos, evitando sobrescrever trabalho produzido depois da atualização.
+O rollback usa o mesmo shutdown ordenado e fail-closed; não mata processos. Restaura o executável e o gestor de arranque anteriores. Os dados persistentes ficam intactos, evitando sobrescrever trabalho produzido depois da atualização.
 
 ## Limites
 
@@ -114,7 +119,7 @@ A memória temporal normaliza timestamps naive e timezone-aware para UTC durante
 
 ## Arranque da aprendizagem de repositórios
 
-No modo `full`, o gestor de serviço ativa por omissão a aprendizagem incremental de repositórios, limitada a dois repositórios por lote, profundidade máxima de seis níveis, timeout Git de quatro segundos e intervalo de atualização de 30 minutos. O operador pode substituir estes valores através das variáveis `DGM_REPOSITORY_LEARNING_*` ou desligar a aprendizagem com `DGM_REPOSITORY_LEARNING_ENABLED=0`.
+No modo `full`, o gestor de serviço define limites incrementais (dois repositórios por lote, profundidade máxima de seis níveis, timeout Git de quatro segundos e intervalo de atualização de 30 minutos), mas deixa `DGM_REPOSITORY_LEARNING_ENABLED` por definir. Assim, o perfil runtime decide: standard ON por omissão; LOW_MEMORY (<4 GB RAM) OFF por omissão. Só um valor explicitamente definido pelo operador (`=1` ou `=0`) substitui essa política. O gestor de serviço nunca força `=1`.
 
 A aprendizagem é read-only: recolhe metadados Git, manifestos e um resumo redigido do README; gera árvores de caminhos sem ler o conteúdo dos ficheiros; não altera repositórios nem executa código de projetos. Os dados duráveis ficam em `storage/cognition/repository_learning` e são agora incluídos no backup de atualização.
 

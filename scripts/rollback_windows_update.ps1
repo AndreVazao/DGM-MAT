@@ -20,25 +20,79 @@ if (-not $manifest.previous_exe_backup -or -not (Test-Path -LiteralPath $manifes
 $targetPath = [System.IO.Path]::GetFullPath([string]$manifest.target_exe)
 $backupPath = (Resolve-Path -LiteralPath $manifest.previous_exe_backup).Path
 
-$running = Get-CimInstance Win32_Process -Filter "Name = 'DGM-MAT.exe'" |
-    Where-Object {
-        $_.ExecutablePath -and
-        [System.IO.Path]::GetFullPath($_.ExecutablePath) -ieq $targetPath
+function Test-DgmMatApiPortOpen {
+    $client = New-Object System.Net.Sockets.TcpClient
+    try {
+        $pending = $client.BeginConnect("127.0.0.1", 8181, $null, $null)
+        if (-not $pending.AsyncWaitHandle.WaitOne(1000)) { return $false }
+        $client.EndConnect($pending)
+        return $true
     }
-foreach ($processInfo in $running) {
-    Stop-Process -Id $processInfo.ProcessId -Force
+    catch { return $false }
+    finally { $client.Close() }
 }
 
-try {
-    $response = Invoke-WebRequest -Uri "http://127.0.0.1:8181/health" -UseBasicParsing -TimeoutSec 2
-    if ($response.StatusCode -eq 200) {
-        throw "DGM-MAT API is still active. Stop the runtime before rollback."
+if (Test-DgmMatApiPortOpen) {
+    $matching = Get-CimInstance Win32_Process -Filter "Name = 'DGM-MAT.exe'" |
+        Where-Object {
+            $_.ExecutablePath -and
+            [System.IO.Path]::GetFullPath($_.ExecutablePath) -ieq $targetPath
+        }
+    if (-not $matching) {
+        throw "The API port is active, but no process matches the rollback target executable. Refusing to stop an unrelated runtime."
+    }
+    $bootstrapPath = Join-Path $env:LOCALAPPDATA "DGM-MAT\security\bootstrap.token"
+    if (-not (Test-Path -LiteralPath $bootstrapPath -PathType Leaf)) {
+        throw "Local bootstrap credential is unavailable; rollback stopped without killing any process."
+    }
+    $bootstrap = (Get-Content -LiteralPath $bootstrapPath -Raw -ErrorAction Stop).Trim()
+    if ($bootstrap.Length -lt 60) { throw "Local bootstrap credential is invalid." }
+    $sessionArgs = @{
+        Method = "Post"
+        Uri = "http://127.0.0.1:8181/auth/session"
+        Headers = @{ Authorization = "Bearer $bootstrap" }
+        ContentType = "application/json"
+        Body = (@{ client_id = "dgm-mat-windows-rollback" } | ConvertTo-Json -Compress)
+        TimeoutSec = 5
+    }
+    $session = Invoke-RestMethod @sessionArgs
+    $accessToken = [string]$session.access_token
+    if ($accessToken.Length -lt 20) { throw "Local API session exchange failed." }
+    $shutdownArgs = @{
+        Method = "Post"
+        Uri = "http://127.0.0.1:8181/runtime/shutdown"
+        Headers = @{ Authorization = "Bearer $accessToken" }
+        ContentType = "application/json"
+        Body = "{}"
+        TimeoutSec = 5
+    }
+    $shutdown = Invoke-RestMethod @shutdownArgs
+    if ($shutdown.status -ne "shutdown_requested") { throw "Runtime did not acknowledge orderly shutdown." }
+    $deadline = (Get-Date).AddSeconds(30)
+    while (Test-DgmMatApiPortOpen) {
+        if ((Get-Date) -ge $deadline) { throw "Runtime did not stop within 30 seconds; no process was killed." }
+        Start-Sleep -Milliseconds 500
     }
 }
-catch {
-    if ($_.Exception.Message -like "DGM-MAT API is still active*") {
-        throw
+
+$deadline = (Get-Date).AddSeconds(20)
+while ($true) {
+    $running = @(Get-CimInstance Win32_Process -Filter "Name = 'DGM-MAT.exe'" |
+        Where-Object {
+            $_.ExecutablePath -and
+            [System.IO.Path]::GetFullPath($_.ExecutablePath) -ieq $targetPath
+        })
+    if (-not $running) { break }
+    $cockpit = @($running | Where-Object { $_.CommandLine -match "--cockpit-only" })
+    if ($cockpit) {
+        $ids = ($cockpit | ForEach-Object { $_.ProcessId }) -join ", "
+        throw "Close DGM-MAT cockpit process(es) $ids and rerun rollback. No process was killed."
     }
+    if ((Get-Date) -ge $deadline) {
+        $ids = ($running | ForEach-Object { $_.ProcessId }) -join ", "
+        throw "Runtime process(es) $ids did not exit after orderly shutdown. No process was killed."
+    }
+    Start-Sleep -Milliseconds 500
 }
 
 $restoreTemp = "$targetPath.rollback"

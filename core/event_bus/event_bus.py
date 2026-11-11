@@ -115,6 +115,10 @@ class EventBus:
         thread.start()
         dgm_logger.info("EventBus V2: Daemon thread started.")
 
+    def stop(self):
+        """Stop the daemon worker loop; pending events remain durable in the store."""
+        self.running = False
+
     def _run(self):
         while self.running:
             try:
