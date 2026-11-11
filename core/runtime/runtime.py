@@ -405,7 +405,11 @@ class Runtime:
                 # Never let the process exit while an in-memory event callback is still running.
                 self.event_bus.stop(timeout=None)
         except Exception as exc:
-            dgm_logger.warning("Runtime: Event bus stop failed: %s", type(exc).__name__)
+            dgm_logger.warning("Runtime: Event bus stop failed; waiting for worker exit: %s", type(exc).__name__)
+            worker = getattr(self.event_bus, "_worker_thread", None)
+            if worker is not None and worker.is_alive():
+                # Fail closed: an active in-memory callback must finish before process exit.
+                worker.join()
         if self.kernel: self.kernel.shutdown()
         if self.governance_engine: self.governance_engine.shutdown()
         if self._knowledge_engine: self._knowledge_engine.shutdown()
