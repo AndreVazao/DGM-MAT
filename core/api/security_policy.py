@@ -82,6 +82,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("POST",), "/auth/pair", SecurityScope.OPERATOR, "Exchanges one-time pairing code for a short-lived operator session."),
     RouteClassification(("GET",), "/runtime/health", SecurityScope.LOCAL_CLIENT, "Runtime health."),
     RouteClassification(("GET",), "/runtime/status", SecurityScope.LOCAL_CLIENT, "Runtime status and telemetry."),
+    RouteClassification(("POST",), "/runtime/shutdown", SecurityScope.OPERATOR, "Requests an orderly local runtime shutdown; no process termination or provider call."),
     RouteClassification(("GET",), "/runtime/state", SecurityScope.LOCAL_CLIENT, "Runtime state snapshot."),
     RouteClassification(("GET",), "/runtime/truth", SecurityScope.LOCAL_CLIENT, "Runtime truth snapshot."),
     RouteClassification(("GET",), "/runtime/reality", SecurityScope.LOCAL_CLIENT, "Reality/provider observations."),
