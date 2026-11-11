@@ -355,6 +355,10 @@ class Runtime:
             except Exception:
                 pass
         self._startup_timers.clear()
+        if self.api_thread is not None and self.api_thread.is_alive():
+            self.api_thread.join(timeout=10)
+            if self.api_thread.is_alive():
+                dgm_logger.warning("Runtime: API server thread did not exit within 10 seconds.")
         if self.repository_learning_service is not None:
             try:
                 self.repository_learning_service.stop()
@@ -366,15 +370,6 @@ class Runtime:
             except Exception as exc:
                 dgm_logger.warning("Runtime: Auto-help worker stop failed: %s", type(exc).__name__)
         try:
-            if not self.event_bus.stop(timeout=10.0):
-                dgm_logger.warning("Runtime: Event bus worker did not fully stop before timeout.")
-        except Exception as exc:
-            dgm_logger.warning("Runtime: Event bus stop failed: %s", type(exc).__name__)
-        if self.api_thread is not None and self.api_thread.is_alive():
-            self.api_thread.join(timeout=10)
-            if self.api_thread.is_alive():
-                dgm_logger.warning("Runtime: API server thread did not exit within 10 seconds.")
-        try:
             SafeActionQueue().stop_consumer()
             self.state_store.dispatch(StateEvents.CONSUMER_STATUS_CHANGED, {
                 "id": "SafeActionQueueConsumer",
@@ -382,6 +377,11 @@ class Runtime:
             })
         except:
             pass
+        try:
+            if not self.event_bus.stop(timeout=10.0):
+                dgm_logger.warning("Runtime: Event bus worker did not fully stop before timeout.")
+        except Exception as exc:
+            dgm_logger.warning("Runtime: Event bus stop failed: %s", type(exc).__name__)
         if self.kernel: self.kernel.shutdown()
         if self.governance_engine: self.governance_engine.shutdown()
         if self._knowledge_engine: self._knowledge_engine.shutdown()
