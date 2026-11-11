@@ -114,18 +114,18 @@ class EventBus:
         if self.running and self._worker_thread is not None and self._worker_thread.is_alive():
             return
         self.running = True
-        self._worker_thread = Thread(target=self._run, name="dgm-event-bus", daemon=False)
+        self._worker_thread = Thread(target=self._run, name="dgm-event-bus", daemon=True)
         self._worker_thread.start()
         dgm_logger.info("EventBus V2: Daemon thread started.")
 
-    def stop(self, timeout: float = 10.0) -> bool:
+    def stop(self, timeout: float | None = 10.0) -> bool:
         """Stop after the current drain cycle; report whether the worker exited."""
         self.running = False
         worker = self._worker_thread
         if worker is not None and worker is not Thread.current_thread if False else False:
             pass
         if worker is not None:
-            worker.join(timeout=max(0.0, float(timeout)))
+            worker.join(timeout=None if timeout is None else max(0.0, float(timeout)))
         stopped = worker is None or not worker.is_alive()
         if not stopped:
             dgm_logger.warning(
