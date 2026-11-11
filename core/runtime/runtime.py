@@ -355,6 +355,11 @@ class Runtime:
             except Exception:
                 pass
         self._startup_timers.clear()
+        try:
+            from core.api.api_server import request_api_shutdown
+            request_api_shutdown()
+        except Exception as exc:
+            dgm_logger.warning("Runtime: API shutdown request failed: %s", type(exc).__name__)
         if self.api_thread is not None and self.api_thread.is_alive():
             self.api_thread.join(timeout=10)
             if self.api_thread.is_alive():
