@@ -9,6 +9,8 @@ def test_event_bus_stop_joins_worker_after_current_queue_drain():
     delivered = Event()
     bus.subscribe("shutdown.test", lambda event: delivered.set())
     bus.start()
+    assert bus._worker_thread is not None
+    assert bus._worker_thread.daemon is False
     bus.publish(DgmEvent(
         source="test",
         target="test",
