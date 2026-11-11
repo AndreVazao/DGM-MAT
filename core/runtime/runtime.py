@@ -43,6 +43,8 @@ class Runtime:
         self.is_degraded = False
         self.repository_learning_service = None
         self.auto_help_worker = None
+        self.api_thread: Thread | None = None
+        self._startup_timers: list[Timer] = []
 
         # Guarded Subsystem Initialization
         self.governance_engine = self._load_and_init("core.governance.governance_engine", "GovernanceEngine", "Governance")
@@ -219,8 +221,8 @@ class Runtime:
     def start_api(self):
         try:
             from core.api.api_server import run_api
-            thread = Thread(target=run_api, daemon=True)
-            thread.start()
+            self.api_thread = Thread(target=run_api, name="dgm-api-server", daemon=True)
+            self.api_thread.start()
             dgm_logger.info("Runtime: API Server thread started.")
         except Exception as exc:
             self.is_degraded = True
@@ -327,7 +329,10 @@ class Runtime:
             if delay <= 0:
                 run()
             else:
-                Timer(delay, run).start()
+                timer = Timer(delay, run)
+                timer.daemon = True
+                self._startup_timers.append(timer)
+                timer.start()
 
         publish_event(
             0,
@@ -344,25 +349,84 @@ class Runtime:
 
     def shutdown(self):
         dgm_logger.info("Runtime: Initiating shutdown...")
+        for timer in self._startup_timers:
+            try:
+                timer.cancel()
+            except Exception:
+                pass
+        self._startup_timers.clear()
+        try:
+            from core.api.api_server import request_api_shutdown
+            request_api_shutdown()
+        except Exception as exc:
+            dgm_logger.warning("Runtime: API shutdown request failed: %s", type(exc).__name__)
+        if self.api_thread is not None and self.api_thread.is_alive():
+            self.api_thread.join(timeout=10)
+            if self.api_thread.is_alive():
+                dgm_logger.warning(
+                    "Runtime: API server thread is still active; keeping the runtime owner alive until it exits."
+                )
+                self.api_thread.join()
         if self.repository_learning_service is not None:
             try:
-                self.repository_learning_service.stop()
+                if self.repository_learning_service.stop(timeout=5.0) is False:
+                    dgm_logger.warning("Runtime: Repository learning is still active; waiting for worker exit.")
+                    self.repository_learning_service.stop(timeout=None)
             except Exception as exc:
-                dgm_logger.warning("Runtime: Repository learning worker stop failed: %s", type(exc).__name__)
+                dgm_logger.warning("Runtime: Repository learning shutdown needs fallback wait: %s", type(exc).__name__)
+                worker = getattr(self.repository_learning_service, "_thread", None)
+                if worker is not None and worker.is_alive():
+                    worker.join()
         if self.auto_help_worker is not None:
             try:
-                self.auto_help_worker.stop()
+                if self.auto_help_worker.stop(timeout=5.0) is False:
+                    dgm_logger.warning("Runtime: Auto-help is still active; waiting for worker exit.")
+                    self.auto_help_worker.stop(timeout=None)
             except Exception as exc:
-                dgm_logger.warning("Runtime: Auto-help worker stop failed: %s", type(exc).__name__)
+                dgm_logger.warning("Runtime: Auto-help shutdown needs fallback wait: %s", type(exc).__name__)
+                worker = getattr(self.auto_help_worker, "_thread", None)
+                if worker is not None and worker.is_alive():
+                    worker.join()
         try:
-            SafeActionQueue().stop_consumer()
+            queue = SafeActionQueue()
+            if queue.stop_consumer(timeout=5.0) is False:
+                dgm_logger.warning(
+                    "Runtime: SafeActionQueue is still processing; keeping the runtime owner alive until it exits."
+                )
+                queue.stop_consumer(timeout=None)
             self.state_store.dispatch(StateEvents.CONSUMER_STATUS_CHANGED, {
                 "id": "SafeActionQueueConsumer",
                 "status": "stopped"
             })
-        except:
-            pass
+        except Exception as exc:
+            dgm_logger.warning("Runtime: SafeActionQueue shutdown needs fallback wait: %s", type(exc).__name__)
+            queue = SafeActionQueue()
+            stop_event = getattr(queue, "_stop_event", None)
+            if stop_event is not None:
+                stop_event.set()
+            worker = getattr(queue, "_worker_thread", None)
+            if worker is not None and worker.is_alive():
+                # Fail closed: never let process exit while an action handler is active.
+                worker.join()
+            self.state_store.dispatch(StateEvents.CONSUMER_STATUS_CHANGED, {
+                "id": "SafeActionQueueConsumer",
+                "status": "stopped" if worker is None or not worker.is_alive() else "unknown"
+            })
+        # Stop remaining event producers before draining the in-memory EventBus.
         if self.kernel: self.kernel.shutdown()
         if self.governance_engine: self.governance_engine.shutdown()
         if self._knowledge_engine: self._knowledge_engine.shutdown()
+        try:
+            if not self.event_bus.stop(timeout=10.0):
+                dgm_logger.warning(
+                    "Runtime: EventBus is still processing; keeping the runtime owner alive until it exits."
+                )
+                # Never let the process exit while an in-memory event callback is still running.
+                self.event_bus.stop(timeout=None)
+        except Exception as exc:
+            dgm_logger.warning("Runtime: Event bus stop failed; waiting for worker exit: %s", type(exc).__name__)
+            worker = getattr(self.event_bus, "_worker_thread", None)
+            if worker is not None and worker.is_alive():
+                # Fail closed: an active in-memory callback must finish before process exit.
+                worker.join()
         self.state_store.dispatch(StateEvents.COCKPIT_STATE_CHANGED, {"runtime_status": "stopped"})

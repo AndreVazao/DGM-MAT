@@ -13,6 +13,14 @@ on:
       - "tests/organization/**"
       - "tests/research/**"
       - "tests/test_governed_browser_session.py"
+      - "tests/api/test_runtime_shutdown.py"
+      - "tests/operational/test_installer_graceful_shutdown.py"
+      - "tests/runtime/test_event_bus_shutdown.py"
+      - "tests/runtime/test_runtime_control.py"
+      - "tests/runtime/test_runtime_shutdown_lifecycle.py"
+      - "tests/runtime/test_safe_action_queue_shutdown.py"
+      - "tests/runtime/test_background_worker_shutdown.py"
+      - "tests/security/test_api_security_policy.py"
       - ".github/workflows/mission-e2e.yml"
   push:
     branches: [main]
@@ -54,6 +62,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout DGM-Contracts
+        uses: actions/checkout@v4
+        with:
+          repository: AndreVazao/DGM-Contracts
+          path: DGM-Contracts
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -61,8 +74,43 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.txt
       - name: Install project dependencies
-        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./DGM-Contracts
+          python -m pip install -r requirements.txt
+      - name: Validate Windows update PowerShell syntax
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $files = @(
+            "scripts/install_windows_update.ps1",
+            "scripts/rollback_windows_update.ps1"
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Join-Path $PWD $file),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_.ToString() }
+              throw "PowerShell syntax validation failed for $file"
+            }
+          }
       - name: Compile mission and execution packages
         run: python -m compileall -q core/autonomy core/execution core/organization core/runtime
       - name: Run mission, execution, queue and organization regressions
-        run: python -m pytest -q tests/autonomy tests/organization
+        run: >-
+          python -m pytest -q
+          tests/autonomy
+          tests/organization
+          tests/api/test_runtime_shutdown.py
+          tests/operational/test_installer_graceful_shutdown.py
+          tests/runtime/test_event_bus_shutdown.py
+          tests/runtime/test_runtime_control.py
+          tests/runtime/test_runtime_shutdown_lifecycle.py
+          tests/runtime/test_safe_action_queue_shutdown.py
+          tests/runtime/test_background_worker_shutdown.py
+          tests/security/test_api_security_policy.py

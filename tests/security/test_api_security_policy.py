@@ -219,3 +219,12 @@ def test_organization_task_dispatch_resume_is_operator_only():
     assert route is not None
     assert route.scope is SecurityScope.OPERATOR
     assert _required_scope(route.scope) == "operator"
+
+
+def test_runtime_shutdown_route_is_operator_only():
+    from core.api.auth_middleware import _required_scope
+
+    shutdown = classify_route("/runtime/shutdown", ("POST",))
+    assert shutdown is not None
+    assert shutdown.scope is SecurityScope.OPERATOR
+    assert _required_scope(shutdown.scope) == "operator"

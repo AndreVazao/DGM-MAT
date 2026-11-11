@@ -864,8 +864,10 @@ class RepositoryLearningService:
             except Exception:
                 self._stop.wait(30)
 
-    def stop(self, timeout: float = 5.0) -> None:
+    def stop(self, timeout: float | None = 5.0) -> bool:
+        """Request stop and report only after the worker has exited."""
         self._stop.set()
         thread = self._thread
         if thread and thread.is_alive():
-            thread.join(timeout=max(0.1, min(float(timeout), 10.0)))
+            thread.join(timeout=None if timeout is None else max(0.1, min(float(timeout), 10.0)))
+        return thread is None or not thread.is_alive()

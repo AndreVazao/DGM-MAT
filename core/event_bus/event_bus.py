@@ -26,6 +26,7 @@ class EventBus:
         self.dlq = Queue() # Dead Letter Queue
         self.lock = Lock()
         self.running = False
+        self._worker_thread = None
         self.governance_engine = governance_engine
 
         # Hardening & Stabilization
@@ -110,16 +111,32 @@ class EventBus:
             self.dlq.put(event)
 
     def start(self):
+        if self.running and self._worker_thread is not None and self._worker_thread.is_alive():
+            return
         self.running = True
-        thread = Thread(target=self._run, daemon=True)
-        thread.start()
+        self._worker_thread = Thread(target=self._run, name="dgm-event-bus", daemon=True)
+        self._worker_thread.start()
         dgm_logger.info("EventBus V2: Daemon thread started.")
 
+    def stop(self, timeout: float | None = 10.0) -> bool:
+        """Stop after the current drain cycle; report whether the worker exited."""
+        self.running = False
+        worker = self._worker_thread
+        if worker is not None:
+            worker.join(timeout=None if timeout is None else max(0.0, float(timeout)))
+        stopped = worker is None or not worker.is_alive()
+        if not stopped:
+            dgm_logger.warning(
+                "EventBus V2: worker did not stop; queued_events=%s",
+                self.queue.qsize(),
+            )
+        return stopped
+
     def _run(self):
-        while self.running:
+        while self.running or not self.queue.empty():
             try:
                 self.process()
-                time.sleep(0.01) # Reduced sleep for high concurrency
+                time.sleep(0.01)
             except Exception as e:
                 dgm_logger.error(f"EventBus V2: Loop error: {e}")
 
