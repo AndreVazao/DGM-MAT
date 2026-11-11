@@ -114,7 +114,7 @@ class EventBus:
         if self.running and self._worker_thread is not None and self._worker_thread.is_alive():
             return
         self.running = True
-        self._worker_thread = Thread(target=self._run, name="dgm-event-bus", daemon=True)
+        self._worker_thread = Thread(target=self._run, name="dgm-event-bus", daemon=False)
         self._worker_thread.start()
         dgm_logger.info("EventBus V2: Daemon thread started.")
 
