@@ -11,12 +11,22 @@ def test_runtime_shutdown_cancels_startup_timers_and_stops_event_bus(monkeypatch
         def cancel(self):
             self.cancelled = True
 
+    shutdown_order = []
+
     class FakeEventBus:
         stopped = False
 
         def stop(self, timeout=10.0):
             self.stopped = True
+            shutdown_order.append("event_bus")
             return True
+
+    class FakeSubsystem:
+        def __init__(self, name):
+            self.name = name
+
+        def shutdown(self):
+            shutdown_order.append(self.name)
 
     class FakeStore:
         def __init__(self):
@@ -56,9 +66,9 @@ def test_runtime_shutdown_cancels_startup_timers_and_stops_event_bus(monkeypatch
     runtime.api_thread = api_thread
     runtime.event_bus = event_bus
     runtime.state_store = store
-    runtime.kernel = None
-    runtime.governance_engine = None
-    runtime._knowledge_engine = None
+    runtime.kernel = FakeSubsystem("kernel")
+    runtime.governance_engine = FakeSubsystem("governance")
+    runtime._knowledge_engine = FakeSubsystem("knowledge")
     monkeypatch.setattr("core.runtime.runtime.SafeActionQueue", lambda: queue)
     api_shutdown_calls = []
     monkeypatch.setattr(
@@ -71,6 +81,7 @@ def test_runtime_shutdown_cancels_startup_timers_and_stops_event_bus(monkeypatch
     assert timer.cancelled is True
     assert runtime._startup_timers == []
     assert event_bus.stopped is True
+    assert shutdown_order == ["kernel", "governance", "knowledge", "event_bus"]
     assert api_thread.joined is True
     assert api_shutdown_calls == ["requested"]
     assert queue.stopped is True
