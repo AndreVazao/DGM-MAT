@@ -199,7 +199,7 @@ PRs #336/#339 acrescentaram arquivo/restauro reversível e correção do cockpit
 
 ## 9. DGM-HUB
 
-Ligação, processo, modo Observer/Respond, mensagens e providers do Hub não foram revalidados. Não se alterou o modo. Issue de integração/observação do Hub permanece trabalho pendente; nenhuma resposta de agente do Hub foi recebida nesta ronda.
+O diretório `C:\\AI\\DGM-HUB-MultiChat` existe e contém `config/`, `runtime/`, `src/`, `tests/` e documentação. Uma consulta read-only aos processos não encontrou correspondência para DGM-HUB/MultiChat/Hub. Assim, não há processo Hub confirmado nesta fotografia; não foi inferido endpoint/porta nem enviada mensagem. Ligação DGM-MAT↔Hub, modo Observer/Respond, mensagens e providers não foram revalidados. Não se alterou o modo. Issue de integração/observação do Hub permanece trabalho pendente; nenhuma resposta de agente do Hub foi recebida nesta ronda.
 
 ## 10. Riscos e bloqueios
 
