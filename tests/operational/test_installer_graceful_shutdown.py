@@ -37,3 +37,15 @@ def test_rollback_validates_launcher_backup_before_replacing_executable():
     executable_replace = rollback.index('Move-Item -LiteralPath $restoreTemp -Destination $targetPath -Force')
     assert launcher_preflight < executable_replace
     assert "Previous launcher backup is missing; rollback refused before modifying the executable." in rollback
+
+
+def test_rollback_stages_and_verifies_both_files_before_replacing_either():
+    rollback = (ROOT / "scripts" / "rollback_windows_update.ps1").read_text(encoding="utf-8")
+    exe_stage = rollback.index('Copy-Item -LiteralPath $backupPath -Destination $restoreTemp')
+    exe_move = rollback.index('Move-Item -LiteralPath $restoreTemp -Destination $targetPath -Force')
+    launcher_stage = rollback.index('Copy-Item -LiteralPath $launcherBackup -Destination $launcherRestoreTemp')
+    launcher_move = rollback.index('Move-Item -LiteralPath $launcherRestoreTemp -Destination $launcherTarget -Force')
+    assert exe_stage < exe_move
+    assert launcher_stage < exe_move
+    assert launcher_stage < launcher_move
+    assert 'Rollback launcher staging copy failed manifest SHA-256 verification.' in rollback
