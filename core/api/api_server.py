@@ -313,10 +313,35 @@ app.add_middleware(
 )
 
 
+_api_server = None
+_api_server_lock = threading.RLock()
+
+
+def request_api_shutdown() -> bool:
+    """Ask the active Uvicorn server to stop after the current request completes."""
+    with _api_server_lock:
+        server = _api_server
+        if server is None:
+            return False
+        server.should_exit = True
+        return True
+
+
 def run_api():
     import uvicorn
 
-    uvicorn.run(app, host=API_HOST, port=API_PORT)
+    global _api_server
+    server = uvicorn.Server(
+        uvicorn.Config(app, host=API_HOST, port=API_PORT, log_level="info")
+    )
+    with _api_server_lock:
+        _api_server = server
+    try:
+        server.run()
+    finally:
+        with _api_server_lock:
+            if _api_server is server:
+                _api_server = None
 
 
 # DGM-HUB passive meeting observer. It only polls the local read-only history API.
@@ -339,3 +364,11 @@ def stop_dgm_hub_meeting_observer() -> None:
         get_hub_meeting_observer().stop()
     except Exception:
         logging.getLogger(__name__).exception("DGM-HUB observer shutdown failed.")
+
+
+@app.on_event("shutdown")
+def signal_runtime_owner_after_api_drain() -> None:
+    """Wake the runtime owner only after Uvicorn has drained active API requests."""
+    from core.runtime.runtime_control import request_runtime_shutdown
+
+    request_runtime_shutdown()
