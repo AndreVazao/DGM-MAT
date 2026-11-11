@@ -370,13 +370,19 @@ class Runtime:
             except Exception as exc:
                 dgm_logger.warning("Runtime: Auto-help worker stop failed: %s", type(exc).__name__)
         try:
-            SafeActionQueue().stop_consumer()
+            queue = SafeActionQueue()
+            if queue.stop_consumer(timeout=5.0) is False:
+                dgm_logger.warning(
+                    "Runtime: SafeActionQueue is still processing; keeping the runtime owner alive until it exits."
+                )
+                queue.stop_consumer(timeout=None)
             self.state_store.dispatch(StateEvents.CONSUMER_STATUS_CHANGED, {
                 "id": "SafeActionQueueConsumer",
                 "status": "stopped"
             })
-        except:
-            pass
+        except Exception as exc:
+            dgm_logger.warning("Runtime: SafeActionQueue shutdown failed: %s", type(exc).__name__)
+            raise
         try:
             if not self.event_bus.stop(timeout=10.0):
                 dgm_logger.warning(
