@@ -18,6 +18,7 @@ on:
       - "tests/runtime/test_event_bus_shutdown.py"
       - "tests/runtime/test_runtime_control.py"
       - "tests/runtime/test_runtime_shutdown_lifecycle.py"
+      - "tests/runtime/test_safe_action_queue_shutdown.py"
       - "tests/security/test_api_security_policy.py"
       - ".github/workflows/mission-e2e.yml"
   push:
@@ -80,4 +81,5 @@ jobs:
           tests/runtime/test_event_bus_shutdown.py
           tests/runtime/test_runtime_control.py
           tests/runtime/test_runtime_shutdown_lifecycle.py
+          tests/runtime/test_safe_action_queue_shutdown.py
           tests/security/test_api_security_policy.py
