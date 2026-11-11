@@ -358,7 +358,10 @@ class Runtime:
         if self.api_thread is not None and self.api_thread.is_alive():
             self.api_thread.join(timeout=10)
             if self.api_thread.is_alive():
-                dgm_logger.warning("Runtime: API server thread did not exit within 10 seconds.")
+                dgm_logger.warning(
+                    "Runtime: API server thread is still active; keeping the runtime owner alive until it exits."
+                )
+                self.api_thread.join()
         if self.repository_learning_service is not None:
             try:
                 self.repository_learning_service.stop()
