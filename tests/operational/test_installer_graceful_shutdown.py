@@ -29,3 +29,11 @@ def test_rollback_requires_manifest_sha256_for_previous_files():
     assert "$manifest.previous_sha256" in rollback
     assert "$manifest.launcher_previous_sha256" in rollback
     assert "does not match the manifest SHA-256" in rollback
+
+
+def test_rollback_validates_launcher_backup_before_replacing_executable():
+    rollback = (ROOT / "scripts" / "rollback_windows_update.ps1").read_text(encoding="utf-8")
+    launcher_preflight = rollback.index("$launcherBackupHash =")
+    executable_replace = rollback.index('Move-Item -LiteralPath $restoreTemp -Destination $targetPath -Force')
+    assert launcher_preflight < executable_replace
+    assert "Previous launcher backup is missing; rollback refused before modifying the executable." in rollback
