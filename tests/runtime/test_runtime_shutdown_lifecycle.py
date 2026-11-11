@@ -60,6 +60,11 @@ def test_runtime_shutdown_cancels_startup_timers_and_stops_event_bus(monkeypatch
     runtime.governance_engine = None
     runtime._knowledge_engine = None
     monkeypatch.setattr("core.runtime.runtime.SafeActionQueue", lambda: queue)
+    api_shutdown_calls = []
+    monkeypatch.setattr(
+        "core.api.api_server.request_api_shutdown",
+        lambda: api_shutdown_calls.append("requested") or True,
+    )
 
     Runtime.shutdown(runtime)
 
@@ -67,6 +72,7 @@ def test_runtime_shutdown_cancels_startup_timers_and_stops_event_bus(monkeypatch
     assert runtime._startup_timers == []
     assert event_bus.stopped is True
     assert api_thread.joined is True
+    assert api_shutdown_calls == ["requested"]
     assert queue.stopped is True
     assert store.events[-1][0] is StateEvents.COCKPIT_STATE_CHANGED
     assert store.events[-1][1]["runtime_status"] == "stopped"
