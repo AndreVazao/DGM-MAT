@@ -381,8 +381,19 @@ class Runtime:
                 "status": "stopped"
             })
         except Exception as exc:
-            dgm_logger.warning("Runtime: SafeActionQueue shutdown failed: %s", type(exc).__name__)
-            raise
+            dgm_logger.warning("Runtime: SafeActionQueue shutdown needs fallback wait: %s", type(exc).__name__)
+            queue = SafeActionQueue()
+            stop_event = getattr(queue, "_stop_event", None)
+            if stop_event is not None:
+                stop_event.set()
+            worker = getattr(queue, "_worker_thread", None)
+            if worker is not None and worker.is_alive():
+                # Fail closed: never let process exit while an action handler is active.
+                worker.join()
+            self.state_store.dispatch(StateEvents.CONSUMER_STATUS_CHANGED, {
+                "id": "SafeActionQueueConsumer",
+                "status": "stopped" if worker is None or not worker.is_alive() else "unknown"
+            })
         try:
             if not self.event_bus.stop(timeout=10.0):
                 dgm_logger.warning(
