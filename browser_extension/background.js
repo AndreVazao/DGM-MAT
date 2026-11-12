@@ -272,7 +272,7 @@ async function pollBrowserConsultQueue() {
     }
     if (settings[BROWSER_TASK_KEY] || !settings[CONSULT_ENABLED_KEY] || state.run?.active) return;
     const tabs = settings[PROVIDER_TABS_KEY] || {};
-    for (const provider of ["chatgpt","grok","gemini","deepseek","qwen"]) {
+    for (const provider of ["chatgpt","grok","gemini","claude","deepseek","qwen"]) {
       if (await isBrowserProviderPaused(provider)) continue;
       const tabId = tabs[provider];
       if (!Number.isInteger(tabId)) continue;
