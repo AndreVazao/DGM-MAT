@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from typing import Any
+from urllib.parse import quote
 
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import (
@@ -103,6 +104,10 @@ class AIConsultationDialog(QDialog):
         self._worker: _ConsultationWorker | None = None
         self._preview_sha256: str | None = None
         self._approval_ids: list[str] = []
+        self._result_ids: list[str] = []
+        self._result_index = 0
+        self._result_entries: list[str] = []
+        self._pending_result_start = False
         self._approved_count = 0
         self._queued_count = 0
         self._pending_approval_start = False
@@ -185,6 +190,19 @@ class AIConsultationDialog(QDialog):
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
 
+        self.results_button = QPushButton("Atualizar resultados das consultas")
+        self.results_button.setEnabled(False)
+        self.results_button.clicked.connect(self._refresh_results)
+        layout.addWidget(self.results_button)
+        self.results = QPlainTextEdit()
+        self.results.setReadOnly(True)
+        self.results.setPlaceholderText(
+            "As respostas e os estados finais das consultas aprovadas aparecerão aqui. "
+            "Todas as respostas externas permanecem por verificar."
+        )
+        self.results.setMaximumBlockCount(500)
+        layout.addWidget(self.results, 1)
+
         buttons = QHBoxLayout()
         self.send_button = QPushButton("Confirmar e colocar na fila")
         self.send_button.setEnabled(False)
@@ -222,6 +240,9 @@ class AIConsultationDialog(QDialog):
         self.load_context_button.setEnabled(not busy and self._queued_count == 0)
         self.send_button.setEnabled(not busy and ready)
         self.cancel_button.setEnabled(not busy)
+        self.results_button.setEnabled(
+            not busy and bool(self._result_ids) and self._queued_count == 0
+        )
 
     def _start_request(
         self,
@@ -316,7 +337,8 @@ class AIConsultationDialog(QDialog):
         if not self._approval_ids:
             self.status.setText(
                 f"Consulta aprovada e colocada na fila: {self._approved_count}/{self._queued_count}. "
-                "A extensão Chrome emparelhada terá de estar ativa para executar o transporte visível."
+                "A extensão Chrome emparelhada terá de estar ativa para executar o transporte visível. "
+                "Quando terminar, atualiza os resultados para consultar as respostas."
             )
             self._refresh_controls()
             return
@@ -331,6 +353,14 @@ class AIConsultationDialog(QDialog):
         self, action: str, payload: object, error: str
     ) -> None:
         if error:
+            if action == "result":
+                self._result_entries.append(
+                    "Consulta " + str(self._result_ids[self._result_index])
+                    + "\nFalha ao recuperar o resultado: " + error
+                )
+                self._result_index += 1
+                self._pending_result_start = True
+                return
             if action == "approve":
                 self._approval_ids.clear()
                 self.status.setText(
@@ -416,6 +446,10 @@ class AIConsultationDialog(QDialog):
                 )
                 return
             self._approval_ids = [str(item) for item in ids if isinstance(item, str)]
+            self._result_ids = list(self._approval_ids)
+            self._result_index = 0
+            self._result_entries = []
+            self.results.clear()
             self._queued_count = len(self._approval_ids)
             if not self._approval_ids:
                 self.status.setText("A resposta do backend não contém IDs de consulta válidos.")
@@ -429,12 +463,68 @@ class AIConsultationDialog(QDialog):
         if action == "approve":
             self._approved_count += 1
             self._pending_approval_start = True
+            return
+
+        if action == "result":
+            consultation_id = str(data.get("consultation_id") or self._result_ids[self._result_index])
+            status = str(data.get("status") or "UNKNOWN")
+            provider = str(data.get("provider") or "unknown")
+            task_ref = str(data.get("task_ref") or "unknown")
+            response_text = data.get("response_text")
+            response_hash = str(data.get("response_sha256") or "n/d")
+            lines = [
+                f"CONSULTA: {consultation_id}",
+                f"FORNECEDOR: {provider}",
+                f"ASSOCIAÇÃO: {task_ref}",
+                f"ESTADO: {status}",
+                f"CRIADA: {data.get('created_at') or 'n/d'}",
+                f"CONCLUÍDA: {data.get('completed_at') or 'n/d'}",
+                f"ERRO CLASSIFICADO: {data.get('error_type') or 'nenhum registado'}",
+                f"RESPOSTA SHA-256: {response_hash}",
+                "CONFIANÇA: não verificada | Independência: não atestada | Aceite: não",
+            ]
+            if isinstance(response_text, str) and response_text.strip():
+                lines.extend(["", "RESPOSTA DO FORNECEDOR:", response_text])
+            else:
+                lines.extend(["", "Ainda não existe resposta final guardada para esta consulta."])
+            self._result_entries.append("\n".join(lines))
+            self._result_index += 1
+            self._pending_result_start = True
+
+    def _refresh_results(self) -> None:
+        if not self._result_ids:
+            self.status.setText("Ainda não existem consultas associadas a esta janela.")
+            return
+        self._result_index = 0
+        self._result_entries = []
+        self.results.clear()
+        self.status.setText("A recuperar os recibos persistentes das consultas. Apenas leitura; nenhuma ação será executada.")
+        self._read_next_result()
+
+    def _read_next_result(self) -> None:
+        if self._result_index >= len(self._result_ids):
+            self.results.setPlainText("\n\n" + ("=" * 72) + "\n\n".join(self._result_entries))
+            self.status.setText(
+                f"Leitura concluída: {len(self._result_entries)} recibo(s). "
+                "As respostas são propostas externas não verificadas; não foram aceites nem executadas."
+            )
+            self._refresh_controls()
+            return
+        consultation_id = self._result_ids[self._result_index]
+        self._start_request(
+            "result",
+            "GET",
+            "/recovery/browser-consult/result/" + quote(consultation_id, safe=""),
+        )
 
     def _on_worker_finished(self) -> None:
         self._worker = None
         if self._pending_approval_start:
             self._pending_approval_start = False
             self._approve_next()
+        elif self._pending_result_start:
+            self._pending_result_start = False
+            self._read_next_result()
         else:
             self._refresh_controls()
 
