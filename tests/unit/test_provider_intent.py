@@ -68,6 +68,6 @@ def test_provider_mentioned_after_question_boundary_is_not_selected():
 
 
 def test_negated_consultation_command_does_not_dispatch():
-    result = parse_provider_intent("Não consultes o ChatGPT sobre isto.")
+    result = parse_provider_intent("Não consulta o ChatGPT sobre isto.")
     assert result.requested is False
     assert result.reason == "negated_consultation_intent"
