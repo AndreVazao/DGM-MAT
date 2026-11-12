@@ -221,8 +221,8 @@ def test_software_inventory_reads_registry_metadata_without_msi_or_uninstall_com
     assert result["status"] == "passed"
     assert calls[0][1]["shell"] is False
     script = calls[0][0][5]
-    assert "HKLM:\\\\Software" in script
-    assert "HKCU:\\\\Software" in script
+    assert "HKLM:\\Software" in script
+    assert "HKCU:\\Software" in script
     assert "Win32_Product" not in script
     assert "UninstallString" not in script
     assert "QuietUninstallString" not in script
