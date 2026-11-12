@@ -98,3 +98,5 @@ The repository-learning API now exposes:
 - Empty or incomplete evidence is represented explicitly (`no_evidence`, `evidence_partial`, completeness `unknown`); absence is not converted into a claim that a provider or repository has no history.
 
 This is the first queryable dossier projection, not the final natural-language project consultation. GitHub branch/PR/issue/CI evidence, local runtime probes, explicit decision records, provider source checkpoints and conversation-to-code links remain separate integration stages.
+
+- The dossier also exposes GitHub repository URLs extracted from assigned Vault conversations, including verification state and exact message provenance, plus extracted code-artifact metadata/fingerprints linked to the source conversation. These remain unverified candidates until matched to a repository file/commit; code bodies are not returned.
