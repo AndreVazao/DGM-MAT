@@ -38,6 +38,7 @@ class ProviderConsultationWorker(QThread):
         self.goal = goal.strip()
         self.context = context[:3500]
         self.providers = tuple(providers)
+        self._approved_count = 0
 
     def _request(
         self, method: str, path: str, payload: dict[str, Any] | None = None
@@ -150,6 +151,7 @@ class ProviderConsultationWorker(QThread):
                     "/recovery/browser-consult/approve/" + consultation_id,
                 )
                 approved += 1
+                self._approved_count = approved
 
             if approved + existing != len(ids):
                 raise RuntimeError("Nem todas as consultas ficaram aprovadas ou já estavam em curso.")
@@ -190,7 +192,10 @@ class ProviderConsultationWorker(QThread):
                 "error",
             )
         except (RuntimeError, ValueError, TypeError, KeyError) as exc:
-            self._emit_status(
-                str(exc)[:500] or "A consulta não foi concluída com segurança.",
-                "error",
-            )
+            detail = str(exc)[:400] or "A consulta não foi concluída com segurança."
+            if self._approved_count:
+                detail = (
+                    f"{self._approved_count} consulta(s) já ficaram aprovadas antes da falha. "
+                    "Verifica o estado da fila antes de repetir. " + detail
+                )
+            self._emit_status(detail, "error")
