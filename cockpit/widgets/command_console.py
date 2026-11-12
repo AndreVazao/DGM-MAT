@@ -749,6 +749,8 @@ class CommandConsoleWidget(QWidget):
             self.output.clear()
             self.history.clear()
             self._append_message("Sistema", "Nova conversa criada. O histórico é independente.", "system")
+            if self.isVisible():
+                self._thread_refresh_timer.start()
             self._load_threads()
             if self._pending_directive:
                 self._persist_pending_user_message()
