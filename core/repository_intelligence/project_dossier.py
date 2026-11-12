@@ -57,6 +57,26 @@ def build_project_dossier(
             "ORDER BY captured_at DESC,provider,conversation_id LIMIT ?",
             (project_id, conversation_limit),
         ).fetchall()
+        reference_rows = db.execute(
+            "SELECT r.canonical_url,r.owner,r.repository,r.verification_status,r.html_url,"
+            "r.description,r.default_branch,r.is_archived,r.verified_at,"
+            "s.provider,s.conversation_id,s.message_id,s.conversation_url,"
+            "s.conversation_title,s.first_seen_at "
+            "FROM github_repository_refs r "
+            "JOIN github_repository_ref_sources s ON s.canonical_url=r.canonical_url "
+            "JOIN conversations c ON c.provider=s.provider AND c.conversation_id=s.conversation_id "
+            "WHERE c.project_id=? ORDER BY s.first_seen_at DESC LIMIT 100",
+            (project_id,),
+        ).fetchall()
+        artifact_rows = db.execute(
+            "SELECT a.provider,a.conversation_id,a.artifact_id,a.language,"
+            "a.content_fingerprint,c.title,c.source_fingerprint "
+            "FROM code_artifacts a JOIN conversations c "
+            "ON c.provider=a.provider AND c.conversation_id=a.conversation_id "
+            "AND c.source_fingerprint=a.source_fingerprint "
+            "WHERE c.project_id=? ORDER BY c.captured_at DESC LIMIT 200",
+            (project_id,),
+        ).fetchall()
         snapshot_rows = db.execute(
             "SELECT snapshot_id,repository_path,tree_fingerprint,file_count,"
             "language_summary_json,created_at FROM tree_snapshots "
@@ -78,6 +98,42 @@ def build_project_dossier(
             "captured_at": row["captured_at"],
             "evidence_ref": f"{row['provider']}:{row['conversation_id']}",
         })
+
+    repository_references = [
+        {
+            "url": row["canonical_url"],
+            "owner": row["owner"],
+            "repository": row["repository"],
+            "verification_status": row["verification_status"],
+            "html_url": row["html_url"],
+            "description": row["description"],
+            "default_branch": row["default_branch"],
+            "is_archived": bool(row["is_archived"]) if row["is_archived"] is not None else None,
+            "verified_at": row["verified_at"],
+            "source": {
+                "provider": row["provider"],
+                "conversation_id": row["conversation_id"],
+                "message_id": row["message_id"],
+                "conversation_title": row["conversation_title"],
+                "conversation_url": row["conversation_url"],
+                "first_seen_at": row["first_seen_at"],
+            },
+        }
+        for row in reference_rows
+    ]
+    code_artifacts = [
+        {
+            "provider": row["provider"],
+            "conversation_id": row["conversation_id"],
+            "artifact_id": row["artifact_id"],
+            "language": row["language"],
+            "content_fingerprint": row["content_fingerprint"],
+            "conversation_title": row["title"],
+            "source_fingerprint": row["source_fingerprint"],
+            "verification_status": "candidate_not_repository_verified",
+        }
+        for row in artifact_rows
+    ]
 
     snapshots = []
     for row in snapshot_rows:
@@ -154,6 +210,8 @@ def build_project_dossier(
         "conversations": conversations,
         "repository": {
             "snapshots": snapshots,
+            "conversation_linked_references": repository_references,
+            "conversation_linked_code_candidates": code_artifacts,
             "latest_snapshot_at": latest_snapshot,
             "git_branch_and_commit": "not_recorded_in_current_snapshot_schema",
         },
