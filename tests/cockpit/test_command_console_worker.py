@@ -379,3 +379,47 @@ def test_provider_worker_reports_partial_approval_without_retry(app, monkeypatch
     assert len([call for call in calls if "/approve/" in call[1]]) == 2
     assert "1 consulta(s) já ficaram aprovadas" in emitted[0][1]
     assert "Verifica o estado da fila antes de repetir" in emitted[0][1]
+
+
+def test_inline_consultation_panel_queues_selected_provider_for_active_thread(app, monkeypatch):
+    from cockpit.workspace.ai_consultation_inline_panel import AIConsultationInlinePanel
+
+    panel = AIConsultationInlinePanel("http://127.0.0.1:8181/runtime")
+    panel.set_thread_context("thread-inline", "Revê esta proposta técnica.", "Tu: contexto anterior\nDGM-MAT: resposta anterior")
+    panel._status_loaded = True
+    panel._consult_enabled = True
+    panel._allowed_providers = {"claude"}
+    panel._refresh_controls()
+    panel.provider_checks["claude"].setChecked(True)
+    captured = []
+    monkeypatch.setattr(
+        panel,
+        "_start_request",
+        lambda action, method, path, payload=None: captured.append((action, method, path, payload)),
+    )
+
+    panel._enqueue()
+
+    assert captured[0][0:3] == (
+        "enqueue", "POST", "/recovery/browser-consult/enqueue"
+    )
+    assert captured[0][3]["task_ref"] == "mobile-thread:thread-inline"
+    assert captured[0][3]["providers"] == ["claude"]
+    assert "contexto anterior" in captured[0][3]["context"]
+    assert captured[0][3]["free_capacity_confirmed"] is True
+    panel.close()
+
+
+def test_inline_consultation_completion_is_bound_to_originating_thread(app):
+    from cockpit.workspace.ai_consultation_inline_panel import AIConsultationInlinePanel
+
+    panel = AIConsultationInlinePanel("http://127.0.0.1:8181/runtime")
+    panel._pending_thread_id = "thread-origin"
+    captured = []
+    panel.status_message.connect(lambda thread_id, message: captured.append((thread_id, message)))
+
+    panel._approve_next()
+
+    assert captured and captured[0][0] == "thread-origin"
+    assert "Ainda não foi enviada" in captured[0][1]
+    panel.close()
