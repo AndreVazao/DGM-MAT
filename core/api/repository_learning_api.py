@@ -63,3 +63,48 @@ def stop_repository_learning():
         "status": "stopped",
         "progress": repository_learning_service.get_status(),
     }
+
+
+@router.post("/audit")
+def static_project_audit(
+    project_id: str = Query(min_length=1, max_length=100),
+    snapshot_id: str | None = Query(default=None, min_length=1, max_length=100),
+    max_files: int = Query(default=5000, ge=1, le=20000),
+    max_file_bytes: int = Query(default=1_000_000, ge=1024, le=5_000_000),
+):
+    """Run a bounded, read-only static audit against an existing Vault tree snapshot."""
+    from core.repository_intelligence.static_audit import StaticAuditError, audit_project
+    from core.vault.catalog import VaultCatalog
+
+    vault_root = VaultCatalog.default_root()
+    if not (vault_root / "index" / "catalog.sqlite3").is_file():
+        raise HTTPException(status_code=503, detail="Persistent Vault is not initialized")
+    try:
+        report = audit_project(
+            vault=VaultCatalog(vault_root=vault_root),
+            project_id=project_id,
+            snapshot_id=snapshot_id,
+            max_files=max_files,
+            max_file_bytes=max_file_bytes,
+        )
+    except StaticAuditError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Vault snapshot or repository file is unavailable") from exc
+    return {
+        "status": "complete",
+        "project_id": report["project_id"],
+        "snapshot_id": report["snapshot_id"],
+        "tree_fingerprint": report["tree_fingerprint"],
+        "audit_fingerprint": report["audit_fingerprint"],
+        "files_inspected": report["files_inspected"],
+        "files_skipped": report["files_skipped"],
+        "summary": report["summary"],
+        "findings": report["findings"][:200],
+        "findings_truncated": len(report["findings"]) > 200,
+        "report_path": report["report_path"],
+        "markdown_path": report["markdown_path"],
+        "reused": report["reused"],
+        "read_only": True,
+        "code_executed": False,
+    }
