@@ -252,6 +252,7 @@ $preserved = @(
     @{ Source = (Join-Path $localDgmRoot "recovery-inbox"); Relative = "data\localappdata\DGM-MAT\recovery-inbox" },
     @{ Source = (Join-Path $localDgmRoot "diagnostics"); Relative = "data\localappdata\DGM-MAT\diagnostics" },
     @{ Source = (Join-Path $localDgmRoot "reports"); Relative = "data\localappdata\DGM-MAT\reports" },
+    @{ Source = (Join-Path $localDgmRoot "Vault"); Relative = "data\localappdata\DGM-MAT\Vault" },
     @{ Source = (Join-Path $userDgmRoot "recovery-ledger.sqlite3"); Relative = "data\userprofile\.dgm-mat\recovery-ledger.sqlite3" },
     @{ Source = (Join-Path $installRoot "DGM-MAT-Memory"); Relative = "data\DGM-MAT-Memory" },
     @{ Source = (Join-Path $installRoot "memory_sync"); Relative = "data\memory_sync" },
@@ -354,6 +355,7 @@ $manifest = [ordered]@{
     preserved_data = $backupRecords
     deliberately_untouched = @(
         (Join-Path $localDgmRoot "security"),
+        (Join-Path $localDgmRoot "Vault"),
         (Join-Path $userDgmRoot "worktrees"),
         (Join-Path $installRoot "DGM-MAT-Memory"),
         (Join-Path $installRoot "memory_sync"),
