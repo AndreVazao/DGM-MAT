@@ -89,6 +89,25 @@ def classify_mission_intent(goal: str) -> IntentDecision:
     words = _normalized_words(goal)
     word_set = set(words)
 
+    # Explicit provider launch is a bounded, allowlisted desktop action.
+    # It requires operator approval and opens only the provider home page; it never sends a prompt.
+    provider_hosts = {
+        "chatgpt": "https://chatgpt.com/",
+        "gemini": "https://gemini.google.com/",
+        "grok": "https://grok.com/",
+        "claude": "https://claude.ai/",
+        "deepseek": "https://chat.deepseek.com/",
+        "qwen": "https://chat.qwen.ai/",
+    }
+    launch_verbs = {"open", "launch", "abrir", "abre", "abertura", "iniciar", "start"}
+    if word_set & launch_verbs:
+        matched_provider = next((name for name in provider_hosts if name in word_set), None)
+        if matched_provider:
+            return IntentDecision(
+                "browser_open_provider:" + matched_provider, True, 0.99, True,
+                "Matched an allowlisted provider home-page launch; operator approval is required and no message will be sent.",
+            )
+
     # Natural-language provider conversation search is a bounded, local archive read.
     conversation_terms = {"conversation", "conversations", "chat", "chats", "historico", "historicos", "conversa", "conversas"}
     conversation_verbs = {"search", "find", "look", "buscar", "busca", "pesquisa", "pesquisar", "procura", "procurar", "encontra", "encontrar", "recupera", "recuperar"}
