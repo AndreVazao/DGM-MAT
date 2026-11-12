@@ -49,3 +49,19 @@ def test_rollback_stages_and_verifies_both_files_before_replacing_either():
     assert launcher_stage < exe_move
     assert launcher_stage < launcher_move
     assert 'Rollback launcher staging copy failed manifest SHA-256 verification.' in rollback
+
+
+def test_one_click_update_wrapper_uses_packaged_sha256_and_elevation_without_killing_processes():
+    wrapper = (ROOT / "scripts" / "install_dgm_mat_update.ps1").read_text(encoding="utf-8")
+    launcher = (ROOT / "Install-DGM-MAT-Update.bat").read_text(encoding="utf-8")
+
+    assert 'DGM-MAT.exe.sha256' in wrapper
+    assert '[a-f0-9]{64}' in wrapper
+    assert 'ExpectedExeSha256 $expectedHash' in wrapper
+    assert 'Start-Process -FilePath "powershell.exe" -Verb RunAs' in wrapper
+    assert 'install_windows_update.ps1' in wrapper
+    assert 'Stop-Process' not in wrapper
+    assert 'Invoke-WebRequest' not in wrapper
+    assert 'install_dgm_mat_update.ps1' in launcher
+    assert 'ExecutionPolicy Bypass' in launcher
+    assert 'did not complete' in launcher
