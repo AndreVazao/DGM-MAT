@@ -19,7 +19,7 @@ from uuid import uuid4
 
 from core.storage.storage_manager import storage_manager
 
-PROVIDERS = ("chatgpt", "gemini", "grok", "deepseek", "qwen")
+PROVIDERS = ("chatgpt", "gemini", "grok", "claude", "deepseek", "qwen")
 MAX_PROMPT_CHARS = 8000
 MAX_RESPONSE_CHARS = 16000
 _SECRET_PATTERNS = (
@@ -228,7 +228,7 @@ class BrowserConsultStore:
                     ):
                         db.rollback()
                         raise ValueError("review_id is already bound to a different task, brief or provider set")
-            for provider in selected[:5]:
+            for provider in selected[:6]:
                 cooldown = db.execute(
                     "SELECT cooldown_until FROM browser_consult_provider_state WHERE provider=?",
                     (provider,),

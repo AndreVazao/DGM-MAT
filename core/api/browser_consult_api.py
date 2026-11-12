@@ -53,7 +53,7 @@ class BrowserConsultEnqueueRequest(BaseModel):
     task_ref: str = Field(min_length=1, max_length=160)
     goal: str = Field(min_length=1, max_length=4000)
     context: str = Field(default="", max_length=4000)
-    providers: list[Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"]] = Field(min_length=1, max_length=5)
+    providers: list[Literal["chatgpt", "gemini", "grok", "claude", "deepseek", "qwen"]] = Field(min_length=1, max_length=6)
     free_capacity_confirmed: bool = False
     preview_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     review_mode: Literal["standard", "fresh_review"] = "standard"
@@ -274,14 +274,14 @@ def approve_browser_consultation(consultation_id: str, request: Request):
 
 
 @router.get("/peek")
-def peek_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"], request: Request):
+def peek_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "claude", "deepseek", "qwen"], request: Request):
     _principal(request)
     item = _store().peek_next(provider)
     return {"status": "pending" if item else "queue_empty", "next": item}
 
 
 @router.post("/next")
-def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"], request: Request):
+def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "claude", "deepseek", "qwen"], request: Request):
     _principal(request)
     try:
         item = _store().claim_next(provider)
