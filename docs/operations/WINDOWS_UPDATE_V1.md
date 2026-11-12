@@ -1,39 +1,38 @@
-# DGM-MAT Windows update — V1
+# Atualização do DGM-MAT no Windows — V1
 
-## Preferred update path
+## Método recomendado
 
-Do not manually delete the installed executable or uninstall the application before a verified package is ready. The supported update script performs a controlled in-place replacement and preserves the existing data directories. This is safer than removing the current installation first.
+Não apagues manualmente o executável instalado nem desinstales a aplicação antes de existir um pacote verificado. O atualizador suportado faz uma substituição controlada no local e preserva os dados existentes. É mais seguro do que remover primeiro a instalação atual.
 
-The Windows build artifact contains:
+O artefacto Windows inclui:
+- `DGM-MAT.exe` e o respetivo ficheiro SHA-256;
+- `scripts/install_windows_update.ps1`, o motor de atualização governado;
+- `scripts/install_dgm_mat_update.ps1`, o wrapper de validação e elevação;
+- `Install-DGM-MAT-Update.bat`, o lançador de duplo clique;
+- `scripts/rollback_windows_update.ps1`;
+- a extensão do browser e o respetivo instalador.
 
-- \`DGM-MAT.exe\` and its SHA-256 sidecar;
-- \`scripts/install_windows_update.ps1\`, the governed update engine;
-- \`scripts/install_dgm_mat_update.ps1\`, the elevation/checksum wrapper;
-- \`Install-DGM-MAT-Update.bat\`, the double-click launcher;
-- \`scripts/rollback_windows_update.ps1\`;
-- the browser extension and its installer.
+## Procedimento
 
-## Operator procedure
+1. Descarrega o ZIP e o artefacto separado `.zip.sha256` da execução bem-sucedida de **Windows Executable Build** no GitHub Actions.
+2. Verifica o SHA-256 do ZIP com o checksum separado, antes de extrair ou executar qualquer ficheiro.
+3. Extrai o ZIP para uma pasta normal com permissões de escrita. Não o extraías por cima da pasta de instalação do DGM-MAT.
+4. Fecha a janela do cockpit DGM-MAT Chat. Não apagues nem alteres a instalação ou os dados locais.
+5. Faz duplo clique em `Install-DGM-MAT-Update.bat`. Aprova o pedido UAC do Windows apenas depois de confirmares o checksum do ZIP.
+6. O atualizador valida o hash do executável, confirma que o processo que escuta na porta 8181 pertence ao executável DGM-MAT esperado, pede o encerramento normal e aguarda. Nunca termina processos à força.
+7. O atualizador guarda cópias do executável anterior, do launcher de serviço, das pastas de runtime/recuperação/relatórios e do Vault local completo em `update-backups`. Não elimina backups antigos nem dados do utilizador.
+8. Substitui apenas os ficheiros geridos do runtime e cria `INSTALL-MANIFEST.json` com hashes e localizações das cópias. Credenciais, worktrees e memória persistente ficam intocadas.
+9. O runtime permanece parado. Inicia o DGM-MAT pelo atalho habitual e valida `/health`, sessão autenticada, cockpit e fluxos essenciais.
 
-1. Download the ZIP and the separate \`.zip.sha256\` artifact from the successful GitHub Actions Windows Executable Build run.
-2. Verify the ZIP SHA-256 against the separately downloaded checksum before extracting or running anything.
-3. Extract the ZIP to a normal writable folder. Do not extract over the installed DGM-MAT directory.
-4. Close the DGM-MAT Chat cockpit window. Leave the installation files and local data untouched.
-5. Double-click \`Install-DGM-MAT-Update.bat\`. Approve the Windows UAC prompt only after confirming the package ZIP checksum.
-6. The updater verifies the packaged executable digest, checks the API listener belongs to the expected DGM-MAT executable, requests graceful shutdown and waits. It never force-kills processes.
-7. The updater backs up the previous executable, service launcher, runtime/recovery/report folders and the full local Vault under the update-backups directory. It does not delete the old backup or local user data.
-8. The updater replaces only managed runtime files and writes an \`INSTALL-MANIFEST.json\` with hashes and backup locations. It deliberately leaves credentials, worktrees and persistent memory untouched.
-9. The runtime remains stopped. Launch DGM-MAT using the normal shortcut and verify \`/health\`, authenticated session, cockpit and core workflows.
+Se um pré-requisito ou checksum falhar, a atualização é abortada antes da substituição do executável. Se o processo não pertencer ao DGM-MAT esperado ou não encerrar normalmente, o atualizador recusa-se a pará-lo.
 
-If any precondition or checksum fails, the update aborts before replacing the executable. If a process is not the expected DGM-MAT owner or does not shut down gracefully, the updater refuses to stop it.
+## Reversão
 
-## Rollback
+Usa `scripts/rollback_windows_update.ps1` incluído no pacote, indicando a pasta exata de backup criada pelo instalador. A reversão valida os hashes do manifesto e prepara os ficheiros anteriores antes de substituir qualquer um. Não apagues o backup até a nova instalação passar a aceitação local.
 
-Use the packaged \`scripts/rollback_windows_update.ps1\` with the exact backup directory created by the installer. The rollback validates manifest hashes and stages the previous executable and launcher before replacing either. Do not delete the backup until the new installation has passed local acceptance.
+## Limites importantes
 
-## Important boundaries
-
-- This is an update, not an uninstall/reinstall. It preserves the Vault and existing project/worktree data.
-- Never run an unverified ZIP or a package whose independent ZIP checksum does not match.
-- Never copy the private Vault, credentials, browser profiles or local archives into GitHub.
-- A successful Windows CI build is not proof of successful operation on the target PC. Complete local smoke and acceptance tests after the update.
+- Isto é uma atualização, não uma desinstalação/reinstalação. Preserva o Vault e os dados/worktrees dos projetos.
+- Nunca executes um ZIP não verificado ou cujo checksum independente não corresponda.
+- Nunca copies o Vault privado, credenciais, perfis do browser ou arquivos locais para o GitHub.
+- Um build Windows bem-sucedido na CI não prova que a aplicação funciona no PC. É obrigatório fazer os testes locais depois da atualização.
