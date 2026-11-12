@@ -10,6 +10,8 @@ from datetime import datetime
 from typing import Any
 
 from cockpit.api_client import authenticated_request, LocalApiAuthenticationError
+from cockpit.workspace.provider_consultation_worker import ProviderConsultationWorker
+from core.conversation_intelligence.provider_intent import parse_provider_intent
 from cockpit.workspace.ai_consultation_dialog import AIConsultationDialog
 from cockpit.mission_status_client import (
     fetch_mission_checkpoint,
@@ -273,7 +275,7 @@ class CommandConsoleWidget(QWidget):
         super().__init__()
         self.history: list[dict[str, str]] = []
         self.api_url = "http://127.0.0.1:8181/runtime"
-        self._worker: _RuntimeRequestWorker | None = None
+        self._worker: QThread | None = None
         self._runtime_available = True
         self._active_thread_id: str | None = None
         self._active_thread_status = "active"
@@ -464,6 +466,20 @@ class CommandConsoleWidget(QWidget):
             else:
                 self._create_thread(for_pending_send=True)
 
+    def _recent_conversation_context(self, *, exclude_latest_user: bool = False) -> str:
+        history = self.history
+        if exclude_latest_user and history and history[-1].get("sender") == "Tu":
+            history = history[:-1]
+        lines = []
+        for item in history[-6:]:
+            if not isinstance(item, dict):
+                continue
+            text = str(item.get("text") or "").strip()
+            if text:
+                sender = str(item.get("sender") or "Sistema")
+                lines.append(sender + ": " + text[:700])
+        return "\n".join(lines)[-3500:]
+
     def _start_request(self, directive: str, *, status_only: bool) -> None:
         self._append_message("Sistema", "Pedido enviado ao runtime…", "system")
         worker = _RuntimeRequestWorker(self.api_url, directive, status_only=status_only)
@@ -473,6 +489,24 @@ class CommandConsoleWidget(QWidget):
         self._worker = worker
         self._refresh_controls()
         self.input_field.setPlaceholderText("À espera do backend…")
+        worker.start()
+
+    def _start_provider_consultation(
+        self,
+        thread_id: str,
+        goal: str,
+        providers: tuple[str, ...],
+        context: str,
+    ) -> None:
+        worker = ProviderConsultationWorker(
+            self.api_url, thread_id, goal, context, providers
+        )
+        worker.thread_id = thread_id
+        worker.completed.connect(self._on_request_completed)
+        worker.finished.connect(self._on_worker_finished)
+        self._worker = worker
+        self._refresh_controls()
+        self.input_field.setPlaceholderText("A consultar os providers selecionados…")
         worker.start()
 
     def _on_request_completed(self, sender: str, message: str, msg_type: str) -> None:
@@ -771,9 +805,18 @@ class CommandConsoleWidget(QWidget):
             if not directive:
                 return
             self._append_message("Tu", directive, "user")
-            self._start_request(
-                directive, status_only=directive.casefold() == "runtime status"
-            )
+            intent = parse_provider_intent(directive)
+            if intent.requested:
+                self._start_provider_consultation(
+                    self._active_thread_id or "",
+                    intent.question or directive,
+                    intent.providers,
+                    self._recent_conversation_context(exclude_latest_user=True),
+                )
+            else:
+                self._start_request(
+                    directive, status_only=directive.casefold() == "runtime status"
+                )
             self._flush_transcript_queue()
             return
 
