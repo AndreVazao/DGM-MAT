@@ -12,7 +12,7 @@ from typing import Any
 from cockpit.api_client import authenticated_request, LocalApiAuthenticationError
 from cockpit.workspace.provider_consultation_worker import ProviderConsultationWorker
 from core.conversation_intelligence.provider_intent import parse_provider_intent
-from cockpit.workspace.ai_consultation_dialog import AIConsultationDialog
+from cockpit.workspace.ai_consultation_inline_panel import AIConsultationInlinePanel
 from cockpit.mission_status_client import (
     fetch_mission_checkpoint,
     submit_mission_once,
@@ -349,6 +349,10 @@ class CommandConsoleWidget(QWidget):
         self.output.setFont(QFont("Segoe UI", 10))
         layout.addWidget(self.output, 1)
 
+        self.ai_consultation_panel = AIConsultationInlinePanel(self.api_url, self)
+        self.ai_consultation_panel.status_message.connect(self._on_inline_consultation_status)
+        layout.addWidget(self.ai_consultation_panel)
+
         input_container = QFrame()
         input_container.setStyleSheet(
             "background-color: #252526; border-top: 1px solid #3e3e3e;"
@@ -600,12 +604,24 @@ class CommandConsoleWidget(QWidget):
                 "system",
             )
             return
-        dialog = AIConsultationDialog(
-            self.api_url,
-            self._active_thread_id,
-            self,
+        if self.ai_consultation_panel.isVisible():
+            self.ai_consultation_panel.hide()
+            return
+        latest = next(
+            (item.get("text", "") for item in reversed(self.history) if item.get("sender") == "Tu"),
+            "",
         )
-        dialog.exec()
+        self.ai_consultation_panel.set_thread_context(
+            self._active_thread_id, latest, self._recent_conversation_context()
+        )
+        self.ai_consultation_panel.show()
+        self.ai_consultation_panel.refresh_status()
+
+    def _on_inline_consultation_status(self, thread_id: str, message: str) -> None:
+        if thread_id == self._active_thread_id:
+            self._append_message("Sistema", message, "system")
+        if thread_id:
+            self._persist_transcript_entry(thread_id, "system", message)
 
     def _create_thread(self, *, for_pending_send: bool = False) -> None:
         if self._worker is not None and self._worker.isRunning():
@@ -791,6 +807,9 @@ class CommandConsoleWidget(QWidget):
             self.output.clear()
             self.history.clear()
             self._append_message("Sistema", "Nova conversa criada. O histórico é independente.", "system")
+            self.ai_consultation_panel.set_thread_context(
+                thread_id, self._pending_directive or "", self._pending_directive or ""
+            )
             if self.isVisible():
                 self._thread_refresh_timer.start()
             self._load_threads()
@@ -805,6 +824,9 @@ class CommandConsoleWidget(QWidget):
             if not directive:
                 return
             self._append_message("Tu", directive, "user")
+            self.ai_consultation_panel.set_thread_context(
+                self._active_thread_id, directive, self._recent_conversation_context()
+            )
             intent = parse_provider_intent(directive)
             if intent.requested:
                 self._start_provider_consultation(
@@ -849,6 +871,10 @@ class CommandConsoleWidget(QWidget):
             for message in messages:
                 if isinstance(message, dict):
                     self._append_persisted_message(message)
+            latest_user = next((str(item.get("content") or "") for item in reversed(messages) if isinstance(item, dict) and item.get("role") == "user"), "")
+            self.ai_consultation_panel.set_thread_context(
+                thread_id, latest_user, self._recent_conversation_context()
+            )
             self._append_message("Sistema", "Conversa carregada do histórico local.", "system")
             if self.isVisible():
                 self._thread_refresh_timer.start()
