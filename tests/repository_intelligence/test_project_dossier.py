@@ -53,7 +53,7 @@ def test_project_dossier_includes_latest_snapshot_and_static_audit(tmp_path: Pat
     dossier = build_project_dossier(vault=vault, project_id="sample")
 
     assert dossier["repository"]["snapshots"][0]["snapshot_id"] == snapshot["snapshot_id"]
-    assert dossier["repository"]["snapshots"][0]["tree_fingerprint"] == snapshot["tree_fingerprint"]
+    assert dossier["repository"]["snapshots"][0]["tree_fingerprint"] == snapshot["fingerprint"]
     assert dossier["static_audit"]["audit_fingerprint"] == audit["audit_fingerprint"]
     assert dossier["static_audit"]["summary"]["python_files"] == 1
     assert dossier["status"]["classification"] == "evidence_partial"
