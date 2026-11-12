@@ -95,6 +95,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("GET",), "/runtime/autonomy", SecurityScope.LOCAL_CLIENT, "Autonomy/task status."),
     RouteClassification(("GET",), "/runtime/repository-learning", SecurityScope.LOCAL_CLIENT, "Persistent incremental repository-learning progress, metadata index and evidence-based project groups."),
     RouteClassification(("GET",), "/runtime/repository-learning/tree", SecurityScope.LOCAL_CLIENT, "Reads only a bounded tree artifact indexed for a known repository."),
+    RouteClassification(("GET",), "/runtime/repository-learning/dossier", SecurityScope.OPERATOR, "Returns a bounded, read-only evidence-linked project dossier from the local Vault; no transcript bodies or inferred decisions."),
     RouteClassification(("POST",), "/runtime/repository-learning/start", SecurityScope.OPERATOR, "Starts or resumes bounded read-only repository learning."),
     RouteClassification(("POST",), "/runtime/repository-learning/stop", SecurityScope.OPERATOR, "Pauses repository learning without discarding its durable cursor."),
     RouteClassification(("GET",), "/runtime/auto-help", SecurityScope.LOCAL_CLIENT, "Durable free-only external-help status and bounded request history."),

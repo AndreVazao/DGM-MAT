@@ -32,6 +32,34 @@ def repository_learning_status(limit: int = Query(default=200, ge=1, le=200)):
     return status
 
 
+@router.get("/dossier")
+def project_dossier(
+    project_id: str = Query(min_length=1, max_length=100),
+    conversation_limit: int = Query(default=100, ge=1, le=500),
+    snapshot_limit: int = Query(default=20, ge=1, le=100),
+    finding_limit: int = Query(default=50, ge=1, le=200),
+):
+    """Return a bounded evidence-linked project dossier without transcript bodies."""
+    from core.repository_intelligence.project_dossier import ProjectDossierError, build_project_dossier
+    from core.vault.catalog import VaultCatalog
+
+    vault_root = VaultCatalog.default_root()
+    if not (vault_root / "index" / "catalog.sqlite3").is_file():
+        raise HTTPException(status_code=503, detail="Persistent Vault is not initialized")
+    try:
+        return build_project_dossier(
+            vault=VaultCatalog(vault_root=vault_root),
+            project_id=project_id,
+            conversation_limit=conversation_limit,
+            snapshot_limit=snapshot_limit,
+            finding_limit=finding_limit,
+        )
+    except ProjectDossierError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Vault evidence is unavailable") from exc
+
+
 @router.get("/tree")
 def repository_tree(repo_path: str = Query(min_length=1, max_length=1024)):
     """Return a bounded tree artifact for a repository already in the inventory."""
