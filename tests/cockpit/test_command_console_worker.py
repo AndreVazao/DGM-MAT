@@ -213,7 +213,7 @@ def test_inline_consultation_panel_queues_selected_provider_for_active_thread(ap
     from cockpit.workspace.ai_consultation_inline_panel import AIConsultationInlinePanel
 
     panel = AIConsultationInlinePanel("http://127.0.0.1:8181/runtime")
-    panel.set_thread_context("thread-inline", "Revê esta proposta técnica.")
+    panel.set_thread_context("thread-inline", "Revê esta proposta técnica.", "Tu: contexto anterior\nDGM-MAT: resposta anterior")
     panel._status_loaded = True
     panel._consult_enabled = True
     panel._allowed_providers = {"claude"}
@@ -233,6 +233,7 @@ def test_inline_consultation_panel_queues_selected_provider_for_active_thread(ap
     )
     assert captured[0][3]["task_ref"] == "mobile-thread:thread-inline"
     assert captured[0][3]["providers"] == ["claude"]
+    assert "contexto anterior" in captured[0][3]["context"]
     assert captured[0][3]["free_capacity_confirmed"] is True
     panel.close()
 
