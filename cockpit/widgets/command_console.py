@@ -779,14 +779,14 @@ class CommandConsoleWidget(QWidget):
                 return
             self._active_thread_id = thread_id
             self._active_thread_status = "active"
-            self.ai_consultation_panel.set_thread_context(
-                thread_id, self._pending_directive or "", self._recent_conversation_context()
-            )
             self._seen_message_ids.clear()
             self._search_has_more = False
             self.output.clear()
             self.history.clear()
             self._append_message("Sistema", "Nova conversa criada. O histórico é independente.", "system")
+            self.ai_consultation_panel.set_thread_context(
+                thread_id, self._pending_directive or "", self._pending_directive or ""
+            )
             if self.isVisible():
                 self._thread_refresh_timer.start()
             self._load_threads()
@@ -834,15 +834,15 @@ class CommandConsoleWidget(QWidget):
             self._active_thread_id = thread_id
             self._active_thread_status = str(data.get("status") or "active")
             latest_user = next((str(item.get("content") or "") for item in reversed(messages) if isinstance(item, dict) and item.get("role") == "user"), "")
-            self.ai_consultation_panel.set_thread_context(
-                thread_id, latest_user, self._recent_conversation_context()
-            )
             self._seen_message_ids.clear()
             self.output.clear()
             self.history.clear()
             for message in messages:
                 if isinstance(message, dict):
                     self._append_persisted_message(message)
+            self.ai_consultation_panel.set_thread_context(
+                thread_id, latest_user, self._recent_conversation_context()
+            )
             self._append_message("Sistema", "Conversa carregada do histórico local.", "system")
             if self.isVisible():
                 self._thread_refresh_timer.start()
