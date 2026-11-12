@@ -561,6 +561,17 @@ class CommandConsoleWidget(QWidget):
     def _load_threads(self) -> None:
         self._conversation_request("threads-list", "GET", "/mobile/threads")
 
+    def _recent_conversation_context(self) -> str:
+        lines = []
+        for item in self.history[-6:]:
+            if not isinstance(item, dict):
+                continue
+            text = str(item.get("text") or "").strip()
+            if text:
+                sender = str(item.get("sender") or "Sistema")
+                lines.append(sender + ": " + text[:700])
+        return "\n".join(lines)[-3500:]
+
     def _open_ai_consultation(self) -> None:
         if not self._active_thread_id:
             self._append_message(
@@ -577,7 +588,9 @@ class CommandConsoleWidget(QWidget):
             (item.get("text", "") for item in reversed(self.history) if item.get("sender") == "Tu"),
             "",
         )
-        self.ai_consultation_panel.set_thread_context(self._active_thread_id, latest)
+        self.ai_consultation_panel.set_thread_context(
+            self._active_thread_id, latest, self._recent_conversation_context()
+        )
         self.ai_consultation_panel.show()
         self.ai_consultation_panel.refresh_status()
 
@@ -766,7 +779,9 @@ class CommandConsoleWidget(QWidget):
                 return
             self._active_thread_id = thread_id
             self._active_thread_status = "active"
-            self.ai_consultation_panel.set_thread_context(thread_id, self._pending_directive or "")
+            self.ai_consultation_panel.set_thread_context(
+                thread_id, self._pending_directive or "", self._recent_conversation_context()
+            )
             self._seen_message_ids.clear()
             self._search_has_more = False
             self.output.clear()
@@ -786,7 +801,9 @@ class CommandConsoleWidget(QWidget):
             if not directive:
                 return
             self._append_message("Tu", directive, "user")
-            self.ai_consultation_panel.set_thread_context(self._active_thread_id, directive)
+            self.ai_consultation_panel.set_thread_context(
+                self._active_thread_id, directive, self._recent_conversation_context()
+            )
             self._start_request(
                 directive, status_only=directive.casefold() == "runtime status"
             )
@@ -817,7 +834,9 @@ class CommandConsoleWidget(QWidget):
             self._active_thread_id = thread_id
             self._active_thread_status = str(data.get("status") or "active")
             latest_user = next((str(item.get("content") or "") for item in reversed(messages) if isinstance(item, dict) and item.get("role") == "user"), "")
-            self.ai_consultation_panel.set_thread_context(thread_id, latest_user)
+            self.ai_consultation_panel.set_thread_context(
+                thread_id, latest_user, self._recent_conversation_context()
+            )
             self._seen_message_ids.clear()
             self.output.clear()
             self.history.clear()
