@@ -108,6 +108,11 @@ def _resolve_js(root: Path, source: str, specifier: str) -> bool:
     return False
 
 
+def _dependency_name(value: Any) -> str:
+    raw = str(value).strip()
+    return re.split(r"\\s*(?:===|==|!=|~=|<=|>=|<|>)", raw, maxsplit=1)[0].casefold()
+
+
 def _manifests(files: dict[str, Path], max_bytes: int) -> dict[str, Any]:
     result: dict[str, Any] = {"python": [], "javascript": [], "warnings": []}
     for relative, path in sorted(files.items()):
@@ -125,7 +130,7 @@ def _manifests(files: dict[str, Path], max_bytes: int) -> dict[str, Any]:
                 values = list(project.get("dependencies", []))
                 for group in project.get("optional-dependencies", {}).values():
                     values.extend(group)
-                result["python"].extend(str(x).split("[", 1)[0].casefold() for x in values)
+                result["python"].extend(_dependency_name(x) for x in values)
             elif name.startswith("requirements"):
                 for line in (text or "").splitlines():
                     cleaned = line.split("#", 1)[0].strip()
