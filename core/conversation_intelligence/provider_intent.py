@@ -94,7 +94,7 @@ def parse_provider_intent(message: str) -> ProviderIntent:
     if not providers:
         return ProviderIntent(False, reason="explicit_intent_without_supported_provider")
 
-    question = message[matches[-1].end():end].strip()
+    question = message[matches[-1].end():].strip()
     # If the user wrote a colon after the provider list, it belongs to the
     # command separator rather than to the question.
     question = re.sub(r"^[\s,:—–-]+", "", question).strip()
