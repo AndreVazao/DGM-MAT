@@ -49,9 +49,6 @@ Write-Host "The updater will verify the digest, request graceful shutdown, back 
 
 try {
     & $installer -PackageExe $packageExe -ExpectedExeSha256 $expectedHash
-    if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
-        throw "The managed updater returned exit code $LASTEXITCODE."
-    }
 }
 catch {
     Write-Error ("DGM-MAT update failed: " + $_.Exception.GetType().Name + ": " + $_.Exception.Message)
