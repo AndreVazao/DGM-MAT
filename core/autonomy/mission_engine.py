@@ -746,6 +746,18 @@ class MissionEngine:
                 "required_capabilities": list(capabilities),
             }
 
+        if intent_name.startswith("browser_open_provider:"):
+            provider = intent_name.split(":", 1)[1]
+            from core.autonomy.provider_launcher import PROVIDER_URLS
+            if provider in PROVIDER_URLS and intent_decision.supported and intent_decision.requires_approval:
+                return {
+                    "status": "READY",
+                    "handler": "browser_open_provider",
+                    "provider": provider,
+                    "approval_required": True,
+                    "message_sending": False,
+                }
+
         if intent_name in self.AUTO_RUN_READ_ONLY_INTENTS or intent_name == "repository_sync_worktree":
             if intent_decision.supported:
                 return {
@@ -857,7 +869,23 @@ class MissionEngine:
                 self._mark_execution_started(mission)
 
                 intent = classify_mission_intent(mission.goal)
-                if intent.intent == "list_repositories" and intent.supported:
+                if intent.intent.startswith("browser_open_provider:") and intent.supported:
+                    from core.autonomy.provider_launcher import launch_provider_home
+                    provider = intent.intent.split(":", 1)[1]
+                    result = launch_provider_home(provider)
+                    result.update({
+                        "mission_id": mission_id,
+                        "handler": "browser_open_provider",
+                        "execution_duration": 0.0,
+                    })
+                    finalized = self._finish_mission_success(mission, result)
+                    if finalized is None:
+                        raise RuntimeError(
+                            "Provider launch finalization was refused because durable state "
+                            "changed or its checkpoint is unavailable."
+                        )
+                    return finalized
+                elif intent.intent == "list_repositories" and intent.supported:
                     result = self._execute_list_repositories_mission(mission)
                     finalized = self._finish_mission_success(mission, result)
                     if finalized is None:
