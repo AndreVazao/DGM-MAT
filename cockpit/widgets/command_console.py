@@ -581,10 +581,11 @@ class CommandConsoleWidget(QWidget):
         self.ai_consultation_panel.show()
         self.ai_consultation_panel.refresh_status()
 
-    def _on_inline_consultation_status(self, message: str) -> None:
-        self._append_message("Sistema", message, "system")
-        if self._active_thread_id:
-            self._persist_transcript_entry(self._active_thread_id, "system", message)
+    def _on_inline_consultation_status(self, thread_id: str, message: str) -> None:
+        if thread_id == self._active_thread_id:
+            self._append_message("Sistema", message, "system")
+        if thread_id:
+            self._persist_transcript_entry(thread_id, "system", message)
 
     def _create_thread(self, *, for_pending_send: bool = False) -> None:
         if self._worker is not None and self._worker.isRunning():
