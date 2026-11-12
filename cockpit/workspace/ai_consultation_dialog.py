@@ -383,7 +383,7 @@ class AIConsultationDialog(QDialog):
                     for item in recent
                     if isinstance(item, dict)
                     and isinstance(item.get("consultation_id"), str)
-                    and 1 <= len(item["consultation_id"]) <= 80
+                    and re.fullmatch(r"browser_consult_[0-9a-f]{32}", item["consultation_id"])
                 ]
             allowed = set(data.get("free_providers_allowlisted") or [])
             for provider, checkbox in self.provider_checks.items():
