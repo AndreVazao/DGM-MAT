@@ -265,3 +265,42 @@ def test_path_diagnostics_reads_machine_user_and_process_scopes_without_writes(t
     assert "SetEnvironmentVariable" not in script
     assert "Set-ItemProperty" not in script
     assert "Remove-Item" not in script
+
+
+def test_services_inventory_is_catalogued_as_read_only():
+    catalog = CommandExecutor(allowed_roots=[]).catalog()
+    item = next(entry for entry in catalog["commands"] if entry["id"] == "services.inventory")
+    assert item["risk"] == "READ"
+    assert item["requires_target"] is False
+
+
+def test_services_inventory_returns_only_bounded_non_sensitive_metadata(tmp_path):
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return FakeCompleted(
+            0,
+            '[{"Name":"EventLog","DisplayName":"Windows Event Log","State":"Running","StartMode":"Auto","ProcessId":1000}]',
+            "",
+        )
+
+    executor = CommandExecutor(
+        allowed_roots=[tmp_path], runner=runner,
+        which=lambda name: "/windows/powershell.exe" if name == "powershell" else None,
+    )
+    result = executor.execute("services.inventory")
+    assert result["status"] == "passed"
+    assert calls[0][1]["shell"] is False
+    script = calls[0][0][5]
+    assert "Get-CimInstance Win32_Service" in script
+    assert "Select-Object -First 200" in script
+    assert "DisplayName" in script
+    assert "StartMode" in script
+    assert "ProcessId" in script
+    assert "StartName" not in script
+    assert "PathName" not in script
+    assert "CommandLine" not in script
+    assert "Set-Service" not in script
+    assert "Stop-Service" not in script
+    assert "Start-Service" not in script

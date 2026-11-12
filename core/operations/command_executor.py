@@ -25,6 +25,7 @@ CATALOG: tuple[CommandSpec, ...] = (
     CommandSpec("system.summary", "Read Windows/host and PowerShell runtime summary", "READ"),
     CommandSpec("software.inventory", "List installed application metadata from Windows uninstall registry", "READ"),
     CommandSpec("environment.path_diagnostics", "Inspect machine, user and process PATH entries without changing them", "READ"),
+    CommandSpec("services.inventory", "List bounded Windows service metadata without changing service state", "READ"),
     CommandSpec("process.top", "List a bounded sample of processes", "READ"),
     CommandSpec("engines.inventory", "Observe running Ollama and Claude Code process names/IDs without managing them", "READ"),
     CommandSpec("git.status", "Read Git status for an authorized repository path", "READ", True),
@@ -143,6 +144,21 @@ class CommandExecutor:
                 "}"
                 "}; "
                 "$rows | Select-Object -First 120 | ConvertTo-Json -Compress"
+            )
+        elif command_id == "services.inventory":
+            # Inventory only public service metadata. Do not expose service account,
+            # executable path, registry path, or command-line details.
+            argv = self._powershell_argv(
+                "$ErrorActionPreference='Stop'; "
+                "Get-CimInstance Win32_Service | "
+                "Sort-Object Name | "
+                "Select-Object -First 200 "
+                "@{Name='Name';Expression={$_.Name}},"
+                "@{Name='DisplayName';Expression={$_.DisplayName}},"
+                "@{Name='State';Expression={$_.State}},"
+                "@{Name='StartMode';Expression={$_.StartMode}},"
+                "@{Name='ProcessId';Expression={$_.ProcessId}} | "
+                "ConvertTo-Json -Compress"
             )
         elif command_id == "process.top":
             argv = self._powershell_argv(
