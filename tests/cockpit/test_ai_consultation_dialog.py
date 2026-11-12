@@ -88,6 +88,33 @@ def test_status_response_limits_provider_choices_to_local_allowlist(app):
     dialog.close()
 
 
+
+def test_changing_mission_id_invalidates_loaded_mission_binding(app):
+    dialog = AIConsultationDialog(
+        "http://127.0.0.1:8181/runtime",
+        "thread-mission-binding",
+    )
+    dialog.mission_id.setText("mission_1234abcd")
+    dialog._on_request_completed(
+        "mission-context",
+        {
+            "mission_id": "mission_1234abcd",
+            "mission_status": "RUNNING",
+            "goal": "Review the mission",
+            "context": "Bounded context",
+            "context_sha256": "a" * 64,
+            "source": "durable_mission_checkpoint",
+            "provider_contacted": False,
+        },
+        "",
+    )
+    assert dialog._loaded_mission_id == "mission_1234abcd"
+
+    dialog.mission_id.setText("mission_5678abcd")
+    assert dialog._loaded_mission_id is None
+    assert "Carrega novamente" in dialog.mission_context_info.text()
+    dialog.close()
+
 def test_consultation_approvals_are_started_sequentially(app):
     dialog = AIConsultationDialog(
         "http://127.0.0.1:8181/runtime",
@@ -156,4 +183,16 @@ def test_mission_context_loader_uses_durable_checkpoint_and_requires_fresh_previ
     assert "LATEST ERROR" in dialog.context.toPlainText()
     assert dialog._preview_sha256 is None
     assert "Fornecedor contactado: não" in dialog.mission_context_info.text()
+
+    captured.clear()
+    dialog.goal.setPlainText("Ask ChatGPT to review this mission.")
+    dialog.context.setPlainText("Bounded redacted mission context.")
+    dialog._preview_sha256 = "e" * 64
+    dialog._status_loaded = True
+    dialog._consult_enabled = True
+    dialog.free_capacity.setChecked(True)
+    dialog._enqueue()
+    assert captured[0][0:3] == ("enqueue", "POST", "/recovery/browser-consult/enqueue")
+    assert captured[0][3]["task_ref"] == "mission_1234abcd"
+    assert captured[0][3]["task_ref"] != "mobile-thread:thread-mission"
     dialog.close()
