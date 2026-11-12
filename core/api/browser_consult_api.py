@@ -281,7 +281,7 @@ def peek_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "cl
 
 
 @router.post("/next")
-def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"], request: Request):
+def claim_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "claude", "deepseek", "qwen"], request: Request):
     _principal(request)
     try:
         item = _store().claim_next(provider)
