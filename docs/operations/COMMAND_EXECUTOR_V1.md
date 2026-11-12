@@ -98,3 +98,13 @@ A manual-only workflow is available at `.github/workflows/governed-executor-test
 
 
 The pre-existing `autonomy-smoke.yml` workflow on the default branch is also extended in this feature branch to run these focused backend tests and clone/run the cockpit's Node contract tests. Because the workflow already exists on the default branch, it can be manually dispatched from GitHub Actions with branch `feat/governed-command-executor-v1` selected. No push or pull-request trigger was added. The workflow has not yet been dispatched in this session.
+
+
+## Read-only PATH diagnostics
+
+- \`environment.path_diagnostics\` reads the Machine, User and current Process PATH scopes and returns up to 120 entries with scope, index, path, existence and duplicate indicators.
+- The command preserves the PATH entry text so an operator can identify the exact item requiring attention. Treat this output as local machine configuration data; do not publish it to shared/cloud logs without review.
+- Existence checks expand environment-variable references and test directory presence. A missing directory is diagnostic evidence, not permission to remove or rewrite the entry.
+- The command does not modify PATH, registry values, environment variables, files or permissions. It does not elevate, install software or restart processes.
+- Repair remains a separate future capability: it must produce a proposed before/after diff, preserve the original value, create a backup, require approval for the exact change, and verify the result in a fresh process/session.
+- Windows host acceptance is still required; CI mocks validate command construction and safety boundaries only.
