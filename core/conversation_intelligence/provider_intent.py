@@ -82,9 +82,11 @@ def parse_provider_intent(message: str) -> ProviderIntent:
 
     # Limit the provider search to the command clause. A later unrelated
     # provider mention should not expand the dispatch set.
-    clause_end = re.search(r"[\n.!?;]", message[intent.end():])
+    command_tail = message[intent.end():]
+    clause_end = re.search(r"[\\n.!?;]", command_tail)
     end = intent.end() + clause_end.start() if clause_end else len(message)
-    clause = message[:end]
+    # Only names following the explicit command verb authorize dispatch.
+    clause = message[intent.end():end]
     matches = list(_PROVIDER_PATTERN.finditer(clause))
     providers = {
         provider
@@ -94,7 +96,7 @@ def parse_provider_intent(message: str) -> ProviderIntent:
     if not providers:
         return ProviderIntent(False, reason="explicit_intent_without_supported_provider")
 
-    question = message[matches[-1].end():].strip()
+    question = message[intent.end() + matches[-1].end():].strip()
     # If the user wrote a colon after the provider list, it belongs to the
     # command separator rather than to the question.
     question = re.sub(r"^[\s,:—–-]+", "", question).strip()
