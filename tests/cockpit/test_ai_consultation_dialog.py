@@ -278,14 +278,14 @@ def test_consultation_status_restores_recent_receipt_ids_for_later_readback(app)
             "enabled": False,
             "free_providers_allowlisted": [],
             "recent": [
-                {"consultation_id": "consultation-old", "status": "COMPLETED"},
+                {"consultation_id": "browser_consult_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "status": "COMPLETED"},
                 {"consultation_id": "../invalid", "status": "BLOCKED_LOGIN"},
-                {"consultation_id": "consultation-new", "status": "PENDING"},
+                {"consultation_id": "browser_consult_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "status": "PENDING"},
                 {"status": "UNKNOWN"},
             ],
         },
         "",
     )
-    assert dialog._result_ids == ["consultation-old", "../invalid", "consultation-new"]
+    assert dialog._result_ids == ["browser_consult_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "browser_consult_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"]
     assert dialog.results_button.isEnabled() is True
     dialog.close()
