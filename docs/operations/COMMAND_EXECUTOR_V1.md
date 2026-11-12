@@ -108,3 +108,12 @@ The pre-existing `autonomy-smoke.yml` workflow on the default branch is also ext
 - The command does not modify PATH, registry values, environment variables, files or permissions. It does not elevate, install software or restart processes.
 - Repair remains a separate future capability: it must produce a proposed before/after diff, preserve the original value, create a backup, require approval for the exact change, and verify the result in a fresh process/session.
 - Windows host acceptance is still required; CI mocks validate command construction and safety boundaries only.
+
+
+## Read-only Windows service inventory
+
+- \`services.inventory\` reads service metadata through \`Get-CimInstance Win32_Service\`, sorted by service name and bounded to 200 entries.
+- Returned fields are limited to service name, display name, state, start mode and process ID.
+- Service account names, executable/image paths, registry paths and command lines are deliberately excluded because they can expose usernames, local filesystem layout or sensitive launch configuration.
+- The command does not start, stop, pause, resume, reconfigure, disable or delete services; it does not elevate.
+- A service PID is observational data only and must not be treated as proof that DGM-MAT owns the process. Any future lifecycle action must use a separately recorded process identity and approval.
