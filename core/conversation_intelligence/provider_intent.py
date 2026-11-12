@@ -79,6 +79,10 @@ def parse_provider_intent(message: str) -> ProviderIntent:
     intent = _INTENT_PATTERN.search(message)
     if intent is None:
         return ProviderIntent(False)
+    # Explicit negation is not authorization to contact an external provider.
+    prefix = message[max(0, intent.start() - 24):intent.start()]
+    if re.search(r"\\b(?:não|nao|never|don't|do not)\\s*$", prefix, re.IGNORECASE):
+        return ProviderIntent(False, reason="negated_consultation_intent")
 
     # Limit the provider search to the command clause. A later unrelated
     # provider mention should not expand the dispatch set.
