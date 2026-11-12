@@ -125,6 +125,7 @@ def test_archive_restore_response_updates_state_without_unbound_data(app, monkey
 
 def test_live_refresh_appends_only_new_messages_and_keeps_provider_provenance(app):
     widget = CommandConsoleWidget()
+    widget.history.clear()  # Exclude the widget startup greeting from transcript assertions.
     widget._active_thread_id = "thread-live"
     first = {
         "id": "msg-provider-1",
