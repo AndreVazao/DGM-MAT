@@ -36,7 +36,7 @@ def test_disabled_store_never_queues(monkeypatch, tmp_path):
 
 
 def test_enqueue_claim_complete_and_cooldown(monkeypatch, tmp_path):
-    _configure(monkeypatch, "chatgpt", "gemini", "grok")
+    _configure(monkeypatch, "chatgpt", "gemini", "grok", "claude")
     store = BrowserConsultStore(tmp_path / "consult.sqlite3", cooldown_seconds=300)
     queued = store.enqueue(
         task_ref="mission-1",
@@ -63,6 +63,21 @@ def test_enqueue_claim_complete_and_cooldown(monkeypatch, tmp_path):
     assert store.claim_next("chatgpt") is None
     assert store.approve(queued["consultation_ids"][1], operator="test-operator") is True
     assert store.claim_next("gemini") is not None
+
+
+def test_claude_is_a_supported_free_browser_consult_provider(monkeypatch, tmp_path):
+    _configure(monkeypatch, "claude")
+    store = BrowserConsultStore(tmp_path / "claude-consult.sqlite3")
+    queued = store.enqueue(
+        task_ref="mission-claude",
+        goal="Review this bounded technical change",
+        providers=["claude"],
+    )
+    assert queued["provider_count"] == 1
+    assert store.approve(queued["consultation_ids"][0], operator="test-operator") is True
+    claimed = store.claim_next("claude")
+    assert claimed is not None
+    assert claimed["provider"] == "claude"
 
 
 def test_duplicate_task_provider_prompt_is_idempotent(monkeypatch, tmp_path):
