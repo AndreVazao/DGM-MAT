@@ -89,6 +89,17 @@ class _RuntimeRequestWorker(QThread):
                 "system",
             )
             return True
+        if status == "WAITING_FOR_CAPABILITY":
+            reason = mission.get("reason") or mission.get("error") or result.get("reason")
+            self.completed.emit(
+                "DGM-MAT",
+                f"Missão bloqueada por falta de capacidade ({mission_id}).\\n"
+                + str(reason or "Não existe um executor registado para este pedido.")
+                + "\\nNenhuma ação foi executada. Não voltei a submeter a missão. "
+                "É necessário ligar ou instalar um executor compatível antes de tentar novamente.",
+                "error",
+            )
+            return True
         if status == "APPROVAL_PENDING":
             self.completed.emit(
                 "DGM-MAT",
