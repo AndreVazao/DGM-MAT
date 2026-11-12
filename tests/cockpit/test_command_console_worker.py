@@ -188,3 +188,20 @@ def test_live_refresh_requests_only_the_visible_active_thread(app, monkeypatch):
     )]
     assert widget._thread_refresh_inflight is True
     widget.close()
+
+
+
+def test_transcript_write_response_marks_local_echo_as_seen(app):
+    widget = CommandConsoleWidget()
+    widget._active_thread_id = "thread-live"
+    widget._on_conversation_request_completed(
+        "send-user-entry",
+        {
+            "thread_id": "thread-live",
+            "message": {"id": "msg-local-user", "role": "user", "content": "Olá"},
+        },
+        "",
+    )
+
+    assert "msg-local-user" in widget._seen_message_ids
+    widget.close()
