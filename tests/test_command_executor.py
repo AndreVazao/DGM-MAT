@@ -196,3 +196,36 @@ def test_git_target_with_invalid_path_characters_is_denied(tmp_path):
     )
     with pytest.raises(CommandDenied, match="Target path is invalid"):
         executor.execute("git.status", target_path="bad\x00path")
+
+
+
+def test_software_inventory_is_catalogued_as_read_only():
+    catalog = CommandExecutor(allowed_roots=[]).catalog()
+    item = next(entry for entry in catalog["commands"] if entry["id"] == "software.inventory")
+    assert item["risk"] == "READ"
+    assert item["requires_target"] is False
+
+
+def test_software_inventory_reads_registry_metadata_without_msi_or_uninstall_commands(tmp_path):
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return FakeCompleted(0, '[{"Name":"Example App","Version":"1.2","Publisher":"Example"}]', "")
+
+    executor = CommandExecutor(
+        allowed_roots=[tmp_path], runner=runner,
+        which=lambda name: "/windows/powershell.exe" if name == "powershell" else None,
+    )
+    result = executor.execute("software.inventory")
+    assert result["status"] == "passed"
+    assert calls[0][1]["shell"] is False
+    script = calls[0][0][5]
+    assert "HKLM:\\Software" in script
+    assert "HKCU:\\Software" in script
+    assert "Win32_Product" not in script
+    assert "UninstallString" not in script
+    assert "QuietUninstallString" not in script
+    assert "InstallLocation" not in script
+    assert "DisplayName" in script
+    assert "Publisher" in script

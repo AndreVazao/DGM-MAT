@@ -23,6 +23,7 @@ class CommandSpec:
 
 CATALOG: tuple[CommandSpec, ...] = (
     CommandSpec("system.summary", "Read Windows/host and PowerShell runtime summary", "READ"),
+    CommandSpec("software.inventory", "List installed application metadata from Windows uninstall registry", "READ"),
     CommandSpec("process.top", "List a bounded sample of processes", "READ"),
     CommandSpec("engines.inventory", "Observe running Ollama and Claude Code process names/IDs without managing them", "READ"),
     CommandSpec("git.status", "Read Git status for an authorized repository path", "READ", True),
@@ -97,6 +98,26 @@ class CommandExecutor:
                 "[pscustomobject]@{OS=[System.Environment]::OSVersion.VersionString; "
                 "PowerShell=$PSVersionTable.PSVersion.ToString(); "
                 "Computer=$env:COMPUTERNAME} | ConvertTo-Json -Compress"
+            )
+        elif command_id == "software.inventory":
+            # Read uninstall registry metadata only. Never use Win32_Product (which can
+            # trigger MSI consistency checks/repairs) or return uninstall commands/paths.
+            argv = self._powershell_argv(
+                "$ErrorActionPreference='Stop'; "
+                "$roots=@("
+                "'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',"
+                "'HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',"
+                "'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'"
+                "); "
+                "$items=foreach($root in $roots){"
+                "Get-ItemProperty -Path $root -ErrorAction SilentlyContinue | "
+                "Where-Object { -not [string]::IsNullOrWhiteSpace($_.DisplayName) -and $_.SystemComponent -ne 1 } | "
+                "Select-Object @{Name='Name';Expression={$_.DisplayName}},"
+                "@{Name='Version';Expression={$_.DisplayVersion}},"
+                "@{Name='Publisher';Expression={$_.Publisher}},"
+                "@{Name='InstallDate';Expression={$_.InstallDate}}"
+                "}; "
+                "$items | Sort-Object Name,Version -Unique | Select-Object -First 150 | ConvertTo-Json -Compress"
             )
         elif command_id == "process.top":
             argv = self._powershell_argv(
