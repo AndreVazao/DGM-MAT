@@ -82,3 +82,19 @@ fields are explicitly marked unavailable. No provenance is fabricated.
 The manifest streams source IDs into JSON rather than retaining a potentially
 large array in memory. Schema version is 2. The source SQLite database and
 original archive remain read-only throughout generation.
+
+
+## Read-only Vault dossier query API — V1
+
+The repository-learning API now exposes:
+
+- `GET /runtime/repository-learning/dossier?project_id=<registered-vault-project>`
+- Optional bounded parameters: `conversation_limit` (1–500), `snapshot_limit` (1–100), and `finding_limit` (1–200).
+- Route scope: operator session only. It is explicitly classified in the API security inventory.
+- Response includes canonical project identity/aliases, conversation counts grouped by provider and completeness, a bounded list of conversation metadata with evidence references, repository tree snapshot metadata, and the latest valid Vault static-audit summary/findings when available.
+- Transcript bodies, raw archive bytes, credentials, and full message contents are never returned.
+- The endpoint reports only conversations already assigned to the project in Vault. It does not infer assignments, provider archive completeness, Git branch/commit, runtime health, test success, implementation completion or operator decisions.
+- The latest static audit is read only from the project's Vault audit directory, with path containment, symlink exclusion, JSON size bounds and project identity checks.
+- Empty or incomplete evidence is represented explicitly (`no_evidence`, `evidence_partial`, completeness `unknown`); absence is not converted into a claim that a provider or repository has no history.
+
+This is the first queryable dossier projection, not the final natural-language project consultation. GitHub branch/PR/issue/CI evidence, local runtime probes, explicit decision records, provider source checkpoints and conversation-to-code links remain separate integration stages.
