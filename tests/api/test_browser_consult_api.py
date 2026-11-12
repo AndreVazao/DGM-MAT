@@ -16,7 +16,7 @@ from core.recovery.browser_consult_store import BrowserConsultStore
 
 def make_client(monkeypatch, tmp_path):
     monkeypatch.setenv("DGM_BROWSER_CONSULT_ENABLED", "1")
-    monkeypatch.setenv("DGM_BROWSER_CONSULT_FREE_PROVIDERS", "chatgpt,gemini,grok,deepseek,qwen")
+    monkeypatch.setenv("DGM_BROWSER_CONSULT_FREE_PROVIDERS", "chatgpt,gemini,grok,claude,deepseek,qwen")
     store = BrowserConsultStore(tmp_path / "consult.sqlite3")
     monkeypatch.setattr(browser_consult_api, "_store", lambda: store)
     monkeypatch.setattr(browser_consult_api, "_audit", lambda *args, **kwargs: None)
@@ -229,6 +229,19 @@ def test_enqueue_rejects_content_changed_after_preview(monkeypatch, tmp_path):
 
     assert changed.status_code == 409
     assert store.status()["counts"] == {}
+
+
+def test_enqueue_accepts_claude_provider(monkeypatch, tmp_path):
+    client, store = make_client(monkeypatch, tmp_path)
+    response = client.post("/recovery/browser-consult/enqueue", json={
+        "task_ref": "mission-claude-api",
+        "goal": "Review a bounded provider integration change",
+        "providers": ["claude"],
+        "free_capacity_confirmed": True,
+    })
+    assert response.status_code == 200
+    assert response.json()["provider_count"] == 1
+    assert store.status()["counts"] == {"PENDING_APPROVAL": 1}
 
 
 def test_enqueue_accepts_exact_preview_digest(monkeypatch, tmp_path):
