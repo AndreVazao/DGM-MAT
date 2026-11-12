@@ -21,6 +21,15 @@
 - `ollama.status`: calls `ollama list` if the executable is available; it never starts or stops Ollama.
 - `claude.status`: calls `claude --version` if the CLI is available; it does not read auth files or submit prompts.
 
+## Additional read-only software inventory
+
+- `software.inventory` reads application metadata from the standard HKLM 64-bit, HKLM WOW6432Node and HKCU uninstall registry locations.
+- Returns only display name, version, publisher and install date; it does not return uninstall commands, install paths, registry paths, user profile paths or command-line arguments.
+- Excludes entries without a display name and entries marked as Windows system components; output is bounded to the first 150 distinct entries.
+- Deliberately does not use `Win32_Product`, because querying that WMI class can trigger Windows Installer consistency checks/repairs.
+- This is a bounded inventory slice, not proof that every installed/portable application has been discovered. Microsoft Store packages, portable apps and per-user package managers may need separate read-only adapters.
+- The command remains read-only, non-elevated, fixed-script PowerShell with `shell=False`, timeout and output cap. It does not install, update, repair or uninstall anything.
+
 ## Audit behavior
 
 Before a governed command is executed, the API must persist a `command.requested` event. If audit storage is unavailable, execution is refused. A `command.completed` or `command.denied` event is then appended. Records include UTC timestamp, event, command ID, status, session ID, duration and return code where available. They do not include stdout/stderr, credential values, or target paths.
