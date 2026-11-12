@@ -65,3 +65,9 @@ def test_provider_mentioned_after_question_boundary_is_not_selected():
     assert result.requested is True
     assert result.providers == ("grok",)
     assert result.question == "analisa esta proposta. O ChatGPT também foi referido."
+
+
+def test_negated_consultation_command_does_not_dispatch():
+    result = parse_provider_intent("Não consultes o ChatGPT sobre isto.")
+    assert result.requested is False
+    assert result.reason == "negated_consultation_intent"
