@@ -117,6 +117,15 @@ jobs:
           if (-not (Test-Path "browser_extension/manifest.json")) {
             throw "Browser extension manifest is missing."
           }
+          foreach ($script in @("scripts/install_windows_update.ps1", "scripts/install_dgm_mat_update.ps1", "scripts/rollback_windows_update.ps1")) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($script, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_.Message }
+              throw "Windows update script syntax validation failed: $script"
+            }
+          }
 
       - name: Resolve build version
         shell: pwsh
