@@ -242,6 +242,15 @@ def test_enqueue_accepts_claude_provider(monkeypatch, tmp_path):
     assert response.status_code == 200
     assert response.json()["provider_count"] == 1
     assert store.status()["counts"] == {"PENDING_APPROVAL": 1}
+    consultation_id = response.json()["consultation_ids"][0]
+    approved = client.post("/recovery/browser-consult/approve/" + consultation_id)
+    assert approved.status_code == 200
+    peek = client.get("/recovery/browser-consult/peek", params={"provider": "claude"})
+    assert peek.status_code == 200
+    assert peek.json()["next"]["provider"] == "claude"
+    claimed = client.post("/recovery/browser-consult/next", params={"provider": "claude"})
+    assert claimed.status_code == 200
+    assert claimed.json()["next"]["provider"] == "claude"
 
 
 def test_enqueue_accepts_exact_preview_digest(monkeypatch, tmp_path):
