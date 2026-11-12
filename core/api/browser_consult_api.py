@@ -274,7 +274,7 @@ def approve_browser_consultation(consultation_id: str, request: Request):
 
 
 @router.get("/peek")
-def peek_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "deepseek", "qwen"], request: Request):
+def peek_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "claude", "deepseek", "qwen"], request: Request):
     _principal(request)
     item = _store().peek_next(provider)
     return {"status": "pending" if item else "queue_empty", "next": item}
