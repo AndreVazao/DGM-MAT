@@ -1,7 +1,7 @@
 @echo off
 setlocal
-set "PACKAGE_ROOT=%~dp0"
-set "UPDATER=%PACKAGE_ROOT%scripts\install_dgm_mat_update.ps1"
+for %%I in ("%~dp0.") do set "PACKAGE_ROOT=%%~fI"
+set "UPDATER=%PACKAGE_ROOT%\scripts\install_dgm_mat_update.ps1"
 
 if not exist "%UPDATER%" (
     echo DGM-MAT update package is incomplete.
