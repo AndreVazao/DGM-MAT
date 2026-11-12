@@ -271,6 +271,7 @@ def audit_project(*, vault: VaultCatalog, project_id: str, snapshot_id: str | No
     folder = vault.root / "projects" / project_id / "audits"
     folder.mkdir(parents=True, exist_ok=True)
     json_path, md_path = folder / (fingerprint + ".json"), folder / (fingerprint + ".md")
+    reused = json_path.is_file() and md_path.is_file()
     if not json_path.exists():
         temp = json_path.with_suffix(".json.tmp")
         temp.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -280,5 +281,5 @@ def audit_project(*, vault: VaultCatalog, project_id: str, snapshot_id: str | No
         temp.write_text(_markdown(report), encoding="utf-8")
         temp.replace(md_path)
     report["report_path"], report["markdown_path"] = str(json_path), str(md_path)
-    report["reused"] = json_path.exists() and md_path.exists()
+    report["reused"] = reused
     return report
