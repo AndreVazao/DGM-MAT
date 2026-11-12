@@ -85,6 +85,7 @@ class AIConsultationDialog(QDialog):
         ("chatgpt", "ChatGPT"),
         ("gemini", "Gemini"),
         ("grok", "Grok"),
+        ("claude", "Claude"),
         ("deepseek", "DeepSeek"),
         ("qwen", "Qwen"),
     )
@@ -116,7 +117,7 @@ class AIConsultationDialog(QDialog):
         layout.addWidget(QLabel(
             "A consulta é enviada apenas para a fila local. A extensão Chrome "
             "emparelhada faz o transporte pela interface visível do fornecedor. "
-            "Claude ainda não está configurado nesta via; Codex e Claude Code são agentes locais separados."
+            "Claude está disponível através do separador Claude no browser; Codex e Claude Code continuam a ser agentes locais separados."
         ))
 
         mission_row = QHBoxLayout()
