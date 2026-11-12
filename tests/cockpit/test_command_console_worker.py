@@ -372,3 +372,56 @@ def test_provider_worker_fails_closed_when_provider_is_not_free_allowlisted(app,
     assert "Claude não está configurado" in emitted[0][1]
     assert "fallback pago" in emitted[0][1]
     assert emitted[0][2] == "error"
+
+
+
+def test_provider_worker_reports_partial_approval_without_retry(app, monkeypatch):
+    from cockpit.workspace.provider_consultation_worker import ProviderConsultationWorker
+
+    calls = []
+
+    class FakeResponse:
+        def __init__(self, status_code, payload=None):
+            self.status_code = status_code
+            self.payload = payload or {}
+
+        def json(self):
+            return self.payload
+
+    def fake_request(method, url, json=None, timeout=None):
+        calls.append((method, url))
+        if url.endswith("/recovery/browser-consult/status") and len(calls) == 1:
+            return FakeResponse(200, {
+                "enabled": True,
+                "free_providers_allowlisted": ["chatgpt", "grok"],
+            })
+        if url.endswith("/recovery/browser-consult/preview"):
+            return FakeResponse(200, {"prompt_sha256": "b" * 64})
+        if url.endswith("/recovery/browser-consult/enqueue"):
+            return FakeResponse(200, {"consultation_ids": ["consult-1", "consult-2"]})
+        if url.endswith("/recovery/browser-consult/status"):
+            return FakeResponse(200, {"recent": []})
+        if url.endswith("/approve/consult-1"):
+            return FakeResponse(200, {"status": "PENDING"})
+        if url.endswith("/approve/consult-2"):
+            return FakeResponse(503)
+        raise AssertionError("Unexpected request")
+
+    monkeypatch.setattr(
+        "cockpit.workspace.provider_consultation_worker.authenticated_request",
+        fake_request,
+    )
+    worker = ProviderConsultationWorker(
+        "http://127.0.0.1:8181/runtime",
+        "thread-provider",
+        "Revê isto",
+        "",
+        ("chatgpt", "grok"),
+    )
+    emitted = []
+    worker.completed.connect(lambda sender, message, kind: emitted.append((sender, message, kind)))
+    worker.run()
+
+    assert len([call for call in calls if "/approve/" in call[1]]) == 2
+    assert "1 consulta(s) já ficaram aprovadas" in emitted[0][1]
+    assert "Verifica o estado da fila antes de repetir" in emitted[0][1]
