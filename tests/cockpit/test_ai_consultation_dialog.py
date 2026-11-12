@@ -264,3 +264,28 @@ def test_consultation_result_readback_displays_unverified_receipts_sequentially(
     assert "não verificada" in rendered
     assert "não foram aceites nem executadas" in dialog.status.text()
     dialog.close()
+
+
+
+def test_consultation_status_restores_recent_receipt_ids_for_later_readback(app):
+    dialog = AIConsultationDialog(
+        "http://127.0.0.1:8181/runtime",
+        "thread-reopen",
+    )
+    dialog._on_request_completed(
+        "status",
+        {
+            "enabled": False,
+            "free_providers_allowlisted": [],
+            "recent": [
+                {"consultation_id": "consultation-old", "status": "COMPLETED"},
+                {"consultation_id": "../invalid", "status": "BLOCKED_LOGIN"},
+                {"consultation_id": "consultation-new", "status": "PENDING"},
+                {"status": "UNKNOWN"},
+            ],
+        },
+        "",
+    )
+    assert dialog._result_ids == ["consultation-old", "../invalid", "consultation-new"]
+    assert dialog.results_button.isEnabled() is True
+    dialog.close()
