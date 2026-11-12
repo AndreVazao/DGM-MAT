@@ -21,7 +21,7 @@ from cockpit.workspace.ai_consultation_dialog import _ConsultationWorker
 class AIConsultationInlinePanel(QFrame):
     """A small provider picker embedded in the active conversation."""
 
-    status_message = Signal(str)
+    status_message = Signal(str, str)
 
     PROVIDERS = (
         ("chatgpt", "ChatGPT"),
@@ -36,6 +36,7 @@ class AIConsultationInlinePanel(QFrame):
         super().__init__(parent)
         self.api_url = api_url
         self.thread_id: str | None = None
+        self._pending_thread_id: str | None = None
         self._worker: _ConsultationWorker | None = None
         self._status_loaded = False
         self._consult_enabled = False
@@ -153,6 +154,7 @@ class AIConsultationInlinePanel(QFrame):
             return
         providers = self._selected_providers()
         goal = self.goal.text().strip()
+        self._pending_thread_id = self.thread_id
         if not providers or not goal:
             self.status.setText("Escreve a pergunta e seleciona pelo menos um provider permitido.")
             return
@@ -181,7 +183,7 @@ class AIConsultationInlinePanel(QFrame):
                 "As respostas recebidas aparecerão nesta conversa."
             )
             self.status.setText(message)
-            self.status_message.emit(message)
+            self.status_message.emit(self._pending_thread_id or "", message)
             self._refresh_controls()
             return
         consultation_id = self._approval_ids.pop(0)
