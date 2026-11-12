@@ -273,6 +273,19 @@ def approve_browser_consultation(consultation_id: str, request: Request):
     return {"status": "PENDING", "consultation_id": consultation_id}
 
 
+
+@router.get("/result/{consultation_id}")
+def get_browser_consultation_result(consultation_id: str, request: Request):
+    """Read one durable consultation receipt; provider output remains untrusted."""
+    _principal(request)
+    try:
+        return _store().get_consultation(consultation_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Consultation not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Consultation identifier is invalid.") from exc
+
+
 @router.get("/peek")
 def peek_browser_consultation(provider: Literal["chatgpt", "gemini", "grok", "claude", "deepseek", "qwen"], request: Request):
     _principal(request)
