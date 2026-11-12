@@ -24,6 +24,7 @@ class CommandSpec:
 CATALOG: tuple[CommandSpec, ...] = (
     CommandSpec("system.summary", "Read Windows/host and PowerShell runtime summary", "READ"),
     CommandSpec("software.inventory", "List installed application metadata from Windows uninstall registry", "READ"),
+    CommandSpec("environment.path_diagnostics", "Inspect machine, user and process PATH entries without changing them", "READ"),
     CommandSpec("process.top", "List a bounded sample of processes", "READ"),
     CommandSpec("engines.inventory", "Observe running Ollama and Claude Code process names/IDs without managing them", "READ"),
     CommandSpec("git.status", "Read Git status for an authorized repository path", "READ", True),
@@ -118,6 +119,30 @@ class CommandExecutor:
                 "@{Name='InstallDate';Expression={$_.InstallDate}}"
                 "}; "
                 "$items | Sort-Object Name,Version -Unique | Select-Object -First 150 | ConvertTo-Json -Compress"
+            )
+        elif command_id == "environment.path_diagnostics":
+            # Read PATH scopes only. Preserve raw entries for operator diagnosis, but
+            # never write environment variables or invoke installers/registry setters.
+            argv = self._powershell_argv(
+                "$ErrorActionPreference='Stop'; "
+                "$scopes=@("
+                "@{Name='Machine';Value=[Environment]::GetEnvironmentVariable('Path','Machine')},"
+                "@{Name='User';Value=[Environment]::GetEnvironmentVariable('Path','User')},"
+                "@{Name='Process';Value=$env:PATH}"
+                "); "
+                "$rows=foreach($scope in $scopes){"
+                "$seen=@{}; $index=0; "
+                "foreach($entry in ([string]$scope.Value -split ';')){"
+                "$raw=$entry.Trim(); $key=$raw.TrimEnd('\\').ToLowerInvariant(); "
+                "$duplicate=($key -ne '' -and $seen.ContainsKey($key)); "
+                "if($key -ne ''){$seen[$key]=$true}; "
+                "$exists=$false; "
+                "if($raw -ne ''){try{$exists=Test-Path -LiteralPath ([Environment]::ExpandEnvironmentVariables($raw)) -PathType Container -ErrorAction Stop}catch{$exists=$false}}; "
+                "[pscustomobject]@{Scope=$scope.Name;Index=$index;Path=$raw;Exists=$exists;Duplicate=$duplicate}; "
+                "$index++"
+                "}"
+                "}; "
+                "$rows | Select-Object -First 120 | ConvertTo-Json -Compress"
             )
         elif command_id == "process.top":
             argv = self._powershell_argv(
