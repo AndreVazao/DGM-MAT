@@ -93,9 +93,9 @@ class _RuntimeRequestWorker(QThread):
             reason = mission.get("reason") or mission.get("error") or result.get("reason")
             self.completed.emit(
                 "DGM-MAT",
-                f"Missão bloqueada por falta de capacidade ({mission_id}).\\n"
+                f"Missão bloqueada por falta de capacidade ({mission_id}).\n"
                 + str(reason or "Não existe um executor registado para este pedido.")
-                + "\\nNenhuma ação foi executada. Não voltei a submeter a missão. "
+                + "\nNenhuma ação foi executada. Não voltei a submeter a missão. "
                 "É necessário ligar ou instalar um executor compatível antes de tentar novamente.",
                 "error",
             )
