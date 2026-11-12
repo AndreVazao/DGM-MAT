@@ -10,13 +10,13 @@ from datetime import datetime
 from typing import Any
 
 from cockpit.api_client import authenticated_request, LocalApiAuthenticationError
-from cockpit.workspace.ai_consultation_dialog import AIConsultationDialog
+from cockpit.workspace.ai_consultation_inline_panel import AIConsultationInlinePanel
 from cockpit.mission_status_client import (
     fetch_mission_checkpoint,
     submit_mission_once,
     wait_for_mission_checkpoint,
 )
-from PySide6.QtCore import QThread, Signal, Qt
+from PySide6.QtCore import QThread, Signal, Qt, QTimer
 from PySide6.QtGui import QFont, QTextCursor
 from PySide6.QtWidgets import (
     QFrame,
@@ -286,6 +286,11 @@ class CommandConsoleWidget(QWidget):
         self._transcript_queue: list[tuple[str, str, str, str]] = []
         self._transcript_write_active = False
         self._threads_loaded = False
+        self._seen_message_ids: set[str] = set()
+        self._thread_refresh_inflight = False
+        self._thread_refresh_timer = QTimer(self)
+        self._thread_refresh_timer.setInterval(3000)
+        self._thread_refresh_timer.timeout.connect(self._refresh_active_thread)
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -341,6 +346,10 @@ class CommandConsoleWidget(QWidget):
         )
         self.output.setFont(QFont("Segoe UI", 10))
         layout.addWidget(self.output, 1)
+
+        self.ai_consultation_panel = AIConsultationInlinePanel(self.api_url, self)
+        self.ai_consultation_panel.status_message.connect(self._on_inline_consultation_status)
+        layout.addWidget(self.ai_consultation_panel)
 
         input_container = QFrame()
         input_container.setStyleSheet(
@@ -490,6 +499,47 @@ class CommandConsoleWidget(QWidget):
         if not self._threads_loaded:
             self._threads_loaded = True
             self._load_threads()
+        if self._active_thread_id:
+            self._thread_refresh_timer.start()
+
+    def hideEvent(self, event) -> None:
+        self._thread_refresh_timer.stop()
+        super().hideEvent(event)
+
+    def _refresh_active_thread(self) -> None:
+        """Fetch the active transcript periodically without blocking or repainting it."""
+        thread_id = self._active_thread_id
+        if (
+            not self.isVisible()
+            or not thread_id
+            or self._thread_refresh_inflight
+            or self._conversation_workers_busy()
+        ):
+            return
+        self._thread_refresh_inflight = True
+        self._conversation_request(
+            "thread-refresh", "GET", f"/mobile/threads/{thread_id}"
+        )
+
+    def _conversation_workers_busy(self) -> bool:
+        return any(worker.isRunning() for worker in self._conversation_workers)
+
+    def _append_persisted_message(self, message: dict[str, Any]) -> None:
+        message_id = message.get("id")
+        if isinstance(message_id, str) and message_id in self._seen_message_ids:
+            return
+        role = message.get("role")
+        metadata = message.get("metadata") if isinstance(message.get("metadata"), dict) else {}
+        provider = metadata.get("provider")
+        if metadata.get("source") == "dgm-browser-consultation" and isinstance(provider, str) and provider.strip():
+            sender = f"{provider.upper()} — resposta externa não verificada"
+            msg_type = "system"
+        else:
+            sender = "Tu" if role == "user" else "DGM-MAT" if role == "assistant" else "Sistema"
+            msg_type = "user" if role == "user" else "info" if role == "assistant" else "system"
+        self._append_message(sender, message.get("content", ""), msg_type)
+        if isinstance(message_id, str):
+            self._seen_message_ids.add(message_id)
 
     def _conversation_request(
         self,
@@ -520,12 +570,21 @@ class CommandConsoleWidget(QWidget):
                 "system",
             )
             return
-        dialog = AIConsultationDialog(
-            self.api_url,
-            self._active_thread_id,
-            self,
+        if self.ai_consultation_panel.isVisible():
+            self.ai_consultation_panel.hide()
+            return
+        latest = next(
+            (item.get("text", "") for item in reversed(self.history) if item.get("sender") == "Tu"),
+            "",
         )
-        dialog.exec()
+        self.ai_consultation_panel.set_thread_context(self._active_thread_id, latest)
+        self.ai_consultation_panel.show()
+        self.ai_consultation_panel.refresh_status()
+
+    def _on_inline_consultation_status(self, message: str) -> None:
+        self._append_message("Sistema", message, "system")
+        if self._active_thread_id:
+            self._persist_transcript_entry(self._active_thread_id, "system", message)
 
     def _create_thread(self, *, for_pending_send: bool = False) -> None:
         if self._worker is not None and self._worker.isRunning():
@@ -615,6 +674,14 @@ class CommandConsoleWidget(QWidget):
         is_transcript_write = action in {"send-user-entry", "transcript-entry"}
         if is_transcript_write:
             self._transcript_write_active = False
+            persisted = data.get("message")
+            persisted_id = persisted.get("id") if isinstance(persisted, dict) else None
+            persisted_thread = data.get("thread_id")
+            if (
+                isinstance(persisted_id, str)
+                and persisted_thread == self._active_thread_id
+            ):
+                self._seen_message_ids.add(persisted_id)
         if action in {"thread-archive", "thread-restore"}:
             thread_id = data.get("id")
             status = str(data.get("status") or ("archived" if action == "thread-archive" else "active"))
@@ -632,6 +699,9 @@ class CommandConsoleWidget(QWidget):
         if action == "thread-create":
             self._thread_create_active = False
         if error:
+            if action == "thread-refresh":
+                self._thread_refresh_inflight = False
+                return
             if action == "send-user-entry":
                 self._pending_directive = None
                 self._append_message(
@@ -695,10 +765,14 @@ class CommandConsoleWidget(QWidget):
                 return
             self._active_thread_id = thread_id
             self._active_thread_status = "active"
+            self.ai_consultation_panel.set_thread_context(thread_id, self._pending_directive or "")
+            self._seen_message_ids.clear()
             self._search_has_more = False
             self.output.clear()
             self.history.clear()
             self._append_message("Sistema", "Nova conversa criada. O histórico é independente.", "system")
+            if self.isVisible():
+                self._thread_refresh_timer.start()
             self._load_threads()
             if self._pending_directive:
                 self._persist_pending_user_message()
@@ -711,6 +785,7 @@ class CommandConsoleWidget(QWidget):
             if not directive:
                 return
             self._append_message("Tu", directive, "user")
+            self.ai_consultation_panel.set_thread_context(self._active_thread_id, directive)
             self._start_request(
                 directive, status_only=directive.casefold() == "runtime status"
             )
@@ -722,24 +797,35 @@ class CommandConsoleWidget(QWidget):
             self._refresh_controls()
             return
 
-        if action == "thread-open":
+        if action in {"thread-open", "thread-refresh"}:
+            if action == "thread-refresh":
+                self._thread_refresh_inflight = False
             thread_id = data.get("id")
             messages = data.get("messages")
             if not isinstance(thread_id, str) or not isinstance(messages, list):
-                self._append_message("Erro", "O backend devolveu uma conversa inválida.", "error")
+                if action == "thread-open":
+                    self._append_message("Erro", "O backend devolveu uma conversa inválida.", "error")
+                return
+            if action == "thread-refresh":
+                if thread_id != self._active_thread_id:
+                    return
+                for message in messages:
+                    if isinstance(message, dict):
+                        self._append_persisted_message(message)
                 return
             self._active_thread_id = thread_id
             self._active_thread_status = str(data.get("status") or "active")
+            latest_user = next((str(item.get("content") or "") for item in reversed(messages) if isinstance(item, dict) and item.get("role") == "user"), "")
+            self.ai_consultation_panel.set_thread_context(thread_id, latest_user)
+            self._seen_message_ids.clear()
             self.output.clear()
             self.history.clear()
             for message in messages:
-                if not isinstance(message, dict):
-                    continue
-                role = message.get("role")
-                sender = "Tu" if role == "user" else "DGM-MAT" if role == "assistant" else "Sistema"
-                msg_type = "user" if role == "user" else "info" if role == "assistant" else "system"
-                self._append_message(sender, message.get("content", ""), msg_type)
+                if isinstance(message, dict):
+                    self._append_persisted_message(message)
             self._append_message("Sistema", "Conversa carregada do histórico local.", "system")
+            if self.isVisible():
+                self._thread_refresh_timer.start()
             return
 
 
