@@ -47,3 +47,21 @@ def test_command_without_provider_does_not_dispatch():
 def test_empty_message_is_safe():
     assert parse_provider_intent("").requested is False
     assert parse_provider_intent(None).requested is False
+
+
+def test_provider_mentioned_before_command_is_not_selected():
+    result = parse_provider_intent(
+        "O ChatGPT foi mencionado. Consulta o Gemini: analisa esta proposta."
+    )
+    assert result.requested is True
+    assert result.providers == ("gemini",)
+    assert result.question == "analisa esta proposta."
+
+
+def test_provider_mentioned_after_question_boundary_is_not_selected():
+    result = parse_provider_intent(
+        "Consulta o Grok: analisa esta proposta. O ChatGPT também foi referido."
+    )
+    assert result.requested is True
+    assert result.providers == ("grok",)
+    assert result.question == "analisa esta proposta. O ChatGPT também foi referido."
