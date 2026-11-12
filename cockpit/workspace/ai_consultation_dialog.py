@@ -241,7 +241,7 @@ class AIConsultationDialog(QDialog):
         self.send_button.setEnabled(not busy and ready)
         self.cancel_button.setEnabled(not busy)
         self.results_button.setEnabled(
-            not busy and bool(self._result_ids) and self._queued_count == 0
+            not busy and bool(self._result_ids)
         )
 
     def _start_request(
