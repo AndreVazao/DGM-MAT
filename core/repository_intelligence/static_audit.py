@@ -227,7 +227,6 @@ def audit_project(*, vault: VaultCatalog, project_id: str, snapshot_id: str | No
             continue
         inspected += 1
         result = _python(relative, source or "") if path.suffix.casefold() in PYTHON else _js(relative, source or "")
-        findings.extend({**item, "path": relative} for item in result.get("findings", []))
         (python_results if path.suffix.casefold() in PYTHON else js_results).append(result)
 
     for result in python_results:
