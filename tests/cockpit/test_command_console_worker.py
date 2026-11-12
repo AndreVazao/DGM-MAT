@@ -41,6 +41,50 @@ def test_runtime_http_request_runs_off_gui_thread(monkeypatch):
     assert request_thread_ids[0] != gui_thread_id
 
 
+
+def test_waiting_for_capability_is_reported_as_a_blocker_not_silence():
+    worker = _RuntimeRequestWorker("http://127.0.0.1:8181/runtime", "abre o chatgpt")
+    emitted = []
+    worker.completed.connect(lambda sender, message, kind: emitted.append((sender, message, kind)))
+
+    handled = worker._finish_from_mission({
+        "mission_id": "mission_f83edb9e",
+        "status": "WAITING_FOR_CAPABILITY",
+        "reason": "No registered executor matches this mission.",
+    })
+
+    assert handled is True
+    assert len(emitted) == 1
+    assert emitted[0][0] == "DGM-MAT"
+    assert "mission_f83edb9e" in emitted[0][1]
+    assert "No registered executor" in emitted[0][1]
+    assert "Nenhuma ação foi executada" in emitted[0][1]
+    assert emitted[0][2] == "error"
+
+
+def test_provider_open_request_uses_mission_runtime_not_consultation_worker(app, monkeypatch):
+    widget = CommandConsoleWidget()
+    widget._active_thread_id = "thread-provider-open"
+    widget._pending_directive = "abre o chatgpt"
+    captured = []
+    monkeypatch.setattr(
+        widget,
+        "_start_request",
+        lambda directive, *, status_only: captured.append((directive, status_only)),
+    )
+    monkeypatch.setattr(
+        widget,
+        "_start_provider_consultation",
+        lambda *args, **kwargs: pytest.fail("Opening a provider must not send a consultation"),
+    )
+    monkeypatch.setattr(widget, "_flush_transcript_queue", lambda: None)
+
+    widget._on_conversation_request_completed("send-user-entry", {}, "")
+
+    assert captured == [("abre o chatgpt", False)]
+    widget.close()
+
+
 def test_console_escapes_user_supplied_html(app):
     widget = CommandConsoleWidget()
     widget._append_message("User", "<script>alert(1)</script>", "user")
