@@ -31,6 +31,7 @@ def launch_provider_home(provider: str) -> dict[str, Any]:
         raise RuntimeError("The operating system did not accept the browser launch request.")
     return {
         "status": "OPEN_REQUESTED",
+        "output": f"Operating system accepted the request to open {provider} in the default browser. Page load and authentication were not verified; no message was sent.",
         "provider": provider,
         "url": url,
         "launch_accepted_by_os": True,
