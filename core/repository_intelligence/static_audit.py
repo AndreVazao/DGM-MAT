@@ -110,7 +110,7 @@ def _resolve_js(root: Path, source: str, specifier: str) -> bool:
 
 def _dependency_name(value: Any) -> str:
     raw = str(value).strip()
-    return re.split(r"\\s*(?:===|==|!=|~=|<=|>=|<|>)", raw, maxsplit=1)[0].casefold()
+    return re.split(r"\s*(?:===|==|!=|~=|<=|>=|<|>)", raw, maxsplit=1)[0].casefold()
 
 
 def _manifests(files: dict[str, Path], max_bytes: int) -> dict[str, Any]:
