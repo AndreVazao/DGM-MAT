@@ -120,3 +120,71 @@ def test_archive_restore_response_updates_state_without_unbound_data(app, monkey
     assert requests == [("threads-list", "GET", "/mobile/threads")]
     assert "arquivada" in widget.input_field.placeholderText().casefold()
     widget.close()
+
+
+
+def test_live_refresh_appends_only_new_messages_and_keeps_provider_provenance(app):
+    widget = CommandConsoleWidget()
+    widget._active_thread_id = "thread-live"
+    first = {
+        "id": "msg-provider-1",
+        "role": "assistant",
+        "content": "Proposta do ChatGPT",
+        "metadata": {
+            "source": "dgm-browser-consultation",
+            "provider": "chatgpt",
+            "result_trusted": False,
+        },
+    }
+    widget._append_persisted_message(first)
+    widget._append_persisted_message(first)
+
+    assert len(widget.history) == 1
+    assert widget.history[0]["sender"] == "CHATGPT — resposta externa não verificada"
+    assert "Proposta do ChatGPT" in widget.history[0]["text"]
+    widget.close()
+
+
+def test_live_refresh_ignores_response_for_a_different_active_thread(app):
+    widget = CommandConsoleWidget()
+    widget._active_thread_id = "thread-current"
+    widget._thread_refresh_inflight = True
+    widget._on_conversation_request_completed(
+        "thread-refresh",
+        {
+            "id": "thread-previous",
+            "messages": [{
+                "id": "msg-stale",
+                "role": "assistant",
+                "content": "Não deve aparecer",
+                "metadata": {},
+            }],
+        },
+        "",
+    )
+
+    assert widget._thread_refresh_inflight is False
+    assert all(item["text"] != "Não deve aparecer" for item in widget.history)
+    widget.close()
+
+
+def test_live_refresh_requests_only_the_visible_active_thread(app, monkeypatch):
+    widget = CommandConsoleWidget()
+    widget._active_thread_id = "thread-live"
+    widget._thread_refresh_inflight = False
+    monkeypatch.setattr(widget, "isVisible", lambda: True)
+    monkeypatch.setattr(widget, "_conversation_workers_busy", lambda: False)
+    captured = []
+    monkeypatch.setattr(
+        widget,
+        "_conversation_request",
+        lambda action, method, path, **kwargs: captured.append((action, method, path)),
+    )
+
+    widget._refresh_active_thread()
+
+    assert captured == [(
+        "thread-refresh", "GET", "/mobile/threads/thread-live"
+    )]
+    assert widget._thread_refresh_inflight is True
+    widget.close()
