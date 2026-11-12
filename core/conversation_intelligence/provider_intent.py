@@ -38,7 +38,7 @@ _INTENT_PATTERN = re.compile(
     r"pedir\s+ajuda(?:\s+a)?|"
     r"consulta(?:r)?|"
     r"questiona(?:r)?|"
-    r pergunta(?:r)?|"
+    r"pergunta(?:r)?|"
     r"ask(?:\s+for)?\s+help\s+from|"
     r"get\s+(?:a\s+)?(?:second\s+)?opinion\s+from|"
     r"consult|"
