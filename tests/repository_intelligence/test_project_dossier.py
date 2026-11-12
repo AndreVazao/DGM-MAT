@@ -89,3 +89,39 @@ def test_project_dossier_api_uses_configured_vault_and_returns_read_only_project
     assert result["schema"] == "dgm-mat.project-dossier.v1"
     assert result["read_only"] is True
     assert result["limitations"]
+
+
+def test_project_dossier_links_github_references_and_code_candidates_to_source_conversations(tmp_path: Path):
+    vault, _ = _vault(tmp_path)
+    vault.archive_conversation(
+        provider="chatgpt",
+        conversation_id="conversation-with-repo",
+        title="Repository implementation",
+        messages=[{
+            "id": "message-42",
+            "role": "assistant",
+            "content": "Repository: https://github.com/example-org/example-project",
+        }],
+        content="Repository implementation details",
+        completeness="complete",
+        project_id="sample",
+        artifacts=[{
+            "artifact_id": "artifact-1",
+            "language": "python",
+            "code": "print('candidate')",
+            "fingerprint": "candidate-fingerprint",
+        }],
+    )
+
+    dossier = build_project_dossier(vault=vault, project_id="sample")
+
+    refs = dossier["repository"]["conversation_linked_references"]
+    assert len(refs) == 1
+    assert refs[0]["url"] == "https://github.com/example-org/example-project"
+    assert refs[0]["verification_status"] == "pending_verification"
+    assert refs[0]["source"]["message_id"] == "message-42"
+
+    artifacts = dossier["repository"]["conversation_linked_code_candidates"]
+    assert len(artifacts) == 1
+    assert artifacts[0]["artifact_id"] == "artifact-1"
+    assert artifacts[0]["verification_status"] == "candidate_not_repository_verified"
