@@ -661,6 +661,14 @@ class CommandConsoleWidget(QWidget):
         is_transcript_write = action in {"send-user-entry", "transcript-entry"}
         if is_transcript_write:
             self._transcript_write_active = False
+            persisted = data.get("message")
+            persisted_id = persisted.get("id") if isinstance(persisted, dict) else None
+            persisted_thread = data.get("thread_id")
+            if (
+                isinstance(persisted_id, str)
+                and persisted_thread == self._active_thread_id
+            ):
+                self._seen_message_ids.add(persisted_id)
         if action in {"thread-archive", "thread-restore"}:
             thread_id = data.get("id")
             status = str(data.get("status") or ("archived" if action == "thread-archive" else "active"))
