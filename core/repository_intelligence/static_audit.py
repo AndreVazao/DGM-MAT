@@ -4,7 +4,6 @@ from __future__ import annotations
 import ast
 import hashlib
 import json
-import os
 import re
 import tomllib
 from datetime import datetime, timezone
@@ -199,6 +198,7 @@ def audit_project(*, vault: VaultCatalog, project_id: str, snapshot_id: str | No
         raise StaticAuditError("Snapshot identity does not match the requested project.")
 
     files: dict[str, Path] = {}
+    findings: list[dict[str, Any]] = []
     skipped = 0
     for entry in tree.get("entries", []):
         relative = str(entry.get("path", ""))
@@ -211,11 +211,34 @@ def audit_project(*, vault: VaultCatalog, project_id: str, snapshot_id: str | No
         if path.suffix.casefold() in PYTHON | JAVASCRIPT or path.name.casefold() in {
             "pyproject.toml", "requirements.txt", "requirements-dev.txt", "package.json"
         }:
+            expected_hash = str(entry.get("sha256") or "")
+            if not expected_hash:
+                skipped += 1
+                findings.append({"path": relative, "kind": "snapshot_hash_missing",
+                                 "confidence": "heuristic", "message": "Snapshot contains no content hash; file was not audited."})
+                continue
+            try:
+                if path.stat().st_size > max_file_bytes:
+                    skipped += 1
+                    findings.append({"path": relative, "kind": "file_too_large",
+                                     "confidence": "heuristic", "message": "File exceeds the configured size limit."})
+                    continue
+                actual_hash = _digest(path.read_bytes())
+            except OSError:
+                skipped += 1
+                findings.append({"path": relative, "kind": "read_error",
+                                 "confidence": "heuristic", "message": "File could not be read safely."})
+                continue
+            if actual_hash != expected_hash:
+                skipped += 1
+                findings.append({"path": relative, "kind": "snapshot_file_changed",
+                                 "confidence": "confirmed", "message": "Current file hash differs from the immutable tree snapshot; file was not audited."})
+                continue
             files[relative] = path
     if len(files) > max_files:
         raise StaticAuditError("Candidate file count exceeds configured limit; no report written.")
 
-    python_results, js_results, findings = [], [], []
+    python_results, js_results = [], []
     inspected = 0
     for relative, path in sorted(files.items()):
         if path.suffix.casefold() not in PYTHON | JAVASCRIPT:
