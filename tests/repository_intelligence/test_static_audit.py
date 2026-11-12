@@ -88,7 +88,9 @@ def test_static_audit_api_returns_evidence_paths_and_read_only_guarantees(tmp_pa
     from core.api import repository_learning_api
     repo, vault, snapshot = _fixture(tmp_path)
     monkeypatch.setattr(VaultCatalog, "default_root", staticmethod(lambda: vault.root))
-    result = repository_learning_api.static_project_audit(project_id="sample-project")
+    result = repository_learning_api.static_project_audit(
+        project_id="sample-project", snapshot_id=None, max_files=5000, max_file_bytes=1_000_000
+    )
     assert result["status"] == "complete"
     assert result["snapshot_id"] == snapshot["snapshot_id"]
     assert result["read_only"] is True
