@@ -73,3 +73,19 @@ def test_project_dossier_reports_unknown_provider_completeness_instead_of_claimi
     assert dossier["coverage"]["provider_archive_completeness"] == "unknown"
     assert dossier["coverage"]["vault_conversations_total"] == 0
     assert dossier["status"]["classification"] == "no_evidence"
+
+
+def test_project_dossier_api_uses_configured_vault_and_returns_read_only_projection(tmp_path: Path, monkeypatch):
+    from core.api import repository_learning_api
+
+    vault, _ = _vault(tmp_path)
+    monkeypatch.setattr(VaultCatalog, "default_root", staticmethod(lambda: vault.root))
+    result = repository_learning_api.project_dossier(
+        project_id="sample",
+        conversation_limit=100,
+        snapshot_limit=20,
+        finding_limit=50,
+    )
+    assert result["schema"] == "dgm-mat.project-dossier.v1"
+    assert result["read_only"] is True
+    assert result["limitations"]
