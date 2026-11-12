@@ -36,6 +36,7 @@ class AIConsultationInlinePanel(QFrame):
         super().__init__(parent)
         self.api_url = api_url
         self.thread_id: str | None = None
+        self.context = ""
         self._pending_thread_id: str | None = None
         self._worker: _ConsultationWorker | None = None
         self._status_loaded = False
@@ -95,8 +96,11 @@ class AIConsultationInlinePanel(QFrame):
         actions.addWidget(self.send_button)
         layout.addLayout(actions)
 
-    def set_thread_context(self, thread_id: str | None, latest_user_message: str = "") -> None:
+    def set_thread_context(
+        self, thread_id: str | None, latest_user_message: str = "", context: str = ""
+    ) -> None:
         self.thread_id = thread_id
+        self.context = context[:4000] if isinstance(context, str) else ""
         if latest_user_message.strip():
             self.goal.setText(latest_user_message.strip()[:4000])
         self._refresh_controls()
@@ -166,7 +170,7 @@ class AIConsultationInlinePanel(QFrame):
             {
                 "task_ref": "mobile-thread:" + self.thread_id,
                 "goal": goal,
-                "context": "",
+                "context": self.context,
                 "providers": providers,
                 # The server allowlist is the local operator's free-tier configuration.
                 "free_capacity_confirmed": True,
