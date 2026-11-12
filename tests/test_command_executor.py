@@ -229,3 +229,39 @@ def test_software_inventory_reads_registry_metadata_without_msi_or_uninstall_com
     assert "InstallLocation" not in script
     assert "DisplayName" in script
     assert "Publisher" in script
+
+
+def test_path_diagnostics_is_catalogued_as_read_only():
+    catalog = CommandExecutor(allowed_roots=[]).catalog()
+    item = next(entry for entry in catalog["commands"] if entry["id"] == "environment.path_diagnostics")
+    assert item["risk"] == "READ"
+    assert item["requires_target"] is False
+
+
+def test_path_diagnostics_reads_machine_user_and_process_scopes_without_writes(tmp_path):
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return FakeCompleted(
+            0,
+            '[{"Scope":"Machine","Index":0,"Path":"C:\\\\Windows","Exists":true,"Duplicate":false}]',
+            "",
+        )
+
+    executor = CommandExecutor(
+        allowed_roots=[tmp_path], runner=runner,
+        which=lambda name: "/windows/powershell.exe" if name == "powershell" else None,
+    )
+    result = executor.execute("environment.path_diagnostics")
+    assert result["status"] == "passed"
+    assert calls[0][1]["shell"] is False
+    script = calls[0][0][5]
+    assert "GetEnvironmentVariable('Path','Machine')" in script
+    assert "GetEnvironmentVariable('Path','User')" in script
+    assert "$env:PATH" in script
+    assert "Test-Path -LiteralPath" in script
+    assert "Select-Object -First 120" in script
+    assert "SetEnvironmentVariable" not in script
+    assert "Set-ItemProperty" not in script
+    assert "Remove-Item" not in script
