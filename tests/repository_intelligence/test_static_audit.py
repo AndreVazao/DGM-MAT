@@ -94,3 +94,13 @@ def test_static_audit_api_returns_evidence_paths_and_read_only_guarantees(tmp_pa
     assert result["read_only"] is True
     assert result["code_executed"] is False
     assert Path(result["report_path"]).is_file()
+
+
+def test_static_audit_refuses_files_changed_after_snapshot(tmp_path: Path):
+    repo, vault, _ = _fixture(tmp_path)
+    target = repo / "src" / "pkg" / "module.py"
+    target.write_text("def changed_after_snapshot():\n    return 'new code'\n", encoding="utf-8")
+    report = audit_project(vault=vault, project_id="sample-project")
+    assert not any(item["path"] == "src/pkg/module.py" for item in report["python"])
+    changed = [item for item in report["findings"] if item["kind"] == "snapshot_file_changed"]
+    assert any(item["path"] == "src/pkg/module.py" for item in changed)
