@@ -184,6 +184,7 @@ jobs:
           copy scripts\install_windows_update.ps1 publish\scripts\
           copy scripts\install_dgm_mat_update.ps1 publish\scripts\
           copy Install-DGM-MAT-Update.bat publish\
+          copy docs\operations\WINDOWS_UPDATE_V1.md publish\
           copy scripts\rollback_windows_update.ps1 publish\scripts\
           copy scripts\install_browser_extension.ps1 publish\scripts\
           copy scripts\install_browser_extension.bat publish\scripts\
@@ -222,6 +223,9 @@ jobs:
           }
           if (-not (Test-Path "publish\scripts\install_dgm_mat_update.ps1")) {
             throw "Verified Windows update wrapper was not packaged."
+          }
+          if (-not (Test-Path "publish\WINDOWS_UPDATE_V1.md")) {
+            throw "Windows update and rollback guide was not packaged."
           }
           if ((Get-Item $zip).Length -le 0) {
             throw "Distribution ZIP is empty"
