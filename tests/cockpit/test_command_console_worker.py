@@ -251,3 +251,124 @@ def test_inline_consultation_completion_is_bound_to_originating_thread(app):
     assert captured and captured[0][0] == "thread-origin"
     assert "Ainda não foi enviada" in captured[0][1]
     panel.close()
+
+
+
+def test_explicit_provider_command_dispatches_to_provider_worker_not_mission(app, monkeypatch):
+    widget = CommandConsoleWidget()
+    widget._active_thread_id = "thread-provider-intent"
+    widget._pending_directive = "Pede ajuda ao ChatGPT e Grok: avalia esta arquitetura."
+    captured = []
+    monkeypatch.setattr(
+        widget,
+        "_start_provider_consultation",
+        lambda thread_id, goal, providers, context: captured.append(
+            (thread_id, goal, providers, context)
+        ),
+    )
+    monkeypatch.setattr(
+        widget,
+        "_start_request",
+        lambda *args, **kwargs: pytest.fail("Explicit provider request must not create a mission"),
+    )
+    monkeypatch.setattr(widget, "_flush_transcript_queue", lambda: None)
+
+    widget._on_conversation_request_completed("send-user-entry", {}, "")
+
+    assert captured
+    assert captured[0][0] == "thread-provider-intent"
+    assert captured[0][1] == "avalia esta arquitetura."
+    assert captured[0][2] == ("chatgpt", "grok")
+    widget.close()
+
+
+def test_provider_worker_previews_enqueues_and_approves_only_allowlisted_providers(app, monkeypatch):
+    from cockpit.workspace.provider_consultation_worker import ProviderConsultationWorker
+
+    calls = []
+
+    class FakeResponse:
+        status_code = 200
+
+        def __init__(self, payload):
+            self.payload = payload
+
+        def json(self):
+            return self.payload
+
+    def fake_request(method, url, json=None, timeout=None):
+        calls.append((method, url, json))
+        if url.endswith("/recovery/browser-consult/status") and len(calls) == 1:
+            return FakeResponse({
+                "enabled": True,
+                "free_providers_allowlisted": ["chatgpt", "grok"],
+            })
+        if url.endswith("/recovery/browser-consult/preview"):
+            return FakeResponse({"prompt_sha256": "a" * 64, "prompt_redacted": False})
+        if url.endswith("/recovery/browser-consult/enqueue"):
+            return FakeResponse({
+                "status": "PENDING_APPROVAL",
+                "consultation_ids": ["consult-chatgpt", "consult-grok"],
+            })
+        if url.endswith("/recovery/browser-consult/status"):
+            return FakeResponse({"recent": [
+                {"consultation_id": "consult-chatgpt", "status": "PENDING_APPROVAL"},
+                {"consultation_id": "consult-grok", "status": "PENDING_APPROVAL"},
+            ]})
+        if url.endswith("/approve/consult-chatgpt") or url.endswith("/approve/consult-grok"):
+            return FakeResponse({"status": "PENDING"})
+        raise AssertionError("Unexpected provider consultation request: " + url)
+
+    monkeypatch.setattr(
+        "cockpit.workspace.provider_consultation_worker.authenticated_request",
+        fake_request,
+    )
+    worker = ProviderConsultationWorker(
+        "http://127.0.0.1:8181/runtime",
+        "thread-provider",
+        "Avalia a arquitetura",
+        "Contexto recente redigido no backend.",
+        ("chatgpt", "grok"),
+    )
+    emitted = []
+    worker.completed.connect(lambda sender, message, kind: emitted.append((sender, message, kind)))
+    worker.run()
+
+    assert [call[0] for call in calls] == ["GET", "POST", "POST", "GET", "POST", "POST"]
+    assert calls[2][2]["task_ref"] == "mobile-thread:thread-provider"
+    assert calls[2][2]["providers"] == ["chatgpt", "grok"]
+    assert emitted and emitted[0][0] == "Sistema"
+    assert "Ainda não afirmo que foram enviadas" in emitted[0][1]
+
+
+def test_provider_worker_fails_closed_when_provider_is_not_free_allowlisted(app, monkeypatch):
+    from cockpit.workspace.provider_consultation_worker import ProviderConsultationWorker
+
+    calls = []
+
+    class FakeResponse:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {"enabled": True, "free_providers_allowlisted": ["chatgpt"]}
+
+    monkeypatch.setattr(
+        "cockpit.workspace.provider_consultation_worker.authenticated_request",
+        lambda method, url, **kwargs: (calls.append((method, url)) or FakeResponse()),
+    )
+    worker = ProviderConsultationWorker(
+        "http://127.0.0.1:8181/runtime",
+        "thread-provider",
+        "Avalia a arquitetura",
+        "",
+        ("chatgpt", "claude"),
+    )
+    emitted = []
+    worker.completed.connect(lambda sender, message, kind: emitted.append((sender, message, kind)))
+    worker.run()
+
+    assert len(calls) == 1
+    assert "Claude não está configurado" in emitted[0][1]
+    assert "fallback pago" in emitted[0][1]
+    assert emitted[0][2] == "error"
