@@ -99,6 +99,7 @@ class AIConsultationDialog(QDialog):
         super().__init__(parent)
         self.api_url = api_url
         self.thread_id = thread_id
+        self._loaded_mission_id: str | None = None
         self._worker: _ConsultationWorker | None = None
         self._preview_sha256: str | None = None
         self._approval_ids: list[str] = []
@@ -123,6 +124,7 @@ class AIConsultationDialog(QDialog):
         mission_row = QHBoxLayout()
         self.mission_id = QLineEdit()
         self.mission_id.setPlaceholderText("mission_1234abcd")
+        self.mission_id.textChanged.connect(self._on_mission_id_changed)
         self.load_context_button = QPushButton("Carregar contexto da missão")
         self.load_context_button.clicked.connect(self._load_mission_context)
         mission_row.addWidget(self.mission_id, 1)
@@ -249,6 +251,12 @@ class AIConsultationDialog(QDialog):
         self.status.setText("A verificar se a consulta browser está ativada e quais os fornecedores permitidos…")
         self._start_request("status", "GET", "/recovery/browser-consult/status")
 
+    def _on_mission_id_changed(self, value: str) -> None:
+        if self._loaded_mission_id and value.strip() != self._loaded_mission_id:
+            self._loaded_mission_id = None
+            self.mission_context_info.setText("O ID da missão mudou. Carrega novamente o contexto antes de associar a consulta.")
+            self._refresh_controls()
+
     def _load_mission_context(self) -> None:
         mission_id = self.mission_id.text().strip()
         if not re.fullmatch(r"mission_[0-9a-f]{8}", mission_id):
@@ -286,8 +294,13 @@ class AIConsultationDialog(QDialog):
         if not providers or not self.free_capacity.isChecked():
             self.status.setText("Seleciona pelo menos um fornecedor e confirma a capacidade gratuita.")
             return
+        task_ref = (
+            self._loaded_mission_id
+            if self._loaded_mission_id
+            else "mobile-thread:" + self.thread_id
+        )
         payload = {
-            "task_ref": "mobile-thread:" + self.thread_id,
+            "task_ref": task_ref,
             "goal": self.goal.toPlainText().strip(),
             "context": self.context.toPlainText(),
             "providers": providers,
@@ -358,6 +371,10 @@ class AIConsultationDialog(QDialog):
             self.context.setPlainText(context)
             self._preview_sha256 = None
             mission_id = str(data.get("mission_id") or self.mission_id.text().strip())
+            if not re.fullmatch(r"mission_[0-9a-f]{8}", mission_id):
+                self.status.setText("O backend devolveu um ID de missão inválido; a consulta não será associada.")
+                return
+            self._loaded_mission_id = mission_id
             mission_status = str(data.get("mission_status") or "unknown")
             digest = str(data.get("context_sha256") or "")
             source = str(data.get("source") or "unknown")
