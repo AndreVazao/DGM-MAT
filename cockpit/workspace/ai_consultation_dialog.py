@@ -376,6 +376,15 @@ class AIConsultationDialog(QDialog):
         if action == "status":
             self._status_loaded = True
             self._consult_enabled = data.get("enabled") is True
+            recent = data.get("recent")
+            if isinstance(recent, list):
+                self._result_ids = [
+                    item["consultation_id"]
+                    for item in recent
+                    if isinstance(item, dict)
+                    and isinstance(item.get("consultation_id"), str)
+                    and 1 <= len(item["consultation_id"]) <= 80
+                ]
             allowed = set(data.get("free_providers_allowlisted") or [])
             for provider, checkbox in self.provider_checks.items():
                 available = provider in allowed
