@@ -418,6 +418,27 @@ class BrowserConsultStore:
             "independence_attested": False,
         }
 
+
+    def get_consultation(self, consultation_id: str) -> dict[str, Any]:
+        """Return an operator-readable durable receipt without claim tokens."""
+        if not isinstance(consultation_id, str) or not consultation_id.strip() or len(consultation_id) > 80:
+            raise ValueError("consultation_id must contain 1-80 characters")
+        with self._connect() as db:
+            row = db.execute("""
+                SELECT consultation_id, task_ref, provider, status, created_at,
+                       claimed_at, completed_at, response_text, response_sha256,
+                       error_type, attempts, review_mode, review_id
+                FROM browser_consultations WHERE consultation_id=?
+            """, (consultation_id,)).fetchone()
+        if row is None:
+            raise KeyError("consultation not found")
+        result = dict(row)
+        result["response_text"] = result.get("response_text") or None
+        result["result_trusted"] = False
+        result["independence_attested"] = False
+        result["accepted"] = None
+        return result
+
     def finish(self, consultation_id: str, *, claim_token: str, response_text: str, provider_status: str = "ok", evidence: dict[str, Any] | None = None) -> dict[str, Any]:
         if not isinstance(response_text, str) or not response_text.strip():
             raise ValueError("response_text is required")

@@ -46,6 +46,7 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("POST",), "/recovery/github-references/reindex", SecurityScope.OPERATOR, "Backfills GitHub repository references from already archived Vault and ChatGPT recovery sources without modifying source files."),
     RouteClassification(("POST",), "/recovery/github-references/verify", SecurityScope.OPERATOR, "Verifies a bounded batch of extracted repository references using public GitHub metadata only; no credentials."),
     RouteClassification(("GET",), "/recovery/browser-consult/status", SecurityScope.BROWSER_CONSULT_CONTROL, "Read-only status of free-tier browser consultations for the paired extension control surface."),
+    RouteClassification(("GET",), "/recovery/browser-consult/result/{consultation_id}", SecurityScope.BROWSER_CONSULT_CONTROL, "Reads one authenticated operator-facing consultation result; provider output is explicitly untrusted."),
     RouteClassification(("GET",), "/recovery/browser-consult/peek", SecurityScope.BROWSER_CAPTURE, "Read-only peek at the next approved consultation; does not claim or release a prompt."),
     RouteClassification(("GET",), "/recovery/browser-consult/fresh-review/{review_id}", SecurityScope.BROWSER_CAPTURE, "Resumes a durable untrusted fresh-review result for the paired extension session."),
     RouteClassification(("POST",), "/recovery/browser-consult/mission-context", SecurityScope.BROWSER_CONSULT_CONTROL, "Builds a bounded redacted context from a durable mission checkpoint; does not contact a provider."),
