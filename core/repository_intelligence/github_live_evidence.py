@@ -69,8 +69,8 @@ def fetch_github_live_evidence(
 ) -> dict[str, Any]:
     """Read repository metadata and checks for the exact locally observed SHA.
 
-    The function performs at most two GET requests, never follows repository
-    redirects, never mutates GitHub, and returns selected metadata only.
+    The function performs at most four GET requests, never follows redirects,
+    never mutates GitHub, and returns selected metadata only.
     """
     identity = _github_identity(origin)
     if identity is None:
@@ -229,6 +229,75 @@ def fetch_github_live_evidence(
                         "conclusion_summary": conclusions,
                         "checks": checks,
                     }
+
+
+    # Keep current work items separate from the persisted local repository
+    # inventory. These are bounded snapshots, not complete project histories.
+    open_items: dict[str, Any] = {}
+    for item_kind, endpoint in (
+        ("pull_requests", f"{_API}/repos/{owner}/{repository}/pulls"),
+        ("issues", f"{_API}/repos/{owner}/{repository}/issues"),
+    ):
+        try:
+            items_response = requests.get(
+                endpoint,
+                headers=headers,
+                params={"state": "open", "sort": "updated", "direction": "desc", "per_page": 10},
+                timeout=max(1.0, min(float(timeout), 10.0)),
+                allow_redirects=False,
+            )
+        except requests.RequestException as exc:
+            open_items[item_kind] = {"status": "unavailable", "error_type": type(exc).__name__, "items": []}
+            result["status"] = "partial"
+            continue
+        if items_response.status_code != 200:
+            open_items[item_kind] = {
+                "status": "unavailable",
+                "http_status": items_response.status_code,
+                "error_type": _http_error(items_response),
+                "items": [],
+            }
+            result["status"] = "partial"
+            continue
+        try:
+            items_payload = items_response.json()
+        except (TypeError, ValueError):
+            items_payload = None
+        if not isinstance(items_payload, list):
+            open_items[item_kind] = {"status": "unavailable", "error_type": "invalid_github_items_payload", "items": []}
+            result["status"] = "partial"
+            continue
+        selected = []
+        for item in items_payload[:10]:
+            if not isinstance(item, dict):
+                continue
+            # GitHub's issues endpoint also includes pull requests.
+            if item_kind == "issues" and "pull_request" in item:
+                continue
+            labels = item.get("labels") if isinstance(item.get("labels"), list) else []
+            selected.append({
+                "number": item.get("number"),
+                "title": item.get("title"),
+                "state": item.get("state"),
+                "updated_at": item.get("updated_at"),
+                "html_url": item.get("html_url"),
+                "draft": item.get("draft") if item_kind == "pull_requests" else None,
+                "labels": [
+                    label.get("name") for label in labels[:10]
+                    if isinstance(label, dict) and isinstance(label.get("name"), str)
+                ],
+            })
+        open_items[item_kind] = {
+            "status": "available",
+            "returned": len(selected),
+            "limit": 10,
+            "may_be_truncated": len(items_payload) >= 10,
+            "items": selected,
+        }
+    result["open_work_items"] = open_items
+    result["limitations"].append(
+        "Open pull requests and issues are the ten most recently updated returned items; they are not complete histories or total open counts."
+    )
 
     with _CACHE_LOCK:
         _CACHE[cache_key] = (time.monotonic(), _copy(result))

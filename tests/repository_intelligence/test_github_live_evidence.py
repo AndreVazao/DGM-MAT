@@ -37,6 +37,10 @@ def test_fetches_repo_and_checks_for_exact_local_head(monkeypatch):
                 "pushed_at": "2026-11-13T10:00:00Z",
                 "updated_at": "2026-11-13T10:01:00Z",
             })
+        if url.endswith("/pulls"):
+            return _Response(200, [{"number": 7, "title": "PR title", "state": "open", "updated_at": "2026-11-13T10:00:00Z", "html_url": "https://github.com/acme/project/pull/7", "draft": True, "labels": [{"name": "enhancement"}]}])
+        if url.endswith("/issues"):
+            return _Response(200, [{"number": 8, "title": "Issue title", "state": "open", "updated_at": "2026-11-13T10:00:00Z", "html_url": "https://github.com/acme/project/issues/8", "labels": [{"name": "bug"}]}, {"number": 9, "title": "PR duplicate", "pull_request": {"url": "https://api.github.com/pr/9"}}])
         return _Response(200, {
             "total_count": 2,
             "check_runs": [
@@ -60,7 +64,9 @@ def test_fetches_repo_and_checks_for_exact_local_head(monkeypatch):
     assert result["commit_checks"]["commit_sha"] == "a" * 40
     assert result["commit_checks"]["total_count"] == 2
     assert result["commit_checks"]["conclusion_summary"] == {"success": 1, "failure": 1}
-    assert len(calls) == 2
+    assert len(calls) == 4
+    assert result["open_work_items"]["pull_requests"]["items"][0]["number"] == 7
+    assert result["open_work_items"]["issues"]["returned"] == 1
     assert all(call[1]["allow_redirects"] is False for call in calls)
 
 
@@ -89,13 +95,15 @@ def test_uses_short_cache_for_repeated_dossier_reads(monkeypatch):
 
     def fake_get(url, **kwargs):
         calls.append(url)
-        return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
+        if url.endswith("/repos/acme/project"):
+            return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
+        return _Response(200, [])
 
     monkeypatch.setattr(live.requests, "get", fake_get)
     first = live.fetch_github_live_evidence("github.com/acme/project")
     second = live.fetch_github_live_evidence("github.com/acme/project")
     assert first["status"] == second["status"] == "available"
-    assert len(calls) == 1
+    assert len(calls) == 3
 
 def test_dossier_calls_live_github_only_after_exact_local_path_match(tmp_path, monkeypatch):
     from core.repository_intelligence import project_dossier as dossier_module
@@ -149,3 +157,38 @@ def test_dossier_does_not_query_github_for_unmatched_local_path(tmp_path, monkey
         }],
     )
     assert result["repository"]["local_inventory"]["match_status"] == "no_exact_path_match"
+
+def test_issue_endpoint_excludes_pull_requests_and_limits_returned_fields(monkeypatch):
+    live._CACHE.clear()
+    def fake_get(url, **kwargs):
+        if url.endswith("/repos/acme/project"):
+            return _Response(200, {"full_name": "acme/project"})
+        if url.endswith("/pulls"):
+            return _Response(200, [])
+        return _Response(200, [
+            {"number": 10, "title": "Real issue", "state": "open", "updated_at": "2026-11-13T10:00:00Z",
+             "html_url": "https://github.com/acme/project/issues/10", "body": "must not be copied",
+             "labels": [{"name": "bug"}]},
+            {"number": 11, "title": "PR mirrored by issues API", "pull_request": {"url": "private"}},
+        ])
+    monkeypatch.setattr(live.requests, "get", fake_get)
+    result = live.fetch_github_live_evidence("https://github.com/acme/project")
+    issues = result["open_work_items"]["issues"]["items"]
+    assert len(issues) == 1
+    assert issues[0]["number"] == 10
+    assert "body" not in issues[0]
+    assert result["open_work_items"]["pull_requests"]["returned"] == 0
+
+
+def test_open_work_item_failure_is_partial_not_success(monkeypatch):
+    live._CACHE.clear()
+    def fake_get(url, **kwargs):
+        if url.endswith("/repos/acme/project"):
+            return _Response(200, {"full_name": "acme/project"})
+        if url.endswith("/pulls"):
+            return _Response(403, {})
+        return _Response(200, [])
+    monkeypatch.setattr(live.requests, "get", fake_get)
+    result = live.fetch_github_live_evidence("github.com/acme/project")
+    assert result["status"] == "partial"
+    assert result["open_work_items"]["pull_requests"]["error_type"] == "rate_limited_or_forbidden"
