@@ -177,7 +177,7 @@ def test_includes_bounded_pr_and_issue_history_without_mixing_records(monkeypatc
                 {"number": 12, "title": "Fix mission recovery", "state": "closed",
                  "created_at": "2026-11-01T10:00:00Z", "updated_at": "2026-11-12T10:00:00Z",
                  "closed_at": "2026-11-12T10:01:00Z", "html_url": "https://github.com/acme/project/pull/12",
-                 "labels": [], "pull_request": {"url": "api"},
+                 "labels": [], "pull_request": {"url": "api"}},
             ])
         raise AssertionError(url)
 
