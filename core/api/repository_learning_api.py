@@ -53,6 +53,7 @@ def project_dossier(
             conversation_limit=conversation_limit,
             snapshot_limit=snapshot_limit,
             finding_limit=finding_limit,
+            repository_inventory=repository_learning_service.list_repositories(200),
         )
     except ProjectDossierError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

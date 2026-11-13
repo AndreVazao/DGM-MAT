@@ -78,8 +78,29 @@ def test_project_dossier_reports_unknown_provider_completeness_instead_of_claimi
 def test_project_dossier_api_uses_configured_vault_and_returns_read_only_projection(tmp_path: Path, monkeypatch):
     from core.api import repository_learning_api
 
-    vault, _ = _vault(tmp_path)
+    vault, repo = _vault(tmp_path)
     monkeypatch.setattr(VaultCatalog, "default_root", staticmethod(lambda: vault.root))
+    monkeypatch.setattr(
+        repository_learning_api.repository_learning_service,
+        "list_repositories",
+        lambda limit: [{
+            "path": str(repo),
+            "name": "sample-repo",
+            "branch": "main",
+            "head_sha": "e" * 40,
+            "dirty": False,
+            "scan_status": "complete",
+            "scan_error": None,
+            "last_seen_at": "2026-11-13T08:00:00+00:00",
+            "scan_count": 1,
+            "tree_path": None,
+            "tree_sha256": None,
+            "tree_entries": None,
+            "tree_truncated": False,
+            "tree_generated_at": None,
+            "tree_error": None,
+        }],
+    )
     result = repository_learning_api.project_dossier(
         project_id="sample",
         conversation_limit=100,
@@ -89,6 +110,8 @@ def test_project_dossier_api_uses_configured_vault_and_returns_read_only_project
     assert result["schema"] == "dgm-mat.project-dossier.v1"
     assert result["read_only"] is True
     assert result["limitations"]
+    assert result["repository"]["local_inventory"]["match_status"] == "exact_path_match"
+    assert result["repository"]["local_inventory"]["repositories"][0]["head_sha"] == "e" * 40
 
 
 def test_project_dossier_links_github_references_and_code_candidates_to_source_conversations(tmp_path: Path):
@@ -125,3 +148,67 @@ def test_project_dossier_links_github_references_and_code_candidates_to_source_c
     assert len(artifacts) == 1
     assert artifacts[0]["artifact_id"] == "artifact-1"
     assert artifacts[0]["verification_status"] == "candidate_not_repository_verified"
+
+
+def test_project_dossier_links_local_git_metadata_only_by_exact_repository_path(tmp_path: Path):
+    vault, repo = _vault(tmp_path)
+    inventory = [
+        {
+            "path": str(repo),
+            "name": "sample-repo",
+            "branch": "feature/recovery",
+            "head_sha": "a" * 40,
+            "dirty": True,
+            "scan_status": "complete",
+            "scan_error": None,
+            "last_seen_at": "2026-11-13T08:00:00+00:00",
+            "scan_count": 4,
+            "tree_path": "/vault/trees/sample.tree.txt",
+            "tree_sha256": "b" * 64,
+            "tree_entries": 12,
+            "tree_truncated": False,
+            "tree_generated_at": "2026-11-13T08:00:00+00:00",
+            "tree_error": None,
+        },
+        {
+            "path": str(tmp_path / "another" / "sample-repo"),
+            "name": "sample-repo",
+            "branch": "wrong-match",
+            "head_sha": "c" * 40,
+            "dirty": False,
+            "scan_status": "complete",
+        },
+    ]
+
+    dossier = build_project_dossier(
+        vault=vault,
+        project_id="sample",
+        repository_inventory=inventory,
+    )
+
+    local = dossier["repository"]["local_inventory"]
+    assert local["match_status"] == "exact_path_match"
+    assert len(local["repositories"]) == 1
+    assert local["repositories"][0]["branch"] == "feature/recovery"
+    assert local["repositories"][0]["head_sha"] == "a" * 40
+    assert local["repositories"][0]["working_tree_dirty"] is True
+    assert "not a live Git probe" in local["note"]
+
+
+def test_project_dossier_does_not_infer_local_repository_from_similar_name(tmp_path: Path):
+    vault, _repo = _vault(tmp_path)
+    dossier = build_project_dossier(
+        vault=vault,
+        project_id="sample",
+        repository_inventory=[{
+            "path": str(tmp_path / "different" / "sample"),
+            "name": "sample-repo",
+            "branch": "main",
+            "head_sha": "d" * 40,
+            "dirty": False,
+            "scan_status": "complete",
+        }],
+    )
+    local = dossier["repository"]["local_inventory"]
+    assert local["match_status"] == "no_exact_path_match"
+    assert local["repositories"] == []

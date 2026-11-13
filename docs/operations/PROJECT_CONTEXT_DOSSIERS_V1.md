@@ -100,3 +100,21 @@ The repository-learning API now exposes:
 This is the first queryable dossier projection, not the final natural-language project consultation. GitHub branch/PR/issue/CI evidence, local runtime probes, explicit decision records, provider source checkpoints and conversation-to-code links remain separate integration stages.
 
 - The dossier also exposes GitHub repository URLs extracted from assigned Vault conversations, including verification state and exact message provenance, plus extracted code-artifact metadata/fingerprints linked to the source conversation. These remain unverified candidates until matched to a repository file/commit; code bodies are not returned.
+
+
+## Exact-path local Git evidence integration
+
+The operator dossier endpoint now includes the persistent repository-learning observation
+when (and only when) the Vault project's canonical `repository_path` matches an
+inventory record by normalized absolute path. The projection exposes the observed
+branch, HEAD SHA, dirty flag, scan status/error, last-seen timestamp and tree artifact
+fingerprint/metadata.
+
+Repository name similarity, remote origin, aliases and heuristic project groups are
+not used to claim identity. An unmatched path is reported as
+`no_exact_path_match`, not as proof that the project repository is absent.
+
+Important freshness rule: these fields are the last persisted repository-learning
+observation, not a live Git command. The dossier labels that distinction explicitly;
+a future live probe must be a separate, bounded evidence source. The API remains
+read-only and returns no source file contents or secrets.

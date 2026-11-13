@@ -6,6 +6,7 @@ it never promotes proposals to decisions and never returns transcript bodies.
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,7 @@ def build_project_dossier(
     conversation_limit: int = 100,
     snapshot_limit: int = 20,
     finding_limit: int = 50,
+    repository_inventory: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build a bounded project status view from existing Vault evidence only."""
     if not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", project_id or ""):
@@ -186,6 +188,56 @@ def build_project_dossier(
     except (OSError, RuntimeError):
         latest_audit = None
 
+    # Match the Vault's canonical local path to the durable Git inventory by
+    # exact normalized path only. Similar names, origins and project groups are
+    # intentionally not enough to claim repository identity.
+    local_path = project.get("repository_path")
+    local_matches: list[dict[str, Any]] = []
+    if isinstance(local_path, str) and local_path.strip():
+        try:
+            project_path_key = os.path.normcase(str(Path(local_path).expanduser().resolve())).casefold()
+        except (OSError, RuntimeError):
+            project_path_key = ""
+        if project_path_key:
+            for item in repository_inventory or []:
+                candidate_path = item.get("path")
+                if not isinstance(candidate_path, str) or not candidate_path.strip():
+                    continue
+                try:
+                    candidate_key = os.path.normcase(str(Path(candidate_path).expanduser().resolve())).casefold()
+                except (OSError, RuntimeError):
+                    continue
+                if candidate_key != project_path_key:
+                    continue
+                local_matches.append({
+                    "path": candidate_path,
+                    "name": item.get("name"),
+                    "branch": item.get("branch"),
+                    "head_sha": item.get("head_sha"),
+                    "working_tree_dirty": item.get("dirty"),
+                    "scan_status": item.get("scan_status"),
+                    "scan_error": item.get("scan_error"),
+                    "last_seen_at": item.get("last_seen_at"),
+                    "scan_count": item.get("scan_count"),
+                    "tree_path": item.get("tree_path"),
+                    "tree_sha256": item.get("tree_sha256"),
+                    "tree_entries": item.get("tree_entries"),
+                    "tree_truncated": item.get("tree_truncated"),
+                    "tree_generated_at": item.get("tree_generated_at"),
+                    "tree_error": item.get("tree_error"),
+                    "evidence_source": "persistent_repository_learning_inventory",
+                })
+    local_inventory = {
+        "match_status": "exact_path_match" if local_matches else "no_exact_path_match",
+        "project_repository_path": local_path,
+        "repositories": local_matches,
+        "inventory_records_considered": len(repository_inventory or []),
+        "note": (
+            "Branch and commit are the last persisted repository-learning observation, not a live Git probe. "
+            "No repository was inferred from a similar name, remote URL or project-group suggestion."
+        ),
+    }
+
     latest_capture = max((item["captured_at"] or "" for item in conversations), default=None) or None
     latest_snapshot = snapshots[0]["created_at"] if snapshots else None
     return {
@@ -213,7 +265,8 @@ def build_project_dossier(
             "conversation_linked_references": repository_references,
             "conversation_linked_code_candidates": code_artifacts,
             "latest_snapshot_at": latest_snapshot,
-            "git_branch_and_commit": "not_recorded_in_current_snapshot_schema",
+            "git_branch_and_commit": "available_only_when_exact_local_inventory_match_exists",
+            "local_inventory": local_inventory,
         },
         "static_audit": latest_audit,
         "status": {
@@ -228,6 +281,8 @@ def build_project_dossier(
             "Conversation assignment is reported as stored; this endpoint does not infer project membership.",
             "AI proposals are not promoted to operator decisions.",
             "A repository snapshot is not proof of current Git branch, commit, runtime health or test status.",
+            "Local Git metadata is a persisted repository-learning observation and may be stale; it is not a live Git probe.",
+            "Local repository identity is linked only by exact normalized repository path; unmatched candidates are not inferred.",
             "Provider archive completeness remains unknown unless separately verified by provider-specific capture evidence.",
         ],
         "read_only": True,
