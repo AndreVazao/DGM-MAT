@@ -344,3 +344,60 @@ def test_project_dossier_response_marks_git_as_persisted_not_live():
     assert "VAZÃO EVSE" in message
     assert "última observação persistida" in message
     assert "não uma verificação em tempo real" in message
+
+
+def test_project_dossier_intent_is_limited_to_status_queries():
+    assert CommandConsoleWidget._is_project_dossier_request(
+        "Qual é o estado do VAZÃO EVSE?"
+    )
+    assert CommandConsoleWidget._is_project_dossier_request(
+        "Mostra o dossier do DGM-MAT"
+    )
+    assert not CommandConsoleWidget._is_project_dossier_request(
+        "Audita o projeto VAZÃO EVSE e corrige os erros"
+    )
+    assert not CommandConsoleWidget._is_project_dossier_request("runtime status")
+
+
+def test_dossier_worker_uses_authenticated_runtime_origin_and_query(qt_app, monkeypatch):
+    import threading
+
+    calls = []
+    class Response:
+        status_code = 200
+        @staticmethod
+        def json():
+            return {"status": "not_found", "query": "Projeto inexistente"}
+
+    def fake_request(method, url, **kwargs):
+        calls.append((threading.get_ident(), method, url, kwargs))
+        return Response()
+
+    monkeypatch.setattr(
+        "cockpit.widgets.command_console.authenticated_request", fake_request
+    )
+    worker = _ConversationRequestWorker(
+        "http://127.0.0.1:8181/runtime",
+        "project-dossier",
+        "GET",
+        "/runtime/repository-learning/dossier",
+        params={"query": "Qual é o estado do VAZÃO EVSE?"},
+    )
+    emitted = []
+    worker.completed.connect(lambda *args: emitted.append(args))
+    gui_thread = threading.get_ident()
+    worker.start()
+    assert worker.wait(3000)
+    qt_app.processEvents()
+
+    assert calls[0][0] != gui_thread
+    assert calls[0][1:3] == (
+        "GET",
+        "http://127.0.0.1:8181/runtime/repository-learning/dossier",
+    )
+    assert calls[0][3]["params"] == {"query": "Qual é o estado do VAZÃO EVSE?"}
+    assert emitted == [(
+        "project-dossier",
+        {"status": "not_found", "query": "Projeto inexistente"},
+        "",
+    )]
