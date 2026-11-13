@@ -135,5 +135,8 @@ use fuzzy similarity, repository names, remote URLs or inferred project groups.
 - Supplying both selectors, or neither selector, is rejected.
 - Query length is bounded to 2–300 characters. Existing dossier result limits and
   operator authentication remain in force.
-- This endpoint is a backend capability. The desktop chat has not yet been wired
-  to invoke it automatically; that is a separate UI integration and end-to-end step.
+- The desktop Cockpit chat now routes explicit project-status/dossier questions to
+  this endpoint after persisting the operator's message. It reuses the existing
+  durable mobile conversation thread store, does not create a mission, and stores
+  the bounded assistant summary in the same thread. See
+  `docs/architecture/COMMAND_CENTRE_CHAT_V1.md` for the UI integration contract.
