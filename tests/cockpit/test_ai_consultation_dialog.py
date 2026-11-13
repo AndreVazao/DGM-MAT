@@ -196,3 +196,96 @@ def test_mission_context_loader_uses_durable_checkpoint_and_requires_fresh_previ
     assert captured[0][3]["task_ref"] == "mission_1234abcd"
     assert captured[0][3]["task_ref"] != "mobile-thread:thread-mission"
     dialog.close()
+
+
+
+def test_consultation_result_readback_displays_unverified_receipts_sequentially(app):
+    dialog = AIConsultationDialog(
+        "http://127.0.0.1:8181/runtime",
+        "thread-result-readback",
+    )
+    dialog._result_ids = ["consultation-a", "consultation-b"]
+    captured = []
+    dialog._start_request = lambda action, method, path, payload=None: captured.append(
+        (action, method, path, payload)
+    )
+
+    dialog._refresh_results()
+    assert captured == [(
+        "result", "GET", "/recovery/browser-consult/result/consultation-a", None
+    )]
+
+    dialog._on_request_completed(
+        "result",
+        {
+            "consultation_id": "consultation-a",
+            "provider": "chatgpt",
+            "task_ref": "mission_1234abcd",
+            "status": "COMPLETED",
+            "created_at": "2026-11-12T10:00:00+00:00",
+            "completed_at": "2026-11-12T10:01:00+00:00",
+            "response_text": "Review the failing assertion and add a regression test.",
+            "response_sha256": "a" * 64,
+            "result_trusted": False,
+            "independence_attested": False,
+            "accepted": None,
+        },
+        "",
+    )
+    assert dialog._result_index == 1
+    assert dialog._pending_result_start is True
+    dialog._on_worker_finished()
+    assert captured[-1] == (
+        "result", "GET", "/recovery/browser-consult/result/consultation-b", None
+    )
+
+    dialog._on_request_completed(
+        "result",
+        {
+            "consultation_id": "consultation-b",
+            "provider": "gemini",
+            "task_ref": "mission_1234abcd",
+            "status": "BLOCKED_LOGIN",
+            "error_type": "blocked_login",
+            "response_text": None,
+            "response_sha256": None,
+            "result_trusted": False,
+            "independence_attested": False,
+            "accepted": None,
+        },
+        "",
+    )
+    dialog._on_worker_finished()
+    rendered = dialog.results.toPlainText()
+    assert "CONSULTA: consultation-a" in rendered
+    assert "Review the failing assertion" in rendered
+    assert "CONSULTA: consultation-b" in rendered
+    assert "ESTADO: BLOCKED_LOGIN" in rendered
+    assert "não verificada" in rendered
+    assert "não foram aceites nem executadas" in dialog.status.text()
+    dialog.close()
+
+
+
+def test_consultation_status_restores_recent_receipt_ids_for_later_readback(app):
+    dialog = AIConsultationDialog(
+        "http://127.0.0.1:8181/runtime",
+        "thread-reopen",
+    )
+    dialog._on_request_completed(
+        "status",
+        {
+            "enabled": False,
+            "free_providers_allowlisted": [],
+            "recent": [
+                {"consultation_id": "browser_consult_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "status": "COMPLETED"},
+                {"consultation_id": "../invalid", "status": "BLOCKED_LOGIN"},
+                {"consultation_id": "browser_consult_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "status": "PENDING"},
+                {"status": "UNKNOWN"},
+            ],
+        },
+        "",
+    )
+    assert dialog._result_ids == ["browser_consult_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "browser_consult_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"]
+    assert dialog.results_button.isEnabled() is True
+    dialog.close()
