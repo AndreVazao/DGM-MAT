@@ -190,7 +190,8 @@ def test_includes_bounded_pr_and_issue_history_without_mixing_records(monkeypatc
     assert result["github_activity"]["issues"]["returned"] == 1
     assert result["github_activity"]["issues"]["items"][0]["number"] == 20
     assert all(call[1]["params"]["state"] == "all" for call in calls[2:])
-    assert all(call[1]["params"]["per_page"] == 10 for call in calls[2:])
+    assert calls[2][1]["params"]["per_page"] == 10
+    assert calls[3][1]["params"]["per_page"] == 20
     assert len(calls) == 4
 
 
