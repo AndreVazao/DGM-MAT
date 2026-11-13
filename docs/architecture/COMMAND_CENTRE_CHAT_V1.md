@@ -231,3 +231,32 @@ A broader route/source inspection found an existing durable thread implementatio
 3. Add desktop API/client integration against the shared thread service, keeping mission IDs separate from thread IDs.
 4. Add tests proving desktop and mobile share threads, restart persistence, search pagination, thread isolation and backward compatibility.
 5. Benchmark bounded read/write behavior against a representative large fixture before deciding whether JSON storage remains acceptable or requires a SQLite-backed implementation.
+
+
+## Cockpit chat integration — project dossier lookup
+
+The desktop chat uses the existing durable mobile conversation thread service; no
+parallel thread database is introduced. After the operator's message has been
+persisted successfully, explicit project-status/dossier phrasing is routed to the
+operator-authenticated read-only dossier endpoint from a background worker.
+
+- Project lookup is distinct from mission dispatch. A dossier question does not
+  create a mission or invoke an executor.
+- Ambiguous and not-found results are presented explicitly. No candidate is
+  silently selected.
+- Successful output is a bounded metadata summary: project identity, Vault
+  coverage, provider counts, snapshot count, static-audit summary and exact-path
+  local Git observation when available.
+- Git branch/HEAD are always labelled as the last persisted observation, never a
+  live probe. Unverified repository references/code candidates remain labelled.
+- No transcript bodies, credentials or source code are rendered by this flow.
+- The assistant response is appended to the same active durable thread using the
+  existing `/mobile/threads/{thread_id}/entries` API. Thread IDs and mission IDs
+  remain separate.
+- A failed dossier request is reported without falling through to mission
+  submission; this prevents a read-only question from accidentally triggering
+  execution when the dossier service is unavailable.
+
+This is the first end-to-end UI integration of project dossiers. It does not
+claim provider archive completeness, live Git state, project decision approval
+or implementation completion.

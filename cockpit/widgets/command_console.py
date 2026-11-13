@@ -298,6 +298,7 @@ class CommandConsoleWidget(QWidget):
         self._conversation_workers: set[_ConversationRequestWorker] = set()
         self._transcript_queue: list[tuple[str, str, str, str]] = []
         self._transcript_write_active = False
+        self._project_dossier_active = False
         self._threads_loaded = False
         self._seen_message_ids: set[str] = set()
         self._thread_refresh_inflight = False
@@ -406,6 +407,7 @@ class CommandConsoleWidget(QWidget):
             self._transcript_write_active
             or bool(self._pending_directive)
             or self._thread_create_active
+            or self._project_dossier_active
         )
         available = self._runtime_available and not busy and not conversation_busy and self._active_thread_status == "active"
         self.input_field.setEnabled(available)
@@ -433,6 +435,7 @@ class CommandConsoleWidget(QWidget):
             or self._pending_directive
             or self._transcript_write_active
             or self._thread_create_active
+            or self._project_dossier_active
             or self._active_thread_status != "active"
         ):
             return
@@ -454,6 +457,7 @@ class CommandConsoleWidget(QWidget):
             or self._pending_directive
             or self._transcript_write_active
             or self._thread_create_active
+            or self._project_dossier_active
             or self._active_thread_status != "active"
         ):
             self._append_message("Sistema", "Já existe um pedido em curso ou a conversa está arquivada.", "error")
@@ -494,6 +498,120 @@ class CommandConsoleWidget(QWidget):
                 sender = str(item.get("sender") or "Sistema")
                 lines.append(sender + ": " + text[:700])
         return "\n".join(lines)[-3500:]
+
+    @staticmethod
+    def _is_project_dossier_request(directive: str) -> bool:
+        """Recognize explicit project-status/dossier questions, not implementation commands."""
+        text = " ".join(str(directive).split()).casefold()
+        patterns = (
+            r"\b(?:qual\s+(?:é|e)\s+)?(?:o\s+)?(?:estado|situação|situacao|progresso|resumo|dossier|dossiê|contexto|status)\s+(?:atual\s+)?(?:do|da|de|dos|das)\s+",
+            r"\b(?:como\s+está|como\s+esta|em\s+que\s+estado\s+está|em\s+que\s+estado\s+esta)\s+",
+            r"\b(?:mostra|consulta|abre)\s+(?:o\s+)?(?:dossier|dossiê|estado|resumo|contexto)\s+(?:do|da|de)\s+",
+        )
+        return any(re.search(pattern, text, flags=re.IGNORECASE) for pattern in patterns)
+
+    @staticmethod
+    def _format_project_dossier_response(data: dict[str, Any]) -> tuple[str, str]:
+        """Render only bounded dossier metadata and preserve its evidence limitations."""
+        status = str(data.get("status") or "")
+        if status == "ambiguous":
+            candidates = data.get("candidates") if isinstance(data.get("candidates"), list) else []
+            lines = ["Encontrei mais do que um projeto correspondente. Não escolhi nenhum:"]
+            for item in candidates[:10]:
+                if isinstance(item, dict):
+                    lines.append(
+                        f"- {item.get('name') or 'Projeto'} (ID: {item.get('project_id') or 'n/d'})"
+                    )
+            lines.append("Indica o nome exato do projeto que pretendes consultar.")
+            return "\n".join(lines), "system"
+        if status == "not_found":
+            query = str(data.get("query") or "pedido")[:300]
+            return (
+                f"Não encontrei uma correspondência para «{query}» nos projetos registados no Vault. "
+                "Não foi criada nem enviada qualquer missão. Confirma o nome ou regista primeiro o projeto no Vault.",
+                "system",
+            )
+
+        project = data.get("project") if isinstance(data.get("project"), dict) else {}
+        coverage = data.get("coverage") if isinstance(data.get("coverage"), dict) else {}
+        repository = data.get("repository") if isinstance(data.get("repository"), dict) else {}
+        local = repository.get("local_inventory") if isinstance(repository.get("local_inventory"), dict) else {}
+        snapshots = repository.get("snapshots") if isinstance(repository.get("snapshots"), list) else []
+        audit = data.get("static_audit") if isinstance(data.get("static_audit"), dict) else None
+        dossier_status = data.get("status") if isinstance(data.get("status"), dict) else {}
+        lines = [
+            f"DOSSIER DO PROJETO — {project.get('name') or 'Projeto sem nome'}",
+            f"ID: {project.get('project_id') or 'n/d'}",
+            f"Evidência: {dossier_status.get('classification') or 'não classificada'}",
+            f"Conversas arquivadas no Vault: {coverage.get('vault_conversations_total', 0)}",
+            f"Conversas devolvidas nesta consulta: {coverage.get('conversations_returned', 0)}",
+            f"Por provider: {coverage.get('by_provider') or 'sem registos'}",
+            f"Completude das capturas: {coverage.get('by_completeness') or 'desconhecida'}",
+            f"Snapshots de repositório: {len(snapshots)}",
+        ]
+        if project.get("repository_path"):
+            lines.append(f"Caminho registado: {project['repository_path']}")
+        matches = local.get("repositories") if isinstance(local.get("repositories"), list) else []
+        if local.get("match_status") == "exact_path_match" and matches:
+            for item in matches[:3]:
+                if not isinstance(item, dict):
+                    continue
+                lines.append(
+                    "Git (última observação persistida): "
+                    f"branch={item.get('branch') or 'n/d'}; "
+                    f"HEAD={item.get('head_sha') or 'n/d'}; "
+                    f"working tree dirty={item.get('working_tree_dirty')}"
+                )
+                lines.append(
+                    f"Inventário: {item.get('scan_status') or 'n/d'}; "
+                    f"observado em {item.get('last_seen_at') or 'data desconhecida'}"
+                )
+            lines.append("ATENÇÃO: os dados Git são observações persistidas, não uma verificação em tempo real.")
+        else:
+            lines.append("Git local: sem correspondência por caminho absoluto exato; não inferi o repositório.")
+        if audit:
+            summary = audit.get("summary") if isinstance(audit.get("summary"), dict) else {}
+            lines.append(
+                f"Auditoria estática: {audit.get('files_inspected', 0)} ficheiros inspecionados; "
+                f"{audit.get('findings_total', 0)} ocorrências registadas."
+            )
+            if summary:
+                lines.append(f"Resumo da auditoria: {summary}")
+            findings = audit.get("findings") if isinstance(audit.get("findings"), list) else []
+            for finding in findings[:5]:
+                if isinstance(finding, dict):
+                    lines.append(
+                        f"- [{finding.get('severity') or 'n/d'}] "
+                        f"{finding.get('rule_id') or finding.get('title') or 'Ocorrência'}: "
+                        f"{finding.get('message') or finding.get('description') or ''}"
+                    )
+        else:
+            lines.append("Auditoria estática: não existe uma auditoria válida disponível no Vault.")
+        refs = repository.get("conversation_linked_references")
+        candidates = repository.get("conversation_linked_code_candidates")
+        lines.append(
+            f"Referências GitHub recolhidas de conversas: {len(refs) if isinstance(refs, list) else 0} "
+            "(a verificar)."
+        )
+        lines.append(
+            f"Candidatos de código extraídos: {len(candidates) if isinstance(candidates, list) else 0} "
+            "(não confirmados contra ficheiros/commits)."
+        )
+        lines.append("Completude do arquivo dos providers: desconhecida, salvo verificação independente.")
+        lines.append("Decisões do operador e conclusão de implementação: não inferidas.")
+        lines.append("Fonte: Vault local, consulta read-only. Não foram devolvidos corpos de conversas.")
+        return "\n".join(lines), "info"
+
+    def _start_project_dossier_lookup(self, directive: str) -> None:
+        self._project_dossier_active = True
+        self._refresh_controls()
+        self.input_field.setPlaceholderText("A consultar o dossier do projeto no Vault…")
+        self._conversation_request(
+            "project-dossier",
+            "GET",
+            "/runtime/repository-learning/dossier",
+            params={"query": directive[:300]},
+        )
 
     def _start_request(self, directive: str, *, status_only: bool) -> None:
         self._append_message("Sistema", "Pedido enviado ao runtime…", "system")
@@ -730,6 +848,24 @@ class CommandConsoleWidget(QWidget):
                 and persisted_thread == self._active_thread_id
             ):
                 self._seen_message_ids.add(persisted_id)
+        if action == "project-dossier":
+            self._project_dossier_active = False
+            if error:
+                message = (
+                    "Não foi possível consultar o dossier do projeto. "
+                    "Nenhuma missão foi enviada. " + error
+                )
+                self._append_message("Erro", message, "error")
+                if self._active_thread_id:
+                    self._persist_transcript_entry(self._active_thread_id, "system", message)
+            else:
+                message, message_type = self._format_project_dossier_response(data)
+                self._append_message("DGM-MAT", message, message_type)
+                if self._active_thread_id:
+                    self._persist_transcript_entry(self._active_thread_id, "assistant", message)
+            self._refresh_controls()
+            return
+
         if action in {"thread-archive", "thread-restore"}:
             thread_id = data.get("id")
             status = str(data.get("status") or ("archived" if action == "thread-archive" else "active"))
@@ -846,6 +982,8 @@ class CommandConsoleWidget(QWidget):
                     intent.providers,
                     self._recent_conversation_context(exclude_latest_user=True),
                 )
+            elif self._is_project_dossier_request(directive):
+                self._start_project_dossier_lookup(directive)
             else:
                 self._start_request(
                     directive, status_only=directive.casefold() == "runtime status"
