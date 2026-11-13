@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 
 from core.repository_intelligence.project_dossier import ProjectDossierError, build_project_dossier
 from core.repository_intelligence.static_audit import audit_project
@@ -212,3 +213,80 @@ def test_project_dossier_does_not_infer_local_repository_from_similar_name(tmp_p
     local = dossier["repository"]["local_inventory"]
     assert local["match_status"] == "no_exact_path_match"
     assert local["repositories"] == []
+
+
+def test_natural_language_project_resolver_requires_whole_alias_matches(tmp_path: Path):
+    from core.api.repository_learning_api import _resolve_project_query
+
+    vault, _ = _vault(tmp_path)
+    result = _resolve_project_query("Please show SAMPLE project status", vault.list_projects())
+    assert result["status"] == "resolved"
+    assert result["project"]["project_id"] == "sample"
+    assert _resolve_project_query("samples are useful", vault.list_projects())["status"] == "not_found"
+
+
+def test_natural_language_project_resolver_reports_multiple_projects_as_ambiguous(tmp_path: Path):
+    from core.api.repository_learning_api import _resolve_project_query
+
+    vault, _ = _vault(tmp_path)
+    other_repo = tmp_path / "other-repo"
+    other_repo.mkdir()
+    vault.register_project("other", "Other Project", other_repo, aliases=["Other"])
+    result = _resolve_project_query(
+        "Compare Sample Project with Other",
+        vault.list_projects(),
+    )
+    assert result["status"] == "ambiguous"
+    assert {item["project_id"] for item in result["candidates"]} == {"sample", "other"}
+
+
+def test_natural_language_dossier_api_returns_dossier_for_unique_project_alias(tmp_path: Path, monkeypatch):
+    from core.api import repository_learning_api
+
+    vault, _ = _vault(tmp_path)
+    monkeypatch.setattr(VaultCatalog, "default_root", staticmethod(lambda: vault.root))
+    monkeypatch.setattr(repository_learning_api.repository_learning_service, "list_repositories", lambda limit: [])
+    result = repository_learning_api.project_dossier(
+        project_id=None,
+        query="What is the status of Sample Project?",
+        conversation_limit=100,
+        snapshot_limit=20,
+        finding_limit=50,
+    )
+    assert result["resolution"]["status"] == "resolved"
+    assert result["project"]["project_id"] == "sample"
+
+
+def test_natural_language_dossier_api_returns_ambiguity_without_guessing(tmp_path: Path, monkeypatch):
+    from core.api import repository_learning_api
+
+    vault, _ = _vault(tmp_path)
+    other_repo = tmp_path / "other-repo"
+    other_repo.mkdir()
+    vault.register_project("other", "Other Project", other_repo, aliases=["Other"])
+    monkeypatch.setattr(VaultCatalog, "default_root", staticmethod(lambda: vault.root))
+    result = repository_learning_api.project_dossier(
+        project_id=None,
+        query="Compare Sample Project with Other",
+        conversation_limit=100,
+        snapshot_limit=20,
+        finding_limit=50,
+    )
+    assert result["status"] == "ambiguous"
+    assert len(result["candidates"]) == 2
+
+
+def test_project_dossier_api_requires_exactly_one_project_selector(tmp_path: Path, monkeypatch):
+    from core.api import repository_learning_api
+
+    vault, _ = _vault(tmp_path)
+    monkeypatch.setattr(VaultCatalog, "default_root", staticmethod(lambda: vault.root))
+    with pytest.raises(HTTPException) as exc:
+        repository_learning_api.project_dossier(
+            project_id=None,
+            query=None,
+            conversation_limit=100,
+            snapshot_limit=20,
+            finding_limit=50,
+        )
+    assert exc.value.status_code == 400
