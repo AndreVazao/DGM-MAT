@@ -149,3 +149,72 @@ def test_dossier_does_not_query_github_for_unmatched_local_path(tmp_path, monkey
         }],
     )
     assert result["repository"]["local_inventory"]["match_status"] == "no_exact_path_match"
+
+def test_includes_bounded_pr_and_issue_history_without_mixing_records(monkeypatch):
+    live._CACHE.clear()
+    calls = []
+
+    def fake_get(url, **kwargs):
+        calls.append((url, kwargs))
+        if url.endswith("/repos/acme/project"):
+            return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
+        if url.endswith("/check-runs"):
+            return _Response(200, {"total_count": 0, "check_runs": []})
+        if url.endswith("/pulls"):
+            return _Response(200, [{
+                "number": 12, "title": "Fix mission recovery", "state": "closed",
+                "draft": False, "created_at": "2026-11-01T10:00:00Z",
+                "updated_at": "2026-11-12T10:00:00Z", "closed_at": "2026-11-12T10:01:00Z",
+                "html_url": "https://github.com/acme/project/pull/12",
+                "labels": [{"name": "bug"}], "pull_request": {"url": "api"},
+            }])
+        if url.endswith("/issues"):
+            return _Response(200, [
+                {"number": 20, "title": "Track recovery gap", "state": "open",
+                 "created_at": "2026-11-02T10:00:00Z", "updated_at": "2026-11-13T10:00:00Z",
+                 "closed_at": None, "html_url": "https://github.com/acme/project/issues/20",
+                 "labels": [{"name": "recovery"}]},
+                {"number": 12, "title": "Fix mission recovery", "state": "closed",
+                 "created_at": "2026-11-01T10:00:00Z", "updated_at": "2026-11-12T10:00:00Z",
+                 "closed_at": "2026-11-12T10:01:00Z", "html_url": "https://github.com/acme/project/pull/12",
+                 "labels": [], "pull_request": {"url": "api"},
+            ])
+        raise AssertionError(url)
+
+    monkeypatch.setattr(live.requests, "get", fake_get)
+    result = live.fetch_github_live_evidence("github.com/acme/project", "a" * 40)
+
+    assert result["github_activity"]["status"] == "available"
+    assert result["github_activity"]["pull_requests"]["returned"] == 1
+    assert result["github_activity"]["pull_requests"]["items"][0]["number"] == 12
+    assert result["github_activity"]["issues"]["returned"] == 1
+    assert result["github_activity"]["issues"]["items"][0]["number"] == 20
+    assert all(call[1]["params"]["state"] == "all" for call in calls[2:])
+    assert all(call[1]["params"]["per_page"] == 10 for call in calls[2:])
+    assert len(calls) == 4
+
+
+def test_github_activity_failure_is_partial_and_preserves_repository_evidence(monkeypatch):
+    live._CACHE.clear()
+    calls = 0
+
+    def fake_get(url, **kwargs):
+        nonlocal calls
+        calls += 1
+        if url.endswith("/repos/acme/project"):
+            return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
+        if url.endswith("/pulls"):
+            return _Response(200, [])
+        if url.endswith("/issues"):
+            return _Response(403, {})
+        raise AssertionError(url)
+
+    monkeypatch.setattr(live.requests, "get", fake_get)
+    result = live.fetch_github_live_evidence("github.com/acme/project")
+
+    assert result["status"] == "partial"
+    assert result["repository"]["full_name"] == "acme/project"
+    assert result["github_activity"]["status"] == "partial"
+    assert result["github_activity"]["issues"]["error_type"] == "rate_limited_or_forbidden"
+    assert result["github_activity"]["pull_requests"]["status"] == "available"
+    assert calls == 3
