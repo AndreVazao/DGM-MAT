@@ -78,8 +78,29 @@ def test_project_dossier_reports_unknown_provider_completeness_instead_of_claimi
 def test_project_dossier_api_uses_configured_vault_and_returns_read_only_projection(tmp_path: Path, monkeypatch):
     from core.api import repository_learning_api
 
-    vault, _ = _vault(tmp_path)
+    vault, repo = _vault(tmp_path)
     monkeypatch.setattr(VaultCatalog, "default_root", staticmethod(lambda: vault.root))
+    monkeypatch.setattr(
+        repository_learning_api.repository_learning_service,
+        "list_repositories",
+        lambda limit: [{
+            "path": str(repo),
+            "name": "sample-repo",
+            "branch": "main",
+            "head_sha": "e" * 40,
+            "dirty": False,
+            "scan_status": "complete",
+            "scan_error": None,
+            "last_seen_at": "2026-11-13T08:00:00+00:00",
+            "scan_count": 1,
+            "tree_path": None,
+            "tree_sha256": None,
+            "tree_entries": None,
+            "tree_truncated": False,
+            "tree_generated_at": None,
+            "tree_error": None,
+        }],
+    )
     result = repository_learning_api.project_dossier(
         project_id="sample",
         conversation_limit=100,
@@ -89,6 +110,8 @@ def test_project_dossier_api_uses_configured_vault_and_returns_read_only_project
     assert result["schema"] == "dgm-mat.project-dossier.v1"
     assert result["read_only"] is True
     assert result["limitations"]
+    assert result["repository"]["local_inventory"]["match_status"] == "exact_path_match"
+    assert result["repository"]["local_inventory"]["repositories"][0]["head_sha"] == "e" * 40
 
 
 def test_project_dossier_links_github_references_and_code_candidates_to_source_conversations(tmp_path: Path):
