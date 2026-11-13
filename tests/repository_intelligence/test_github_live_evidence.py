@@ -37,6 +37,8 @@ def test_fetches_repo_and_checks_for_exact_local_head(monkeypatch):
                 "pushed_at": "2026-11-13T10:00:00Z",
                 "updated_at": "2026-11-13T10:01:00Z",
             })
+        if url.endswith("/pulls") or url.endswith("/issues"):
+            return _Response(200, [])
         return _Response(200, {
             "total_count": 2,
             "check_runs": [
@@ -60,7 +62,7 @@ def test_fetches_repo_and_checks_for_exact_local_head(monkeypatch):
     assert result["commit_checks"]["commit_sha"] == "a" * 40
     assert result["commit_checks"]["total_count"] == 2
     assert result["commit_checks"]["conclusion_summary"] == {"success": 1, "failure": 1}
-    assert len(calls) == 2
+    assert len(calls) == 4
     assert all(call[1]["allow_redirects"] is False for call in calls)
 
 
@@ -89,13 +91,15 @@ def test_uses_short_cache_for_repeated_dossier_reads(monkeypatch):
 
     def fake_get(url, **kwargs):
         calls.append(url)
+        if url.endswith("/pulls") or url.endswith("/issues"):
+            return _Response(200, [])
         return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
 
     monkeypatch.setattr(live.requests, "get", fake_get)
     first = live.fetch_github_live_evidence("github.com/acme/project")
     second = live.fetch_github_live_evidence("github.com/acme/project")
     assert first["status"] == second["status"] == "available"
-    assert len(calls) == 1
+    assert len(calls) == 3
 
 def test_dossier_calls_live_github_only_after_exact_local_path_match(tmp_path, monkeypatch):
     from core.repository_intelligence import project_dossier as dossier_module
