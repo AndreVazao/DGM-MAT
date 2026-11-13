@@ -230,6 +230,75 @@ def fetch_github_live_evidence(
                         "checks": checks,
                     }
 
+    def fetch_recent_records(endpoint: str, *, kind: str) -> dict[str, Any]:
+        try:
+            collection_response = requests.get(
+                f"{_API}/repos/{owner}/{repository}/{endpoint}",
+                headers=headers,
+                params={"state": "all", "sort": "updated", "direction": "desc", "per_page": 20 if kind == "issue" else 10},
+                timeout=max(1.0, min(float(timeout), 10.0)),
+                allow_redirects=False,
+            )
+        except requests.RequestException as exc:
+            return {"status": "unavailable", "error_type": type(exc).__name__, "items": []}
+        if collection_response.status_code != 200:
+            return {
+                "status": "unavailable",
+                "http_status": collection_response.status_code,
+                "error_type": _http_error(collection_response),
+                "items": [],
+            }
+        try:
+            collection_payload = collection_response.json()
+        except (TypeError, ValueError):
+            collection_payload = None
+        if not isinstance(collection_payload, list):
+            return {"status": "unavailable", "error_type": "invalid_github_collection_payload", "items": []}
+
+        records = []
+        for item in collection_payload[:20]:
+            if len(records) >= 10:
+                break
+            if not isinstance(item, dict):
+                continue
+            is_pull_request = isinstance(item.get("pull_request"), dict)
+            if kind == "issue" and is_pull_request:
+                continue
+            if kind == "pull_request" and not is_pull_request:
+                continue
+            labels = item.get("labels") if isinstance(item.get("labels"), list) else []
+            records.append({
+                "number": item.get("number") if isinstance(item.get("number"), int) else None,
+                "title": str(item.get("title") or "")[:240],
+                "state": item.get("state") if item.get("state") in {"open", "closed"} else "unknown",
+                "draft": item.get("draft") if kind == "pull_request" and isinstance(item.get("draft"), bool) else None,
+                "created_at": item.get("created_at"),
+                "updated_at": item.get("updated_at"),
+                "closed_at": item.get("closed_at"),
+                "html_url": item.get("html_url"),
+                "labels": [
+                    str(label.get("name") or "")[:80]
+                    for label in labels[:10] if isinstance(label, dict) and label.get("name")
+                ],
+            })
+        return {"status": "available", "returned": len(records), "items": records}
+
+    pull_requests = fetch_recent_records("pulls", kind="pull_request")
+    issues = fetch_recent_records("issues", kind="issue")
+    result["github_activity"] = {
+        "status": "available" if pull_requests["status"] == issues["status"] == "available" else "partial",
+        "observed_at": _utc_now(),
+        "pull_requests": pull_requests,
+        "issues": issues,
+        "limitations": [
+            "Only the ten most recently updated records per collection are returned.",
+            "Issue results exclude pull requests; pull requests are reported separately.",
+            "Closed issues and pull requests are historical records, not evidence of current defects or unfinished work.",
+        ],
+    }
+    if result["github_activity"]["status"] != "available" and result["status"] == "available":
+        result["status"] = "partial"
+
     with _CACHE_LOCK:
         _CACHE[cache_key] = (time.monotonic(), _copy(result))
         # Keep this process-local cache bounded.
