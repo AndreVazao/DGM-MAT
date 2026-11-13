@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from core.vault.catalog import VaultCatalog
+from core.repository_intelligence.github_live_evidence import fetch_github_live_evidence
 
 
 class ProjectDossierError(ValueError):
@@ -226,6 +227,9 @@ def build_project_dossier(
                     "tree_generated_at": item.get("tree_generated_at"),
                     "tree_error": item.get("tree_error"),
                     "evidence_source": "persistent_repository_learning_inventory",
+                    "github_live": fetch_github_live_evidence(
+                        str(item.get("origin") or ""), item.get("head_sha")
+                    ),
                 })
     local_inventory = {
         "match_status": "exact_path_match" if local_matches else "no_exact_path_match",
@@ -283,6 +287,7 @@ def build_project_dossier(
             "A repository snapshot is not proof of current Git branch, commit, runtime health or test status.",
             "Local Git metadata is a persisted repository-learning observation and may be stale; it is not a live Git probe.",
             "Local repository identity is linked only by exact normalized repository path; unmatched candidates are not inferred.",
+            "Live GitHub metadata is a separate timestamped read-only observation; commit checks refer only to the exact persisted local HEAD SHA and may be unavailable or rate-limited.",
             "Provider archive completeness remains unknown unless separately verified by provider-specific capture evidence.",
         ],
         "read_only": True,
