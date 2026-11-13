@@ -131,6 +131,8 @@ ROUTE_CLASSIFICATIONS: tuple[RouteClassification, ...] = (
     RouteClassification(("POST",), "/mobile/threads/{thread_id}/messages", SecurityScope.MOBILE_CHAT, "Writes a message; mission governance still applies."),
     RouteClassification(("POST",), "/mobile/threads/{thread_id}/entries", SecurityScope.OPERATOR, "Persists a desktop transcript entry without interpreting it or creating a mission."),
     RouteClassification(("POST",), "/mobile/threads/{thread_id}/rename", SecurityScope.MOBILE_CHAT, "Renames a conversation."),
+    RouteClassification(("POST",), "/mobile/threads/{thread_id}/archive", SecurityScope.MOBILE_CHAT, "Archives a conversation without deleting its messages."),
+    RouteClassification(("POST",), "/mobile/threads/{thread_id}/restore", SecurityScope.MOBILE_CHAT, "Restores an archived conversation for continued use."),
     RouteClassification(("GET",), "/mobile/capabilities", SecurityScope.LOCAL_CLIENT, "Capability inventory."),
     RouteClassification(("POST",), "/mobile/capability-scout", SecurityScope.MOBILE_CHAT, "Requests bounded capability discovery; mission governance still applies."),
     RouteClassification(("GET",), "/governance/audit/workspace", SecurityScope.OPERATOR, "Workspace audit."),
