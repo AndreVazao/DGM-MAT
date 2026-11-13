@@ -104,6 +104,7 @@ def test_project_dossier_api_uses_configured_vault_and_returns_read_only_project
     )
     result = repository_learning_api.project_dossier(
         project_id="sample",
+        query=None,
         conversation_limit=100,
         snapshot_limit=20,
         finding_limit=50,
