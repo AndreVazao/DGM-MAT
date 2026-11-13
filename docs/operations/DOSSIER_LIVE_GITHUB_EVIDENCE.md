@@ -23,8 +23,8 @@ recorded by the local inventory. A missing check run does not mean tests passed.
 
 - GET requests only; no branch, issue, pull request, workflow or repository
   mutations.
-- At most two requests per uncached dossier read; five-second default timeout,
-  no redirects, 20 check-run result cap and a five-minute process-local cache.
+- At most four requests per uncached dossier read; five-second default timeout,
+  no redirects, 20 check-run result cap, ten PR/issue item caps per collection, and a five-minute process-local cache.
 - Uses an existing `GITHUB_TOKEN` environment variable when present; otherwise
   public GitHub repositories can be queried anonymously. No token is returned
   or logged by this component.
