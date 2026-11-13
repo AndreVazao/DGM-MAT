@@ -118,3 +118,22 @@ Important freshness rule: these fields are the last persisted repository-learnin
 observation, not a live Git command. The dossier labels that distinction explicitly;
 a future live probe must be a separate, bounded evidence source. The API remains
 read-only and returns no source file contents or secrets.
+
+
+## Natural-language project resolution — V1
+
+The same operator-only dossier endpoint also accepts `query=<natural-language request>`
+instead of `project_id`. Resolution is based exclusively on complete, case-insensitive
+project names, IDs and registered aliases with identifier boundaries. It does not
+use fuzzy similarity, repository names, remote URLs or inferred project groups.
+
+- Exactly one Vault project match returns its dossier and a `resolution.status=resolved`
+  record containing the matched project and alias evidence.
+- Multiple project matches return `status=ambiguous` with the candidate IDs/names;
+  no dossier is selected and no project is guessed.
+- No match returns `status=not_found`.
+- Supplying both selectors, or neither selector, is rejected.
+- Query length is bounded to 2–300 characters. Existing dossier result limits and
+  operator authentication remain in force.
+- This endpoint is a backend capability. The desktop chat has not yet been wired
+  to invoke it automatically; that is a separate UI integration and end-to-end step.
