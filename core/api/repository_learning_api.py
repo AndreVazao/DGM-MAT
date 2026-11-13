@@ -1,12 +1,53 @@
 """Read-only status and operator controls for progressive repository learning."""
 from __future__ import annotations
 
+import re
+
 from fastapi import APIRouter, HTTPException, Query
 
 from core.autonomy.repository_learning import RepositoryLearningService
 
 router = APIRouter(prefix="/runtime/repository-learning", tags=["repository-learning"])
 repository_learning_service = RepositoryLearningService()
+
+
+def _resolve_project_query(query: str, projects: list[dict]) -> dict:
+    """Resolve only explicit whole-name/alias mentions; never use fuzzy guesses."""
+    normalized = " ".join(str(query).split())
+    matches: dict[str, dict] = {}
+    for project in projects:
+        project_id = str(project.get("project_id") or "")
+        if not project_id:
+            continue
+        aliases = {
+            str(value).strip()
+            for value in [project.get("name"), project_id, *(project.get("aliases") or [])]
+            if isinstance(value, str) and value.strip()
+        }
+        matched = sorted(
+            (
+                alias for alias in aliases
+                if re.search(
+                    r"(?<![\w-])" + re.escape(alias) + r"(?![\w-])",
+                    normalized,
+                    flags=re.IGNORECASE,
+                )
+            ),
+            key=lambda value: (-len(value), value.casefold()),
+        )
+        if matched:
+            matches[project_id] = {
+                "project_id": project_id,
+                "name": str(project.get("name") or project_id),
+                "matched_aliases": matched,
+            }
+
+    candidates = sorted(matches.values(), key=lambda item: item["name"].casefold())
+    if not candidates:
+        return {"status": "not_found", "query": normalized, "candidates": []}
+    if len(candidates) > 1:
+        return {"status": "ambiguous", "query": normalized, "candidates": candidates}
+    return {"status": "resolved", "query": normalized, "project": candidates[0]}
 
 
 @router.get("")
@@ -34,27 +75,41 @@ def repository_learning_status(limit: int = Query(default=200, ge=1, le=200)):
 
 @router.get("/dossier")
 def project_dossier(
-    project_id: str = Query(min_length=1, max_length=100),
+    project_id: str | None = Query(default=None, min_length=1, max_length=100),
+    query: str | None = Query(default=None, min_length=2, max_length=300),
     conversation_limit: int = Query(default=100, ge=1, le=500),
     snapshot_limit: int = Query(default=20, ge=1, le=100),
     finding_limit: int = Query(default=50, ge=1, le=200),
 ):
-    """Return a bounded evidence-linked project dossier without transcript bodies."""
+    """Return a bounded dossier by exact project ID or unambiguous natural-language alias."""
     from core.repository_intelligence.project_dossier import ProjectDossierError, build_project_dossier
     from core.vault.catalog import VaultCatalog
 
+    if bool(project_id) == bool(query):
+        raise HTTPException(status_code=400, detail="Supply exactly one of project_id or query")
     vault_root = VaultCatalog.default_root()
     if not (vault_root / "index" / "catalog.sqlite3").is_file():
         raise HTTPException(status_code=503, detail="Persistent Vault is not initialized")
+    vault = VaultCatalog(vault_root=vault_root)
+    resolution = None
+    if query is not None:
+        resolution = _resolve_project_query(query, vault.list_projects())
+        if resolution["status"] != "resolved":
+            return resolution
+        project_id = resolution["project"]["project_id"]
+
     try:
-        return build_project_dossier(
-            vault=VaultCatalog(vault_root=vault_root),
-            project_id=project_id,
+        dossier = build_project_dossier(
+            vault=vault,
+            project_id=project_id or "",
             conversation_limit=conversation_limit,
             snapshot_limit=snapshot_limit,
             finding_limit=finding_limit,
             repository_inventory=repository_learning_service.list_repositories(200),
         )
+        if resolution is not None:
+            dossier["resolution"] = resolution
+        return dossier
     except ProjectDossierError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except FileNotFoundError as exc:
