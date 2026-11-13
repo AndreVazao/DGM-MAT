@@ -96,3 +96,56 @@ def test_uses_short_cache_for_repeated_dossier_reads(monkeypatch):
     second = live.fetch_github_live_evidence("github.com/acme/project")
     assert first["status"] == second["status"] == "available"
     assert len(calls) == 1
+
+def test_dossier_calls_live_github_only_after_exact_local_path_match(tmp_path, monkeypatch):
+    from core.repository_intelligence import project_dossier as dossier_module
+    from core.vault.catalog import VaultCatalog
+
+    repo = tmp_path / "sample-repo"
+    repo.mkdir()
+    vault = VaultCatalog(vault_root=tmp_path / "vault")
+    vault.register_project("sample", "Sample Project", repo)
+    calls = []
+
+    def fake_live(origin, commit_sha):
+        calls.append((origin, commit_sha))
+        return {"status": "available", "observed_at": "2026-11-13T12:00:00Z"}
+
+    monkeypatch.setattr(dossier_module, "fetch_github_live_evidence", fake_live)
+    inventory = [{
+        "path": str(repo), "origin": "github.com/acme/project",
+        "head_sha": "c" * 40, "name": "sample-repo", "branch": "main",
+        "dirty": False, "scan_status": "complete", "scan_error": None,
+        "last_seen_at": "2026-11-13T11:00:00Z", "scan_count": 1,
+    }]
+
+    result = dossier_module.build_project_dossier(
+        vault=vault, project_id="sample", repository_inventory=inventory
+    )
+    assert calls == [("github.com/acme/project", "c" * 40)]
+    assert result["repository"]["local_inventory"]["repositories"][0]["github_live"]["status"] == "available"
+
+
+def test_dossier_does_not_query_github_for_unmatched_local_path(tmp_path, monkeypatch):
+    from core.repository_intelligence import project_dossier as dossier_module
+    from core.vault.catalog import VaultCatalog
+
+    repo = tmp_path / "sample-repo"
+    repo.mkdir()
+    vault = VaultCatalog(vault_root=tmp_path / "vault")
+    vault.register_project("sample", "Sample Project", repo)
+
+    def fail(*args, **kwargs):
+        raise AssertionError("unmatched repository must not trigger a GitHub request")
+
+    monkeypatch.setattr(dossier_module, "fetch_github_live_evidence", fail)
+    result = dossier_module.build_project_dossier(
+        vault=vault,
+        project_id="sample",
+        repository_inventory=[{
+            "path": str(tmp_path / "different" / "sample-repo"),
+            "origin": "github.com/acme/project",
+            "head_sha": "d" * 40,
+        }],
+    )
+    assert result["repository"]["local_inventory"]["match_status"] == "no_exact_path_match"
