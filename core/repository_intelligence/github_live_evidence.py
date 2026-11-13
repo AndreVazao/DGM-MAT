@@ -235,7 +235,7 @@ def fetch_github_live_evidence(
             collection_response = requests.get(
                 f"{_API}/repos/{owner}/{repository}/{endpoint}",
                 headers=headers,
-                params={"state": "all", "sort": "updated", "direction": "desc", "per_page": 10},
+                params={"state": "all", "sort": "updated", "direction": "desc", "per_page": 20 if kind == "issue" else 10},
                 timeout=max(1.0, min(float(timeout), 10.0)),
                 allow_redirects=False,
             )
@@ -256,7 +256,9 @@ def fetch_github_live_evidence(
             return {"status": "unavailable", "error_type": "invalid_github_collection_payload", "items": []}
 
         records = []
-        for item in collection_payload[:10]:
+        for item in collection_payload[:20]:
+            if len(records) >= 10:
+                break
             if not isinstance(item, dict):
                 continue
             is_pull_request = isinstance(item.get("pull_request"), dict)
