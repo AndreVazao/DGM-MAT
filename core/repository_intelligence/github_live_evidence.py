@@ -85,7 +85,7 @@ def fetch_github_live_evidence(
     sha = str(commit_sha or "").strip().lower()
     if sha and not re.fullmatch(r"[0-9a-f]{40}", sha):
         sha = ""
-    cache_key = (f"{owner}/{repository}".casefold(), sha, "v1")
+    cache_key = (f"{owner}/{repository}".casefold(), sha, "authenticated" if os.getenv("GITHUB_TOKEN", "").strip() else "anonymous")
     now_monotonic = time.monotonic()
     with _CACHE_LOCK:
         cached = _CACHE.get(cache_key)
@@ -218,12 +218,14 @@ def fetch_github_live_evidence(
                             "html_url": item.get("html_url"),
                             "app": (item.get("app") or {}).get("slug") if isinstance(item.get("app"), dict) else None,
                         })
+                    total_raw = checks_payload.get("total_count")
+                    total_count = total_raw if isinstance(total_raw, int) and total_raw >= 0 else len(checks)
                     result["commit_checks"] = {
                         "status": "available",
                         "commit_sha": sha,
-                        "total_count": int(checks_payload.get("total_count") or len(checks)),
+                        "total_count": total_count,
                         "returned": len(checks),
-                        "truncated": int(checks_payload.get("total_count") or len(checks)) > len(checks),
+                        "truncated": total_count > len(checks),
                         "conclusion_summary": conclusions,
                         "checks": checks,
                     }
