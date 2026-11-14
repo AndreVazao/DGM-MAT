@@ -69,8 +69,10 @@ def fetch_github_live_evidence(
 ) -> dict[str, Any]:
     """Read repository metadata and checks for the exact locally observed SHA.
 
-    The function performs at most two GET requests, never follows repository
-    redirects, never mutates GitHub, and returns selected metadata only.
+    The function performs at most four GET requests: repository metadata,
+    optional checks for an exact commit SHA, and bounded pull-request/issue
+    collections. It never follows redirects, mutates GitHub, or returns
+    unselected metadata.
     """
     identity = _github_identity(origin)
     if identity is None:
