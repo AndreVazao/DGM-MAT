@@ -397,3 +397,20 @@ A PR #221 permanece fechada sem merge, mas os testes relevantes chegaram a `main
 - Comentários de correção publicados nas issues #208 e #215 em 15-11-2026. Hashes/arquivos privados não foram enviados para GitHub.
 
 Classificação desta frente: fixtures determinísticas presentes e validadas no run #42356417324; fronteira histórica provider-confirmed e aceitação real continuam pendentes.
+
+
+## Nova frente — PR #385 (21:47 UTC)
+
+Criada PR #385 a partir de main `2cf91c5`, branch `test/browser-capture-boundary-claims-all-providers`, HEAD `a60f274cc76846671e06ac28ee1b411d440bcd54`. É uma alteração test-only em `tests/api/test_browser_capture_api.py`: percorre ChatGPT, Gemini, Grok, DeepSeek, Qwen e Claude e tenta enviar uma falsa declaração `oldest_boundary=confirmed` com evidência inventada. Para cada provider, a API tem de manter `history_completeness=partial_or_unknown` e `full_history_verified=false`.
+
+Validação confirmada:
+- Focused PR Validation #1034 — success: https://github.com/AndreVazao/DGM-MAT/actions/runs/43765633692
+- Chrome Extension Validation — success: https://github.com/AndreVazao/DGM-MAT/actions/runs/43765633684. Sintaxe JS, fixtures virtualizadas, testes de segurança de envio, fixtures de Browser Operator, fresh-review, manifest, pip-audit, Bandit, regressões API/segurança e packaging passaram.
+- Windows installer digest gate — success, como job na run #1034.
+- Windows Executable Build #675 — ainda in_progress na última consulta: https://github.com/AndreVazao/DGM-MAT/actions/runs/43765633722.
+- CodeRabbit — skipped (“manual review required for this OSS repository”); sem revisão independente.
+- Snyk — status error “You have used your limit of private tests”; ignorado conforme instrução do operador, sem retry.
+
+Artefacto Chrome extension: `DGM-MAT-Chrome-Conversation-Recovery`, ID `14181973228`, 29.887 bytes, digest `sha256:ab8104d8521eaee9b397c75ec5cdc89ee88ec4c9d33f86df42a54000cbddce99`, expira 29-11-2026. Este é o ZIP da extensão, não o executável Windows.
+
+PR #385 permanece aberta, não integrada. Nenhuma alteração à main.
