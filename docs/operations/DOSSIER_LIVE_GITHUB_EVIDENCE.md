@@ -50,6 +50,12 @@ avoiding a second pair of API requests. It is explicitly best-effort:
 recently updated closed records can displace older open records in the 100-item
 window, so it is not a complete open-work inventory.
 
+History and open-work truncation are reported independently. Each projection
+sets its truncation flag when eligible records exceed its own ten-item output
+limit. A full 100-item upstream page also marks the corresponding projection
+as potentially truncated because additional records may exist beyond that page,
+even when fewer than ten open records were found in the returned window.
+
 The REST endpoint responses may include issue/PR bodies and user account
 metadata. Those fields are not retained in the dossier projection. This
 integration does not request discussion comments or review bodies.
