@@ -294,7 +294,13 @@ def test_full_upstream_page_marks_both_projections_as_potentially_truncated(monk
             return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
         if url.endswith("/pulls"):
             if kwargs["params"]["state"] == "open":
-                return _Response(200, [])
+                return _Response(200, [{
+                    "number": 101, "title": "Open PR outside recent history page",
+                    "state": "open", "draft": False,
+                    "created_at": "2026-11-01T10:00:00Z",
+                    "updated_at": "2026-11-14T12:00:00Z", "closed_at": None,
+                    "html_url": "https://github.com/acme/project/pull/101", "labels": [],
+                }])
             return _Response(200, [{
                 "number": number,
                 "title": f"Closed PR {number}",
@@ -314,5 +320,6 @@ def test_full_upstream_page_marks_both_projections_as_potentially_truncated(monk
     result = live.fetch_github_live_evidence("github.com/acme/project")
 
     assert result["github_activity"]["pull_requests"]["may_be_truncated"] is True
-    assert result["open_work_items"]["pull_requests"]["returned"] == 0
-    assert result["open_work_items"]["pull_requests"]["may_be_truncated"] is True
+    assert result["open_work_items"]["pull_requests"]["returned"] == 1
+    assert result["open_work_items"]["pull_requests"]["items"][0]["number"] == 101
+    assert result["open_work_items"]["pull_requests"]["may_be_truncated"] is False
