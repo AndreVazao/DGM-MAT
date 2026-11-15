@@ -293,8 +293,9 @@ def fetch_github_live_evidence(
     def fetch_open_records(endpoint: str, *, kind: str) -> dict[str, Any]:
         """Fetch the current open queue independently from historical activity.
 
-        Request eleven records to return ten and detect at least one omitted
-        result without scanning or paging the full open collection.
+        Read a bounded open page, filter issue-endpoint PR entries, and return
+        ten items. An eleventh PR or a full 100-entry issues page signals that
+        the returned snapshot may omit additional eligible work.
         """
         try:
             open_response = requests.get(
@@ -324,6 +325,8 @@ def fetch_github_live_evidence(
         for item in open_payload[:100]:
             if not isinstance(item, dict):
                 continue
+            if item.get("state") != "open":
+                continue
             if kind == "issue" and isinstance(item.get("pull_request"), dict):
                 continue
             labels = item.get("labels") if isinstance(item.get("labels"), list) else []
@@ -345,7 +348,7 @@ def fetch_github_live_evidence(
             "status": "available",
             "returned": min(len(records), 10),
             "limit": 10,
-            "may_be_truncated": len(records) > 10 or (kind == "issue" and len(open_payload) >= 100),
+            "may_be_truncated": len(records) > 10 or (kind == "pull_request" and len(open_payload) >= 11) or (kind == "issue" and len(open_payload) >= 100),
             "items": records[:10],
         }
 
