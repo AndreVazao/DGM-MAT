@@ -293,3 +293,30 @@ Esta adenda atualiza a observação de 14:34 UTC com os resultados finais consul
 **VERIFICAÇÃO INCOMPLETA.** GitHub, inventário, comparação de branches, configuração versionada, workflows, jobs e metadados de artefactos foram observados. Runtime local, missão funcional, recuperação de conversas, agentes locais e DGM-HUB permanecem não verificados.
 
 Não foi encontrada uma correção de código adicional, de baixo risco e demonstrada que justificasse abrir outra PR nesta curta atualização. Foi apenas atualizada esta documentação na branch já existente `reports/daily-supervision-2026-11-15`; `main`, as PRs de código, as permissões e os controlos não foram alterados.
+
+## Adenda de desenvolvimento — 15-11-2026, 15:49 UTC
+
+Esta adenda regista o avanço posterior à ronda das 14:56 UTC. Não altera os resultados de runtime local: o PC continua sem validação nesta sessão.
+
+### PR #382 — consolidação efetiva de #379/#382
+- HEAD observado: `16cff2fb5090395c1c3d054bd024d999c5ec6048`; PR aberta, não-draft e mergeable=true; 20 commits à frente de `main`, três ficheiros alterados, 365 adições e 5 remoções.
+- A implementação anterior derivava `open_work_items` dos primeiros 100 resultados `state=all`, podendo perder trabalho aberto antigo. Foi substituída por consultas diretas `state=open`, separadas das consultas históricas `state=all`.
+- Histórico: até 100 PRs e 100 issues por endpoint, devolvendo dez registos recentes por coleção. Itens PR recebidos pelo endpoint `/issues` são filtrados.
+- Trabalho aberto: endpoint `/pulls` consulta 11 PRs abertas e devolve dez, sinalizando truncagem se a 11.ª existir; endpoint `/issues` consulta até 100 registos abertos, filtra PRs e devolve até dez issues reais, sinalizando truncagem quando a página fica cheia ou há mais de dez issues elegíveis.
+- O custo máximo passa a seis GET por leitura sem cache quando há SHA local (metadados, checks opcionais, histórico PR/issues e open PR/issues). Não há mutações GitHub.
+- Foram adicionados testes para provar que uma PR aberta fora da janela dos 100 registos históricos continua visível no inventário aberto, além de testes de filtragem, falhas parciais e truncagem.
+- O corpo da PR #382 foi atualizado com o novo contrato e a limitação de inventário bounded. Foi deixado comentário na #379 explicando que #382 agora cobre a funcionalidade, mas #379 permanece aberta e a branch não foi apagada.
+
+### CI do HEAD atual
+- [Focused PR Validation #1032](https://github.com/AndreVazao/DGM-MAT/actions/runs/43731842288): sucesso, incluindo compilação Python, seleção da regressão `tests/repository_intelligence/test_github_live_evidence.py`, execução dos testes selecionados e gate de integridade do instalador.
+- [Windows Executable Build #673](https://github.com/AndreVazao/DGM-MAT/actions/runs/43731842304): ainda em execução às 15:49 UTC; dependências e etapas iniciais concluídas, sem resultado final, validação profunda ou artefacto confirmado nesta observação.
+- O status Snyk apresenta erro por quota gratuita esgotada e continua explicitamente fora do critério de aprovação, sem ser mascarado.
+- CodeRabbit continua sem revisão independente pós-fix: a tentativa anterior foi rate-limited. Nenhum autofix foi aplicado.
+
+### Estado e salvaguardas
+- `main` não foi alterada; não houve merge nem release.
+- #379 permanece aberta; #382 permanece aberta; #384 permanece draft.
+- Nenhuma branch foi apagada; nenhuma política SAFE, proteção de branch, ruleset, permissão ou segredo foi alterado.
+- Nenhum artefacto foi descarregado/instalado. PC, Desktop Commander, API local, missões, captura de conversas, agentes locais e DGM-HUB não foram testados.
+
+**Classificação desta adenda: VERIFICAÇÃO INCOMPLETA.** A validação focada do novo HEAD passou; a build Windows ainda não tinha terminado na hora de fecho desta observação. O estado runtime do PC permanece desconhecido.
