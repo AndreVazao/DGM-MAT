@@ -281,16 +281,18 @@ def fetch_github_live_evidence(
                     for label in labels[:10] if isinstance(label, dict) and label.get("name")
                 ],
             })
+        open_records = [record for record in records if record["state"] == "open"]
         recent = records[:10]
-        open_records = [record for record in records if record["state"] == "open"][:10]
-        truncated = len(collection_payload) >= 100
+        open_items = open_records[:10]
+        upstream_page_may_be_truncated = len(collection_payload) >= 100
         return {
             "status": "available",
             "returned": len(recent),
             "items": recent,
-            "open_returned": len(open_records),
-            "open_items": open_records,
-            "may_be_truncated": truncated,
+            "open_returned": len(open_items),
+            "open_items": open_items,
+            "may_be_truncated": len(records) > 10 or upstream_page_may_be_truncated,
+            "open_may_be_truncated": len(open_records) > 10 or upstream_page_may_be_truncated,
         }
 
     pull_requests = fetch_recent_records("pulls", kind="pull_request")
@@ -318,7 +320,7 @@ def fetch_github_live_evidence(
             "status": pull_requests["status"],
             "returned": pull_requests.get("open_returned", 0),
             "limit": 10,
-            "may_be_truncated": pull_requests.get("may_be_truncated", False),
+            "may_be_truncated": pull_requests.get("open_may_be_truncated", False),
             "items": pull_requests.get("open_items", []),
             **({"error_type": pull_requests["error_type"]} if pull_requests["status"] != "available" and "error_type" in pull_requests else {}),
         },
@@ -326,7 +328,7 @@ def fetch_github_live_evidence(
             "status": issues["status"],
             "returned": issues.get("open_returned", 0),
             "limit": 10,
-            "may_be_truncated": issues.get("may_be_truncated", False),
+            "may_be_truncated": issues.get("open_may_be_truncated", False),
             "items": issues.get("open_items", []),
             **({"error_type": issues["error_type"]} if issues["status"] != "available" and "error_type" in issues else {}),
         },
