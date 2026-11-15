@@ -320,3 +320,19 @@ Esta adenda regista o avanço posterior à ronda das 14:56 UTC. Não altera os r
 - Nenhum artefacto foi descarregado/instalado. PC, Desktop Commander, API local, missões, captura de conversas, agentes locais e DGM-HUB não foram testados.
 
 **Classificação desta adenda: VERIFICAÇÃO INCOMPLETA.** A validação focada do novo HEAD passou; a build Windows ainda não tinha terminado na hora de fecho desta observação. O estado runtime do PC permanece desconhecido.
+
+
+## Fecho da validação GitHub — 15-11-2026, 15:54 UTC
+
+Atualização final da execução iniciada sobre o HEAD `16cff2fb5090395c1c3d054bd024d999c5ec6048`.
+
+- [Focused PR Validation #1032](https://github.com/AndreVazao/DGM-MAT/actions/runs/43731842288): concluída com sucesso. Compilação Python, seleção e execução da regressão de evidência GitHub e gate de integridade do instalador passaram.
+- [Windows Executable Build #673](https://github.com/AndreVazao/DGM-MAT/actions/runs/43731842304): concluída com sucesso. Compilação, deep executable validation, preparação, assertions finais e upload passaram.
+- Artefacto: `DGM-MAT-Windows-3.12-5061c10`, ID `14169126811`, 115.375.009 bytes, digest do artefacto `sha256:f5b787bee6182dbea3642656e156494ac09c9a37570bd1acc75c1fd8291be18d`, criado em 15-11-2026 15:52 UTC, expira em 13-02-2027. É um artefacto da PR #382, não uma release de `main`; não foi descarregado nem instalado.
+- PR #382 continua aberta, não-draft e mergeable=true. HEAD `16cff2fb5090395c1c3d054bd024d999c5ec6048`, 22 commits à frente e zero atrás de `main`, três ficheiros, 368 adições e 5 remoções.
+- A comparação direta entre as branches #382 e #379 continua divergente: #382 tem 22 commits exclusivos e #379 tem 4. Ambas alteram os mesmos três ficheiros. A #382 agora inclui a consulta direta de trabalho aberto, cobrindo a capacidade da #379 sem depender da janela histórica. A #379 permanece aberta e a branch intacta; não foi encerrada por inferência.
+- O corpo da #382 e os comentários nas duas PRs foram atualizados para explicar a consolidação, o limite de seis GET e os resultados CI. A #384 foi atualizada na branch documental existente, sem criar PR redundante.
+- CodeRabbit não produziu revisão independente pós-fix: a tentativa foi rate-limited. Os findings anteriores estão corrigidos no código, mas não há aprovação nova do CodeRabbit.
+- O check Snyk permanece em erro por quota gratuita esgotada e não é usado como critério de aprovação.
+
+**Conclusão:** CI focada e build Windows aprovadas para o HEAD atual da #382; artefacto criado e verificado por metadados. Isto não valida a execução no PC. Não houve merge, release, download, instalação, alteração de `main`, modificação de branch protection/rulesets, uso do Desktop Commander ou contacto com o PC. O runtime, missão read-only, autenticação, fila, captura multi-IA e DGM-HUB continuam por verificar.
