@@ -435,3 +435,25 @@ A PR #385 continua aberta, não-draft, mergeable e não integrada. O CodeRabbit 
 A build verde é evidência de compilação/validação CI, não de instalação ou runtime no PC. PC continua sem validação nesta ronda. Main não foi alterada; nenhum merge foi feito.
 
 **Classificação global: VERIFICAÇÃO INCOMPLETA**, com CI e artefacto da PR #385 confirmados.
+
+
+## Nova frente — PR #386: fronteira histórica derivada no servidor (23:47 UTC)
+
+A revisão do teste anti-spoofing da PR #385 revelou uma contradição: perante um payload forjado, a API mantinha `history_completeness=partial_or_unknown` e `full_history_verified=false`, mas ainda devolvia `oldest_boundary=confirmed` por ecoar o valor submetido pelo cliente.
+
+Foi criada a PR #386:
+- URL: https://github.com/AndreVazao/DGM-MAT/pull/386
+- Branch: `fix/recovery-server-derived-oldest-boundary`
+- HEAD observado: `29eb10712210096804b32bfc34dcf2d0fb039340`
+- Dois ficheiros alterados: `core/api/browser_capture_api.py` e `tests/api/test_browser_capture_api.py`.
+- A fronteira efetiva passa a ser calculada no servidor: `confirmed` apenas com marcador allowlisted e todos os gates; caso contrário `unknown` ou `limit`.
+- Os valores enviados pelo cliente permanecem identificados como `client_reported_*` para proveniência, sem serem apresentados como evidência efetiva.
+- A regressão percorre os seis providers e verifica a resposta e o arquivo imutável.
+
+CI observado:
+- Focused PR Validation #1036 e Windows Build #677 foram iniciados para o commit intermédio `1b652e2`; a última consulta mostrou execução/pending.
+- Chrome Extension Validation #523 estava em execução para esse commit intermédio.
+- O HEAD foi depois atualizado para `29eb107` com asserções adicionais sobre os campos guardados no arquivo. Não foi ainda observada uma execução CI associada a esse HEAD final; não contabilizar os runs do commit anterior como validação do HEAD atual.
+- PR #386 aberta, não integrada. Não houve alteração à main.
+
+Comentários de atualização publicados nas issues #208 e #215. Não houve acesso a contas de providers, browser local ou PC. A captura live e a aceitação manual continuam pendentes.
