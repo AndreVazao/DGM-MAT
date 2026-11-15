@@ -24,7 +24,7 @@ recorded by the local inventory. A missing check run does not mean tests passed.
 
 - GET requests only; no branch, issue, pull request, workflow or repository
   mutations.
-- At most four requests per uncached dossier read (repository metadata, optional exact-SHA checks, pull requests and issues); five-second default timeout,
+- At most four requests per uncached dossier read (repository metadata, optional exact-SHA checks, pull requests and issues; each collection reads at most 100 records); five-second default timeout,
   no redirects, 20 check-run result cap and a five-minute process-local cache.
 - Uses an existing `GITHUB_TOKEN` environment variable when present; otherwise
   public GitHub repositories can be queried anonymously. No token is returned
@@ -40,11 +40,19 @@ recorded by the local inventory. A missing check run does not mean tests passed.
 ## Pull request and issue history
 
 Pull requests and issues are queried separately with `state=all`, sorted by
-most recently updated, capped at ten records each. GitHub's issues endpoint
-also returns pull requests; those entries are explicitly filtered out of the
-issue collection to prevent double counting. Only bounded metadata is stored
-in the dossier projection: no discussion comments, review bodies, issue bodies,
-or user account details are fetched.
+most recently updated. Each endpoint reads at most 100 records, from which the
+ten most recently updated records are retained for history. GitHub's issues
+endpoint also returns pull requests; those entries are explicitly filtered out
+of the issue collection to prevent double counting.
+
+The current open-work projection is derived from these same bounded responses,
+avoiding a second pair of API requests. It is explicitly best-effort:
+recently updated closed records can displace older open records in the 100-item
+window, so it is not a complete open-work inventory.
+
+The REST endpoint responses may include issue/PR bodies and user account
+metadata. Those fields are not retained in the dossier projection. This
+integration does not request discussion comments or review bodies.
 
 A failed collection produces a partial activity status and does not erase
 repository metadata or the other successful collection. The result is a recent
