@@ -10,15 +10,15 @@
 
 O GitHub está acessível e a branch main mantém o mesmo HEAD do relatório de 14-11: 2cf91c5. Não foi observada nova integração na branch principal desde a PR #378, concluída em 13-11-2026 às 20:59:20 UTC.
 
-O inventário desta ronda, antes da criação deste relatório, devolveu:
-- 49 branches;
-- 13 pull requests abertas;
+O inventário inicial antes da publicação devolveu 49 branches e 13 PRs abertas. A verificação final, depois de criada a branch e a PR deste relatório, devolveu:
+- 51 branches;
+- 14 pull requests abertas;
 - 22 issues abertas (issues reais, excluindo PRs);
 - 25 workflows;
 - 3.827 execuções GitHub Actions no total, das quais 959 associadas à branch main;
 - zero releases publicadas.
 
-O número de 34 itens abertos no relatório anterior correspondia a 12 PRs + 22 issues. A PR #383, criada para o relatório de 14-11, elevou o inventário atual para 13 PRs + 22 issues = 35 itens abertos.
+O primeiro snapshot de branches devolveu 49 nomes; o refresh final devolveu 51. O relatório regista o valor final observado sem tentar eliminar ou alterar branches. O número de 34 itens abertos no relatório anterior correspondia a 12 PRs + 22 issues. A PR #383 elevou esse total para 13 PRs + 22 issues; a presente PR #384 elevou-o para 14 PRs + 22 issues = 36 itens abertos.
 
 A PR #382 avançou e está agora não-draft. O HEAD atual passou a validação focada e a build Windows. A PR #379 continua aberta e sobreposta, mas a comparação confirma que as duas branches divergiram. Não foi feito merge.
 
@@ -56,15 +56,15 @@ Estes dados são históricos e não demonstram o estado atual. Não autorizam pu
 |---|---:|
 | Default branch | main |
 | HEAD de main | 2cf91c5b36a9f7360cf142dc2c60be6ac2f6f18e |
-| Branches antes desta publicação | 49 |
-| PRs abertas antes desta publicação | 13 |
+| Branches na verificação final | 51 |
+| PRs abertas na verificação final | 14 |
 | Issues abertas (sem PRs) | 22 |
 | Workflows | 25 |
 | Execuções Actions | 3.827 |
 | Execuções associadas a main | 959 |
 | Releases publicadas | 0 |
 
-A criação da branch dedicada deste relatório acrescenta uma branch. A abertura da respetiva PR acrescenta uma PR ao inventário.
+A verificação final após a publicação confirma 51 branches e 14 PRs abertas, incluindo a branch e a PR deste relatório.
 
 ### Workflows presentes em main
 
@@ -74,6 +74,7 @@ autonomy-smoke.yml, backend-phase-gate.yml, backup-first-executor-windows.yml, b
 
 | PR | Título | Estado |
 |---|---|---|
+| [#384](https://github.com/AndreVazao/DGM-MAT/pull/384) | Relatório diário 2026-11-15 | Aberta, draft |
 | [#382](https://github.com/AndreVazao/DGM-MAT/pull/382) | Histórico GitHub de PRs/issues | Aberta, não-draft |
 | [#383](https://github.com/AndreVazao/DGM-MAT/pull/383) | Relatório diário 2026-11-14 | Aberta, draft |
 | [#379](https://github.com/AndreVazao/DGM-MAT/pull/379) | PRs/issues abertas no dossier | Aberta, draft |
@@ -92,7 +93,8 @@ autonomy-smoke.yml, backend-phase-gate.yml, backup-first-executor-windows.yml, b
 
 | PR | Ahead / behind face a main | Ficheiros alterados | Leitura |
 |---|---:|---:|---|
-| #382 | 11 / 0 | 3 | Linha atual mais completa para histórico e projeção best-effort de trabalho aberto. |
+| #382 | 14 / 0 | 3 | Linha atual mais completa para histórico e projeção best-effort de trabalho aberto; inclui correção de truncagem. |
+| #384 | 2 / 0 | 1 | Relatório diário desta execução. |
 | #379 | 4 / 0 | 3 | Implementação alternativa de itens abertos; diverge de #382. |
 | #383 | 1 / 0 | 1 | Relatório de 14-11, histórico. |
 | #376 | 5 / 1 | 4 | Divergência em Cockpit/chat; requer reconciliação antes de integração. |
@@ -102,7 +104,7 @@ autonomy-smoke.yml, backend-phase-gate.yml, backup-first-executor-windows.yml, b
 | #349 | 1 / 19 | 1 | Plano documental parcialmente ultrapassado por implementação posterior. |
 | #344 | 1 / 20 | 1 | Checkpoint documental antigo. |
 
-A comparação direta entre #379 e #382 devolveu divergência: #379 tem 4 commits que não estão em #382 e #382 tem 11 commits que não estão em #379; ambas partem do mesmo HEAD de main. As duas alteram os mesmos três ficheiros:
+A comparação direta entre #379 e #382 devolveu divergência: #379 tem 4 commits que não estão em #382 e #382 tem agora 14 commits que não estão em #379; ambas partem do mesmo HEAD de main. As duas alteram os mesmos três ficheiros:
 - core/repository_intelligence/github_live_evidence.py;
 - docs/operations/DOSSIER_LIVE_GITHUB_EVIDENCE.md;
 - tests/repository_intelligence/test_github_live_evidence.py.
@@ -112,22 +114,24 @@ A comparação direta entre #379 e #382 devolveu divergência: #379 tem 4 commit
 Estado atual observado:
 - PR aberta, não-draft, mergeable=true, não integrada.
 - Branch: feat/dossier-github-pr-issue-history-final.
-- HEAD: 072e0c655704aaa32150ad0231da3975e00b7ea1.
-- 11 commits à frente e zero atrás de main.
+- HEAD atual: 232d2bb6d5e16f6c865849f079c2f28df55abfd0.
+- 14 commits à frente e zero atrás de main.
 - Três ficheiros alterados: 215 adições e 5 remoções.
 
 Validação do HEAD exato:
-- [Focused PR Validation #1025](https://github.com/AndreVazao/DGM-MAT/actions/runs/43708671668): success.
-- [Windows Executable Build #666](https://github.com/AndreVazao/DGM-MAT/actions/runs/43708671654): success, incluindo build, deep executable validation e upload do artefacto.
+- [Focused PR Validation #1027](https://github.com/AndreVazao/DGM-MAT/actions/runs/43726142926): success no HEAD atual.
+- [Windows Executable Build #668](https://github.com/AndreVazao/DGM-MAT/actions/runs/43726142919): em execução na última consulta; dependências ainda em instalação.
+- A build #666 do HEAD anterior passou, mas o respetivo artefacto não é o pacote do HEAD atual.
 - O status agregado de Snyk continua a aparecer como error. É deliberadamente ignorado segundo a instrução do operador e a quota gratuita já esgotada; não foi usado para mascarar nem substituir testes.
 
-Artefacto da build da PR #382:
+Último artefacto concluído da PR #382 (HEAD anterior 072e0c6; não usar como pacote do HEAD atual):
 - Nome: DGM-MAT-Windows-3.12-2f41f4b.
 - Artifact ID: 14160015432.
 - Tamanho: 115.374.182 bytes.
 - Digest: sha256:647edc68f7217215e11b3148c881caae709cbfe55c97c3969cc8b28999c9c30f.
 - Expiração indicada: 13-02-2027.
-- O artefacto pertence ao workflow de pull request cujo HEAD é 072e0c6; não é uma release da main nem foi instalado.
+- A build #668 do HEAD atual ainda estava em execução; não existia artefacto final validado para o novo HEAD nesta consulta.
+- O artefacto anterior pertence a um workflow de pull request; não é uma release da main nem foi instalado.
 
 ### Revisão de código e cobertura
 
@@ -135,10 +139,14 @@ A revisão anterior encontrou dois pontos:
 1. O endpoint /pulls não inclui o marcador pull_request que existe nas respostas de /issues; o código e a fixture foram corrigidos para não exigir esse marcador em /pulls.
 2. A documentação foi corrigida para distinguir campos que podem vir na resposta REST dos campos efetivamente retidos na projeção. Corpos e metadados de conta podem estar presentes nas respostas, mas não são retidos; comentários de discussão e corpos de reviews não são solicitados.
 
-O comentário de André de 15-11 às 12:24 UTC confirma as correções e os dois checks verdes. Foi agora pedido um novo review manual ao CodeRabbit sobre o HEAD atual, sem autofixes nem alterações automáticas:
-- [Comentário de revisão](https://github.com/AndreVazao/DGM-MAT/pull/382#issuecomment-6896232892).
-- ID do comentário: 6896232892.
-- Resultado do novo review: pendente nesta execução.
+O comentário de André de 15-11 às 12:24 UTC confirmou as correções anteriores e os checks verdes. O review manual pedido às 14:34 UTC foi concluído às 14:43 UTC e encontrou uma falha menor reproduzível: os indicadores de truncagem ignoravam omissões no limite de dez registos, marcando 11 registos elegíveis como não truncados.
+
+A falha foi corrigida na mesma branch, com verificações separadas para histórico e trabalho aberto:
+- Código: [922b946](https://github.com/AndreVazao/DGM-MAT/commit/922b94675795014b909295b7997aa573fb9c45af).
+- Testes: [70e3e1d](https://github.com/AndreVazao/DGM-MAT/commit/70e3e1d40751d461059c160a13e5bbf1e19dfed3).
+- Documentação: [232d2bb](https://github.com/AndreVazao/DGM-MAT/commit/232d2bb6d5e16f6c865849f079c2f28df55abfd0).
+- O novo HEAD passou Focused PR Validation #1027; Windows Build #668 estava em execução na última consulta.
+- A revisão CodeRabbit seguinte à correção ainda não tinha sido recebida.
 
 ### Sobreposição #379 / #382
 
@@ -150,9 +158,11 @@ Não foi tomada decisão arquitetural sobre esse custo. Não foram integradas ne
 
 ## 6. Correções feitas e links
 
-- Nenhuma correção de código foi necessária nesta ronda: a main não mudou e a consolidação #382 tem os checks funcionais e a build Windows aprovados.
-- Foi submetido um pedido novo de revisão independente ao CodeRabbit na PR #382, sem autorizar autofixes.
-- Foi criado este relatório numa branch isolada a partir do HEAD atual de main.
+- Foi corrigido um defeito de integridade de evidência na PR #382: os limites de dez itens passam a marcar truncagem separadamente para histórico e open-work; páginas upstream com 100 registos continuam a assinalar possível truncagem.
+- Foram acrescentados dois testes de regressão e atualizada a documentação.
+- A validação focada do novo HEAD passou; a build Windows #668 ainda estava em execução.
+- Foi submetido novo pedido de review CodeRabbit e a resposta identificou a falha corrigida; não foram autorizados autofixes.
+- Foi atualizado este relatório numa branch isolada a partir do HEAD de main.
 - Não foram feitos commits na branch main, merges, fechos de PRs/issues, eliminações de branches, force-push, rebase, reset ou alterações de permissões/segredos.
 
 ## 7. Sincronização GitHub → PC e self-update
