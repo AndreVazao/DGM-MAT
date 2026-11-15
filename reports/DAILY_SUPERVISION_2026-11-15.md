@@ -94,7 +94,7 @@ autonomy-smoke.yml, backend-phase-gate.yml, backup-first-executor-windows.yml, b
 | PR | Ahead / behind face a main | Ficheiros alterados | Leitura |
 |---|---:|---:|---|
 | #382 | 14 / 0 | 3 | Linha atual mais completa para histórico e projeção best-effort de trabalho aberto; inclui correção de truncagem. |
-| #384 | 3 / 0 | 1 | Relatório diário desta execução. |
+| #384 | 4 / 0 | 1 | Relatório diário desta execução. |
 | #379 | 4 / 0 | 3 | Implementação alternativa de itens abertos; diverge de #382. |
 | #383 | 1 / 0 | 1 | Relatório de 14-11, histórico. |
 | #376 | 5 / 1 | 4 | Divergência em Cockpit/chat; requer reconciliação antes de integração. |
@@ -121,18 +121,18 @@ Estado atual observado:
 Validação do HEAD exato:
 - [Focused PR Validation #1027](https://github.com/AndreVazao/DGM-MAT/actions/runs/43726142926): success no HEAD atual.
 - [Windows Executable Build #667](https://github.com/AndreVazao/DGM-MAT/actions/runs/43726138283): success no commit 70e3e1d, que já contém o código e os testes da correção.
-- [Windows Executable Build #668](https://github.com/AndreVazao/DGM-MAT/actions/runs/43726142919): em execução para o HEAD final 232d2bb, cuja diferença face ao commit #667 é documental.
+- [Windows Executable Build #668](https://github.com/AndreVazao/DGM-MAT/actions/runs/43726142919): success no HEAD final 232d2bb, incluindo deep executable validation e upload do artefacto.
 - A build #666 pertence a um HEAD anterior à correção e não é usada como evidência da alteração atual.
 - O status agregado de Snyk continua a aparecer como error. É deliberadamente ignorado segundo a instrução do operador e a quota gratuita já esgotada; não foi usado para mascarar nem substituir testes.
 
-Artefacto concluído para o commit de código/testes 70e3e1d (build #667; um commit documental atrás do HEAD final):
-- Nome: DGM-MAT-Windows-3.12-4ef271d.
-- Artifact ID: 14166861354.
-- Tamanho: 115.374.434 bytes.
-- Digest: sha256:9315e9ac3a19545537c562b26a7436361b3aff17f66fe938ce06ed79962ee1cb.
+Artefacto concluído para o HEAD final 232d2bb (build #668):
+- Nome: DGM-MAT-Windows-3.12-871ba31.
+- Artifact ID: 14166591209.
+- Tamanho: 115.374.185 bytes.
+- Digest: sha256:3b15a5a72b2d7712e40d64a48e822072b928e4fd6f95ce1adf9ceeefb96893a6.
 - Expiração indicada: 13-02-2027.
-- A build #668 do HEAD final 232d2bb ainda estava em execução; não existia artefacto final validado para esse HEAD nesta consulta.
-- O artefacto #667 pertence a um workflow de pull request; não é uma release da main nem foi instalado.
+- O artefacto pertence ao workflow de pull request #382; não é uma release da main e não foi instalado.
+- O build #667 do commit de código/testes 70e3e1d também passou, antes do commit documental final.
 
 ### Revisão de código e cobertura
 
