@@ -414,3 +414,24 @@ Validação confirmada:
 Artefacto Chrome extension: `DGM-MAT-Chrome-Conversation-Recovery`, ID `14181973228`, 29.887 bytes, digest `sha256:ab8104d8521eaee9b397c75ec5cdc89ee88ec4c9d33f86df42a54000cbddce99`, expira 29-11-2026. Este é o ZIP da extensão, não o executável Windows.
 
 PR #385 permanece aberta, não integrada. Nenhuma alteração à main.
+
+
+## Adenda — resultado final Windows Build #675 (15-11-2026, 21:50 UTC)
+
+A verificação posterior confirmou que a Windows Executable Build #675 terminou com **success** no HEAD `a60f274cc76846671e06ac28ee1b411d440bcd54` da PR #385.
+
+Todos os passos do job `build (3.12)` terminaram com sucesso: compilação do executável, validação profunda do executável, preparação dos artefactos, asserções finais e upload.
+
+- Run: https://github.com/AndreVazao/DGM-MAT/actions/runs/43765633722
+- Artefacto: `DGM-MAT-Windows-3.12-05c6515`
+- Artifact ID: `14181874008`
+- Tamanho: 115.373.568 bytes
+- Digest: `sha256:8dbe8f983b238c0c82c9a662777ad32f3249e0ab756ed7dac5872306e34cac21`
+- Expira: 2027-02-13 21:47:35 UTC
+- Estado: não expirado na observação; não descarregado nem instalado.
+
+A PR #385 continua aberta, não-draft, mergeable e não integrada. O CodeRabbit publicou mensagem de skip por exigir revisão manual neste repositório OSS; não existe aprovação independente. Snyk continua excluído por quota gratuita esgotada.
+
+A build verde é evidência de compilação/validação CI, não de instalação ou runtime no PC. PC continua sem validação nesta ronda. Main não foi alterada; nenhum merge foi feito.
+
+**Classificação global: VERIFICAÇÃO INCOMPLETA**, com CI e artefacto da PR #385 confirmados.
