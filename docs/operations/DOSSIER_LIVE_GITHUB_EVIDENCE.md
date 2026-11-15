@@ -24,7 +24,7 @@ recorded by the local inventory. A missing check run does not mean tests passed.
 
 - GET requests only; no branch, issue, pull request, workflow or repository
   mutations.
-- At most four requests per uncached dossier read (repository metadata, optional exact-SHA checks, pull requests and issues; each collection reads at most 100 records); five-second default timeout,
+- At most six requests per uncached dossier read (repository metadata, optional exact-SHA checks, historical PRs/issues and current open PRs/issues); five-second default timeout,
   no redirects, 20 check-run result cap and a five-minute process-local cache.
 - Uses an existing `GITHUB_TOKEN` environment variable when present; otherwise
   public GitHub repositories can be queried anonymously. No token is returned
@@ -45,16 +45,22 @@ ten most recently updated records are retained for history. GitHub's issues
 endpoint also returns pull requests; those entries are explicitly filtered out
 of the issue collection to prevent double counting.
 
-The current open-work projection is derived from these same bounded responses,
-avoiding a second pair of API requests. It is explicitly best-effort:
-recently updated closed records can displace older open records in the 100-item
-window, so it is not a complete open-work inventory.
+Current open work is queried independently with `state=open`, sorted by most
+recently updated. This costs two additional GET requests but prevents recently
+updated closed records from displacing older open work. The PR endpoint requests
+11 records and returns ten, allowing the response to flag a known omitted item.
+The issues endpoint can also return pull requests, so it reads up to 100 open
+records, filters PR entries, then returns up to ten real issues. A full 100-item
+issues page is marked potentially truncated because additional real issues may
+exist beyond that page.
 
-History and open-work truncation are reported independently. Each projection
-sets its truncation flag when eligible records exceed its own ten-item output
-limit. A full 100-item upstream page also marks the corresponding projection
-as potentially truncated because additional records may exist beyond that page,
-even when fewer than ten open records were found in the returned window.
+Historical and current-work truncation are reported independently. History
+marks truncation when more than ten eligible records are present or the
+100-record upstream page is full. Open PRs mark truncation when more than ten
+are present in the 11-record response; open issues mark truncation when more
+than ten eligible issues remain after filtering or the 100-record upstream
+page is full. The open-work snapshot is bounded to ten items per category and
+is not a total count of all open work.
 
 The REST endpoint responses may include issue/PR bodies and user account
 metadata. Those fields are not retained in the dossier projection. This
