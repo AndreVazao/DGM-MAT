@@ -237,7 +237,7 @@ def fetch_github_live_evidence(
             collection_response = requests.get(
                 f"{_API}/repos/{owner}/{repository}/{endpoint}",
                 headers=headers,
-                params={"state": "all", "sort": "updated", "direction": "desc", "per_page": 20 if kind == "issue" else 10},
+                params={"state": "all", "sort": "updated", "direction": "desc", "per_page": 100},
                 timeout=max(1.0, min(float(timeout), 10.0)),
                 allow_redirects=False,
             )
@@ -258,15 +258,13 @@ def fetch_github_live_evidence(
             return {"status": "unavailable", "error_type": "invalid_github_collection_payload", "items": []}
 
         records = []
-        for item in collection_payload[:20]:
-            if len(records) >= 10:
-                break
+        for item in collection_payload[:100]:
             if not isinstance(item, dict):
                 continue
             is_pull_request = isinstance(item.get("pull_request"), dict)
+            # The /issues endpoint also returns pull requests. The /pulls
+            # endpoint already contains only pull requests and has no marker.
             if kind == "issue" and is_pull_request:
-                continue
-            if kind == "pull_request" and not is_pull_request:
                 continue
             labels = item.get("labels") if isinstance(item.get("labels"), list) else []
             records.append({
@@ -283,7 +281,17 @@ def fetch_github_live_evidence(
                     for label in labels[:10] if isinstance(label, dict) and label.get("name")
                 ],
             })
-        return {"status": "available", "returned": len(records), "items": records}
+        recent = records[:10]
+        open_records = [record for record in records if record["state"] == "open"][:10]
+        truncated = len(collection_payload) >= 100
+        return {
+            "status": "available",
+            "returned": len(recent),
+            "items": recent,
+            "open_returned": len(open_records),
+            "open_items": open_records,
+            "may_be_truncated": truncated,
+        }
 
     pull_requests = fetch_recent_records("pulls", kind="pull_request")
     issues = fetch_recent_records("issues", kind="issue")
@@ -300,6 +308,33 @@ def fetch_github_live_evidence(
     }
     if result["github_activity"]["status"] != "available" and result["status"] == "available":
         result["status"] = "partial"
+
+    # Current work items are derived from the same bounded all-state response,
+    # avoiding duplicate API calls and keeping open/history evidence aligned.
+    result["open_work_items"] = {
+        "status": "available" if pull_requests["status"] == issues["status"] == "available" else "partial",
+        "observed_at": result["github_activity"]["observed_at"],
+        "pull_requests": {
+            "status": pull_requests["status"],
+            "returned": pull_requests.get("open_returned", 0),
+            "limit": 10,
+            "may_be_truncated": pull_requests.get("may_be_truncated", False),
+            "items": pull_requests.get("open_items", []),
+            **({"error_type": pull_requests["error_type"]} if pull_requests["status"] != "available" and "error_type" in pull_requests else {}),
+        },
+        "issues": {
+            "status": issues["status"],
+            "returned": issues.get("open_returned", 0),
+            "limit": 10,
+            "may_be_truncated": issues.get("may_be_truncated", False),
+            "items": issues.get("open_items", []),
+            **({"error_type": issues["error_type"]} if issues["status"] != "available" and "error_type" in issues else {}),
+        },
+        "limitations": [
+            "Open items are derived from at most the 100 most recently updated records returned by each all-state endpoint.",
+            "A large volume of recently updated closed records can displace older open records; this is not a complete open-work inventory.",
+        ],
+    }
 
     with _CACHE_LOCK:
         _CACHE[cache_key] = (time.monotonic(), _copy(result))
