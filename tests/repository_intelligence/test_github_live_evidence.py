@@ -165,7 +165,7 @@ def test_includes_bounded_pr_and_issue_history_without_mixing_records(monkeypatc
         if url.endswith("/check-runs"):
             return _Response(200, {"total_count": 0, "check_runs": []})
         if url.endswith("/pulls"):
-            return _Response(200, [{
+            history = [{
                 "number": 12, "title": "Fix mission recovery", "state": "closed",
                 "draft": False, "created_at": "2026-11-01T10:00:00Z",
                 "updated_at": "2026-11-12T10:00:00Z", "closed_at": "2026-11-12T10:01:00Z",
@@ -176,9 +176,10 @@ def test_includes_bounded_pr_and_issue_history_without_mixing_records(monkeypatc
                 "draft": True, "created_at": "2026-11-13T10:00:00Z",
                 "updated_at": "2026-11-14T10:00:00Z", "closed_at": None,
                 "html_url": "https://github.com/acme/project/pull/13", "labels": [],
-            }])
+            }]
+            return _Response(200, [item for item in history if kwargs["params"]["state"] == "all" or item["state"] == "open"])
         if url.endswith("/issues"):
-            return _Response(200, [
+            history = [
                 {"number": 20, "title": "Track recovery gap", "state": "open",
                  "created_at": "2026-11-02T10:00:00Z", "updated_at": "2026-11-13T10:00:00Z",
                  "closed_at": None, "html_url": "https://github.com/acme/project/issues/20",
@@ -187,7 +188,8 @@ def test_includes_bounded_pr_and_issue_history_without_mixing_records(monkeypatc
                  "created_at": "2026-11-01T10:00:00Z", "updated_at": "2026-11-12T10:00:00Z",
                  "closed_at": "2026-11-12T10:01:00Z", "html_url": "https://github.com/acme/project/pull/12",
                  "labels": [], "pull_request": {"url": "api"}},
-            ])
+            ]
+            return _Response(200, [item for item in history if kwargs["params"]["state"] == "all" or item["state"] == "open"])
         raise AssertionError(url)
 
     monkeypatch.setattr(live.requests, "get", fake_get)
