@@ -336,3 +336,41 @@ Atualização final da execução iniciada sobre o HEAD `16cff2fb5090395c1c3d054
 - O check Snyk permanece em erro por quota gratuita esgotada e não é usado como critério de aprovação.
 
 **Conclusão:** CI focada e build Windows aprovadas para o HEAD atual da #382; artefacto criado e verificado por metadados. Isto não valida a execução no PC. Não houve merge, release, download, instalação, alteração de `main`, modificação de branch protection/rulesets, uso do Desktop Commander ou contacto com o PC. O runtime, missão read-only, autenticação, fila, captura multi-IA e DGM-HUB continuam por verificar.
+
+
+## Adenda de correção e supervisão — 15-11-2026, 18:32 UTC
+
+Esta adenda atualiza o fecho anterior com a consulta independente ao estado atual do GitHub. As secções anteriores são preservadas como histórico das observações às horas nelas indicadas.
+
+### PR #382 — HEAD e validação confirmados
+- Estado: aberta, não-draft, mergeable; não integrada.
+- HEAD: `16cff2fb5090395c1c3d054bd024d999c5ec6048`.
+- Diff reportado pela API: 22 commits à frente de `main`, zero atrás; três ficheiros, 368 adições e cinco remoções.
+- Focused PR Validation #1032: success — https://github.com/AndreVazao/DGM-MAT/actions/runs/43731842288.
+- Windows Executable Build #673: success — https://github.com/AndreVazao/DGM-MAT/actions/runs/43731842304.
+- Artefacto PR: `DGM-MAT-Windows-3.12-5061c10`, ID `14169126811`, 115.375.009 bytes, digest `sha256:f5b787bee6182dbea3642656e156494ac09c9a37570bd1acc75c1fd8291be18d`. Não descarregado nem instalado.
+- A consulta aos check-runs do HEAD encontrou CodeRabbit concluído com `skipped`, não com uma nova revisão: “Review skipped: manual review required for this OSS repository”. Não existe revisão independente pós-fix. Os checks GitHub Actions referidos acima concluíram com sucesso.
+- A PR #382 continua a declarar máximo de seis GET por dossier não-cacheado quando existe SHA exato local: metadados, checks opcionais, histórico PR/issues e trabalho aberto PR/issues.
+
+### PR #379, relatório e memória
+- #379 continua aberta e não integrada. A sua branch não foi apagada nem alterada nesta ronda.
+- #384 continua aberta e draft; o relatório foi atualizado nesta branch documental existente. A main não foi alterada.
+- #74 em AndreOS Memory continua aberta e draft; o checkpoint foi atualizado na sua branch própria. A main do AndreOS Memory não foi alterada.
+- Esta atualização substitui como estado mais recente os valores anteriores da #382 (HEAD `232d2bb`, 14 commits à frente, build #668/artefacto `871ba31`). Esses valores permanecem no histórico por serem observações anteriores.
+
+### Captura multi-IA — revisão das issues #208 e #215
+- #208 continua a definir captura autorizada através da UI visível e acessível, sem leitura de cookies/tokens, APIs privadas, bypasses, envio/edição de mensagens ou alteração de contas. A captura deve preservar proveniência, arquivo bruto imutável, hash, idempotência e estados explícitos por provider.
+- O código atual em `main/browser_extension/content.js` já declara allowlists para ChatGPT, Gemini, Grok, DeepSeek, Qwen e Claude. Isto demonstra suporte de identificação/adapters no código, não captura funcional nem cobertura validada dos seis providers.
+- #215 continua a ser um bloqueio de completude: chegar ao topo do DOM não prova que a conversa mais antiga foi carregada. O histórico de comentários de #215 regista que a PR #216 foi integrada para adotar estado conservador `partial_or_unknown`, e que a PR #221 adicionou fixtures determinísticas para janelas virtualizadas; ainda falta um marcador provider-confirmed de conversa mais antiga e aceitação real em contas autenticadas. Não declarar histórico integral sem essa evidência.
+- O `RecoveryLedger` em main mantém registo idempotente por provider/source_id, cursor auditável, fila de retry e eventos; esta leitura de código não prova execução local.
+
+### Proteção da branch main
+- A tentativa de ler `branches/main/protection` devolveu HTTP 403 “Resource not accessible by integration”. Não foi possível confirmar nesta ronda o estado atual de branch protection/rulesets. Nenhuma política foi alterada.
+
+### Estado operacional
+- Não foi estabelecida ligação ao PC nesta ronda. Não foram consultados processos, porta 8181, autenticação, working tree, fila ou runtime.
+- Não foi executada missão read-only nem existe mission_id/recibo novo.
+- Não houve captura/importação de conversas nem respostas live de agentes ou DGM-HUB.
+- Nenhum download, instalação, merge, fecho de PR ou alteração de main foi efetuado.
+
+**Classificação:** VERIFICAÇÃO INCOMPLETA. CI e artefacto da PR #382 confirmados no HEAD atual; revisão independente pós-fix, proteção da main e funcionamento no PC permanecem não verificados.
