@@ -633,6 +633,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
                 "sequence_order_conflict": payload.sequence_order_conflict,
                 "oldest_boundary_evidence": effective_oldest_boundary_evidence,
                 "client_reported_oldest_boundary": payload.oldest_boundary,
+                "client_reported_oldest_boundary_evidence": payload.oldest_boundary_evidence,
             },
             artifacts=[
                 artifact if isinstance(artifact, dict) else asdict(artifact)
