@@ -378,3 +378,22 @@ Esta adenda atualiza o fecho anterior com a consulta independente ao estado atua
 
 ### Correção adicional — estado da PR #221
 A consulta direta às PRs confirma que #216 foi integrada em 05-11-2026, mas #221 está **fechada sem merge** (`merged=false`, `merged_at=null`, draft no momento do fecho). Assim, as sete fixtures determinísticas descritas no corpo da #221 não podem ser contabilizadas como presentes em `main` sem outra evidência de integração. O comentário histórico em #215 que dizia que #221 as adicionava descrevia uma proposta/PR, não a sua integração. A fronteira oldest continua desconhecida e a aceitação real por provider continua pendente. Esta correção prevalece sobre a formulação anterior desta adenda que podia sugerir que as fixtures estavam integradas.
+
+
+### Correção de estado — fixtures de histórico virtualizado já estão em main
+
+A revisão direta dos ficheiros da branch `main` corrigiu a conclusão anterior de que as fixtures da PR #221 precisavam de ser recuperadas:
+- `tests/browser_extension/test_content_capture.js` já existe em `main` (blob `4f1d6a3`).
+- `.github/workflows/chrome-extension-validation.yml` executa esse ficheiro com Node.
+- A PR #262 foi integrada em 07-11-2026. A Chrome Extension Validation #42356417324 terminou com sucesso; o passo “Run deterministic virtualized-history fixtures” também terminou com sucesso. Sintaxe JS, segurança de envio visível, regressões API/segurança e packaging passaram no mesmo job.
+- A fixture atual cobre seletores provider-scoped para ChatGPT, Gemini, Grok, DeepSeek, Qwen e Claude, além de rotas e wrappers Claude. Isto é cobertura determinística de código/testes, não prova captura live em contas autenticadas.
+
+A PR #221 permanece fechada sem merge, mas os testes relevantes chegaram a `main` por desenvolvimento posterior, incluindo #262. Não criar uma cópia redundante nem tentar reabrir #221.
+
+### Estado residual de #208/#215
+- O content script atual continua deliberadamente a devolver `history_start_reached=false`, `oldest_boundary=unknown` e evidência vazia.
+- A allowlist de evidência de fronteira mais antiga no API de produção continua vazia. Não adicionar marcadores por inferência.
+- A aceitação manual em contas autenticadas de cada provider continua por executar; sem PC/browser acessível, nenhum provider pode ser declarado capturado com sucesso.
+- Comentários de correção publicados nas issues #208 e #215 em 15-11-2026. Hashes/arquivos privados não foram enviados para GitHub.
+
+Classificação desta frente: fixtures determinísticas presentes e validadas no run #42356417324; fronteira histórica provider-confirmed e aceitação real continuam pendentes.
