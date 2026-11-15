@@ -286,7 +286,7 @@ def test_history_and_open_work_report_output_limit_truncation_independently(monk
     assert issue_open["may_be_truncated"] is True
 
 
-def test_full_upstream_page_marks_both_projections_as_potentially_truncated(monkeypatch):
+def test_full_history_page_does_not_hide_directly_queried_open_work(monkeypatch):
     live._CACHE.clear()
 
     def fake_get(url, **kwargs):
