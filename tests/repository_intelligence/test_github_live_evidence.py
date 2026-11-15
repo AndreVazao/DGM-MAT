@@ -62,7 +62,7 @@ def test_fetches_repo_and_checks_for_exact_local_head(monkeypatch):
     assert result["commit_checks"]["commit_sha"] == "a" * 40
     assert result["commit_checks"]["total_count"] == 2
     assert result["commit_checks"]["conclusion_summary"] == {"success": 1, "failure": 1}
-    assert len(calls) == 4
+    assert len(calls) == 6
     assert all(call[1]["allow_redirects"] is False for call in calls)
 
 
@@ -99,7 +99,7 @@ def test_uses_short_cache_for_repeated_dossier_reads(monkeypatch):
     first = live.fetch_github_live_evidence("github.com/acme/project")
     second = live.fetch_github_live_evidence("github.com/acme/project")
     assert first["status"] == second["status"] == "available"
-    assert len(calls) == 3
+    assert len(calls) == 5
 
 def test_dossier_calls_live_github_only_after_exact_local_path_match(tmp_path, monkeypatch):
     from core.repository_intelligence import project_dossier as dossier_module
@@ -201,10 +201,13 @@ def test_includes_bounded_pr_and_issue_history_without_mixing_records(monkeypatc
     assert result["open_work_items"]["issues"]["items"][0]["number"] == 20
     assert result["github_activity"]["issues"]["returned"] == 1
     assert result["github_activity"]["issues"]["items"][0]["number"] == 20
-    assert all(call[1]["params"]["state"] == "all" for call in calls[2:])
+    assert all(call[1]["params"]["state"] == "all" for call in calls[2:4])
+    assert all(call[1]["params"]["state"] == "open" for call in calls[4:6])
     assert calls[2][1]["params"]["per_page"] == 100
     assert calls[3][1]["params"]["per_page"] == 100
-    assert len(calls) == 4
+    assert calls[4][1]["params"]["per_page"] == 11
+    assert calls[5][1]["params"]["per_page"] == 100
+    assert len(calls) == 6
 
 
 def test_github_activity_failure_is_partial_and_preserves_repository_evidence(monkeypatch):
@@ -230,7 +233,9 @@ def test_github_activity_failure_is_partial_and_preserves_repository_evidence(mo
     assert result["github_activity"]["status"] == "partial"
     assert result["github_activity"]["issues"]["error_type"] == "rate_limited_or_forbidden"
     assert result["github_activity"]["pull_requests"]["status"] == "available"
-    assert calls == 3
+    assert result["open_work_items"]["status"] == "partial"
+    assert result["open_work_items"]["issues"]["status"] == "unavailable"
+    assert calls == 5
 
 
 def test_history_and_open_work_report_output_limit_truncation_independently(monkeypatch):
@@ -252,6 +257,8 @@ def test_history_and_open_work_report_output_limit_truncation_independently(monk
         if url.endswith("/repos/acme/project"):
             return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
         if url.endswith("/pulls"):
+            if kwargs["params"]["state"] == "open":
+                return _Response(200, [make_record(11, "open")])
             # Eleven history records, but only one open work item.
             return _Response(200, [make_record(i, "closed") for i in range(1, 11)] + [make_record(11, "open")])
         if url.endswith("/issues"):
@@ -284,6 +291,8 @@ def test_full_upstream_page_marks_both_projections_as_potentially_truncated(monk
         if url.endswith("/repos/acme/project"):
             return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
         if url.endswith("/pulls"):
+            if kwargs["params"]["state"] == "open":
+                return _Response(200, [])
             return _Response(200, [{
                 "number": number,
                 "title": f"Closed PR {number}",
