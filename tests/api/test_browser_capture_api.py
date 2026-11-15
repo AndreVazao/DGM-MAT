@@ -548,3 +548,35 @@ def test_explicit_zero_reported_message_count_forces_partial_history(monkeypatch
     assert response.json()["message_count"] == 2
     assert response.json()["messages_total"] == 0
     assert response.json()["history_completeness"] == "partial_or_unknown"
+
+
+def test_no_provider_accepts_client_invented_oldest_boundary_evidence(monkeypatch, tmp_path):
+    """Untrusted extension payloads cannot promote any provider to complete history."""
+    client, _ = _client(monkeypatch, tmp_path)
+
+    for provider in ("chatgpt", "gemini", "grok", "deepseek", "qwen", "claude"):
+        discovered = client.post(
+            "/recovery/browser-capture/discover",
+            json=_discovery(provider),
+        )
+        assert discovered.status_code == 200, (provider, discovered.text)
+        claimed = client.post(
+            "/recovery/browser-capture/next",
+            json={"provider": provider},
+        )
+        assert claimed.status_code == 200, (provider, claimed.text)
+
+        payload = _capture(provider)
+        payload.update({
+            "messages_total": 2,
+            "history_start_reached": True,
+            "oldest_boundary": "confirmed",
+            "oldest_boundary_evidence": "invented-dom-marker",
+        })
+        response = client.post("/recovery/browser-capture/capture", json=payload)
+
+        assert response.status_code == 200, (provider, response.text)
+        result = response.json()
+        assert result["oldest_boundary"] == "confirmed"
+        assert result["history_completeness"] == "partial_or_unknown", provider
+        assert result["full_history_verified"] is False, provider
