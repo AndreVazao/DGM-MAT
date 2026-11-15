@@ -170,7 +170,12 @@ def test_includes_bounded_pr_and_issue_history_without_mixing_records(monkeypatc
                 "draft": False, "created_at": "2026-11-01T10:00:00Z",
                 "updated_at": "2026-11-12T10:00:00Z", "closed_at": "2026-11-12T10:01:00Z",
                 "html_url": "https://github.com/acme/project/pull/12",
-                "labels": [{"name": "bug"}], "pull_request": {"url": "api"},
+                "labels": [{"name": "bug"}],
+            }, {
+                "number": 13, "title": "Open PR without issue marker", "state": "open",
+                "draft": True, "created_at": "2026-11-13T10:00:00Z",
+                "updated_at": "2026-11-14T10:00:00Z", "closed_at": None,
+                "html_url": "https://github.com/acme/project/pull/13", "labels": [],
             }])
         if url.endswith("/issues"):
             return _Response(200, [
@@ -189,13 +194,16 @@ def test_includes_bounded_pr_and_issue_history_without_mixing_records(monkeypatc
     result = live.fetch_github_live_evidence("github.com/acme/project", "a" * 40)
 
     assert result["github_activity"]["status"] == "available"
-    assert result["github_activity"]["pull_requests"]["returned"] == 1
+    assert result["github_activity"]["pull_requests"]["returned"] == 2
     assert result["github_activity"]["pull_requests"]["items"][0]["number"] == 12
+    assert result["open_work_items"]["pull_requests"]["returned"] == 1
+    assert result["open_work_items"]["pull_requests"]["items"][0]["number"] == 13
+    assert result["open_work_items"]["issues"]["items"][0]["number"] == 20
     assert result["github_activity"]["issues"]["returned"] == 1
     assert result["github_activity"]["issues"]["items"][0]["number"] == 20
     assert all(call[1]["params"]["state"] == "all" for call in calls[2:])
-    assert calls[2][1]["params"]["per_page"] == 10
-    assert calls[3][1]["params"]["per_page"] == 20
+    assert calls[2][1]["params"]["per_page"] == 100
+    assert calls[3][1]["params"]["per_page"] == 100
     assert len(calls) == 4
 
 
