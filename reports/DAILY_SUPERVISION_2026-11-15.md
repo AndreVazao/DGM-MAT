@@ -253,3 +253,43 @@ Próximos passos:
 ---
 
 **Registo desta ronda:** inventário GitHub atualizado; leitura do relatório anterior; verificação de 25 workflows, 3.827 Actions e artefactos da main/PR; comparação das branches relevantes; leitura da configuração SAFE e dos documentos/scripts de update; pedido de novo review CodeRabbit; relatório criado numa branch dedicada. Sem alterações locais, sem download/instalação, sem missão funcional, sem captura de conversas, sem testes locais de providers/Hub, sem merge e sem operações destrutivas.
+
+
+## Adenda de supervisão — 15-11-2026, 14:56 UTC
+
+Esta adenda atualiza a observação de 14:34 UTC com os resultados finais consultados às 14:56 UTC. Não substitui o histórico anterior; corrige os valores que entretanto mudaram e regista as novas evidências.
+
+### Estado GitHub atualizado
+- `main` continua no commit `2cf91c5b36a9f7360cf142dc2c60be6ac2f6f18e`; não houve novo commit na branch default.
+- Inventário confirmado: 51 branches, 14 PRs abertas, 22 issues abertas (excluindo PRs), 25 workflows em `.github/workflows`, 3.831 execuções Actions (959 associadas a `main`) e zero releases.
+- PRs #380 e #381 estão fechadas sem merge; PR #378 continua a ser a integração mais recente observada em `main` (13-11-2026 20:59:20 UTC).
+- PR #384 permanece aberta em draft, branch documental dedicada, 1 ficheiro alterado; não é candidata a integração de código.
+- PR #382 permanece aberta, não-draft e mergeable=true, no HEAD `232d2bb6d5e16f6c865849f079c2f28df55abfd0`, 14 commits à frente e zero atrás de `main`. O diff atual contém 3 ficheiros, 297 adições e 5 remoções. Não foi feito merge.
+- Comparação direta #382 ↔ #379: branches divergentes, com 14 commits exclusivos de #382 e 4 exclusivos de #379; ambas alteram os mesmos três ficheiros de evidência GitHub, documentação e testes. Não integrar nem apagar nenhuma das duas por inferência.
+
+### CI e artefactos confirmados
+- [Focused PR Validation #1027](https://github.com/AndreVazao/DGM-MAT/actions/runs/43726142926): concluída com sucesso no HEAD atual de #382.
+- [Windows Executable Build #668](https://github.com/AndreVazao/DGM-MAT/actions/runs/43726142919): concluída com sucesso no mesmo HEAD. O job `build (3.12)` e todos os passos, incluindo validação profunda do executável e upload, terminaram com sucesso.
+- Artefacto de PR #382: `DGM-MAT-Windows-3.12-871ba31`, ID `14166591209`, 115.374.185 bytes, metadado digest `sha256:3b15a5a72b2d7712e40d64a48e822072b928e4fd6f95ce1adf9ceeefb96893a6`, expira em 13-02-2027. É artefacto de PR, não release de `main`, e não foi descarregado nem instalado.
+- Build de `main` confirmada: [Windows Build #43506566058](https://github.com/AndreVazao/DGM-MAT/actions/runs/43506566058), job concluído com sucesso; artefacto `DGM-MAT-Windows-3.12-2cf91c5`, ID `14075509514`, 115.368.987 bytes, digest de artefacto `sha256:40707c10a44971bbf3ae2deaf3bed2d494ff327660eff72bc7e39e592ed5120a`, não expirado na consulta.
+- O status combinado do commit #382 continua a expor `security/snyk` como `error`. Mantém-se excluído da decisão de qualidade por quota gratuita esgotada, conforme instrução do operador; os dois workflows relevantes passaram. Não foi mascarado nem substituído por outro check.
+- O review CodeRabbit posterior à correção do truncamento foi rate-limited. Portanto, a correção tem validação automatizada verde, mas ainda não tem confirmação independente pós-fix do CodeRabbit. Não foram aplicados autofixes.
+
+### Segurança e atualização
+- A configuração versionada em `main` mantém `execution_mode=SAFE`, `approval_required=true`, `auto_merge_enabled=false`, permissões SAFE `read/test` e `self_modification=false`. Isto é evidência da configuração no repositório, não da configuração carregada no PC.
+- A API GitHub devolveu `protected=false` para a branch `main` e lista de rulesets vazia. Isto sugere ausência de proteção GitHub configurada para a branch default; não foi alterada qualquer política. Recomenda-se decisão explícita do André sobre branch protection/rulesets, sem a configurar autonomamente.
+- Os documentos e scripts de atualização em `main` foram relidos: exigem checksum independente antes da extração, confirmação da propriedade do processo na porta 8181, shutdown gracioso autenticado, backup do executável/launcher/dados persistentes, validação de hashes e rollback; não terminam processos à força. O procedimento documentado mantém o Vault, worktrees e credenciais fora da substituição.
+- Nenhuma atualização foi aplicada. O artefacto de PR #382 não é pacote de produção e não deve ser instalado.
+
+### PC, browser, conversas, providers e Hub
+- Desktop Commander confirma PC-Vazao-Anjos **Offline**, último contacto há 61 horas. Não foi possível consultar processos, working tree, API local, autenticação, fila, scheduler, segurança runtime ou estado do Vault.
+- A tentativa de listar separadores do browser falhou por ausência do contexto de browser de origem. Nenhuma sessão autenticada foi lida.
+- Missão read-only: não executada; sem mission_id, progresso, resultado ou estado terminal.
+- Conversas: zero novas capturas/importações; cobertura integral não demonstrada para ChatGPT, Grok, Gemini, Claude, DeepSeek ou Qwen. Nenhum conteúdo privado foi lido.
+- Codex, Claude Code/FCC e agentes locais: não testados, por indisponibilidade do PC. CodeRabbit respondeu apenas com o rate limit após o pedido de re-review; não conta como revisão pós-fix concluída.
+- DGM-MAT ↔ DGM-HUB: não testado. Não foram enviados pedidos nem alterados modos Observer/Respond.
+
+### Classificação e ações desta adenda
+**VERIFICAÇÃO INCOMPLETA.** GitHub, inventário, comparação de branches, configuração versionada, workflows, jobs e metadados de artefactos foram observados. Runtime local, missão funcional, recuperação de conversas, agentes locais e DGM-HUB permanecem não verificados.
+
+Não foi encontrada uma correção de código adicional, de baixo risco e demonstrada que justificasse abrir outra PR nesta curta atualização. Foi apenas atualizada esta documentação na branch já existente `reports/daily-supervision-2026-11-15`; `main`, as PRs de código, as permissões e os controlos não foram alterados.
