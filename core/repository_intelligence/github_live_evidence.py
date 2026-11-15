@@ -300,7 +300,7 @@ def fetch_github_live_evidence(
             open_response = requests.get(
                 f"{_API}/repos/{owner}/{repository}/{endpoint}",
                 headers=headers,
-                params={"state": "open", "sort": "updated", "direction": "desc", "per_page": 11},
+                params={"state": "open", "sort": "updated", "direction": "desc", "per_page": 100 if kind == "issue" else 11},
                 timeout=max(1.0, min(float(timeout), 10.0)),
                 allow_redirects=False,
             )
@@ -321,7 +321,7 @@ def fetch_github_live_evidence(
             return {"status": "unavailable", "error_type": "invalid_github_collection_payload", "items": []}
 
         records = []
-        for item in open_payload[:11]:
+        for item in open_payload[:100]:
             if not isinstance(item, dict):
                 continue
             if kind == "issue" and isinstance(item.get("pull_request"), dict):
@@ -345,7 +345,7 @@ def fetch_github_live_evidence(
             "status": "available",
             "returned": min(len(records), 10),
             "limit": 10,
-            "may_be_truncated": len(records) > 10,
+            "may_be_truncated": len(records) > 10 or (kind == "issue" and len(open_payload) >= 100),
             "items": records[:10],
         }
 
