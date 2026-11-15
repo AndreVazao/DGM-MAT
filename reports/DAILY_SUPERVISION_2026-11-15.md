@@ -374,3 +374,7 @@ Esta adenda atualiza o fecho anterior com a consulta independente ao estado atua
 - Nenhum download, instalação, merge, fecho de PR ou alteração de main foi efetuado.
 
 **Classificação:** VERIFICAÇÃO INCOMPLETA. CI e artefacto da PR #382 confirmados no HEAD atual; revisão independente pós-fix, proteção da main e funcionamento no PC permanecem não verificados.
+
+
+### Correção adicional — estado da PR #221
+A consulta direta às PRs confirma que #216 foi integrada em 05-11-2026, mas #221 está **fechada sem merge** (`merged=false`, `merged_at=null`, draft no momento do fecho). Assim, as sete fixtures determinísticas descritas no corpo da #221 não podem ser contabilizadas como presentes em `main` sem outra evidência de integração. O comentário histórico em #215 que dizia que #221 as adicionava descrevia uma proposta/PR, não a sua integração. A fronteira oldest continua desconhecida e a aceitação real por provider continua pendente. Esta correção prevalece sobre a formulação anterior desta adenda que podia sugerir que as fixtures estavam integradas.
