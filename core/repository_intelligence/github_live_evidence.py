@@ -69,10 +69,10 @@ def fetch_github_live_evidence(
 ) -> dict[str, Any]:
     """Read repository metadata and checks for the exact locally observed SHA.
 
-    The function performs at most four GET requests: repository metadata,
-    optional checks for an exact commit SHA, and bounded pull-request/issue
-    collections. It never follows redirects, mutates GitHub, or returns
-    unselected metadata.
+    The function performs at most six GET requests: repository metadata,
+    optional checks for an exact commit SHA, bounded pull-request/issue
+    history, and dedicated open pull-request/issue snapshots. It never follows
+    redirects, mutates GitHub, or returns unselected metadata.
     """
     identity = _github_identity(origin)
     if identity is None:
@@ -281,22 +281,78 @@ def fetch_github_live_evidence(
                     for label in labels[:10] if isinstance(label, dict) and label.get("name")
                 ],
             })
-        open_records = [record for record in records if record["state"] == "open"]
         recent = records[:10]
-        open_items = open_records[:10]
         upstream_page_may_be_truncated = len(collection_payload) >= 100
         return {
             "status": "available",
             "returned": len(recent),
             "items": recent,
-            "open_returned": len(open_items),
-            "open_items": open_items,
             "may_be_truncated": len(records) > 10 or upstream_page_may_be_truncated,
-            "open_may_be_truncated": len(open_records) > 10 or upstream_page_may_be_truncated,
+        }
+
+    def fetch_open_records(endpoint: str, *, kind: str) -> dict[str, Any]:
+        """Fetch the current open queue independently from historical activity.
+
+        Request eleven records to return ten and detect at least one omitted
+        result without scanning or paging the full open collection.
+        """
+        try:
+            open_response = requests.get(
+                f"{_API}/repos/{owner}/{repository}/{endpoint}",
+                headers=headers,
+                params={"state": "open", "sort": "updated", "direction": "desc", "per_page": 11},
+                timeout=max(1.0, min(float(timeout), 10.0)),
+                allow_redirects=False,
+            )
+        except requests.RequestException as exc:
+            return {"status": "unavailable", "error_type": type(exc).__name__, "items": []}
+        if open_response.status_code != 200:
+            return {
+                "status": "unavailable",
+                "http_status": open_response.status_code,
+                "error_type": _http_error(open_response),
+                "items": [],
+            }
+        try:
+            open_payload = open_response.json()
+        except (TypeError, ValueError):
+            open_payload = None
+        if not isinstance(open_payload, list):
+            return {"status": "unavailable", "error_type": "invalid_github_collection_payload", "items": []}
+
+        records = []
+        for item in open_payload[:11]:
+            if not isinstance(item, dict):
+                continue
+            if kind == "issue" and isinstance(item.get("pull_request"), dict):
+                continue
+            labels = item.get("labels") if isinstance(item.get("labels"), list) else []
+            records.append({
+                "number": item.get("number") if isinstance(item.get("number"), int) else None,
+                "title": str(item.get("title") or "")[:240],
+                "state": item.get("state") if item.get("state") == "open" else "unknown",
+                "draft": item.get("draft") if kind == "pull_request" and isinstance(item.get("draft"), bool) else None,
+                "created_at": item.get("created_at"),
+                "updated_at": item.get("updated_at"),
+                "closed_at": item.get("closed_at"),
+                "html_url": item.get("html_url"),
+                "labels": [
+                    str(label.get("name") or "")[:80]
+                    for label in labels[:10] if isinstance(label, dict) and label.get("name")
+                ],
+            })
+        return {
+            "status": "available",
+            "returned": min(len(records), 10),
+            "limit": 10,
+            "may_be_truncated": len(records) > 10,
+            "items": records[:10],
         }
 
     pull_requests = fetch_recent_records("pulls", kind="pull_request")
     issues = fetch_recent_records("issues", kind="issue")
+    open_pull_requests = fetch_open_records("pulls", kind="pull_request")
+    open_issues = fetch_open_records("issues", kind="issue")
     result["github_activity"] = {
         "status": "available" if pull_requests["status"] == issues["status"] == "available" else "partial",
         "observed_at": _utc_now(),
@@ -311,32 +367,20 @@ def fetch_github_live_evidence(
     if result["github_activity"]["status"] != "available" and result["status"] == "available":
         result["status"] = "partial"
 
-    # Current work items are derived from the same bounded all-state response,
-    # avoiding duplicate API calls and keeping open/history evidence aligned.
+    open_work_status = "available" if open_pull_requests["status"] == open_issues["status"] == "available" else "partial"
     result["open_work_items"] = {
-        "status": "available" if pull_requests["status"] == issues["status"] == "available" else "partial",
-        "observed_at": result["github_activity"]["observed_at"],
-        "pull_requests": {
-            "status": pull_requests["status"],
-            "returned": pull_requests.get("open_returned", 0),
-            "limit": 10,
-            "may_be_truncated": pull_requests.get("open_may_be_truncated", False),
-            "items": pull_requests.get("open_items", []),
-            **({"error_type": pull_requests["error_type"]} if pull_requests["status"] != "available" and "error_type" in pull_requests else {}),
-        },
-        "issues": {
-            "status": issues["status"],
-            "returned": issues.get("open_returned", 0),
-            "limit": 10,
-            "may_be_truncated": issues.get("open_may_be_truncated", False),
-            "items": issues.get("open_items", []),
-            **({"error_type": issues["error_type"]} if issues["status"] != "available" and "error_type" in issues else {}),
-        },
+        "status": open_work_status,
+        "observed_at": _utc_now(),
+        "pull_requests": open_pull_requests,
+        "issues": open_issues,
         "limitations": [
-            "Open items are derived from at most the 100 most recently updated records returned by each all-state endpoint.",
-            "A large volume of recently updated closed records can displace older open records; this is not a complete open-work inventory.",
+            "Open work is queried directly with state=open, independently of the historical state=all snapshots.",
+            "Each open endpoint returns at most ten items; an eleventh result is requested to detect output truncation.",
+            "This is a bounded current-work snapshot, not a count of every open item.",
         ],
     }
+    if open_work_status != "available" and result["status"] == "available":
+        result["status"] = "partial"
 
     with _CACHE_LOCK:
         _CACHE[cache_key] = (time.monotonic(), _copy(result))
