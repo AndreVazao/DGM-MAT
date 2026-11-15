@@ -299,7 +299,7 @@ Não foi encontrada uma correção de código adicional, de baixo risco e demons
 Esta adenda regista o avanço posterior à ronda das 14:56 UTC. Não altera os resultados de runtime local: o PC continua sem validação nesta sessão.
 
 ### PR #382 — consolidação efetiva de #379/#382
-- HEAD observado: `16cff2fb5090395c1c3d054bd024d999c5ec6048`; PR aberta, não-draft e mergeable=true; 20 commits à frente de `main`, três ficheiros alterados, 365 adições e 5 remoções.
+- HEAD observado: `16cff2fb5090395c1c3d054bd024d999c5ec6048`; PR aberta, não-draft e mergeable=true; 22 commits à frente de `main`, três ficheiros alterados, 365 adições e 5 remoções.
 - A implementação anterior derivava `open_work_items` dos primeiros 100 resultados `state=all`, podendo perder trabalho aberto antigo. Foi substituída por consultas diretas `state=open`, separadas das consultas históricas `state=all`.
 - Histórico: até 100 PRs e 100 issues por endpoint, devolvendo dez registos recentes por coleção. Itens PR recebidos pelo endpoint `/issues` são filtrados.
 - Trabalho aberto: endpoint `/pulls` consulta 11 PRs abertas e devolve dez, sinalizando truncagem se a 11.ª existir; endpoint `/issues` consulta até 100 registos abertos, filtra PRs e devolve até dez issues reais, sinalizando truncagem quando a página fica cheia ou há mais de dez issues elegíveis.
