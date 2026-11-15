@@ -231,3 +231,77 @@ def test_github_activity_failure_is_partial_and_preserves_repository_evidence(mo
     assert result["github_activity"]["issues"]["error_type"] == "rate_limited_or_forbidden"
     assert result["github_activity"]["pull_requests"]["status"] == "available"
     assert calls == 3
+
+
+def test_history_and_open_work_report_output_limit_truncation_independently(monkeypatch):
+    live._CACHE.clear()
+
+    def make_record(number, state):
+        return {
+            "number": number,
+            "title": f"Record {number}",
+            "state": state,
+            "created_at": "2026-11-14T10:00:00Z",
+            "updated_at": "2026-11-14T11:00:00Z",
+            "closed_at": None if state == "open" else "2026-11-14T12:00:00Z",
+            "html_url": f"https://github.com/acme/project/issues/{number}",
+            "labels": [],
+        }
+
+    def fake_get(url, **kwargs):
+        if url.endswith("/repos/acme/project"):
+            return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
+        if url.endswith("/pulls"):
+            # Eleven history records, but only one open work item.
+            return _Response(200, [make_record(i, "closed") for i in range(1, 11)] + [make_record(11, "open")])
+        if url.endswith("/issues"):
+            # Eleven eligible open issues exceed the separate ten-item open limit.
+            return _Response(200, [make_record(i, "open") for i in range(20, 31)])
+        raise AssertionError(url)
+
+    monkeypatch.setattr(live.requests, "get", fake_get)
+    result = live.fetch_github_live_evidence("github.com/acme/project")
+
+    pr_history = result["github_activity"]["pull_requests"]
+    pr_open = result["open_work_items"]["pull_requests"]
+    issue_history = result["github_activity"]["issues"]
+    issue_open = result["open_work_items"]["issues"]
+
+    assert pr_history["returned"] == 10
+    assert pr_history["may_be_truncated"] is True
+    assert pr_open["returned"] == 1
+    assert pr_open["may_be_truncated"] is False
+    assert issue_history["returned"] == 10
+    assert issue_history["may_be_truncated"] is True
+    assert issue_open["returned"] == 10
+    assert issue_open["may_be_truncated"] is True
+
+
+def test_full_upstream_page_marks_both_projections_as_potentially_truncated(monkeypatch):
+    live._CACHE.clear()
+
+    def fake_get(url, **kwargs):
+        if url.endswith("/repos/acme/project"):
+            return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
+        if url.endswith("/pulls"):
+            return _Response(200, [{
+                "number": number,
+                "title": f"Closed PR {number}",
+                "state": "closed",
+                "draft": False,
+                "created_at": "2026-11-01T10:00:00Z",
+                "updated_at": "2026-11-14T10:00:00Z",
+                "closed_at": "2026-11-14T11:00:00Z",
+                "html_url": f"https://github.com/acme/project/pull/{number}",
+                "labels": [],
+            } for number in range(1, 101)])
+        if url.endswith("/issues"):
+            return _Response(200, [])
+        raise AssertionError(url)
+
+    monkeypatch.setattr(live.requests, "get", fake_get)
+    result = live.fetch_github_live_evidence("github.com/acme/project")
+
+    assert result["github_activity"]["pull_requests"]["may_be_truncated"] is True
+    assert result["open_work_items"]["pull_requests"]["returned"] == 0
+    assert result["open_work_items"]["pull_requests"]["may_be_truncated"] is True
