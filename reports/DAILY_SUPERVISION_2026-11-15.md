@@ -94,7 +94,7 @@ autonomy-smoke.yml, backend-phase-gate.yml, backup-first-executor-windows.yml, b
 | PR | Ahead / behind face a main | Ficheiros alterados | Leitura |
 |---|---:|---:|---|
 | #382 | 14 / 0 | 3 | Linha atual mais completa para histórico e projeção best-effort de trabalho aberto; inclui correção de truncagem. |
-| #384 | 5 / 0 | 1 | Relatório diário desta execução. |
+| #384 | n/a | 1 | Branch documental dedicada; não é uma linha de código a integrar. |
 | #379 | 4 / 0 | 3 | Implementação alternativa de itens abertos; diverge de #382. |
 | #383 | 1 / 0 | 1 | Relatório de 14-11, histórico. |
 | #376 | 5 / 1 | 4 | Divergência em Cockpit/chat; requer reconciliação antes de integração. |
