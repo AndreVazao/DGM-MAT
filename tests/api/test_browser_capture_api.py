@@ -582,3 +582,9 @@ def test_untrusted_oldest_boundary_claim_is_not_echoed_as_effective_evidence(mon
         assert result["client_reported_oldest_boundary_evidence"] == "invented-dom-marker", provider
         assert result["history_completeness"] == "partial_or_unknown", provider
         assert result["full_history_verified"] is False, provider
+
+        archived_record = json.loads(Path(result["archive_path"]).read_text(encoding="utf-8"))
+        assert archived_record["oldest_boundary"] == "unknown", provider
+        assert archived_record["oldest_boundary_evidence"] == "", provider
+        assert archived_record["client_reported_oldest_boundary"] == "confirmed", provider
+        assert archived_record["client_reported_oldest_boundary_evidence"] == "invented-dom-marker", provider
