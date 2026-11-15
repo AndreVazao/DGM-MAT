@@ -15,7 +15,7 @@ O inventário inicial antes da publicação devolveu 49 branches e 13 PRs aberta
 - 14 pull requests abertas;
 - 22 issues abertas (issues reais, excluindo PRs);
 - 25 workflows;
-- 3.827 execuções GitHub Actions no total, das quais 959 associadas à branch main;
+- 3.831 execuções GitHub Actions no total, das quais 959 associadas à branch main;
 - zero releases publicadas.
 
 O primeiro snapshot de branches devolveu 49 nomes; o refresh final devolveu 51. O relatório regista o valor final observado sem tentar eliminar ou alterar branches. O número de 34 itens abertos no relatório anterior correspondia a 12 PRs + 22 issues. A PR #383 elevou esse total para 13 PRs + 22 issues; a presente PR #384 elevou-o para 14 PRs + 22 issues = 36 itens abertos.
@@ -146,7 +146,8 @@ A falha foi corrigida na mesma branch, com verificações separadas para histór
 - Testes: [70e3e1d](https://github.com/AndreVazao/DGM-MAT/commit/70e3e1d40751d461059c160a13e5bbf1e19dfed3).
 - Documentação: [232d2bb](https://github.com/AndreVazao/DGM-MAT/commit/232d2bb6d5e16f6c865849f079c2f28df55abfd0).
 - O novo HEAD passou Focused PR Validation #1027; Windows Build #668 estava em execução na última consulta.
-- A revisão CodeRabbit seguinte à correção ainda não tinha sido recebida.
+- Foi pedido novo review após a correção, mas o CodeRabbit devolveu rate limit às 14:49 UTC; não houve nova análise após o fix.
+- [Comentário de resposta técnica na PR](https://github.com/AndreVazao/DGM-MAT/pull/382#issuecomment-6896369948) regista os três cenários de regressão e o estado dos checks.
 
 ### Sobreposição #379 / #382
 
