@@ -345,7 +345,8 @@ def test_project_dossier_exposes_per_source_evidence_timestamps_without_claiming
     freshness = dossier["evidence_freshness"]
     assert freshness["dossier_generated_at"] == generated_at
     assert freshness["latest_conversation_capture_at"] == dossier["status"]["latest_conversation_capture_at"]
-    assert freshness["latest_vault_snapshot_at"] == snapshot["created_at"]
+    assert freshness["latest_vault_snapshot_at"] == dossier["repository"]["latest_snapshot_at"]
+    assert freshness["latest_vault_snapshot_at"] is not None
     assert freshness["latest_static_audit_at"] == audit["generated_at"]
     assert freshness["repositories"] == [{
         "path": str(repo),
