@@ -457,3 +457,26 @@ CI observado:
 - PR #386 aberta, não integrada. Não houve alteração à main.
 
 Comentários de atualização publicados nas issues #208 e #215. Não houve acesso a contas de providers, browser local ou PC. A captura live e a aceitação manual continuam pendentes.
+
+
+## Adenda final — PR #386 validada (16-11-2026, 11:06 UTC)
+
+Atualização confirmada no HEAD final `29eb10712210096804b32bfc34dcf2d0fb039340`:
+
+- Focused PR Validation #1037: success — https://github.com/AndreVazao/DGM-MAT/actions/runs/43776682309
+- Chrome Extension Validation #524: success — https://github.com/AndreVazao/DGM-MAT/actions/runs/43776682315
+- Windows Executable Build #678: success — https://github.com/AndreVazao/DGM-MAT/actions/runs/43776682378
+
+Artefacto Windows confirmado:
+- `DGM-MAT-Windows-3.12-458722c`
+- Artifact ID: `14186667057`
+- Tamanho: 115.373.197 bytes
+- SHA-256: `222b9534861e19ed3755ee59ddabae52b72187b246bc8bbffbaa85c725e44bab`
+- Expira: 2027-02-13 23:47:14 UTC
+- Artefacto disponível no GitHub Actions; não descarregado nem instalado.
+
+PR #386 continua open, mergeable, com 2 ficheiros (75 adições, 13 remoções), não integrada. CodeRabbit fez skip automático por o repositório ter menos de 10 estrelas; revisão humana independente não está registada. Snyk continua ignorado por quota.
+
+A revisão do diff confirmou que a fronteira efetiva é derivada no servidor, o payload cliente fica em campos de proveniência e o teste verifica API + arquivo. A aceitação autenticada dos seis providers e runtime no PC continuam pendentes. Main inalterada; nenhum merge.
+
+**Classificação:** CI completa e artefacto confirmado; verificação funcional end-to-end ainda incompleta.
