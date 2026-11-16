@@ -13,11 +13,13 @@ O GitHub e o PC principal estiveram acessíveis nesta ronda. A verificação loc
 O inventário GitHub, recolhido antes da publicação deste relatório, devolveu:
 
 - 54 branches;
-- 16 pull requests abertas;
+- 17 pull requests abertas;
 - 22 issues abertas, excluindo PRs;
 - 25 workflows;
 - 3.861 execuções GitHub Actions;
 - zero releases publicadas.
+
+Depois da publicação deste relatório, a branch documental e a PR #388 elevaram o inventário observado para 55 branches e 18 PRs abertas. Os números acima preservam o snapshot anterior à publicação.
 
 A branch main mantém o HEAD 2cf91c5, cujo commit mais recente é de 13-11-2026 às 20:59:20 UTC. Não foi observada nova integração na branch principal desde essa data.
 
