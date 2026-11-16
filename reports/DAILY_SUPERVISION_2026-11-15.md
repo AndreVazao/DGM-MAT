@@ -508,3 +508,23 @@ PR #387 aberta e mergeable; não integrada. Issue #358 comentada com o progresso
 ### Atualização CI PR #387 — 16-11-2026 11:15 UTC
 
 Focused PR Validation #1040 terminou com success no HEAD final `f66ab7eb4c37aab101f1c450bbb2b04317307bfa`, incluindo o job de regressões focadas e o Windows installer digest gate. Windows Executable Build #681 continua `in_progress` no mesmo HEAD; sem falhas observadas. PR #387 continua aberta e mergeable. Não declarar a build concluída até o job terminar.
+
+
+## 16-11-2026 — PR #387: freshness explícita da evidência dos dossiers
+
+Foi aberta a PR #387 para responder ao requisito da issue #358 de apresentar quando cada fonte foi observada, sem transformar timestamps antigos em alegações de estado atual.
+
+- PR: https://github.com/AndreVazao/DGM-MAT/pull/387
+- Branch: `feat/dossier-evidence-freshness`
+- HEAD: `f66ab7eb4c37aab101f1c450bbb2b04317307bfa`
+- Ficheiros: `core/repository_intelligence/project_dossier.py`, `tests/repository_intelligence/test_project_dossier.py`, `docs/operations/PROJECT_DOSSIER_EVIDENCE_FRESHNESS.md`.
+- O dossier expõe `generated_at` e `evidence_freshness`: captura Vault mais recente no conjunto limitado, snapshot de árvore, auditoria estática, e timestamps/status por repositório com correspondência exata de caminho, incluindo SHA consultado no GitHub.
+- Não aplica limiar temporal nem infere currentness/completude. A projeção continua read-only e sem corpos de transcrições.
+
+CI no HEAD final:
+- Focused PR Validation #1040: success — https://github.com/AndreVazao/DGM-MAT/actions/runs/43855335065
+- Windows Executable Build #681: success — https://github.com/AndreVazao/DGM-MAT/actions/runs/43855334917
+- Build executable, deep validation, final assertions e artifact upload: success.
+- Artefacto: `DGM-MAT-Windows-3.12-34eb3f0`, ID `14221342060`, 115.372.870 bytes, SHA-256 `9fd653797a8ffbb2601d92c9c436760faaf27f0b9c0d8db95748f540110ad92e`, expira 2027-02-14 11:10:09 UTC. Não descarregado nem instalado.
+
+CodeRabbit fez skip automático por o repositório ter menos de 10 estrelas; não há revisão humana independente registada. Snyk permanece ignorado por quota. PR #387 continua aberta e não integrada. Comentário com evidência publicado na issue #358. Main inalterada; runtime local e validação no PC continuam pendentes.
