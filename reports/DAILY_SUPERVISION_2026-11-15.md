@@ -480,3 +480,26 @@ PR #386 continua open, mergeable, com 2 ficheiros (75 adições, 13 remoções),
 A revisão do diff confirmou que a fronteira efetiva é derivada no servidor, o payload cliente fica em campos de proveniência e o teste verifica API + arquivo. A aceitação autenticada dos seis providers e runtime no PC continuam pendentes. Main inalterada; nenhum merge.
 
 **Classificação:** CI completa e artefacto confirmado; verificação funcional end-to-end ainda incompleta.
+
+
+## Frente seguinte — PR #387: frescura/proveniência de evidência no dossier (16-11-2026, 11:12 UTC)
+
+Issue prioritária #358 recebeu atualização e foi aberta PR #387:
+https://github.com/AndreVazao/DGM-MAT/pull/387
+
+Branch `feat/dossier-evidence-freshness`; HEAD `f66ab7eb4c37aab101f1c450bbb2b04317307bfa`.
+
+O dossier passa a expor:
+- `generated_at` UTC da resposta;
+- timestamps separados da última captura de conversa, snapshot Vault e auditoria estática;
+- por repositório com correspondência de caminho exato: último `last_seen_at`, estado da análise, timestamp da árvore, observação GitHub, estado e SHA exato dos checks.
+
+Regra central: timestamps são observações independentes. Não existe threshold de idade nem inferência automática de currentness/completude. Sem transcript bodies, credenciais ou mutações locais.
+
+Alterações: `core/repository_intelligence/project_dossier.py`, teste focado em `tests/repository_intelligence/test_project_dossier.py` e documentação `docs/operations/PROJECT_DOSSIER_EVIDENCE_FRESHNESS.md`.
+
+CI para HEAD final:
+- Focused PR Validation #1040: in progress.
+- Windows Executable Build #681: in progress.
+- Windows installer digest gate já success dentro da validação focada.
+PR #387 aberta e mergeable; não integrada. Issue #358 comentada com o progresso.
