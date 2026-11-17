@@ -14,6 +14,7 @@ project name, infer identity from aliases, or follow redirects.
 - Up to 20 check runs for the exact 40-character local HEAD SHA, with names,
   status/conclusion, timestamps, app slug and result URL.
 - Observation timestamp and explicit availability/error classifications.
+- Up to ten most recently updated pull requests and ten issues (excluding pull requests), including number, title, state, timestamps, labels and GitHub URL. Closed records are retained as historical evidence.
 
 The check-run query is not a claim that the repository's default branch is at
 the local HEAD. It asks GitHub for checks attached to the exact commit SHA
@@ -23,7 +24,7 @@ recorded by the local inventory. A missing check run does not mean tests passed.
 
 - GET requests only; no branch, issue, pull request, workflow or repository
   mutations.
-- At most two requests per uncached dossier read; five-second default timeout,
+- At most six requests per uncached dossier read (repository metadata, optional exact-SHA checks, historical PRs/issues and current open PRs/issues); five-second default timeout,
   no redirects, 20 check-run result cap and a five-minute process-local cache.
 - Uses an existing `GITHUB_TOKEN` environment variable when present; otherwise
   public GitHub repositories can be queried anonymously. No token is returned
@@ -35,3 +36,36 @@ recorded by the local inventory. A missing check run does not mean tests passed.
   replaces the other.
 - This integration does not contact CI providers other than GitHub's check-runs
   API, execute code, download artifacts, or assert overall project completion.
+
+## Pull request and issue history
+
+Pull requests and issues are queried separately with `state=all`, sorted by
+most recently updated. Each endpoint reads at most 100 records, from which the
+ten most recently updated records are retained for history. GitHub's issues
+endpoint also returns pull requests; those entries are explicitly filtered out
+of the issue collection to prevent double counting.
+
+Current open work is queried independently with `state=open`, sorted by most
+recently updated. This costs two additional GET requests but prevents recently
+updated closed records from displacing older open work. The PR endpoint requests
+11 records and returns ten, allowing the response to flag a known omitted item.
+The issues endpoint can also return pull requests, so it reads up to 100 open
+records, filters PR entries, then returns up to ten real issues. A full 100-item
+issues page is marked potentially truncated because additional real issues may
+exist beyond that page.
+
+Historical and current-work truncation are reported independently. History
+marks truncation when more than ten eligible records are present or the
+100-record upstream page is full. Open PRs mark truncation when more than ten
+are present in the 11-record response; open issues mark truncation when more
+than ten eligible issues remain after filtering or the 100-record upstream
+page is full. The open-work snapshot is bounded to ten items per category and
+is not a total count of all open work.
+
+The REST endpoint responses may include issue/PR bodies and user account
+metadata. Those fields are not retained in the dossier projection. This
+integration does not request discussion comments or review bodies.
+
+A failed collection produces a partial activity status and does not erase
+repository metadata or the other successful collection. The result is a recent
+activity window, not a complete archive of every historical PR or issue.
