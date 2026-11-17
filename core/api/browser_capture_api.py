@@ -349,6 +349,29 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
     if len({item.sequence for item in ordered}) != len(ordered):
         raise HTTPException(status_code=422, detail="Duplicate message sequence numbers in capture.")
 
+    oldest_boundary_confirmed = (
+        payload.oldest_boundary == "confirmed"
+        and bool(payload.oldest_boundary_evidence)
+        and payload.oldest_boundary_evidence
+        in PROVIDER_OLDEST_BOUNDARY_EVIDENCE.get(payload.provider, set())
+        and payload.history_start_reached
+        and not payload.truncated
+        and not payload.top_load_limit_reached
+        and actual_unknown_role_count == 0
+        and not payload.sequence_order_conflict
+        and reported_messages_total == len(ordered)
+    )
+    effective_oldest_boundary = (
+        "confirmed"
+        if oldest_boundary_confirmed
+        else "limit"
+        if payload.oldest_boundary == "limit" or payload.truncated or payload.top_load_limit_reached
+        else "unknown"
+    )
+    effective_oldest_boundary_evidence = (
+        payload.oldest_boundary_evidence if oldest_boundary_confirmed else ""
+    )
+
     record = {
         "schema_version": 1,
         "id": payload.source_id,
@@ -369,8 +392,10 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "message_count": len(ordered),
         "truncated": payload.truncated,
         "history_start_reached": payload.history_start_reached,
-        "oldest_boundary": payload.oldest_boundary,
-        "oldest_boundary_evidence": payload.oldest_boundary_evidence,
+        "oldest_boundary": effective_oldest_boundary,
+        "oldest_boundary_evidence": effective_oldest_boundary_evidence,
+        "client_reported_oldest_boundary": payload.oldest_boundary,
+        "client_reported_oldest_boundary_evidence": payload.oldest_boundary_evidence,
         "messages_total": reported_messages_total,
         "unknown_role_count": actual_unknown_role_count,
         "scroll_steps": payload.scroll_steps,
@@ -379,14 +404,7 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "sequence_order_conflict": payload.sequence_order_conflict,
         "history_completeness": (
             "oldest_boundary_confirmed"
-            if payload.oldest_boundary == "confirmed"
-            and payload.oldest_boundary_evidence
-            in PROVIDER_OLDEST_BOUNDARY_EVIDENCE.get(payload.provider, set())
-            and payload.history_start_reached
-            and not payload.truncated
-            and actual_unknown_role_count == 0
-            and not payload.sequence_order_conflict
-            and reported_messages_total == len(ordered)
+            if oldest_boundary_confirmed
             else "partial_or_unknown"
         ),
         # Hash integrity is distinct from proof that every historical message was rendered.
@@ -613,7 +631,9 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
                 "history_completeness": record["history_completeness"],
                 "full_history_verified": False,
                 "sequence_order_conflict": payload.sequence_order_conflict,
-                "oldest_boundary_evidence": payload.oldest_boundary_evidence,
+                "oldest_boundary_evidence": effective_oldest_boundary_evidence,
+                "client_reported_oldest_boundary": payload.oldest_boundary,
+                "client_reported_oldest_boundary_evidence": payload.oldest_boundary_evidence,
             },
             artifacts=[
                 artifact if isinstance(artifact, dict) else asdict(artifact)
@@ -653,8 +673,10 @@ def archive_browser_conversation(payload: BrowserCaptureRequest):
         "top_load_limit_reached": payload.top_load_limit_reached,
         "sequence_order_conflict": payload.sequence_order_conflict,
         "history_start_reached": payload.history_start_reached,
-        "oldest_boundary": payload.oldest_boundary,
-        "oldest_boundary_evidence": payload.oldest_boundary_evidence,
+        "oldest_boundary": effective_oldest_boundary,
+        "oldest_boundary_evidence": effective_oldest_boundary_evidence,
+        "client_reported_oldest_boundary": payload.oldest_boundary,
+        "client_reported_oldest_boundary_evidence": payload.oldest_boundary_evidence,
         "history_completeness": record["history_completeness"],
         "sha256": digest,
         "archive_path": str(destination),
