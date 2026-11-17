@@ -274,3 +274,130 @@ def test_failed_transcript_persistence_never_dispatches_mission(qt_app, monkeypa
     assert chat._pending_directive is None
     assert "missão não foi enviada" in chat.history[-1]["text"]
     chat.close()
+
+
+def test_project_status_question_uses_dossier_endpoint_without_creating_mission(qt_app, monkeypatch):
+    chat = CommandConsoleWidget()
+    chat._active_thread_id = "thread-project"
+    requests = []
+    submitted = []
+    monkeypatch.setattr(
+        chat, "_conversation_request",
+        lambda *args, **kwargs: requests.append((args, kwargs)),
+    )
+    monkeypatch.setattr(
+        chat, "_start_request",
+        lambda *args, **kwargs: submitted.append((args, kwargs)),
+    )
+    chat._pending_directive = "Qual é o estado do VAZÃO EVSE?"
+    chat._on_conversation_request_completed("send-user-entry", {"message": {}}, "")
+
+    assert requests[0][0][0:3] == (
+        "project-dossier", "GET", "/runtime/repository-learning/dossier"
+    )
+    assert requests[0][1]["params"] == {"query": "Qual é o estado do VAZÃO EVSE?"}
+    assert submitted == []
+    assert chat._project_dossier_active is True
+    chat.close()
+
+
+def test_project_dossier_response_distinguishes_ambiguous_and_not_found():
+    ambiguous, kind = CommandConsoleWidget._format_project_dossier_response({
+        "status": "ambiguous",
+        "candidates": [
+            {"project_id": "one", "name": "Projeto Um"},
+            {"project_id": "two", "name": "Projeto Dois"},
+        ],
+    })
+    assert kind == "system"
+    assert "Não escolhi nenhum" in ambiguous
+    assert "one" in ambiguous and "two" in ambiguous
+
+    missing, kind = CommandConsoleWidget._format_project_dossier_response({
+        "status": "not_found", "query": "Projeto inexistente"
+    })
+    assert kind == "system"
+    assert "Não foi criada nem enviada qualquer missão" in missing
+
+
+def test_project_dossier_response_marks_git_as_persisted_not_live():
+    message, kind = CommandConsoleWidget._format_project_dossier_response({
+        "project": {"project_id": "evse", "name": "VAZÃO EVSE"},
+        "coverage": {"vault_conversations_total": 3, "by_provider": {"chatgpt": 2}},
+        "repository": {
+            "local_inventory": {
+                "match_status": "exact_path_match",
+                "repositories": [{
+                    "branch": "main", "head_sha": "a" * 40,
+                    "working_tree_dirty": False, "scan_status": "complete",
+                    "last_seen_at": "2026-11-13T10:00:00Z",
+                }],
+            },
+            "snapshots": [],
+            "conversation_linked_references": [],
+            "conversation_linked_code_candidates": [],
+        },
+        "status": {"classification": "evidence_partial"},
+        "static_audit": None,
+    })
+    assert kind == "info"
+    assert "VAZÃO EVSE" in message
+    assert "última observação persistida" in message
+    assert "não uma verificação em tempo real" in message
+
+
+def test_project_dossier_intent_is_limited_to_status_queries():
+    assert CommandConsoleWidget._is_project_dossier_request(
+        "Qual é o estado do VAZÃO EVSE?"
+    )
+    assert CommandConsoleWidget._is_project_dossier_request(
+        "Mostra o dossier do DGM-MAT"
+    )
+    assert not CommandConsoleWidget._is_project_dossier_request(
+        "Audita o projeto VAZÃO EVSE e corrige os erros"
+    )
+    assert not CommandConsoleWidget._is_project_dossier_request("runtime status")
+
+
+def test_dossier_worker_uses_authenticated_runtime_origin_and_query(qt_app, monkeypatch):
+    import threading
+
+    calls = []
+    class Response:
+        status_code = 200
+        @staticmethod
+        def json():
+            return {"status": "not_found", "query": "Projeto inexistente"}
+
+    def fake_request(method, url, **kwargs):
+        calls.append((threading.get_ident(), method, url, kwargs))
+        return Response()
+
+    monkeypatch.setattr(
+        "cockpit.widgets.command_console.authenticated_request", fake_request
+    )
+    worker = _ConversationRequestWorker(
+        "http://127.0.0.1:8181/runtime",
+        "project-dossier",
+        "GET",
+        "/runtime/repository-learning/dossier",
+        params={"query": "Qual é o estado do VAZÃO EVSE?"},
+    )
+    emitted = []
+    worker.completed.connect(lambda *args: emitted.append(args))
+    gui_thread = threading.get_ident()
+    worker.start()
+    assert worker.wait(3000)
+    qt_app.processEvents()
+
+    assert calls[0][0] != gui_thread
+    assert calls[0][1:3] == (
+        "GET",
+        "http://127.0.0.1:8181/runtime/repository-learning/dossier",
+    )
+    assert calls[0][3]["params"] == {"query": "Qual é o estado do VAZÃO EVSE?"}
+    assert emitted == [(
+        "project-dossier",
+        {"status": "not_found", "query": "Projeto inexistente"},
+        "",
+    )]
