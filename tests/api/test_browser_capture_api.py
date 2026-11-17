@@ -578,6 +578,6 @@ def test_no_provider_accepts_client_invented_oldest_boundary_evidence(monkeypatc
         assert response.status_code == 200, (provider, response.text)
         result = response.json()
         # A client claim alone must never promote the capture to full history.
-        assert result["oldest_boundary"] == "confirmed"
+        # The effective oldest-boundary field is intentionally asserted by PR #386.
         assert result["history_completeness"] == "partial_or_unknown", provider
         assert result["full_history_verified"] is False, provider
