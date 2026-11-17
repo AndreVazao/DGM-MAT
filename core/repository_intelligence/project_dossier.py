@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -244,8 +245,34 @@ def build_project_dossier(
 
     latest_capture = max((item["captured_at"] or "" for item in conversations), default=None) or None
     latest_snapshot = snapshots[0]["created_at"] if snapshots else None
+    generated_at = datetime.now(timezone.utc).isoformat()
+    repository_freshness = [
+        {
+            "path": item.get("path"),
+            "inventory_last_seen_at": item.get("last_seen_at"),
+            "inventory_scan_status": item.get("scan_status"),
+            "tree_generated_at": item.get("tree_generated_at"),
+            "github_observed_at": (item.get("github_live") or {}).get("observed_at"),
+            "github_status": (item.get("github_live") or {}).get("status"),
+            "github_commit_sha": (item.get("github_live") or {}).get("commit_checks", {}).get("commit_sha"),
+        }
+        for item in local_matches
+    ]
+    evidence_freshness = {
+        "dossier_generated_at": generated_at,
+        "latest_conversation_capture_at": latest_capture,
+        "latest_vault_snapshot_at": latest_snapshot,
+        "latest_static_audit_at": latest_audit.get("generated_at") if latest_audit else None,
+        "repositories": repository_freshness,
+        "policy": (
+            "Source timestamps are reported independently. No age threshold or timestamp "
+            "is used to infer that a repository, runtime, conversation archive or project is current."
+        ),
+    }
     return {
         "schema": "dgm-mat.project-dossier.v1",
+        "generated_at": generated_at,
+        "evidence_freshness": evidence_freshness,
         "project": {
             "project_id": project["project_id"],
             "name": project["name"],

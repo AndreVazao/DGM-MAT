@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -291,3 +292,70 @@ def test_project_dossier_api_requires_exactly_one_project_selector(tmp_path: Pat
             finding_limit=50,
         )
     assert exc.value.status_code == 400
+
+
+
+def test_project_dossier_exposes_per_source_evidence_timestamps_without_claiming_currentness(
+    tmp_path: Path, monkeypatch
+):
+    from core.repository_intelligence import project_dossier as dossier_module
+
+    vault, repo = _vault(tmp_path)
+    vault.archive_conversation(
+        provider="chatgpt",
+        conversation_id="freshness-conversation",
+        title="Freshness evidence",
+        messages=[{"id": "m1", "role": "user", "content": "private"}],
+        content="private",
+        completeness="partial",
+        project_id="sample",
+    )
+    snapshot = vault.snapshot_repository("sample", repo)
+    audit = audit_project(vault=vault, project_id="sample")
+
+    monkeypatch.setattr(
+        dossier_module,
+        "fetch_github_live_evidence",
+        lambda origin, sha=None: {
+            "status": "available",
+            "observed_at": "2026-11-16T10:00:00+00:00",
+            "commit_checks": {"commit_sha": sha},
+        },
+    )
+    inventory = [{
+        "path": str(repo),
+        "name": "sample-repo",
+        "origin": "https://github.com/example/sample-repo",
+        "branch": "main",
+        "head_sha": "a" * 40,
+        "dirty": False,
+        "scan_status": "complete",
+        "last_seen_at": "2026-11-16T09:55:00+00:00",
+        "tree_generated_at": "2026-11-16T09:54:00+00:00",
+    }]
+
+    dossier = build_project_dossier(
+        vault=vault,
+        project_id="sample",
+        repository_inventory=inventory,
+    )
+
+    generated_at = dossier["generated_at"]
+    assert datetime.fromisoformat(generated_at).tzinfo is not None
+    freshness = dossier["evidence_freshness"]
+    assert freshness["dossier_generated_at"] == generated_at
+    assert freshness["latest_conversation_capture_at"] == dossier["status"]["latest_conversation_capture_at"]
+    assert freshness["latest_vault_snapshot_at"] == dossier["repository"]["latest_snapshot_at"]
+    assert freshness["latest_vault_snapshot_at"] is not None
+    assert freshness["latest_static_audit_at"] == audit["generated_at"]
+    assert freshness["repositories"] == [{
+        "path": str(repo),
+        "inventory_last_seen_at": "2026-11-16T09:55:00+00:00",
+        "inventory_scan_status": "complete",
+        "tree_generated_at": "2026-11-16T09:54:00+00:00",
+        "github_observed_at": "2026-11-16T10:00:00+00:00",
+        "github_status": "available",
+        "github_commit_sha": "a" * 40,
+    }]
+    assert "No age threshold" in freshness["policy"]
+    assert "current" in freshness["policy"]
