@@ -374,6 +374,30 @@ def test_mobile_pairing_and_chat_history_work_without_general_operator_authority
     assert searched.status_code == 200
     assert searched.json()["results"][0]["thread_id"] == thread_id
 
+    archived = client.post(
+        f"/mobile/threads/{thread_id}/archive", headers=mobile_headers
+    )
+    assert archived.status_code == 200
+    assert archived.json()["status"] == "archived"
+
+    restored = client.post(
+        f"/mobile/threads/{thread_id}/restore", headers=mobile_headers
+    )
+    assert restored.status_code == 200
+    assert restored.json()["status"] == "active"
+
+    read_only_token = session_manager.create_session(
+        "mobile-read-only-test", {"local-client"}
+    )[0]
+    denied = client.post(
+        f"/mobile/threads/{thread_id}/archive",
+        headers={"Authorization": f"Bearer {read_only_token}"},
+    )
+    assert denied.status_code == 403
+    assert client.get(
+        f"/mobile/threads/{thread_id}", headers=mobile_headers
+    ).json()["status"] == "active"
+
     recovery_search = client.get(
         "/recovery/search",
         headers=mobile_headers,
