@@ -126,7 +126,7 @@ Foi produzido apenas este relatório, numa branch documental isolada. Não houve
 - Artifact ID: `14304071583`.
 - Tamanho: 115.379.056 bytes.
 - SHA-256: `b32cfc0278e23fa5249cbea55fe498eaffa55512d2ba2c8c6c62df76918c91a1`.
-- Associado ao HEAD da PR #385 (`50e140f)); é artefacto de PR, não release nem build de main.
+- Associado ao HEAD da PR #385 (`50e140f`); é artefacto de PR, não release nem build de main.
 
 ### Mecanismo
 
