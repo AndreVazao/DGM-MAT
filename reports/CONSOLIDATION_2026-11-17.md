@@ -45,3 +45,25 @@ Os checks dos heads não equivalem a uma nova validação pós-merge da main nem
 Consolidar as PRs documentais antigas num único relatório atualizado e manter uma única linha de implementação seguinte depois de rever a #347 (shutdown seguro) e os conflitos das branches antigas. Não forçar merges nem fechar branches de trabalho sem preservar o conteúdo e verificar que não há trabalho exclusivo.
 
 **Conclusão:** cinco integrações de código concluídas e verificadas no GitHub. O DGM-MAT continua sem prova de funcionamento real no PC; não classificar como pronto para operação.
+
+
+## 6. Atualização da consolidação — 17/11/2026, 22:05 UTC
+
+Depois da primeira sequência, foram também integradas PRs documentais que continuavam mergeable. A sequência foi feita com revalidação do head SHA, estado e mergeability antes de cada squash merge; após cada integração aguardou-se a atualização do estado GitHub antes de continuar.
+
+PRs documentais adicionais confirmadas merged:
+- #389 — relatório diário 17/11 — `b0364c068a12ed61b5d47b9e9b59fc6f2c6557a8`.
+- #388 — relatório diário 16/11 — `c38c17331b85168d31a52b1f41b94084207e2d21`.
+- #384 — relatório diário 15/11 — `d0b8a78aa718538581b19aff583133cc88261018`.
+- #383 — relatório diário 14/11 — `89a67673a3d4c6d328e7ec8faa48761daa35d2ec`.
+- #377 — relatório diário 13/11 — `82aeec4e6bdb219d23601413da22f4b1aefaa312`.
+- #368 — relatório diário 12/11 — `b3d3197d2808d7618a1920f1a7f798847b9ef4e6`.
+- #359 — auditoria de recuperação de conhecimento e dossiers — `2e1586f9b31ef8fe8e5ca21d1d566adf70abaa4b`.
+- #349 — plano de consulta AI em linguagem natural — `41d61fcabc4ef800cf5f4efa05d64dbddc5953c5`.
+- #346 — relatório diário 11/11 — `df96918da178df88bcfc83f8c66aaaa3b41ef36d`.
+- #344 — evidência de readiness do mission executor — `c7fade48b613a8a1aaad717f2758ab9dc9bb9fbb`.
+- #343 — relatório diário 10/11 — `4bbbcf462561bbb60b66c570146eeb2cc22d4451`.
+
+Total integrado nesta ronda: **16 PRs** (5 de código/funcionalidade + 11 documentais). As PRs #379 e #385 continuam preservadas sem merge por sobreposição com #382 e #386 já integradas. A #347 continua preservada sem merge por não mergeability e por tocar em shutdown/update/auth.
+
+A PR #390 é o único PR novo criado para a consolidação desta ronda; continua aberta para revisão. O estado exato da main deve ser obtido da branch, não inferido dos SHAs individuais da tabela acima.
