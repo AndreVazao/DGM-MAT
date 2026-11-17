@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-10  
 **Issue:** #341  
-**Status:** Implemented in the associated pull request; awaiting CI validation.
+**Status:** Integrated in PR #342; Windows build and Mission E2E Regression Gate passed on 2026-11-10.
 
 ## Contract
 
@@ -19,6 +19,14 @@ Mission creation must establish that a real execution handler exists before it c
 ## Safety boundaries
 
 This change does not add a generic shell executor, interpret task descriptions as commands, auto-approve mutations, or bypass existing approval requirements. Existing allowlists, durable task receipts, checkpoint validation, and failure reporting remain authoritative.
+
+## Verification evidence — 2026-11-10
+
+- PR #342 was integrated into main at `fdae0ce102c35d15ff3c4564039bdd4396aa139a`.
+- Windows executable build: SUCCESS, workflow run [42806219347](https://github.com/AndreVazao/DGM-MAT/actions/runs/42806219347).
+- Mission E2E Regression Gate: SUCCESS, workflow run [42806219343](https://github.com/AndreVazao/DGM-MAT/actions/runs/42806219343).
+- The installed executable was subsequently verified on PC-Vazao-Anjos; authenticated `GET /runtime/status` and `GET /runtime/queue` returned HTTP 200, with runtime running and worker alive.
+- These checks validate build, regression gate and runtime health. They do not establish completion of a new read-only mission with a durable receipt.
 
 ## Verification targets
 
