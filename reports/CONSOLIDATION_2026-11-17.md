@@ -67,3 +67,16 @@ PRs documentais adicionais confirmadas merged:
 Total integrado nesta ronda: **16 PRs** (5 de código/funcionalidade + 11 documentais). As PRs #379 e #385 continuam preservadas sem merge por sobreposição com #382 e #386 já integradas. A #347 continua preservada sem merge por não mergeability e por tocar em shutdown/update/auth.
 
 A PR #390 é o único PR novo criado para a consolidação desta ronda; continua aberta para revisão. O estado exato da main deve ser obtido da branch, não inferido dos SHAs individuais da tabela acima.
+
+
+## 7. Encerramento das PRs redundantes — 17/11/2026
+
+Depois de integrar #382 e #386, as PRs #379 e #385 foram encerradas com comentário explicativo. As respetivas branches continuam preservadas no GitHub; não foram apagadas. A #379 foi substituída pela funcionalidade mais abrangente de #382; a #385 pela implementação e regressões mais completas de #386.
+
+Estado de trabalho após a consolidação:
+- #390 — única PR nova ativa desta ronda, documentação de consolidação, aberta para revisão.
+- #347 — PR antiga em draft, não mergeable, preservada para revisão futura do shutdown/update/rollback.
+- #379 e #385 — PRs encerradas como redundantes; branches preservadas.
+- Main HEAD observado após os merges documentais: `4bbbcf462561bbb60b66c570146eeb2cc22d4451`.
+
+A PR #390 não é uma prova de funcionamento do produto; é o registo auditável das integrações e limites desta ronda.
