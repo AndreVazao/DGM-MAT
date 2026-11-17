@@ -577,6 +577,10 @@ def test_no_provider_accepts_client_invented_oldest_boundary_evidence(monkeypatc
 
         assert response.status_code == 200, (provider, response.text)
         result = response.json()
-        assert result["oldest_boundary"] == "confirmed"
+        # The server must not echo a client-invented boundary as effective evidence.
+        assert result["oldest_boundary"] == "unknown", provider
+        assert result["oldest_boundary_evidence"] == "", provider
+        assert result["client_reported_oldest_boundary"] == "confirmed", provider
+        assert result["client_reported_oldest_boundary_evidence"] == "invented-dom-marker", provider
         assert result["history_completeness"] == "partial_or_unknown", provider
         assert result["full_history_verified"] is False, provider
