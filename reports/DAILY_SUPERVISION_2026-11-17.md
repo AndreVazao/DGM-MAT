@@ -29,7 +29,7 @@ A branch `main` continua em `2cf91c5`, commit de 13-11-2026 às 20:59:20 UTC. N�
 
 - Desktop Commander identificou `PC-Vazao-Anjos` como **Offline**, última ligação há cerca de 17 horas, versão reportada 0.2.52.
 - A API local `http://127.0.0.1:8181` não foi consultada nesta execução.
-- A instalação `C:\\ProgramasGodMode\\DGM-MAT` não foi acedida.
+- A instalação `C:\ProgramasGodMode\DGM-MAT` não foi acedida.
 - O conector de browser devolveu: “Browser access requires the originating browser context”. Não foi possível enumerar separadores nem verificar sessões autenticadas.
 
 ### Estado operacional
