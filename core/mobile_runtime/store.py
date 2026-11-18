@@ -21,6 +21,7 @@ class ConversationStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
         self._threads: dict[str, ConversationThread] = {}
+        self._load_error: str | None = None
         self._load()
 
     def _load(self) -> None:
@@ -29,13 +30,24 @@ class ConversationStore:
                 return
             try:
                 payload = json.loads(self.path.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
+            except (OSError, ValueError) as exc:
+                self._load_error = f"{type(exc).__name__}: {exc}"
                 return
+
+            if not isinstance(payload, dict) or not isinstance(payload.get("threads", []), list):
+                self._load_error = "Conversation store has an invalid top-level schema."
+                return
+
             for item in payload.get("threads", []):
                 try:
+                    if not isinstance(item, dict):
+                        raise TypeError("thread record must be an object")
+                    raw_messages = item.get("messages", [])
+                    if not isinstance(raw_messages, list):
+                        raise TypeError("thread messages must be a list")
                     messages = [
                         ConversationMessage(**message)
-                        for message in item.get("messages", [])
+                        for message in raw_messages
                     ]
                     thread = ConversationThread(
                         id=item["id"],
@@ -49,10 +61,17 @@ class ConversationStore:
                         context=item.get("context", {}),
                     )
                     self._threads[thread.id] = thread
-                except (KeyError, TypeError):
-                    continue
+                except (KeyError, TypeError) as exc:
+                    self._threads.clear()
+                    self._load_error = f"Invalid conversation thread record: {exc}"
+                    return
 
     def _save(self) -> None:
+        if self._load_error is not None:
+            raise RuntimeError(
+                "Conversation history could not be loaded; writes are blocked "
+                "to preserve the original file. Inspect or restore the store before retrying."
+            )
         payload = {
             "schema": "dgm-mat.mobile-conversations.v1",
             "updated_at": utc_now(),
