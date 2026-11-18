@@ -29,3 +29,16 @@ def test_invalid_thread_record_blocks_writes_and_preserves_original_file(tmp_pat
         store.create_thread("Must not overwrite malformed record")
 
     assert store_path.read_bytes() == original
+
+
+def test_missing_threads_collection_blocks_writes_and_preserves_original_file(tmp_path: Path):
+    store_path = tmp_path / "mobile_conversations.json"
+    original = b'{"schema": "dgm-mat.mobile-conversations.v1"}'
+    store_path.write_bytes(original)
+
+    store = ConversationStore(store_path)
+
+    with pytest.raises(RuntimeError, match="preserve the original file"):
+        store.create_thread("Must not overwrite incomplete store")
+
+    assert store_path.read_bytes() == original
