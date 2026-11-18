@@ -1,4 +1,3 @@
-# Path: C:\ProgramasGodMode\DGM-MAT\core\mobile_runtime\store.py
 from __future__ import annotations
 
 import json
@@ -34,7 +33,11 @@ class ConversationStore:
                 self._load_error = f"{type(exc).__name__}: {exc}"
                 return
 
-            if not isinstance(payload, dict) or not isinstance(payload.get("threads", []), list):
+            if (
+                not isinstance(payload, dict)
+                or "threads" not in payload
+                or not isinstance(payload["threads"], list)
+            ):
                 self._load_error = "Conversation store has an invalid top-level schema."
                 return
 
