@@ -217,3 +217,10 @@ The report body above is a snapshot captured at 14:37 UTC on 18/11 and is not th
 ### Review follow-up
 - Static inspection of the desktop chat found a concrete next focus for the next functional PR: durable desktop conversation continuity and mission-result linkage, while reusing existing authenticated thread APIs and not creating a parallel store. Search results and source inspection confirm cockpit/minimal_chat_window.py uses CommandConsoleWidget; it already has thread controls, but mission/chat integration must be audited before new work.
 - PC remains unconfirmed/offline; no Desktop Commander use or local runtime proof.
+
+
+### Cockpit source audit — 19/11/2026, 07:30 UTC
+- Audited source files on current main: cockpit/minimal_chat_window.py, cockpit/widgets/command_console.py, core/api/mobile_bridge.py and core/mobile_runtime/service.py.
+- Confirmed the desktop cockpit already has authenticated thread list/create/search/open, transcript writes, archive/restore, periodic thread refresh and mission-status updates from durable checkpoints. Existing endpoints are in core/api/mobile_bridge.py; service stores thread/message records in the existing ConversationStore.
+- Next small functional scope (after PR #393 is settled): audit and strengthen the exact association between chat transcript entries, mission IDs, worker responses and restart/open-thread recovery. Reuse the existing authenticated thread APIs and store; do not introduce a parallel conversation DB. Verify failure cases (transcript persistence failure, mission timeout/final status, restart/open) through focused tests.
+- This is a source-level audit only; no test execution locally, no PC/runtime validation. No additional functional PR opened while #393 remains unresolved.
