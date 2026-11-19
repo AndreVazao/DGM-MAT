@@ -146,3 +146,11 @@ A cadeia de autonomia (receber trabalho → planear → executar → consultar p
 - Re-audited main source: `ConversationStore._load()` silently returns on read/JSON failure and skips malformed entries; `list_threads()` returns only loaded in-memory threads; `MobileConversationService.list_threads()` forwards only thread records; `GET /mobile/threads` returns only `{"threads": ...}`. Confirms #394's transparency gap.
 - Added a technical follow-up comment to issue #394: proposed sanitized diagnostics (`normal`, `load_failed`, `recovery_required`), healthy-empty vs degraded UI distinction, no raw paths/exceptions/content, no automatic repair, and focused tests covering absent/valid/malformed/schema-invalid/invalid-record stores plus API/UI.
 - Sequencing unchanged: #393 first; no new functional PR while it remains open. #391/#392 are report-only PRs. No merges, main changes, PC operations, or Desktop Commander use.
+
+
+## Addendum — 19/11/2026, 21:40 UTC
+
+- Rechecked PR #393 directly: remains open and unmerged at HEAD `63cc4cb0a4ea97ebb777167b870fa7ae4f784bae`; no inline review threads. Windows Executable Build #692 and Focused PR Validation #1046 remain successful. Artifact `DGM-MAT-Windows-3.12-c812c3b` is present, SHA-256 `739aa5735e98d182a2f6d723feb6a1c49d2aa1187be4c009dd83deb5a81f8875`.
+- Extended source audit for #394: desktop `CommandConsoleWidget._load_threads()` calls `GET /mobile/threads`; its response handler clears/repopulates the thread list from `data.get("threads")` without a storage-health/degraded-state branch. Existing `tests/cockpit/test_minimal_chat_window.py` accepts `{ "threads": [] }` as a successful response, so the healthy-empty case currently does not distinguish a failed store load.
+- Added issue #394 comment `7022998503` with this API→Cockpit→test evidence and a bounded test plan: preserve response compatibility, expose sanitized diagnostics, split healthy-empty vs corrupt/unreadable cases, verify API and UI, and prevent leaking exception/path/conversation data.
+- No functional branch/PR opened while #393 remains open. No merge, main change, PC/runtime action, Desktop Commander use, or Snyk.
