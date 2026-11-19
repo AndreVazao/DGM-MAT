@@ -136,3 +136,13 @@ A cadeia de autonomia (receber trabalho → planear → executar → consultar p
 - **Concluído:** review comment de #393, issue #394, relatório versionado.
 - **Não concluído:** runtime, missão, providers/agentes, captura, DGM-HUB, instalação/update/rollback local.
 - **Sem ações destrutivas:** não houve commit em `main`, merge, fecho de PR/issue, eliminação de branch/tag/repo, force-push, rebase, reset, alteração de remote, segredo, permissão ou controlos de segurança.
+
+
+## Addendum — 19/11/2026, 19:55 UTC
+
+### Recheck PR #393 and issue #394
+- PR #393 remains OPEN, not merged, `mergeable=true`; HEAD `63cc4cb0a4ea97ebb777167b870fa7ae4f784bae` (5 commits, 2 files). Windows Executable Build #692 and Focused PR Validation #1046 both remain completed success. Snyk is not part of acceptance.
+- Review comment recorded the narrow security assessment: no blocker in scope; local-PC runtime validation remains unavailable. CodeRabbit did not auto-review (repository stars threshold notice).
+- Re-audited main source: `ConversationStore._load()` silently returns on read/JSON failure and skips malformed entries; `list_threads()` returns only loaded in-memory threads; `MobileConversationService.list_threads()` forwards only thread records; `GET /mobile/threads` returns only `{"threads": ...}`. Confirms #394's transparency gap.
+- Added a technical follow-up comment to issue #394: proposed sanitized diagnostics (`normal`, `load_failed`, `recovery_required`), healthy-empty vs degraded UI distinction, no raw paths/exceptions/content, no automatic repair, and focused tests covering absent/valid/malformed/schema-invalid/invalid-record stores plus API/UI.
+- Sequencing unchanged: #393 first; no new functional PR while it remains open. #391/#392 are report-only PRs. No merges, main changes, PC operations, or Desktop Commander use.
