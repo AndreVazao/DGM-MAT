@@ -200,3 +200,20 @@ A cadeia completa — receber trabalho, planear, executar, consultar agente, gua
 - **Concluído:** inventário GitHub, análise estática da captura histórica, correlação do artefacto com a main atual e preparação deste relatório em branch isolada.
 - **Não concluído:** runtime local, missão funcional, teste de agentes, captura autenticada, DGM-HUB, instalação/update/rollback e aceitação pós-update.
 - **Sem ações destrutivas:** não houve commit direto em main, merge, fecho de PR/issue, eliminação de branches/tags/repos, force-push, rebase, reset, alteração de remotes, segredos, permissões ou controlos de segurança.
+
+
+## Addendum — 19/11/2026, 07:20 UTC
+
+### PR #393 final CI state (current HEAD at this check)
+- HEAD `63cc4cb0a4ea97ebb777167b870fa7ae4f784bae`.
+- Windows Executable Build #692 completed `success`; job `build (3.12)` successful.
+- Focused PR Validation #1046 completed `success`; jobs `Windows installer digest gate` and `Compile and run only affected regressions` successful.
+- PR #393 remains open, unmerged, mergeable. This is CI evidence only, not local Windows runtime evidence.
+- Snyk status is ignored per operator decision.
+
+### Current open-PR inventory after snapshot
+The report body above is a snapshot captured at 14:37 UTC on 18/11 and is not the latest inventory. Current GitHub check shows three open PRs: #391 (consolidation report), #392 (this daily report), and #393 (conversation-store corruption guard). All are unmerged. No merge or main change occurred in this follow-up.
+
+### Review follow-up
+- Static inspection of the desktop chat found a concrete next focus for the next functional PR: durable desktop conversation continuity and mission-result linkage, while reusing existing authenticated thread APIs and not creating a parallel store. Search results and source inspection confirm cockpit/minimal_chat_window.py uses CommandConsoleWidget; it already has thread controls, but mission/chat integration must be audited before new work.
+- PC remains unconfirmed/offline; no Desktop Commander use or local runtime proof.
