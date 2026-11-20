@@ -154,3 +154,11 @@ A cadeia de autonomia (receber trabalho → planear → executar → consultar p
 - Extended source audit for #394: desktop `CommandConsoleWidget._load_threads()` calls `GET /mobile/threads`; its response handler clears/repopulates the thread list from `data.get("threads")` without a storage-health/degraded-state branch. Existing `tests/cockpit/test_minimal_chat_window.py` accepts `{ "threads": [] }` as a successful response, so the healthy-empty case currently does not distinguish a failed store load.
 - Added issue #394 comment `7022998503` with this API→Cockpit→test evidence and a bounded test plan: preserve response compatibility, expose sanitized diagnostics, split healthy-empty vs corrupt/unreadable cases, verify API and UI, and prevent leaking exception/path/conversation data.
 - No functional branch/PR opened while #393 remains open. No merge, main change, PC/runtime action, Desktop Commander use, or Snyk.
+
+
+## Addendum — 20/11/2026, 05:50 UTC
+
+- Rechecked PR #393 and issue #394: #393 remains open/unmerged at `63cc4cb0a4ea97ebb777167b870fa7ae4f784bae`; Build #692 and Focused Validation #1046 are still success; no inline threads existed before this pass.
+- Additional static review of the PR branch found a fail-closed consistency edge case: `create_thread`, `append_message`, `rename`, `set_status` and `update_context` mutate in-memory objects before `_save()` checks `_load_error`. Disk bytes remain protected, but a failed write may leave phantom in-memory state visible until process restart. Posted a non-blocking COMMENT review on PR #393 (review ID `5988148093`) recommending a shared `_ensure_writable()` guard before mutation, retaining `_save()` defense-in-depth, and tests that both bytes and in-memory state remain unchanged after rejected mutations.
+- This is source inspection only; no runtime or local test was executed. CI success for the current HEAD does not cover this newly identified behavior until tests/code are added and new workflows pass.
+- #394 remains the next functional task after #393 is settled. No second functional PR opened. No merge, main change, PC operation, Desktop Commander use, or Snyk.
