@@ -1,6 +1,6 @@
 # Supervisão diária DGM-MAT — 2026-11-20
 
-**Observação:** 2026-11-20 15:26:55.480  UTC  
+**Observação:** 2026-11-20 15:26:55 UTC  
 **Estado geral:** VERIFICAÇÃO INCOMPLETA  
 **Repositório:** [AndreVazao/DGM-MAT](https://github.com/AndreVazao/DGM-MAT)  
 **Default branch:** `main`  
