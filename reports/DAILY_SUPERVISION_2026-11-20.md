@@ -198,3 +198,12 @@ A cadeia end-to-end — receber trabalho, planear, executar, consultar agente, g
 - **Concluído:** correção de código/testes em branch isolada, CI focada, build Windows, digest do artefacto e publicação deste relatório na PR documental existente.
 - **Não concluído:** runtime, missão local, captura, providers, DGM-HUB, instalação/update/rollback.
 - **Sem ações destrutivas:** nenhum commit em `main`, merge, fecho de PR/issue, eliminação de branch/tag/repositório, force-push, rebase, reset, alteração de remote, segredo, permissão ou configuração de segurança.
+
+
+## Addendum — 20/11/2026, 21:46 UTC
+
+- Revalidação direta do GitHub: PR #393 continua aberta, não mergeada e mergeable; HEAD `ec127a8ea735eca694b6c78437afa431ca346916`. Focused PR Validation #1047 e Windows Executable Build #693 associados ao HEAD terminaram com sucesso. As revisões registadas continuam em estado COMMENTED; não há aprovação independente registada nesta leitura. Sem merge.
+- Inspeção dos dois patches da PR confirmou que `_ensure_writable()` antecede as mutações nos cinco métodos e que os testes parametrizados verificam bytes em disco e estado serializado das threads em memória. O finding de 20/11 está coberto pela alteração publicada.
+- Comparação atual da branch Vault: 2 commits ahead / 39 behind; alterações exclusivas em `core/conversation_intelligence/chrome_archive_importer.py` e `core/vault/catalog.py`. A auditoria adicional confirmou que ficheiros além de `MAX_INBOX_FILES` são contabilizados apenas em `files_deferred`, sem registo individual de nome/razão na lista `files`. Comentário de seguimento publicado na issue [#395](https://github.com/AndreVazao/DGM-MAT/issues/395), comentário 7051403980, a pedir estado/razão por ficheiro e teste com mais de 10 candidatos.
+- Issues #394 e #395 permanecem abertas. Não foi criada branch/PR funcional adicional; manter a política de uma PR funcional de cada vez enquanto #393 não estiver resolvida.
+- Estado operacional mantém-se VERIFICAÇÃO INCOMPLETA: sem PC/runtime/missão/provider/DGM-HUB verificados. Sem merge, alteração de main, operação local, Desktop Commander ou Snyk.
