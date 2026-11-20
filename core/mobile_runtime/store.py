@@ -70,12 +70,15 @@ class ConversationStore:
                     self._load_error = f"Invalid conversation thread record: {exc}"
                     return
 
-    def _save(self) -> None:
+    def _ensure_writable(self) -> None:
         if self._load_error is not None:
             raise RuntimeError(
                 "Conversation history could not be loaded; writes are blocked "
                 "to preserve the original file. Inspect or restore the store before retrying."
             )
+
+    def _save(self) -> None:
+        self._ensure_writable()
         payload = {
             "schema": "dgm-mat.mobile-conversations.v1",
             "updated_at": utc_now(),
@@ -182,6 +185,7 @@ class ConversationStore:
         repository: str | None = None,
     ) -> ConversationThread:
         with self._lock:
+            self._ensure_writable()
             now = utc_now()
             thread = ConversationThread(
                 id=f"thread-{uuid.uuid4().hex[:16]}",
@@ -208,6 +212,7 @@ class ConversationStore:
         metadata: dict[str, Any] | None = None,
     ) -> ConversationMessage:
         with self._lock:
+            self._ensure_writable()
             thread = self._threads[thread_id]
             message = ConversationMessage(
                 id=f"msg-{uuid.uuid4().hex[:16]}",
@@ -227,6 +232,7 @@ class ConversationStore:
         if normalized not in {"active", "archived"}:
             raise ValueError("status must be active or archived")
         with self._lock:
+            self._ensure_writable()
             thread = self._threads[thread_id]
             thread.status = normalized
             thread.updated_at = utc_now()
@@ -235,6 +241,7 @@ class ConversationStore:
 
     def rename(self, thread_id: str, title: str) -> ConversationThread:
         with self._lock:
+            self._ensure_writable()
             thread = self._threads[thread_id]
             thread.title = title.strip() or thread.title
             thread.updated_at = utc_now()
@@ -250,6 +257,7 @@ class ConversationStore:
         context: dict[str, Any] | None = None,
     ) -> ConversationThread:
         with self._lock:
+            self._ensure_writable()
             thread = self._threads[thread_id]
             if project is not None:
                 thread.project = project
