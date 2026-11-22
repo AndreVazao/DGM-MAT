@@ -80,3 +80,7 @@ GitHub-only follow-up audit. The primary PC remains offline; no local runtime or
 - [Focused PR Validation #1048](https://github.com/AndreVazao/DGM-MAT/actions/runs/45032789687) terminou **success** no HEAD `975f16ec2f75033ffef54a10885aaebbf2b5d742`; jobs de regressões focadas e digest gate concluídos com sucesso.
 - [Windows Executable Build #694](https://github.com/AndreVazao/DGM-MAT/actions/runs/45032789740) continuava **in progress** na última consulta, no job `build (3.12)`. Ainda não é possível declarar a build concluída.
 - CodeRabbit confirmou que o novo review foi **triggered** através do comentário #7080547437; ainda não publicou uma revisão do novo HEAD. A thread de duplicate IDs mantém-se aberta até à confirmação do review e da build.
+
+
+### Correção de contagem da branch documental — 22/11/2026
+Após a publicação da nota de validação e a reconciliação final, a branch `reports/daily-supervision-2026-11-18` ficou em **14 commits ahead / 0 behind** de `main` (cinco ficheiros report-only). O valor de 13 commits referido no snapshot anterior era anterior à última nota documental.
