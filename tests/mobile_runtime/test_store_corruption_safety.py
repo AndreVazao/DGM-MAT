@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -96,3 +97,37 @@ def test_mutations_fail_before_changing_memory_or_disk(
 
     assert store_path.read_bytes() == original, operation
     assert {item.id: item.to_dict() for item in store.list_threads()} == before, operation
+
+
+
+def test_duplicate_thread_ids_block_writes_and_preserve_original_file(tmp_path: Path):
+    store_path = tmp_path / "mobile_conversations.json"
+    payload = {
+        "schema": "dgm-mat.mobile-conversations.v1",
+        "threads": [
+            {
+                "id": "thread-duplicate",
+                "title": "Original conversation",
+                "messages": [
+                    {"id": "message-original", "role": "user", "content": "Keep this history"}
+                ],
+            },
+            {
+                "id": "thread-duplicate",
+                "title": "Conflicting duplicate",
+                "messages": [
+                    {"id": "message-duplicate", "role": "assistant", "content": "Do not replace it"}
+                ],
+            },
+        ],
+    }
+    original = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    store_path.write_bytes(original)
+
+    store = ConversationStore(store_path)
+
+    assert store.list_threads() == []
+    with pytest.raises(RuntimeError, match="preserve the original file"):
+        store.create_thread("Must not overwrite duplicate records")
+
+    assert store_path.read_bytes() == original
