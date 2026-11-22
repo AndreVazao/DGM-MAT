@@ -64,6 +64,8 @@ class ConversationStore:
                         messages=messages,
                         context=item.get("context", {}),
                     )
+                    if thread.id in self._threads:
+                        raise KeyError(f"duplicate thread id: {thread.id}")
                     self._threads[thread.id] = thread
                 except (KeyError, TypeError) as exc:
                     self._threads.clear()
