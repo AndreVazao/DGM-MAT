@@ -30,3 +30,47 @@ GitHub-only follow-up audit. The primary PC remains offline; no local runtime or
 2. Implement #394 only after #393 is settled, with API compatibility and Cockpit degraded-state tests.
 3. Recover Vault importer work selectively; fix #395 with per-file deferral records, consistent statuses and retry-safe tests.
 4. When PC reconnects, inspect working tree/process/runtime/auth/queue/SAFE/approvals before one read-only mission.
+
+
+## Addendum — 22/11/2026, ronda da tarde (UTC)
+
+### Estado GitHub revalidado
+- Default branch: `main`; HEAD continua `4bbbcf462561bbb60b66c570146eeb2cc22d4451` (17/11/2026 22:01:37 UTC). Não foram observados commits novos em `main`.
+- Inventário atual: **60 branches**, **3 PRs abertas**, **24 issues abertas**, **25 workflows**, **3.883 Actions runs** e **zero releases publicadas**.
+- PRs abertas: #391 (consolidação documental, 1 commit ahead / 0 behind), #392 (relatórios diários, 12 ahead / 0 behind antes desta atualização) e #393 (única PR funcional, agora 9 ahead / 0 behind).
+- O endpoint da branch `main` devolve `protected=false` e `protection.enabled=false`. Não foram alteradas regras, permissões ou checks; a ausência de proteção efetiva fica registada como risco de governação para decisão explícita do proprietário.
+- A branch documental #392 continua isolada e report-only. Este addendum atualiza apenas o relatório de 22/11; não altera `main`.
+
+### Correção concreta na PR #393
+- A revisão CodeRabbit de 22/11 identificou um caso real: IDs de threads duplicados no JSON eram aceites e a segunda entrada substituía a primeira em memória; uma gravação posterior podia perder silenciosamente mensagens da primeira thread.
+- A inspeção confirmou o caminho no HEAD anterior. Corrigido na branch `fix/conversation-store-corruption-guard`: a carga rejeita o ID repetido antes de inserir, reutilizando o caminho fail-closed que limpa a carga parcial e bloqueia escritas.
+- Acrescentado teste de regressão com duas threads de ID igual. O teste exige lista carregada vazia, bloqueio de nova gravação e preservação byte-a-byte do ficheiro original.
+- Commits da correção: `f4251f8fcccd0f1269fa84ce0d5ae4524eff6480` (código) e `975f16ec2f75033ffef54a10885aaebbf2b5d742` (teste).
+- PR #393 permanece aberta, não integrada e mergeable. No novo HEAD, Focused PR Validation #1048 e Windows Executable Build #694 foram iniciados e estavam **in progress** na última observação. Os runs #1047 e #693 anteriores estavam verdes, mas não validam o novo HEAD.
+- Foi solicitado novo review CodeRabbit ao HEAD atualizado (comentário #7080547437); resposta ainda não observada. A thread do comentário acionável permanece por resolver até validação final.
+
+### Vault e recuperação de conversas
+- A comparação confirmou que o defeito descrito em #395 pertence à branch antiga `feat/auto-import-vault-conversation-search-2026-11-10`, divergente **2 ahead / 39 behind**.
+- O ficheiro equivalente em `main` não contém os limites de inbox (10 ficheiros / 4 MiB por ficheiro / 12 MiB total) nem o contador de deferred. Portanto, a condição `completed` com ficheiros adiados não foi confirmada na main atual; não foi transplantado código da branch divergente.
+- #395 continua como candidato a correção seletiva depois de #393. #394 continua como follow-up para expor estado sanitizado de falha de carga à API/UI, também sequenciado depois de #393.
+- Nenhuma conversa foi capturada/importada nesta ronda. Cobertura operacional nova: **0** para ChatGPT, Grok, Gemini, Claude, DeepSeek e Qwen. Não houve consulta de sessões autenticadas.
+
+### PC, agentes e DGM-HUB
+- Desktop Commander confirma `PC-Vazao-Anjos` **Offline**, última ligação há **136 horas**. A API local, processos, working tree, fila, approvals, missão read-only, scheduler, SAFE mode e instalação não foram consultados.
+- O Browser connector devolveu `Browser access requires the originating browser context`; não foram enumerados separadores nem acedidas sessões autenticadas.
+- Codex, Claude Code/FCC, outros agentes e DGM-HUB não foram executados nesta ronda. Não existe resposta real nova de provider/agente nem prova atual do modo Observer/Respond.
+- O procedimento `docs/operations/WINDOWS_UPDATE_V1.md` está presente em `main` e descreve checksum, backup, shutdown gracioso, manifesto e rollback. Não foi descarregado, validado ou aplicado qualquer artefacto; o PC não foi atualizado.
+
+### Próxima sequência
+1. Aguardar CI e review CodeRabbit do novo HEAD #393; não fazer merge automaticamente.
+2. Se os checks passarem, rever a thread de duplicate IDs e a compatibilidade antes de integrar por decisão autorizada.
+3. Depois de #393 ficar resolvida, tratar #394 e recuperar seletivamente #395 sem integrar a branch antiga em bloco.
+4. Quando o PC regressar, preservar primeiro o working tree, verificar autenticação/SAFE/approvals/fila e só então executar uma missão read-only, registando recibo completo.
+5. Rever explicitamente a proteção da branch `main`; não a alterar sem autorização do proprietário.
+
+### Registo desta ronda
+- **Observado:** estado GitHub atual, branches/PRs/issues/workflows/runs/releases, diffs das PRs, branch protection, código do importer em `main` e na branch divergente, review CodeRabbit e documentação de atualização.
+- **Tentado:** acesso ao browser; bloqueado por falta do contexto de origem.
+- **Concluído:** correção pequena de integridade na PR #393, teste de regressão e publicação deste addendum na PR documental #392.
+- **Pendente:** CI do novo HEAD, review CodeRabbit, validação no PC, missão real, recuperação autenticada, agentes e DGM-HUB.
+- **Sem operações destrutivas:** sem merge, alteração de `main`, fecho de PR/issue, eliminação de branch, force-push, rebase, reset, alteração de credenciais/permissões ou atualização local.
