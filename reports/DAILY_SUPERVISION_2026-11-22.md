@@ -74,3 +74,9 @@ GitHub-only follow-up audit. The primary PC remains offline; no local runtime or
 - **Concluído:** correção pequena de integridade na PR #393, teste de regressão e publicação deste addendum na PR documental #392.
 - **Pendente:** CI do novo HEAD, review CodeRabbit, validação no PC, missão real, recuperação autenticada, agentes e DGM-HUB.
 - **Sem operações destrutivas:** sem merge, alteração de `main`, fecho de PR/issue, eliminação de branch, force-push, rebase, reset, alteração de credenciais/permissões ou atualização local.
+
+
+### Atualização de validação — 22/11/2026
+- [Focused PR Validation #1048](https://github.com/AndreVazao/DGM-MAT/actions/runs/45032789687) terminou **success** no HEAD `975f16ec2f75033ffef54a10885aaebbf2b5d742`; jobs de regressões focadas e digest gate concluídos com sucesso.
+- [Windows Executable Build #694](https://github.com/AndreVazao/DGM-MAT/actions/runs/45032789740) continuava **in progress** na última consulta, no job `build (3.12)`. Ainda não é possível declarar a build concluída.
+- CodeRabbit confirmou que o novo review foi **triggered** através do comentário #7080547437; ainda não publicou uma revisão do novo HEAD. A thread de duplicate IDs mantém-se aberta até à confirmação do review e da build.
