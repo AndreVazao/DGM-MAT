@@ -36,7 +36,7 @@ GitHub-only follow-up audit. The primary PC remains offline; no local runtime or
 
 ### Estado GitHub revalidado
 - Default branch: `main`; HEAD continua `4bbbcf462561bbb60b66c570146eeb2cc22d4451` (17/11/2026 22:01:37 UTC). Não foram observados commits novos em `main`.
-- Inventário atual: **60 branches**, **3 PRs abertas**, **24 issues abertas**, **25 workflows**, **3.883 Actions runs** e **zero releases publicadas**.
+- Inventário atual: **60 branches**, **3 PRs abertas**, **24 issues abertas**, **25 workflows**, **3.885 Actions runs** e **zero releases publicadas**.
 - PRs abertas: #391 (consolidação documental, 1 commit ahead / 0 behind), #392 (relatórios diários, 12 ahead / 0 behind antes desta atualização) e #393 (única PR funcional, agora 9 ahead / 0 behind).
 - O endpoint da branch `main` devolve `protected=false` e `protection.enabled=false`. Não foram alteradas regras, permissões ou checks; a ausência de proteção efetiva fica registada como risco de governação para decisão explícita do proprietário.
 - A branch documental #392 continua isolada e report-only. Este addendum atualiza apenas o relatório de 22/11; não altera `main`.
