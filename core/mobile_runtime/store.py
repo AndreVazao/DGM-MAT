@@ -22,16 +22,20 @@ class ConversationStore:
         self._lock = threading.RLock()
         self._threads: dict[str, ConversationThread] = {}
         self._load_error: str | None = None
+        self._load_status = "missing"
         self._load()
 
     def _load(self) -> None:
         with self._lock:
             if not self.path.exists():
+                self._load_status = "missing"
                 return
+            self._load_status = "healthy"
             try:
                 payload = json.loads(self.path.read_text(encoding="utf-8"))
             except (OSError, ValueError) as exc:
-                self._load_error = f"{type(exc).__name__}: {exc}"
+                self._load_error = "Persisted conversation history could not be read or parsed."
+                self._load_status = "load_failed"
                 return
 
             if (
@@ -39,7 +43,8 @@ class ConversationStore:
                 or "threads" not in payload
                 or not isinstance(payload["threads"], list)
             ):
-                self._load_error = "Conversation store has an invalid top-level schema."
+                self._load_error = "Conversation history has an invalid structure."
+                self._load_status = "recovery_required"
                 return
 
             for item in payload.get("threads", []):
@@ -69,8 +74,19 @@ class ConversationStore:
                     self._threads[thread.id] = thread
                 except (KeyError, TypeError) as exc:
                     self._threads.clear()
-                    self._load_error = f"Invalid conversation thread record: {exc}"
+                    self._load_error = "Conversation history contains an invalid record."
+                    self._load_status = "recovery_required"
                     return
+
+    def health_diagnostic(self) -> dict[str, Any]:
+        """Return sanitized read-only store health; never expose paths or exception details."""
+        with self._lock:
+            status = "healthy" if self._load_error is None and self.path.exists() else self._load_status
+            if status == "missing":
+                return {"status": status, "loaded_threads": 0, "message": "Conversation history file is not present yet. This is normal before the first saved conversation.", "recovery_required": False}
+            if status == "healthy":
+                return {"status": status, "loaded_threads": len(self._threads), "message": "Conversation history loaded successfully.", "recovery_required": False}
+            return {"status": status, "loaded_threads": 0, "message": "Conversation history could not be loaded. The original file is preserved; recovery or inspection is required. Do not overwrite, delete, or automatically repair the source file.", "recovery_required": True}
 
     def _ensure_writable(self) -> None:
         if self._load_error is not None:

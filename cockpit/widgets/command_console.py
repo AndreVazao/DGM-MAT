@@ -916,6 +916,14 @@ class CommandConsoleWidget(QWidget):
             return
 
         if action in {"threads-list", "thread-search", "thread-search-more"}:
+            if action == "threads-list":
+                diagnostic = data.get("conversation_store")
+                if isinstance(diagnostic, dict) and diagnostic.get("recovery_required") is True:
+                    status = str(diagnostic.get("status") or "unknown")
+                    message = str(diagnostic.get("message") or "Histórico local indisponível; recuperação necessária.")
+                    self._append_message("ALERTA — Histórico", f"Estado: {status}. {message}", "error")
+                elif isinstance(diagnostic, dict) and diagnostic.get("status") == "missing":
+                    self._append_message("Histórico", str(diagnostic.get("message") or "Ainda não existe histórico guardado."), "system")
             threads = data.get("threads") if action == "threads-list" else data.get("results")
             if action != "thread-search-more":
                 self.thread_list.clear()
