@@ -21,6 +21,7 @@ class ConversationStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
         self._threads: dict[str, ConversationThread] = {}
+        self._load_error: str | None = None
         self._load()
 
     def _load(self) -> None:
@@ -29,13 +30,28 @@ class ConversationStore:
                 return
             try:
                 payload = json.loads(self.path.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
+            except (OSError, ValueError) as exc:
+                self._load_error = f"{type(exc).__name__}: {exc}"
                 return
+
+            if (
+                not isinstance(payload, dict)
+                or "threads" not in payload
+                or not isinstance(payload["threads"], list)
+            ):
+                self._load_error = "Conversation store has an invalid top-level schema."
+                return
+
             for item in payload.get("threads", []):
                 try:
+                    if not isinstance(item, dict):
+                        raise TypeError("thread record must be an object")
+                    raw_messages = item.get("messages", [])
+                    if not isinstance(raw_messages, list):
+                        raise TypeError("thread messages must be a list")
                     messages = [
                         ConversationMessage(**message)
-                        for message in item.get("messages", [])
+                        for message in raw_messages
                     ]
                     thread = ConversationThread(
                         id=item["id"],
@@ -48,11 +64,23 @@ class ConversationStore:
                         messages=messages,
                         context=item.get("context", {}),
                     )
+                    if thread.id in self._threads:
+                        raise KeyError(f"duplicate thread id: {thread.id}")
                     self._threads[thread.id] = thread
-                except (KeyError, TypeError):
-                    continue
+                except (KeyError, TypeError) as exc:
+                    self._threads.clear()
+                    self._load_error = f"Invalid conversation thread record: {exc}"
+                    return
+
+    def _ensure_writable(self) -> None:
+        if self._load_error is not None:
+            raise RuntimeError(
+                "Conversation history could not be loaded; writes are blocked "
+                "to preserve the original file. Inspect or restore the store before retrying."
+            )
 
     def _save(self) -> None:
+        self._ensure_writable()
         payload = {
             "schema": "dgm-mat.mobile-conversations.v1",
             "updated_at": utc_now(),
@@ -159,6 +187,7 @@ class ConversationStore:
         repository: str | None = None,
     ) -> ConversationThread:
         with self._lock:
+            self._ensure_writable()
             now = utc_now()
             thread = ConversationThread(
                 id=f"thread-{uuid.uuid4().hex[:16]}",
@@ -185,6 +214,7 @@ class ConversationStore:
         metadata: dict[str, Any] | None = None,
     ) -> ConversationMessage:
         with self._lock:
+            self._ensure_writable()
             thread = self._threads[thread_id]
             message = ConversationMessage(
                 id=f"msg-{uuid.uuid4().hex[:16]}",
@@ -204,6 +234,7 @@ class ConversationStore:
         if normalized not in {"active", "archived"}:
             raise ValueError("status must be active or archived")
         with self._lock:
+            self._ensure_writable()
             thread = self._threads[thread_id]
             thread.status = normalized
             thread.updated_at = utc_now()
@@ -212,6 +243,7 @@ class ConversationStore:
 
     def rename(self, thread_id: str, title: str) -> ConversationThread:
         with self._lock:
+            self._ensure_writable()
             thread = self._threads[thread_id]
             thread.title = title.strip() or thread.title
             thread.updated_at = utc_now()
@@ -227,6 +259,7 @@ class ConversationStore:
         context: dict[str, Any] | None = None,
     ) -> ConversationThread:
         with self._lock:
+            self._ensure_writable()
             thread = self._threads[thread_id]
             if project is not None:
                 thread.project = project
