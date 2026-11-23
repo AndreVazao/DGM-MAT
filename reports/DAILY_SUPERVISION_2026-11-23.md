@@ -158,3 +158,12 @@ Inventário observado antes da abertura da nova PR:
 - Os logs do job de build ainda em execução não estavam disponíveis no endpoint de logs (404 temporário do blob); o estado oficial do run continua IN PROGRESS, não FAILED.
 
 **Classificação atual:** regressões focadas concluídas com sucesso; build Windows e CodeRabbit pendentes; aceitação local, browser e agentes não verificados. A PR permanece draft e não foi integrada.
+
+
+### Correção de review CodeRabbit — branch names longos
+
+- CodeRabbit identificou um caso válido: truncar nomes de branch a 240 caracteres podia quebrar a comparação com o nome completo da default branch e tornar nomes longos indistinguíveis.
+- Corrigido na PR #399: o campo de evidência conserva o nome completo da branch; qualquer encurtamento deve ser apenas apresentação, separado do identificador.
+- Adicionado teste determinístico para uma default branch com nome superior a 240 caracteres, confirmando preservação e `is_default=true`.
+- Commits da correção: `3c843969145ebfe5e3e1a769f508342ec64c5bbd` (código) e `f6399b5acc2c1ee93c6ef3c5012d2936358883a9` (regressão).
+- O thread de review foi resolvido após a correção. A validação CI desta nova revisão ainda não apareceu no endpoint consultado; PR permanece draft, sem merge.
