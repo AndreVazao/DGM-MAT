@@ -64,13 +64,20 @@ class ChromeConversationArchiveImporter:
             raise OSError(f"Archived copy SHA-256 mismatch: {target.name}")
         return target
 
+    MAX_INBOX_FILES = 10
+    MAX_INBOX_FILE_BYTES = 4 * 1024 * 1024
+    MAX_INBOX_TOTAL_BYTES = 12 * 1024 * 1024
+
     def import_inbox(self) -> dict[str, Any]:
         if not self.inbox_dir.exists():
             return {
                 "status": "inbox_missing",
                 "inbox": str(self.inbox_dir),
                 "files_seen": 0,
+                "files_processed": 0,
                 "files_imported": 0,
+                "files_failed": 0,
+                "files_deferred": 0,
                 "conversations_imported": 0,
                 "messages_imported": 0,
                 "files": [],
@@ -79,12 +86,32 @@ class ChromeConversationArchiveImporter:
         files: list[dict[str, Any]] = []
         conversation_count = 0
         message_count = 0
+        processed_bytes = 0
         candidates = sorted(self.inbox_dir.glob("*.json"), key=lambda path: path.name.casefold())
-        for source in candidates:
+
+        # Count-limit deferrals are reported from filenames only: do not open or
+        # stat files outside the bounded processing window.
+        selected = candidates[: self.MAX_INBOX_FILES]
+        for source in candidates[self.MAX_INBOX_FILES :]:
+            files.append({"file": source.name, "status": "deferred_file_count_limit",
+                          "reason": "deferred_file_count_limit"})
+
+        for source in selected:
             try:
+                file_size = source.stat().st_size
+                if file_size > self.MAX_INBOX_FILE_BYTES:
+                    files.append({"file": source.name, "status": "deferred_file_size_limit",
+                                  "reason": "deferred_file_size_limit", "size_bytes": file_size})
+                    continue
+                if processed_bytes + file_size > self.MAX_INBOX_TOTAL_BYTES:
+                    files.append({"file": source.name, "status": "deferred_total_size_limit",
+                                  "reason": "deferred_total_size_limit", "size_bytes": file_size})
+                    continue
+
                 payload = json.loads(source.read_text(encoding="utf-8"))
                 schema = payload.get("schema") if isinstance(payload, dict) else None
                 if schema not in self.SUPPORTED_SCHEMAS:
+                    processed_bytes += file_size
                     files.append({
                         "file": source.name,
                         "status": "ignored_unsupported_schema",
@@ -119,6 +146,7 @@ class ChromeConversationArchiveImporter:
                 messages = sum(len(audit.conversation.messages) for audit in audits)
                 conversation_count += conversations
                 message_count += messages
+                processed_bytes += file_size
                 files.append({
                     "file": source.name,
                     "archive_path": str(archived),
@@ -138,13 +166,17 @@ class ChromeConversationArchiveImporter:
 
         imported_files = sum(item["status"] == "imported" for item in files)
         failed_files = sum(item["status"] == "failed" for item in files)
+        deferred_files = sum(str(item["status"]).startswith("deferred_") for item in files)
+        processed_files = len(files) - deferred_files
         return {
-            "status": "completed" if failed_files == 0 else "partial",
+            "status": "completed" if failed_files == 0 and deferred_files == 0 else "partial",
             "inbox": str(self.inbox_dir),
             "archive": str(self.archive_dir),
             "files_seen": len(candidates),
+            "files_processed": processed_files,
             "files_imported": imported_files,
             "files_failed": failed_files,
+            "files_deferred": deferred_files,
             "conversations_imported": conversation_count,
             "messages_imported": message_count,
             "files": files,
