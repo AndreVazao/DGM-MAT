@@ -40,3 +40,12 @@ def test_invalid_thread_record_reports_recovery_required(tmp_path):
     assert diagnostic["status"] == "recovery_required"
     assert diagnostic["recovery_required"] is True
     assert diagnostic["loaded_threads"] == 0
+
+
+def test_invalid_top_level_schema_requires_recovery(tmp_path):
+    path = tmp_path / "store.json"
+    path.write_text(json.dumps({"unexpected": "schema"}), encoding="utf-8")
+    store = ConversationStore(path)
+    diagnostic = store.health_diagnostic()
+    assert diagnostic["status"] == "recovery_required"
+    assert diagnostic["recovery_required"] is True
