@@ -72,8 +72,8 @@ def fetch_github_live_evidence(
     The function performs at most seven GET requests: repository metadata,
     optional checks for an exact commit SHA, a bounded branch inventory,
     bounded pull-request/issue history, and dedicated open pull-request/issue
-    snapshots. It never follows
-    redirects, mutates GitHub, or returns unselected metadata.
+    snapshots. It never follows redirects, mutates GitHub, or returns
+    unselected metadata.
     """
     identity = _github_identity(origin)
     if identity is None:
@@ -337,10 +337,22 @@ def fetch_github_live_evidence(
                 "title": str(item.get("title") or "")[:240],
                 "state": item.get("state") if item.get("state") in {"open", "closed"} else "unknown",
                 "draft": item.get("draft") if kind == "pull_request" and isinstance(item.get("draft"), bool) else None,
-                "head_ref": (item.get("head") or {}).get("ref") if kind == "pull_request" and isinstance(item.get("head"), dict) else None,
-                "head_sha": (item.get("head") or {}).get("sha") if kind == "pull_request" and isinstance(item.get("head"), dict) else None,
-                "base_ref": (item.get("base") or {}).get("ref") if kind == "pull_request" and isinstance(item.get("base"), dict) else None,
-                "base_sha": (item.get("base") or {}).get("sha") if kind == "pull_request" and isinstance(item.get("base"), dict) else None,
+                "head_ref": (
+                    (item.get("head") or {}).get("ref")
+                    if kind == "pull_request" and isinstance(item.get("head"), dict) else None
+                ),
+                "head_sha": (
+                    (item.get("head") or {}).get("sha")
+                    if kind == "pull_request" and isinstance(item.get("head"), dict) else None
+                ),
+                "base_ref": (
+                    (item.get("base") or {}).get("ref")
+                    if kind == "pull_request" and isinstance(item.get("base"), dict) else None
+                ),
+                "base_sha": (
+                    (item.get("base") or {}).get("sha")
+                    if kind == "pull_request" and isinstance(item.get("base"), dict) else None
+                ),
                 "merged_at": item.get("merged_at") if kind == "pull_request" else None,
                 "merge_commit_sha": item.get("merge_commit_sha") if kind == "pull_request" else None,
                 "created_at": item.get("created_at"),
@@ -406,10 +418,22 @@ def fetch_github_live_evidence(
                 "title": str(item.get("title") or "")[:240],
                 "state": item.get("state") if item.get("state") == "open" else "unknown",
                 "draft": item.get("draft") if kind == "pull_request" and isinstance(item.get("draft"), bool) else None,
-                "head_ref": (item.get("head") or {}).get("ref") if kind == "pull_request" and isinstance(item.get("head"), dict) else None,
-                "head_sha": (item.get("head") or {}).get("sha") if kind == "pull_request" and isinstance(item.get("head"), dict) else None,
-                "base_ref": (item.get("base") or {}).get("ref") if kind == "pull_request" and isinstance(item.get("base"), dict) else None,
-                "base_sha": (item.get("base") or {}).get("sha") if kind == "pull_request" and isinstance(item.get("base"), dict) else None,
+                "head_ref": (
+                    (item.get("head") or {}).get("ref")
+                    if kind == "pull_request" and isinstance(item.get("head"), dict) else None
+                ),
+                "head_sha": (
+                    (item.get("head") or {}).get("sha")
+                    if kind == "pull_request" and isinstance(item.get("head"), dict) else None
+                ),
+                "base_ref": (
+                    (item.get("base") or {}).get("ref")
+                    if kind == "pull_request" and isinstance(item.get("base"), dict) else None
+                ),
+                "base_sha": (
+                    (item.get("base") or {}).get("sha")
+                    if kind == "pull_request" and isinstance(item.get("base"), dict) else None
+                ),
                 "merged_at": item.get("merged_at") if kind == "pull_request" else None,
                 "merge_commit_sha": item.get("merge_commit_sha") if kind == "pull_request" else None,
                 "created_at": item.get("created_at"),
