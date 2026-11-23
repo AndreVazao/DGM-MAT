@@ -156,13 +156,16 @@ def test_importer_reports_total_size_deferral(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DGM_VAULT_PATH", str(tmp_path / "vault"))
     inbox = tmp_path / "inbox"
     inbox.mkdir()
-    # Each file is below the per-file cap, but the pair exceeds the aggregate cap.
-    payload = json.dumps({"schema": "unsupported", "padding": "x" * (7 * 1024 * 1024)})
-    (inbox / "00-first.json").write_text(payload, encoding="utf-8")
-    (inbox / "01-second.json").write_text(payload, encoding="utf-8")
+    # Four files below the 4 MiB per-file cap exceed the 12 MiB aggregate cap.
+    payload = json.dumps({"schema": "unsupported", "padding": "x" * (3 * 1024 * 1024)})
+    for index in range(4):
+        (inbox / f"{index:02d}-part.json").write_text(payload, encoding="utf-8")
     pipeline = ConversationIntelligencePipeline(progress_store_path=tmp_path / "progress.sqlite3")
     importer = ChromeConversationArchiveImporter(inbox, tmp_path / "archive", pipeline)
     result = importer.import_inbox()
     assert result["status"] == "partial"
-    assert result["files_deferred"] == 2
-    assert all(item["status"] == "deferred_file_size_limit" for item in result["files"])
+    assert result["files_deferred"] == 1
+    assert [item["status"] for item in result["files"]] == [
+        "ignored_unsupported_schema", "ignored_unsupported_schema",
+        "ignored_unsupported_schema", "deferred_total_size_limit",
+    ]
