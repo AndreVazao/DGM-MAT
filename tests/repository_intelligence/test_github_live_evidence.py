@@ -37,6 +37,11 @@ def test_fetches_repo_and_checks_for_exact_local_head(monkeypatch):
                 "pushed_at": "2026-11-13T10:00:00Z",
                 "updated_at": "2026-11-13T10:01:00Z",
             })
+        if url.endswith("/branches"):
+            return _Response(200, [
+                {"name": "main", "commit": {"sha": "a" * 40}, "protected": True},
+                {"name": "feature/recovery", "commit": {"sha": "b" * 40}, "protected": False},
+            ])
         if url.endswith("/pulls") or url.endswith("/issues"):
             return _Response(200, [])
         return _Response(200, {
@@ -62,7 +67,12 @@ def test_fetches_repo_and_checks_for_exact_local_head(monkeypatch):
     assert result["commit_checks"]["commit_sha"] == "a" * 40
     assert result["commit_checks"]["total_count"] == 2
     assert result["commit_checks"]["conclusion_summary"] == {"success": 1, "failure": 1}
-    assert len(calls) == 6
+    assert result["branches"]["status"] == "available"
+    assert result["branches"]["default_branch"] == "main"
+    assert result["branches"]["returned"] == 2
+    assert result["branches"]["items"][0]["is_default"] is True
+    assert result["branches"]["items"][1]["commit_sha"] == "b" * 40
+    assert len(calls) == 7
     assert all(call[1]["allow_redirects"] is False for call in calls)
 
 
@@ -91,6 +101,8 @@ def test_uses_short_cache_for_repeated_dossier_reads(monkeypatch):
 
     def fake_get(url, **kwargs):
         calls.append(url)
+        if url.endswith("/branches"):
+            return _Response(200, [])
         if url.endswith("/pulls") or url.endswith("/issues"):
             return _Response(200, [])
         return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
@@ -99,7 +111,7 @@ def test_uses_short_cache_for_repeated_dossier_reads(monkeypatch):
     first = live.fetch_github_live_evidence("github.com/acme/project")
     second = live.fetch_github_live_evidence("github.com/acme/project")
     assert first["status"] == second["status"] == "available"
-    assert len(calls) == 5
+    assert len(calls) == 6
 
 def test_dossier_calls_live_github_only_after_exact_local_path_match(tmp_path, monkeypatch):
     from core.repository_intelligence import project_dossier as dossier_module
@@ -162,6 +174,8 @@ def test_includes_bounded_pr_and_issue_history_without_mixing_records(monkeypatc
         calls.append((url, kwargs))
         if url.endswith("/repos/acme/project"):
             return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
+        if url.endswith("/branches"):
+            return _Response(200, [{"name": "main", "commit": {"sha": "a" * 40}, "protected": True}])
         if url.endswith("/check-runs"):
             return _Response(200, {"total_count": 0, "check_runs": []})
         if url.endswith("/pulls"):
@@ -170,12 +184,19 @@ def test_includes_bounded_pr_and_issue_history_without_mixing_records(monkeypatc
                 "draft": False, "created_at": "2026-11-01T10:00:00Z",
                 "updated_at": "2026-11-12T10:00:00Z", "closed_at": "2026-11-12T10:01:00Z",
                 "html_url": "https://github.com/acme/project/pull/12",
+                "head": {"ref": "fix/recovery", "sha": "b" * 40},
+                "base": {"ref": "main", "sha": "a" * 40},
+                "merged_at": "2026-11-12T10:01:00Z",
+                "merge_commit_sha": "c" * 40,
                 "labels": [{"name": "bug"}],
             }, {
                 "number": 13, "title": "Open PR without issue marker", "state": "open",
                 "draft": True, "created_at": "2026-11-13T10:00:00Z",
                 "updated_at": "2026-11-14T10:00:00Z", "closed_at": None,
-                "html_url": "https://github.com/acme/project/pull/13", "labels": [],
+                "html_url": "https://github.com/acme/project/pull/13",
+                "head": {"ref": "feat/open", "sha": "d" * 40},
+                "base": {"ref": "main", "sha": "a" * 40},
+                "labels": [],
             }]
             return _Response(200, [item for item in history if kwargs["params"]["state"] == "all" or item["state"] == "open"])
         if url.endswith("/issues"):
@@ -198,18 +219,24 @@ def test_includes_bounded_pr_and_issue_history_without_mixing_records(monkeypatc
     assert result["github_activity"]["status"] == "available"
     assert result["github_activity"]["pull_requests"]["returned"] == 2
     assert result["github_activity"]["pull_requests"]["items"][0]["number"] == 12
+    assert result["github_activity"]["pull_requests"]["items"][0]["head_ref"] == "fix/recovery"
+    assert result["github_activity"]["pull_requests"]["items"][0]["head_sha"] == "b" * 40
+    assert result["github_activity"]["pull_requests"]["items"][0]["base_ref"] == "main"
+    assert result["github_activity"]["pull_requests"]["items"][0]["merge_commit_sha"] == "c" * 40
     assert result["open_work_items"]["pull_requests"]["returned"] == 1
+    assert result["open_work_items"]["pull_requests"]["items"][0]["head_ref"] == "feat/open"
     assert result["open_work_items"]["pull_requests"]["items"][0]["number"] == 13
     assert result["open_work_items"]["issues"]["items"][0]["number"] == 20
     assert result["github_activity"]["issues"]["returned"] == 1
     assert result["github_activity"]["issues"]["items"][0]["number"] == 20
-    assert all(call[1]["params"]["state"] == "all" for call in calls[2:4])
-    assert all(call[1]["params"]["state"] == "open" for call in calls[4:6])
-    assert calls[2][1]["params"]["per_page"] == 100
+    assert calls[2][0].endswith("/branches")
+    assert all(call[1]["params"]["state"] == "all" for call in calls[3:5])
+    assert all(call[1]["params"]["state"] == "open" for call in calls[5:7])
     assert calls[3][1]["params"]["per_page"] == 100
-    assert calls[4][1]["params"]["per_page"] == 11
-    assert calls[5][1]["params"]["per_page"] == 100
-    assert len(calls) == 6
+    assert calls[4][1]["params"]["per_page"] == 100
+    assert calls[5][1]["params"]["per_page"] == 11
+    assert calls[6][1]["params"]["per_page"] == 100
+    assert len(calls) == 7
 
 
 def test_github_activity_failure_is_partial_and_preserves_repository_evidence(monkeypatch):
@@ -221,6 +248,8 @@ def test_github_activity_failure_is_partial_and_preserves_repository_evidence(mo
         calls += 1
         if url.endswith("/repos/acme/project"):
             return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
+        if url.endswith("/branches"):
+            return _Response(200, [])
         if url.endswith("/pulls"):
             return _Response(200, [])
         if url.endswith("/issues"):
@@ -237,7 +266,7 @@ def test_github_activity_failure_is_partial_and_preserves_repository_evidence(mo
     assert result["github_activity"]["pull_requests"]["status"] == "available"
     assert result["open_work_items"]["status"] == "partial"
     assert result["open_work_items"]["issues"]["status"] == "unavailable"
-    assert calls == 5
+    assert calls == 6
 
 
 def test_history_and_open_work_report_output_limit_truncation_independently(monkeypatch):
@@ -258,6 +287,8 @@ def test_history_and_open_work_report_output_limit_truncation_independently(monk
     def fake_get(url, **kwargs):
         if url.endswith("/repos/acme/project"):
             return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
+        if url.endswith("/branches"):
+            return _Response(200, [])
         if url.endswith("/pulls"):
             if kwargs["params"]["state"] == "open":
                 return _Response(200, [make_record(11, "open")])
@@ -292,6 +323,8 @@ def test_full_history_page_does_not_hide_directly_queried_open_work(monkeypatch)
     def fake_get(url, **kwargs):
         if url.endswith("/repos/acme/project"):
             return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
+        if url.endswith("/branches"):
+            return _Response(200, [])
         if url.endswith("/pulls"):
             if kwargs["params"]["state"] == "open":
                 return _Response(200, [{
@@ -323,3 +356,55 @@ def test_full_history_page_does_not_hide_directly_queried_open_work(monkeypatch)
     assert result["open_work_items"]["pull_requests"]["returned"] == 1
     assert result["open_work_items"]["pull_requests"]["items"][0]["number"] == 101
     assert result["open_work_items"]["pull_requests"]["may_be_truncated"] is False
+
+
+
+def test_branch_inventory_is_bounded_and_marks_full_page_as_potentially_truncated(monkeypatch):
+    live._CACHE.clear()
+
+    def fake_get(url, **kwargs):
+        if url.endswith("/repos/acme/project"):
+            return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
+        if url.endswith("/branches"):
+            assert kwargs["params"] == {"per_page": 100}
+            return _Response(200, [
+                {"name": f"branch-{index}", "commit": {"sha": f"{index:040x}"}, "protected": False}
+                for index in range(100)
+            ])
+        if url.endswith("/pulls") or url.endswith("/issues"):
+            return _Response(200, [])
+        raise AssertionError(url)
+
+    monkeypatch.setattr(live.requests, "get", fake_get)
+    result = live.fetch_github_live_evidence("github.com/acme/project")
+
+    assert result["branches"]["status"] == "available"
+    assert result["branches"]["branch_count_observed"] == 100
+    assert result["branches"]["returned"] == 100
+    assert result["branches"]["limit"] == 100
+    assert result["branches"]["may_be_truncated"] is True
+    assert result["branches"]["items"][0]["name"] == "branch-0"
+    assert result["branches"]["items"][0]["is_default"] is False
+
+
+def test_branch_inventory_failure_is_partial_and_preserves_other_github_evidence(monkeypatch):
+    live._CACHE.clear()
+
+    def fake_get(url, **kwargs):
+        if url.endswith("/repos/acme/project"):
+            return _Response(200, {"full_name": "acme/project", "default_branch": "main"})
+        if url.endswith("/branches"):
+            return _Response(403, {})
+        if url.endswith("/pulls") or url.endswith("/issues"):
+            return _Response(200, [])
+        raise AssertionError(url)
+
+    monkeypatch.setattr(live.requests, "get", fake_get)
+    result = live.fetch_github_live_evidence("github.com/acme/project")
+
+    assert result["status"] == "partial"
+    assert result["repository"]["full_name"] == "acme/project"
+    assert result["branches"]["status"] == "unavailable"
+    assert result["branches"]["error_type"] == "rate_limited_or_forbidden"
+    assert result["github_activity"]["status"] == "available"
+    assert result["open_work_items"]["status"] == "available"
