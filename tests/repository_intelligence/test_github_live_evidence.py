@@ -125,7 +125,14 @@ def test_dossier_calls_live_github_only_after_exact_local_path_match(tmp_path, m
 
     def fake_live(origin, commit_sha):
         calls.append((origin, commit_sha))
-        return {"status": "available", "observed_at": "2026-11-13T12:00:00Z"}
+        return {
+            "status": "available",
+            "observed_at": "2026-11-13T12:00:00Z",
+            "branches": {
+                "status": "available",
+                "items": [{"name": "main", "commit_sha": "c" * 40}],
+            },
+        }
 
     monkeypatch.setattr(dossier_module, "fetch_github_live_evidence", fake_live)
     inventory = [{
@@ -139,7 +146,9 @@ def test_dossier_calls_live_github_only_after_exact_local_path_match(tmp_path, m
         vault=vault, project_id="sample", repository_inventory=inventory
     )
     assert calls == [("github.com/acme/project", "c" * 40)]
-    assert result["repository"]["local_inventory"]["repositories"][0]["github_live"]["status"] == "available"
+    github_live = result["repository"]["local_inventory"]["repositories"][0]["github_live"]
+    assert github_live["status"] == "available"
+    assert github_live["branches"]["items"][0]["name"] == "main"
 
 
 def test_dossier_does_not_query_github_for_unmatched_local_path(tmp_path, monkeypatch):
@@ -356,7 +365,6 @@ def test_full_history_page_does_not_hide_directly_queried_open_work(monkeypatch)
     assert result["open_work_items"]["pull_requests"]["returned"] == 1
     assert result["open_work_items"]["pull_requests"]["items"][0]["number"] == 101
     assert result["open_work_items"]["pull_requests"]["may_be_truncated"] is False
-
 
 
 def test_branch_inventory_is_bounded_and_marks_full_page_as_potentially_truncated(monkeypatch):
