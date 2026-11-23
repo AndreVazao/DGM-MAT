@@ -108,10 +108,10 @@ class ChromeConversationArchiveImporter:
                                   "reason": "deferred_total_size_limit", "size_bytes": file_size})
                     continue
 
+                processed_bytes += file_size
                 payload = json.loads(source.read_text(encoding="utf-8"))
                 schema = payload.get("schema") if isinstance(payload, dict) else None
                 if schema not in self.SUPPORTED_SCHEMAS:
-                    processed_bytes += file_size
                     files.append({
                         "file": source.name,
                         "status": "ignored_unsupported_schema",
@@ -146,7 +146,6 @@ class ChromeConversationArchiveImporter:
                 messages = sum(len(audit.conversation.messages) for audit in audits)
                 conversation_count += conversations
                 message_count += messages
-                processed_bytes += file_size
                 files.append({
                     "file": source.name,
                     "archive_path": str(archived),
