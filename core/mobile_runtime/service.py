@@ -37,6 +37,9 @@ class MobileConversationService:
     def list_threads(self) -> list[dict[str, Any]]:
         return [thread.to_dict() for thread in self.store.list_threads()]
 
+    def conversation_store_diagnostic(self) -> dict[str, Any]:
+        return self.store.health_diagnostic()
+
     def get_thread(self, thread_id: str) -> dict[str, Any] | None:
         self._refresh_mission_updates(thread_id)
         thread = self.store.get_thread(thread_id)
