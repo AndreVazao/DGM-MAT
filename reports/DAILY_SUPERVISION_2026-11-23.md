@@ -146,3 +146,15 @@ Inventário observado antes da abertura da nova PR:
 - **Concluído:** inventário GitHub; comparação das branches candidatas; criação da branch isolada e abertura da PR #399 draft; testes adicionados ao código.
 - **Pendente:** CI/revisão final da #399, PC/runtime, missão, providers, captura de conversas e DGM-HUB.
 - **Sem operações destrutivas:** sem merge, fecho de PR/issue, eliminação de branches/tags, force-push, rebase, reset, alteração de remotes, credenciais, permissões ou controlos de segurança.
+
+
+### Revalidação de CI, revisão e browser — 23/11/2026, 15:10 UTC
+
+- [Focused PR Validation #45201459368](https://github.com/AndreVazao/DGM-MAT/actions/runs/45201459368): **SUCCESS** no HEAD final `87ce0c4bdd59ecb6d0e58c02f9eeb6d2e77896f0`. Passaram a compilação Python, seleção/execução das regressões afetadas e o gate de integridade do instalador.
+- [Windows Executable Build #45201459834](https://github.com/AndreVazao/DGM-MAT/actions/runs/45201459834): **IN PROGRESS**; a etapa `Build Executable` ainda estava em execução. Não declarar build nem artefacto concluídos.
+- CodeRabbit inicialmente ignorou a PR por estar em draft. Foi pedida revisão manual; a verificação CodeRabbit ficou **IN PROGRESS**, sem findings/revisão final recebida até esta observação.
+- A PR #399 continua draft, aberta e mergeable; o diff final contém três ficheiros, cinco commits à frente de `main` e zero atrás. `main` manteve-se em `fcac5ab28728edcc8b7420e8e3dd783fbbf23107`. Após a criação da branch existem 64 branches e a #399 é a única PR aberta.
+- Foi tentada a enumeração de separadores do browser ligado. O conector devolveu `Browser access requires the originating browser context`; não foram lidas sessões nem conversas autenticadas.
+- Os logs do job de build ainda em execução não estavam disponíveis no endpoint de logs (404 temporário do blob); o estado oficial do run continua IN PROGRESS, não FAILED.
+
+**Classificação atual:** regressões focadas concluídas com sucesso; build Windows e CodeRabbit pendentes; aceitação local, browser e agentes não verificados. A PR permanece draft e não foi integrada.
