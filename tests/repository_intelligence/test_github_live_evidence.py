@@ -416,3 +416,30 @@ def test_branch_inventory_failure_is_partial_and_preserves_other_github_evidence
     assert result["branches"]["error_type"] == "rate_limited_or_forbidden"
     assert result["github_activity"]["status"] == "available"
     assert result["open_work_items"]["status"] == "available"
+
+
+def test_branch_inventory_preserves_long_default_branch_name_for_identity(monkeypatch):
+    live._CACHE.clear()
+    long_default = "feature/" + "x" * 233
+
+    def fake_get(url, **kwargs):
+        if url.endswith("/repos/acme/project"):
+            return _Response(200, {"full_name": "acme/project", "default_branch": long_default})
+        if url.endswith("/branches"):
+            return _Response(200, [{
+                "name": long_default,
+                "commit": {"sha": "e" * 40},
+                "protected": True,
+            }])
+        if url.endswith("/pulls") or url.endswith("/issues"):
+            return _Response(200, [])
+        raise AssertionError(url)
+
+
+    monkeypatch.setattr(live.requests, "get", fake_get)
+    result = live.fetch_github_live_evidence("github.com/acme/project")
+
+    branch = result["branches"]["items"][0]
+    assert branch["name"] == long_default
+    assert len(branch["name"]) > 240
+    assert branch["is_default"] is True
