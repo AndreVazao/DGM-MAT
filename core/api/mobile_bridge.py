@@ -102,12 +102,13 @@ def get_mobile_status():
         "ollama": ollama,
         "governed_chat": governed_chat,
         "source_of_truth": "authorized-dgm-mat-pc",
+        "conversation_store": service.conversation_store_diagnostic(),
     }
 
 
 @router.get("/threads")
 def list_threads():
-    return {"threads": service.list_threads()}
+    return {"threads": service.list_threads(), "conversation_store": service.conversation_store_diagnostic()}
 
 
 @router.post("/threads")
