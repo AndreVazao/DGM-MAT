@@ -108,3 +108,61 @@ def test_importer_copies_raw_source_and_normalized_conversation_to_persistent_va
     assert len(records) == 1
     assert records[0]["completeness"] == "partial_dom_snapshot"
     assert Path(records[0]["archive_path"]).is_file()
+
+
+def _write_inventory(path: Path, conversation_id: str) -> None:
+    path.write_text(json.dumps({
+        "schema": "dgm-mat.chrome-conversation-inventory.v1",
+        "items": [{"id": conversation_id, "provider": "grok", "title": conversation_id,
+                   "url": f"https://grok.com/chat/{conversation_id}"}],
+    }), encoding="utf-8")
+
+
+def test_importer_reports_file_count_deferrals_without_reading_sources(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("DGM_VAULT_PATH", str(tmp_path / "vault"))
+    inbox = tmp_path / "inbox"
+    inbox.mkdir()
+    for index in range(ChromeConversationArchiveImporter.MAX_INBOX_FILES + 2):
+        _write_inventory(inbox / f"{index:02d}.json", f"count-{index}")
+    pipeline = ConversationIntelligencePipeline(progress_store_path=tmp_path / "progress.sqlite3")
+    importer = ChromeConversationArchiveImporter(inbox, tmp_path / "archive", pipeline)
+    result = importer.import_inbox()
+    deferred = [item for item in result["files"] if item["status"] == "deferred_file_count_limit"]
+    assert result["status"] == "partial"
+    assert result["files_seen"] == ChromeConversationArchiveImporter.MAX_INBOX_FILES + 2
+    assert result["files_deferred"] == 2
+    assert result["files_processed"] == ChromeConversationArchiveImporter.MAX_INBOX_FILES
+    assert [item["file"] for item in deferred] == ["10.json", "11.json"]
+    assert all((inbox / item["file"]).is_file() for item in deferred)
+
+
+def test_importer_reports_per_file_size_deferral(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("DGM_VAULT_PATH", str(tmp_path / "vault"))
+    inbox = tmp_path / "inbox"
+    inbox.mkdir()
+    oversized = inbox / "00-oversized.json"
+    oversized.write_bytes(b" " * (ChromeConversationArchiveImporter.MAX_INBOX_FILE_BYTES + 1))
+    _write_inventory(inbox / "01-valid.json", "valid-after-oversize")
+    pipeline = ConversationIntelligencePipeline(progress_store_path=tmp_path / "progress.sqlite3")
+    importer = ChromeConversationArchiveImporter(inbox, tmp_path / "archive", pipeline)
+    result = importer.import_inbox()
+    assert result["status"] == "partial"
+    assert result["files_deferred"] == 1
+    assert result["files"][0]["status"] == "deferred_file_size_limit"
+    assert result["files_imported"] == 1
+
+
+def test_importer_reports_total_size_deferral(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("DGM_VAULT_PATH", str(tmp_path / "vault"))
+    inbox = tmp_path / "inbox"
+    inbox.mkdir()
+    # Each file is below the per-file cap, but the pair exceeds the aggregate cap.
+    payload = json.dumps({"schema": "unsupported", "padding": "x" * (7 * 1024 * 1024)})
+    (inbox / "00-first.json").write_text(payload, encoding="utf-8")
+    (inbox / "01-second.json").write_text(payload, encoding="utf-8")
+    pipeline = ConversationIntelligencePipeline(progress_store_path=tmp_path / "progress.sqlite3")
+    importer = ChromeConversationArchiveImporter(inbox, tmp_path / "archive", pipeline)
+    result = importer.import_inbox()
+    assert result["status"] == "partial"
+    assert result["files_deferred"] == 2
+    assert all(item["status"] == "deferred_file_size_limit" for item in result["files"])
