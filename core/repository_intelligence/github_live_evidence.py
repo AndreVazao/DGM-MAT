@@ -263,7 +263,7 @@ def fetch_github_live_evidence(
         for item in branch_payload[:100]:
             if not isinstance(item, dict):
                 continue
-            name = str(item.get("name") or "")[:240]
+            name = str(item.get("name") or "")
             if not name:
                 continue
             commit = item.get("commit") if isinstance(item.get("commit"), dict) else {}
