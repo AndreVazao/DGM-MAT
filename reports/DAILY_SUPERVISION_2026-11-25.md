@@ -11,7 +11,7 @@ O GitHub foi revalidado diretamente. O PC principal continua offline e o browser
 - Default branch: `main`
 - HEAD de `main`: `fcac5ab28728edcc8b7420e8e3dd783fbbf23107` — sem avanço de código em relação à ronda de 24/11.
 - Branches enumeradas pela API antes de publicar este relatório: **65** (64 na ronda anterior). A diferença coincide com a branch documental de 24/11, usada pela PR #400; não foi identificado um novo ramo funcional aberto. A criação da branch documental desta ronda (`reports/daily-supervision-2026-11-25`) elevou o total atual para **66**.
-- PRs abertas: **2** — #399 funcional e #400 documental, ambas draft.
+- PRs abertas no snapshot anterior à publicação: **2** — #399 funcional e #400 documental, ambas draft. A criação desta PR #401 elevou o total atual para **3 PRs abertas**.
 - Issues abertas: **22**.
 - Workflows em `.github/workflows`: **25**.
 - Releases publicadas: **0**.
