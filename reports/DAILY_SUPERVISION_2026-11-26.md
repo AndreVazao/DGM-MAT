@@ -147,3 +147,9 @@ DGM-MAT ↔ DGM-HUB, modo Observer/Respond, fluxo de mensagens/contexto, propost
 ## 11. Classificação final
 
 **VERIFICAÇÃO INCOMPLETA.** GitHub e CI foram revalidados; main, branches, PRs, issues, workflows, releases e artefacto foram observados. A main sem proteção observável é um risco relevante. PC/runtime, missão, conversas, providers, agentes e DGM-HUB permanecem não verificados. Não foi feita alteração de código, produção, segurança ou configuração.
+
+
+## Post-publication checkpoint
+
+- After publishing this report, repository snapshot: **67 branches**, **4 open PRs** (#399, #400, #401, #403), **23 open issues**.
+- PR #403: one commit ahead / zero behind, mergeable, draft; **0 check runs** at this checkpoint. Documentation-only; no merge.
