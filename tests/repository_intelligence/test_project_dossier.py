@@ -364,9 +364,9 @@ def test_project_dossier_exposes_bounded_metadata_only_source_catalog_from_vault
     vault, repo = _vault(tmp_path)
     tests_dir = repo / "tests"
     tests_dir.mkdir()
-    (tests_dir / "test_sample.py").write_text("def test_sample():\\n    assert True\\n", encoding="utf-8")
-    (repo / "pyproject.toml").write_text("[project]\\nname='sample'\\n", encoding="utf-8")
-    (repo / ".env").write_text("SECRET=must-not-appear\\n", encoding="utf-8")
+    (tests_dir / "test_sample.py").write_text("def test_sample():\n    assert True\n", encoding="utf-8")
+    (repo / "pyproject.toml").write_text("[project]\nname='sample'\n", encoding="utf-8")
+    (repo / ".env").write_text("SECRET=must-not-appear\n", encoding="utf-8")
     snapshot = vault.snapshot_repository("sample", repo)
 
     dossier = build_project_dossier(vault=vault, project_id="sample")
