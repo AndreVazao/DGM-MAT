@@ -69,10 +69,11 @@ def fetch_github_live_evidence(
 ) -> dict[str, Any]:
     """Read repository metadata and checks for the exact locally observed SHA.
 
-    The function performs at most six GET requests: repository metadata,
-    optional checks for an exact commit SHA, bounded pull-request/issue
-    history, and dedicated open pull-request/issue snapshots. It never follows
-    redirects, mutates GitHub, or returns unselected metadata.
+    The function performs at most seven GET requests: repository metadata,
+    optional checks for an exact commit SHA, a bounded branch inventory,
+    bounded pull-request/issue history, and dedicated open pull-request/issue
+    snapshots. It never follows redirects, mutates GitHub, or returns
+    unselected metadata.
     """
     identity = _github_identity(origin)
     if identity is None:
@@ -169,6 +170,7 @@ def fetch_github_live_evidence(
         "limitations": [
             "GitHub metadata is live at observed_at; local working-tree state remains a separate persisted observation.",
             "Commit checks refer only to the exact local HEAD SHA supplied by repository inventory.",
+            "Branch inventory is bounded and does not establish branch activity, divergence, or deletion safety.",
             "A missing check run is not proof that tests passed.",
         ],
     }
@@ -232,6 +234,69 @@ def fetch_github_live_evidence(
                         "checks": checks,
                     }
 
+    def fetch_branch_inventory() -> dict[str, Any]:
+        try:
+            branch_response = requests.get(
+                f"{_API}/repos/{owner}/{repository}/branches",
+                headers=headers,
+                params={"per_page": 100},
+                timeout=max(1.0, min(float(timeout), 10.0)),
+                allow_redirects=False,
+            )
+        except requests.RequestException as exc:
+            return {"status": "unavailable", "error_type": type(exc).__name__, "items": []}
+        if branch_response.status_code != 200:
+            return {
+                "status": "unavailable",
+                "http_status": branch_response.status_code,
+                "error_type": _http_error(branch_response),
+                "items": [],
+            }
+        try:
+            branch_payload = branch_response.json()
+        except (TypeError, ValueError):
+            branch_payload = None
+        if not isinstance(branch_payload, list):
+            return {"status": "unavailable", "error_type": "invalid_github_branch_payload", "items": []}
+
+        records = []
+        for item in branch_payload[:100]:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "")
+            if not name:
+                continue
+            commit = item.get("commit") if isinstance(item.get("commit"), dict) else {}
+            commit_sha = commit.get("sha")
+            if not isinstance(commit_sha, str) or not re.fullmatch(r"[0-9a-fA-F]{40}", commit_sha):
+                commit_sha = None
+            records.append({
+                "name": name,
+                "commit_sha": commit_sha.lower() if commit_sha else None,
+                "protected": item.get("protected") if isinstance(item.get("protected"), bool) else None,
+                "is_default": name == result["repository"].get("default_branch"),
+            })
+        return {
+            "status": "available",
+            "observed_at": _utc_now(),
+            "default_branch": result["repository"].get("default_branch"),
+            "branch_count_observed": len(branch_payload),
+            "returned": len(records),
+            "limit": 100,
+            "may_be_truncated": len(branch_payload) >= 100,
+            "items": records,
+            "limitations": [
+                "At most the first 100 API entries are returned; a full page may be truncated.",
+                "Branch tips do not include activity timestamps or ahead/behind comparisons.",
+                "A branch name and tip SHA do not prove that the branch is active or safe to delete.",
+            ],
+        }
+
+    branch_inventory = fetch_branch_inventory()
+    result["branches"] = branch_inventory
+    if branch_inventory["status"] != "available" and result["status"] == "available":
+        result["status"] = "partial"
+
     def fetch_recent_records(endpoint: str, *, kind: str) -> dict[str, Any]:
         try:
             collection_response = requests.get(
@@ -272,6 +337,24 @@ def fetch_github_live_evidence(
                 "title": str(item.get("title") or "")[:240],
                 "state": item.get("state") if item.get("state") in {"open", "closed"} else "unknown",
                 "draft": item.get("draft") if kind == "pull_request" and isinstance(item.get("draft"), bool) else None,
+                "head_ref": (
+                    (item.get("head") or {}).get("ref")
+                    if kind == "pull_request" and isinstance(item.get("head"), dict) else None
+                ),
+                "head_sha": (
+                    (item.get("head") or {}).get("sha")
+                    if kind == "pull_request" and isinstance(item.get("head"), dict) else None
+                ),
+                "base_ref": (
+                    (item.get("base") or {}).get("ref")
+                    if kind == "pull_request" and isinstance(item.get("base"), dict) else None
+                ),
+                "base_sha": (
+                    (item.get("base") or {}).get("sha")
+                    if kind == "pull_request" and isinstance(item.get("base"), dict) else None
+                ),
+                "merged_at": item.get("merged_at") if kind == "pull_request" else None,
+                "merge_commit_sha": item.get("merge_commit_sha") if kind == "pull_request" else None,
                 "created_at": item.get("created_at"),
                 "updated_at": item.get("updated_at"),
                 "closed_at": item.get("closed_at"),
@@ -335,6 +418,24 @@ def fetch_github_live_evidence(
                 "title": str(item.get("title") or "")[:240],
                 "state": item.get("state") if item.get("state") == "open" else "unknown",
                 "draft": item.get("draft") if kind == "pull_request" and isinstance(item.get("draft"), bool) else None,
+                "head_ref": (
+                    (item.get("head") or {}).get("ref")
+                    if kind == "pull_request" and isinstance(item.get("head"), dict) else None
+                ),
+                "head_sha": (
+                    (item.get("head") or {}).get("sha")
+                    if kind == "pull_request" and isinstance(item.get("head"), dict) else None
+                ),
+                "base_ref": (
+                    (item.get("base") or {}).get("ref")
+                    if kind == "pull_request" and isinstance(item.get("base"), dict) else None
+                ),
+                "base_sha": (
+                    (item.get("base") or {}).get("sha")
+                    if kind == "pull_request" and isinstance(item.get("base"), dict) else None
+                ),
+                "merged_at": item.get("merged_at") if kind == "pull_request" else None,
+                "merge_commit_sha": item.get("merge_commit_sha") if kind == "pull_request" else None,
                 "created_at": item.get("created_at"),
                 "updated_at": item.get("updated_at"),
                 "closed_at": item.get("closed_at"),
