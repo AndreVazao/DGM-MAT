@@ -148,6 +148,6 @@ Ligação DGM-MAT ↔ DGM-HUB, modo Observer/Respond, fluxo de mensagens/context
 
 - Branch count after report publication: **68**.
 - Open PRs after publication: **5** (#399, #400, #401, #403, #404).
-- [PR #404](https://github.com/AndreVazao/DGM-MAT/pull/404) is verified open, draft, mergeable, four commits ahead / zero behind, and changes only this report (153 added lines).
-- Report blob SHA confirmed by GitHub: `c74b8841438033ea3c31989759d742b9b1d49e7d`.
+- [PR #404](https://github.com/AndreVazao/DGM-MAT/pull/404) is verified open and draft; comparison shows the report branch ahead of main with zero behind and only this report file added (153 lines). The commit count is a snapshot and increases with checkpoint edits.
+- GitHub content was re-read after the checkpoint edits; the current branch head is the PR head, not main.
 - PR #404 has no Actions workflow runs at this checkpoint; its combined commit status shows only Snyk pending. Snyk is not used for this mission; no claim of CI green.
