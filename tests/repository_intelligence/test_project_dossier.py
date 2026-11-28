@@ -387,17 +387,17 @@ def test_project_dossier_exposes_bounded_metadata_only_source_catalog_from_vault
 
 def test_project_dossier_source_catalog_excludes_common_secret_paths_and_names(tmp_path: Path):
     vault, repo = _vault(tmp_path)
-    (repo / "secret.py").write_text("SECRET = 'do-not-return'\\n", encoding="utf-8")
-    (repo / "credentials-prod.py").write_text("CREDENTIAL = 'do-not-return'\\n", encoding="utf-8")
-    (repo / "token.json").write_text('{"token": "do-not-return"}\\n', encoding="utf-8")
-    (repo / "service-account.json").write_text('{"private_key": "do-not-return"}\\n', encoding="utf-8")
+    (repo / "secret.py").write_text("SECRET = 'do-not-return'\n", encoding="utf-8")
+    (repo / "credentials-prod.py").write_text("CREDENTIAL = 'do-not-return'\n", encoding="utf-8")
+    (repo / "token.json").write_text('{"token": "do-not-return"}\n', encoding="utf-8")
+    (repo / "service-account.json").write_text('{"private_key": "do-not-return"}\n', encoding="utf-8")
     private_dir = repo / "private"
     private_dir.mkdir()
-    (private_dir / "loader.py").write_text("PRIVATE = True\\n", encoding="utf-8")
+    (private_dir / "loader.py").write_text("PRIVATE = True\n", encoding="utf-8")
     aws_dir = repo / ".aws"
     aws_dir.mkdir()
-    (aws_dir / "loader.py").write_text("AWS_PRIVATE = True\\n", encoding="utf-8")
-    (repo / "tokenizer.py").write_text("def tokenize(value): return value\\n", encoding="utf-8")
+    (aws_dir / "loader.py").write_text("AWS_PRIVATE = True\n", encoding="utf-8")
+    (repo / "tokenizer.py").write_text("def tokenize(value): return value\n", encoding="utf-8")
     vault.snapshot_repository("sample", repo)
 
     dossier = build_project_dossier(vault=vault, project_id="sample")
