@@ -197,6 +197,30 @@ def build_project_dossier(
                 "composer.json", "gemfile", "dockerfile", "docker-compose.yml",
                 "docker-compose.yaml", "cmakelists.txt",
             }
+            sensitive_directories = {
+                ".git", ".ssh", ".aws", ".azure", ".gcloud", ".gnupg",
+                "secrets", "credentials", "private", "private_keys",
+                "certs", "certificates", "keystore", "keyrings",
+            }
+            sensitive_names = {
+                ".env", ".npmrc", ".pypirc", ".netrc", ".dockerconfigjson",
+                ".htpasswd", "credentials", "credentials.json", "secrets",
+                "secrets.json", "secret", "token", "token.json", "access_token",
+                "refresh_token", "auth.json", "id_rsa", "id_ed25519",
+                "id_ecdsa", "id_dsa", "bootstrap.token", "service-account.json",
+                "service_account.json",
+            }
+            sensitive_suffixes = (
+                ".pem", ".key", ".p12", ".pfx", ".p7b", ".p7c", ".p7s",
+                ".jks", ".keystore", ".ppk", ".kdbx", ".tfstate",
+            )
+            sensitive_prefixes = (
+                "credentials.", "credentials-", "secret.", "secret-",
+                "secrets.", "secrets-", "token.", "token-",
+                "access_token.", "access_token-", "refresh_token.",
+                "refresh_token-", "access-token-", "refresh-token-",
+                "service-account-", "service_account_",
+            )
             candidates: list[dict[str, Any]] = []
             for entry in tree_payload.get("entries", []):
                 if not isinstance(entry, dict) or entry.get("kind", "file") != "file":
@@ -207,28 +231,6 @@ def build_project_dossier(
                     continue
                 lower_parts = [part.casefold() for part in parts]
                 filename = lower_parts[-1]
-                sensitive_directories = {
-                    ".git", ".ssh", ".aws", ".azure", ".gcloud", ".gnupg",
-                    "secrets", "credentials", "private", "private_keys",
-                    "certs", "certificates", "keystore", "keyrings",
-                }
-                sensitive_names = {
-                    ".env", ".npmrc", ".pypirc", ".netrc", ".dockerconfigjson",
-                    ".htpasswd", "credentials", "credentials.json", "secrets",
-                    "secrets.json", "secret", "token", "token.json", "access_token",
-                    "refresh_token", "auth.json", "id_rsa", "id_ed25519",
-                    "id_ecdsa", "id_dsa", "bootstrap.token", "service-account.json",
-                    "service_account.json",
-                }
-                sensitive_suffixes = (
-                    ".pem", ".key", ".p12", ".pfx", ".p7b", ".p7c", ".p7s",
-                    ".jks", ".keystore", ".ppk", ".kdbx", ".tfstate",
-                )
-                sensitive_prefixes = (
-                    "credentials.", "secret.", "secrets.", "token.",
-                    "access_token.", "refresh_token.", "service-account-",
-                    "service_account_",
-                )
                 if any(part in sensitive_directories for part in lower_parts):
                     continue
                 if (
