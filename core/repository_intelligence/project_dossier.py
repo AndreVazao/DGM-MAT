@@ -207,10 +207,35 @@ def build_project_dossier(
                     continue
                 lower_parts = [part.casefold() for part in parts]
                 filename = lower_parts[-1]
-                if any(part in {".git", ".ssh", "secrets", "credentials"} for part in lower_parts):
+                sensitive_directories = {
+                    ".git", ".ssh", ".aws", ".azure", ".gcloud", ".gnupg",
+                    "secrets", "credentials", "private", "private_keys",
+                    "certs", "certificates", "keystore", "keyrings",
+                }
+                sensitive_names = {
+                    ".env", ".npmrc", ".pypirc", ".netrc", ".dockerconfigjson",
+                    ".htpasswd", "credentials", "credentials.json", "secrets",
+                    "secrets.json", "secret", "token", "token.json", "access_token",
+                    "refresh_token", "auth.json", "id_rsa", "id_ed25519",
+                    "id_ecdsa", "id_dsa", "bootstrap.token", "service-account.json",
+                    "service_account.json",
+                }
+                sensitive_suffixes = (
+                    ".pem", ".key", ".p12", ".pfx", ".p7b", ".p7c", ".p7s",
+                    ".jks", ".keystore", ".ppk", ".kdbx", ".tfstate",
+                )
+                sensitive_prefixes = (
+                    "credentials.", "secret.", "secrets.", "token.",
+                    "access_token.", "refresh_token.", "service-account-",
+                    "service_account_",
+                )
+                if any(part in sensitive_directories for part in lower_parts):
                     continue
-                if filename in {".env", ".env.local", ".env.production", "credentials.json",
-                                "secrets.json", "id_rsa", "id_ed25519", "bootstrap.token"} or filename.startswith(".env."):
+                if (
+                    filename in sensitive_names
+                    or filename.startswith((".env.",) + sensitive_prefixes)
+                    or filename.endswith(sensitive_suffixes)
+                ):
                     continue
                 language = entry.get("language")
                 is_manifest = filename in manifest_names or filename.endswith((".csproj", ".sln"))
