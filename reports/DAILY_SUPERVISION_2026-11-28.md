@@ -69,7 +69,9 @@ Validação:
 - [Focused PR Validation #46099364832](https://github.com/AndreVazao/DGM-MAT/actions/runs/46099364832): **FAILURE** no primeiro teste da nova regra, porque o prefixo com hífen não estava coberto.
 - A regra foi corrigida.
 - [Focused PR Validation #46099519306](https://github.com/AndreVazao/DGM-MAT/actions/runs/46099519306): **SUCCESS**, incluindo compilação e regressões afetadas e Windows installer digest gate.
-- [Windows Executable Build #46099519305](https://github.com/AndreVazao/DGM-MAT/actions/runs/46099519305): **IN_PROGRESS** no momento deste relatório; sem resultado final confirmado.
+- [Windows Executable Build #46099519305](https://github.com/AndreVazao/DGM-MAT/actions/runs/46099519305): **SUCCESS** às 02:48:38 UTC.
+- Artefacto PR: `DGM-MAT-Windows-3.12-8792637`, 115,432,512 bytes, [run #46099519305](https://github.com/AndreVazao/DGM-MAT/actions/runs/46099519305), digest `sha256:2d86bc75ead522191a5ad23af6113b7f01f48a48042d22e22aceafed3d29b528`, expira em 26/02/2027.
+- O artefacto corresponde ao HEAD PR `d752a00a2258832a4aa124f5f4f96c440a944ddf`; não foi descarregado nem instalado.
 - A PR permanece Draft; o comentário do CodeRabbit indica que drafts não são revistos automaticamente. Não foi feita revisão independente pelo bot nesta ronda.
 
 ### Branches antigas comparadas
@@ -151,8 +153,7 @@ Não foram usados providers pagos nem alteradas credenciais.
 1. Proteção de `main` ausente na metadata observável: risco de push direto e falta de checks obrigatórios.
 2. PC offline impede validação de runtime, missão, Vault, providers, conversas e DGM-HUB.
 3. Self-update sem health-check/teste funcional pós-instalação e pós-rollback.
-4. Windows Build da PR #405 ainda em execução no momento do relatório.
-5. PR #405 permanece Draft e sem revisão independente do CodeRabbit.
+4. PR #405 permanece Draft e sem revisão independente do CodeRabbit.
 
 ## 11. Próximos passos
 
@@ -165,6 +166,6 @@ Não foram usados providers pagos nem alteradas credenciais.
 
 ## 12. Classificação final
 
-**VERIFICAÇÃO INCOMPLETA.** GitHub foi revalidado; uma correção pequena e isolada foi feita na PR #405 e a validação focada passou. A proteção da main apresenta risco confirmado na metadata observável. A build Windows da PR ainda não tinha resultado final no momento do relatório. PC/runtime, missão funcional, conversas, providers locais e DGM-HUB continuam não verificados.
+**VERIFICAÇÃO INCOMPLETA.** GitHub foi revalidado; uma correção pequena e isolada foi feita na PR #405 e tanto a validação focada como a build Windows do HEAD atual passaram. A proteção da main apresenta risco confirmado na metadata observável. A PR continua Draft e sem revisão independente do CodeRabbit. PC/runtime, missão funcional, conversas, providers locais e DGM-HUB continuam não verificados.
 
 **Sem operações destrutivas ou alterações na main.**
