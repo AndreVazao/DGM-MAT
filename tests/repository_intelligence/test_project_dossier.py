@@ -359,3 +359,55 @@ def test_project_dossier_exposes_per_source_evidence_timestamps_without_claiming
     }]
     assert "No age threshold" in freshness["policy"]
     assert "current" in freshness["policy"]
+
+def test_project_dossier_exposes_bounded_metadata_only_source_catalog_from_vault_snapshot(tmp_path: Path):
+    vault, repo = _vault(tmp_path)
+    tests_dir = repo / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "test_sample.py").write_text("def test_sample():\n    assert True\n", encoding="utf-8")
+    (repo / "pyproject.toml").write_text("[project]\nname='sample'\n", encoding="utf-8")
+    (repo / ".env").write_text("SECRET=must-not-appear\n", encoding="utf-8")
+    snapshot = vault.snapshot_repository("sample", repo)
+
+    dossier = build_project_dossier(vault=vault, project_id="sample")
+    catalog = dossier["repository"]["source_catalog"]
+    by_path = {item["path"]: item for item in catalog["entries"]}
+
+    assert catalog["status"] == "available"
+    assert catalog["snapshot_id"] == snapshot["snapshot_id"]
+    assert catalog["tree_fingerprint"] == snapshot["fingerprint"]
+    assert by_path["main.py"]["role"] == "source"
+    assert by_path["tests/test_sample.py"]["role"] == "test"
+    assert by_path["pyproject.toml"]["role"] == "manifest"
+    assert by_path["main.py"]["snapshot_sha256"]
+    assert ".env" not in by_path
+    assert "SECRET=must-not-appear" not in str(catalog)
+    assert catalog["returned"] == len(catalog["entries"])
+    assert catalog["truncated"] is False
+
+def test_project_dossier_source_catalog_excludes_common_secret_paths_and_names(tmp_path: Path):
+    vault, repo = _vault(tmp_path)
+    (repo / "secret.py").write_text("SECRET = 'do-not-return'\n", encoding="utf-8")
+    (repo / "credentials-prod.py").write_text("CREDENTIAL = 'do-not-return'\n", encoding="utf-8")
+    (repo / "token.json").write_text('{"token": "do-not-return"}\n', encoding="utf-8")
+    (repo / "service-account.json").write_text('{"private_key": "do-not-return"}\n', encoding="utf-8")
+    private_dir = repo / "private"
+    private_dir.mkdir()
+    (private_dir / "loader.py").write_text("PRIVATE = True\n", encoding="utf-8")
+    aws_dir = repo / ".aws"
+    aws_dir.mkdir()
+    (aws_dir / "loader.py").write_text("AWS_PRIVATE = True\n", encoding="utf-8")
+    (repo / "tokenizer.py").write_text("def tokenize(value): return value\n", encoding="utf-8")
+    vault.snapshot_repository("sample", repo)
+
+    dossier = build_project_dossier(vault=vault, project_id="sample")
+    paths = {item["path"] for item in dossier["repository"]["source_catalog"]["entries"]}
+
+    assert "secret.py" not in paths
+    assert "credentials-prod.py" not in paths
+    assert "token.json" not in paths
+    assert "service-account.json" not in paths
+    assert "private/loader.py" not in paths
+    assert ".aws/loader.py" not in paths
+    assert "tokenizer.py" in paths
+

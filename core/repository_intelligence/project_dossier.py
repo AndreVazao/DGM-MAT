@@ -83,7 +83,7 @@ def build_project_dossier(
         ).fetchall()
         snapshot_rows = db.execute(
             "SELECT snapshot_id,repository_path,tree_fingerprint,file_count,"
-            "language_summary_json,created_at FROM tree_snapshots "
+            "language_summary_json,snapshot_path,created_at FROM tree_snapshots "
             "WHERE project_id=? ORDER BY created_at DESC LIMIT ?",
             (project_id, snapshot_limit),
         ).fetchall()
@@ -153,6 +153,121 @@ def build_project_dossier(
             "language_summary": languages if isinstance(languages, dict) else {},
             "created_at": row["created_at"],
         })
+
+    # Expose a bounded metadata-only source catalogue from the immutable Vault tree.
+    # Never read source contents here; hashes and paths belong to the snapshot, not a live probe.
+    source_catalog: dict[str, Any] = {
+        "status": "not_captured",
+        "snapshot_id": None,
+        "tree_fingerprint": None,
+        "snapshot_generated_at": None,
+        "total_candidates": 0,
+        "returned": 0,
+        "limit": 200,
+        "truncated": False,
+        "entries": [],
+        "note": "Metadata only; no source contents are returned and snapshot hashes do not prove current working-tree state.",
+    }
+    if snapshot_rows:
+        source_row = snapshot_rows[0]
+        source_catalog.update({
+            "snapshot_id": source_row["snapshot_id"],
+            "tree_fingerprint": source_row["tree_fingerprint"],
+        })
+        try:
+            snapshot_candidate = Path(source_row["snapshot_path"])
+            if snapshot_candidate.is_symlink():
+                raise OSError("snapshot symlink rejected")
+            snapshot_file = snapshot_candidate.resolve(strict=True)
+            if not snapshot_file.is_relative_to(vault.root.resolve()) or not snapshot_file.is_file():
+                raise OSError("snapshot path outside Vault")
+            if snapshot_file.stat().st_size > 10_000_000:
+                raise OSError("snapshot exceeds size limit")
+            tree_payload = json.loads(snapshot_file.read_text(encoding="utf-8"))
+            expected_repository = str(Path(source_row["repository_path"]).resolve())
+            actual_repository = str(Path(str(tree_payload.get("repository_path") or "")).resolve())
+            if tree_payload.get("project_id") != project_id or actual_repository != expected_repository:
+                raise OSError("snapshot identity mismatch")
+            source_catalog["snapshot_generated_at"] = tree_payload.get("generated_at")
+            manifest_names = {
+                "pyproject.toml", "requirements.txt", "requirements-dev.txt", "package.json",
+                "pnpm-lock.yaml", "yarn.lock", "package-lock.json", "poetry.lock",
+                "pipfile", "cargo.toml", "go.mod", "pom.xml", "build.gradle",
+                "build.gradle.kts", "settings.gradle", "settings.gradle.kts",
+                "composer.json", "gemfile", "dockerfile", "docker-compose.yml",
+                "docker-compose.yaml", "cmakelists.txt",
+            }
+            sensitive_directories = {
+                ".git", ".ssh", ".aws", ".azure", ".gcloud", ".gnupg",
+                "secrets", "credentials", "private", "private_keys",
+                "certs", "certificates", "keystore", "keyrings",
+            }
+            sensitive_names = {
+                ".env", ".npmrc", ".pypirc", ".netrc", ".dockerconfigjson",
+                ".htpasswd", "credentials", "credentials.json", "secrets",
+                "secrets.json", "secret", "token", "token.json", "access_token",
+                "refresh_token", "auth.json", "id_rsa", "id_ed25519",
+                "id_ecdsa", "id_dsa", "bootstrap.token", "service-account.json",
+                "service_account.json",
+            }
+            sensitive_suffixes = (
+                ".pem", ".key", ".p12", ".pfx", ".p7b", ".p7c", ".p7s",
+                ".jks", ".keystore", ".ppk", ".kdbx", ".tfstate",
+            )
+            sensitive_prefixes = (
+                "credentials.", "credentials-", "secret.", "secret-",
+                "secrets.", "secrets-", "token.", "token-",
+                "access_token.", "access_token-", "refresh_token.",
+                "refresh_token-", "access-token-", "refresh-token-",
+                "service-account-", "service_account_",
+            )
+            candidates: list[dict[str, Any]] = []
+            for entry in tree_payload.get("entries", []):
+                if not isinstance(entry, dict) or entry.get("kind", "file") != "file":
+                    continue
+                relative = str(entry.get("path") or "")
+                parts = Path(relative).parts
+                if not relative or Path(relative).is_absolute() or ".." in parts:
+                    continue
+                lower_parts = [part.casefold() for part in parts]
+                filename = lower_parts[-1]
+                if any(part in sensitive_directories for part in lower_parts):
+                    continue
+                if (
+                    filename in sensitive_names
+                    or filename.startswith((".env.",) + sensitive_prefixes)
+                    or filename.endswith(sensitive_suffixes)
+                ):
+                    continue
+                language = entry.get("language")
+                is_manifest = filename in manifest_names or filename.endswith((".csproj", ".sln"))
+                if not language and not is_manifest:
+                    continue
+                if filename.endswith((".md", ".rst")):
+                    role = "documentation"
+                elif any(part in {"tests", "test"} for part in lower_parts[:-1]) or filename.startswith(("test_", "test-")):
+                    role = "test"
+                elif is_manifest:
+                    role = "manifest"
+                else:
+                    role = "source"
+                digest = entry.get("sha256")
+                candidates.append({
+                    "path": relative.replace("\\", "/"),
+                    "role": role,
+                    "language": language,
+                    "size_bytes": entry.get("size"),
+                    "snapshot_sha256": digest if isinstance(digest, str) and re.fullmatch(r"[a-fA-F0-9]{64}", digest) else None,
+                })
+            candidates.sort(key=lambda item: (item["path"].casefold(), item["role"]))
+            source_catalog["status"] = "available"
+            source_catalog["total_candidates"] = len(candidates)
+            source_catalog["entries"] = candidates[:200]
+            source_catalog["returned"] = len(source_catalog["entries"])
+            source_catalog["truncated"] = len(candidates) > 200
+        except (OSError, RuntimeError, UnicodeDecodeError, ValueError, TypeError):
+            source_catalog["status"] = "unavailable"
+            source_catalog["entries"] = []
 
     latest_audit = None
     audit_dir = (vault.root / "projects" / project_id / "audits")
@@ -293,6 +408,7 @@ def build_project_dossier(
         "conversations": conversations,
         "repository": {
             "snapshots": snapshots,
+            "source_catalog": source_catalog,
             "conversation_linked_references": repository_references,
             "conversation_linked_code_candidates": code_artifacts,
             "latest_snapshot_at": latest_snapshot,
