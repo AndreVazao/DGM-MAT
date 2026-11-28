@@ -169,3 +169,11 @@ Não foram usados providers pagos nem alteradas credenciais.
 **VERIFICAÇÃO INCOMPLETA.** GitHub foi revalidado; uma correção pequena e isolada foi feita na PR #405 e tanto a validação focada como a build Windows do HEAD atual passaram. A proteção da main apresenta risco confirmado na metadata observável. A PR continua Draft e sem revisão independente do CodeRabbit. PC/runtime, missão funcional, conversas, providers locais e DGM-HUB continuam não verificados.
 
 **Sem operações destrutivas ou alterações na main.**
+
+## Post-publication checkpoint
+
+- Relatório versionado na branch `reports/daily-supervision-2026-11-28`, criada a partir do HEAD observado da main.
+- Commit do relatório atualizado: `b43702fe2adb8bf91edf53913b8257b039e9609c`.
+- Branches após publicação: **70**; PRs abertas continuam **1** (#405).
+- Não foi aberta uma PR documental adicional, preservando uma única PR de trabalho aberta.
+- O ficheiro foi novamente lido através do GitHub após a atualização.
